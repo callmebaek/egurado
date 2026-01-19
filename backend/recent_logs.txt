@@ -1,0 +1,200 @@
+﻿[DEBUG] Cursors - first=cW0yaVVCWmt3Ums5QUt5..., last=TmZQYjRDUndwcGtYNmF6...
+[DEBUG] GraphQL Request - place_id=37942234, size=20, after=TmZQYjRDUndwcGtYNmF6...
+[DEBUG] GraphQL variables: {'input': {'businessId': '37942234', 'size': 20, 'sort': 'RECENT', 'includeContent': True, 'after': 'TmZQYjRDUndwcGtYNmF6Q1hCMWNuT3hiWXZiWU9WRWllMFA3d1dmNTdnN0lDdmo3NnZmZGhxbUwrVmN1dy9DTDlMaWVvY28rU0trTGF4UWRSazFCZGxzeHp2VkxCT3REWXNDNC84LzRTeXVQQXNETFIvTGd1ay9xanNSVE9PK3FFdk9pdGlmQUwvMHRJeDQ9'}}
+[DEBUG] Response keys: ['data']
+[DEBUG] data keys: ['visitorReviews']
+[DEBUG] GraphQL Response - items=20, first_id=6929765abba3fcaa, last_id=691990f118fd2c53    
+[DEBUG] Cursors - first=Sjcvai9wWWU3eFp3ZSti..., last=NVROMi9XWWNzZWZHUExK...
+INFO:     127.0.0.1:51912 - "POST /api/v1/ai-reply/reviews HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59852 - "OPTIONS /api/v1/ai-reply/generate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59852 - "POST /api/v1/ai-reply/generate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59852 - "OPTIONS /api/v1/ai-reply/generate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53228 - "POST /api/v1/ai-reply/generate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64548 - "OPTIONS /api/v1/ai-reply/post HTTP/1.1" 200 OK
+?봽 Active user switched to: b7920ac7-db67-45a0-8486-25ef2930367b
+?봽 Active user switched to: b7920ac7-db67-45a0-8486-25ef2930367b
+?뮠 Posting reply to: jiw**** (25.12.4.紐? for user: b7920ac7-db67-45a0-8486-25ef2930367b    
+?뙋 Creating Chrome WebDriver for user: b7920ac7-db67-45a0-8486-25ef2930367b
+?벀 Found session in Supabase for store '2ed489ac-bad5-4ff5-9ae0-a56b5c755d75' (12 cookies, critical: ['NID_AUT', 'NID_SES'])
+??Using session from Supabase for user: b7920ac7-db67-45a0-8486-25ef2930367b
+?뱛 Loading 12 cookies...
+   ??Cookie 'NID_AUT' in DB is valid (expires in 9598 hours)
+   ??Cookie 'BUC' in DB is valid (expires in 9598 hours)
+   ??Cookie 'NID_SES' in DB is valid (expires in 719 hours)
+??Added 6/12 cookies
+?뵎 Critical cookies added: ['NID_AUT', 'NID_SES']
+??Session cookies loaded
+?뵕 Opening: https://new.smartplace.naver.com/bizes/place/37942234/reviews?menu=visitor&hasReply=false
+??Waiting for page to load...
+?뱄툘 No popup found
+??Waiting for reviews to render...
+?렞 Target: author='jiw...', date_original='25.12.4.紐? ??date_clean='25.12.4'
+?뵇 Page URL: https://new.smartplace.naver.com/bizes/place/2421004/reviews?bookingBusinessId=92594&hasReply=false&menu=visitor
+?뵇 Page title: ?ㅼ씠踰??ㅻ쭏?명뵆?덉씠???뵇 Found 34 total <li> elements
+  ?벀 Batch 1: 10 total reviews (10 newly loaded, target=50)
+
+?뵇 ===== FIRST REVIEW RAW DATA =====
+   Class: pui__q2fg8o pui__A7NplK... | Text:  ?⑹쁺二?688
+由щ럭 36?ъ쭊 391踰덉㎏ 諛⑸Ц
+   Class: pui__hvyFHZ... | Text: ?⑹쁺二?688
+由щ럭 36?ъ쭊 391踰덉㎏ 諛⑸Ц
+   Class: pui__JiVbY3... | Text: ?⑹쁺二?688   
+   Class: pui__uslU0d... | Text: ?⑹쁺二?688
+   Class: pui__NMi-Dp... | Text: ?⑹쁺二?688   
+   Class: pui__RuLAax... | Text: 由щ럭 36?ъ쭊 391踰덉㎏ 諛⑸Ц
+   Class: pui__WN-kAf... | Text: 由щ럭 36      
+?뵇 ===== END FIRST REVIEW =====
+
+  ?뵇 Review 1:
+     Author: '?⑹쁺二?688' (match=False, looking for 'jiw...')
+     Date: '2026. 1. 12(??' ??cleaned='1.12' (match=False, target='25.12.4')
+     Content: match=False, attempted=True     
+       Target (first 30): '?덈Т 留쏆엳寃???癒뱀뿀?듬땲??!!...'
+       Found (first 30): '?꾩씠? ?⑦렪怨??④퍡?붿뼱???덈Т 醫뗭븘??..'
+  ?뵇 Review 2:
+     Author: 'YW121' (match=False, looking for 'jiw...')
+     Date: '2026. 1. 11(??' ??cleaned='1.11' (match=False, target='25.12.4')
+     Content: match=False, attempted=True     
+       Target (first 30): '?덈Т 留쏆엳寃???癒뱀뿀?듬땲??!!...'
+       Found (first 30): '?곗뿰???ㅼ씠踰?吏?꾨낫怨?李얠븘???ㅼ뼱?붾뒗??理쒓퀬?덉삤????..'
+  ?뵇 Review 3:
+     Author: '?뱀닔?? (match=False, looking for 'jiw...')
+     Date: '2026. 1. 10(??' ??cleaned='1.10' (match=False, target='25.12.4')
+     Content: match=False, attempted=True     
+       Target (first 30): '?덈Т 留쏆엳寃???癒뱀뿀?듬땲??!!...'
+       Found (first 30): '留쏆엳寃???癒밴쿋?듬땲?뱅윧?援곗묠 ?뚯븘?뷃윑?..'
+  ?벀 Batch 2: 10 total reviews (0 newly loaded, target=50)
+  ?벀 Batch 3: 20 total reviews (10 newly loaded, target=50)
+  ?벀 Batch 4: 30 total reviews (10 newly loaded, target=50)
+  ?벀 Batch 5: 30 total reviews (0 newly loaded, target=50)
+  ?벀 Batch 6: 40 total reviews (10 newly loaded, target=50)
+  ?벀 Batch 7: 50 total reviews (10 newly loaded, target=50)
+  ?벀 Batch 8: 50 total reviews (0 newly loaded, target=50)
+  ?벀 Batch 9: 60 total reviews (10 newly loaded, target=50)
+  ?벀 Batch 10: 60 total reviews (0 newly loaded, target=50)
+  ?벀 Batch 11: 60 total reviews (0 newly loaded, target=50)
+  ?벀 Batch 12: 70 total reviews (10 newly loaded, target=50)
+  ?벀 Batch 13: 70 total reviews (0 newly loaded, target=50)
+  ?벀 Batch 14: 80 total reviews (10 newly loaded, target=50)
+  ?벀 Batch 15: 80 total reviews (0 newly loaded, target=50)
+  ?벀 Batch 16: 80 total reviews (0 newly loaded, target=50)
+  ?벀 Batch 17: 90 total reviews (10 newly loaded, target=50)
+  ?벀 Batch 18: 90 total reviews (0 newly loaded, target=50)
+  ?벀 Batch 19: 100 total reviews (10 newly loaded, target=50)
+  ?벀 Batch 20: 100 total reviews (0 newly loaded, target=50)
+  ?벀 Batch 21: 110 total reviews (10 newly loaded, target=50)
+  ?벀 Batch 22: 110 total reviews (0 newly loaded, target=50)
+  ?벀 Batch 23: 110 total reviews (0 newly loaded, target=50)
+  ?벀 Batch 24: 120 total reviews (10 newly loaded, target=50)
+  ?벀 Batch 25: 120 total reviews (0 newly loaded, target=50)
+  ?벀 Batch 26: 130 total reviews (10 newly loaded, target=50)
+  ?벀 Batch 27: 130 total reviews (0 newly loaded, target=50)
+  ?벀 Batch 28: 140 total reviews (10 newly loaded, target=50)
+  ?벀 Batch 29: 140 total reviews (0 newly loaded, target=50)
+  ?벀 Batch 30: 150 total reviews (10 newly loaded, target=50)
+
+??Could not find review: jiw**** (25.12.4)   
+   Loaded 150 reviews total
+   Looking for: author starting with 'jiw', date='25.12.4'
+   ?뱄툘 No reviews found with date '25.12.4'
+??Error posting reply: Could not find review: jiw**** (25.12.4)
+Error in post_reply_by_composite: Could not find review: jiw**** (25.12.4)
+???듦? 寃뚯떆 ?ㅽ뙣: ?듦? 寃뚯떆 ?ㅽ뙣: Could not find review: jiw**** (25.12.4)
+INFO:     127.0.0.1:64548 - "POST /api/v1/ai-reply/post HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51436 - "OPTIONS /api/v1/ai-reply/post HTTP/1.1" 200 OK
+?봽 Active user switched to: b7920ac7-db67-45a0-8486-25ef2930367b
+?봽 Active user switched to: b7920ac7-db67-45a0-8486-25ef2930367b
+?뮠 Posting reply to: 留쏆엳?쇰㈃ 0 Cal (25.11.28.湲? for user: b7920ac7-db67-45a0-8486-25ef2930367b
+?뙋 Creating Chrome WebDriver for user: b7920ac7-db67-45a0-8486-25ef2930367b
+?벀 Found session in Supabase for store '2ed489ac-bad5-4ff5-9ae0-a56b5c755d75' (12 cookies, critical: ['NID_AUT', 'NID_SES'])
+??Using session from Supabase for user: b7920ac7-db67-45a0-8486-25ef2930367b
+?뱛 Loading 12 cookies...
+   ??Cookie 'NID_AUT' in DB is valid (expires in 9598 hours)
+   ??Cookie 'BUC' in DB is valid (expires in 9598 hours)
+   ??Cookie 'NID_SES' in DB is valid (expires in 719 hours)
+??Added 6/12 cookies
+?뵎 Critical cookies added: ['NID_AUT', 'NID_SES']
+??Session cookies loaded
+?뵕 Opening: https://new.smartplace.naver.com/bizes/place/37942234/reviews?menu=visitor&hasReply=false
+??Waiting for page to load...
+?뱄툘 No popup found
+??Waiting for reviews to render...
+?렞 Target: author='留쏆엳??..', date_original='25.11.28.湲? ??date_clean='25.11.28'
+?뵇 Page URL: https://new.smartplace.naver.com/bizes/place/2421004/reviews?bookingBusinessId=92594&hasReply=false&menu=visitor
+?뵇 Page title: ?ㅼ씠踰??ㅻ쭏?명뵆?덉씠???뵇 Found 34 total <li> elements
+  ?벀 Batch 1: 10 total reviews (10 newly loaded, target=50)
+
+?뵇 ===== FIRST REVIEW RAW DATA =====
+   Class: pui__q2fg8o pui__A7NplK... | Text:  ?⑹쁺二?688
+由щ럭 36?ъ쭊 391踰덉㎏ 諛⑸Ц
+   Class: pui__hvyFHZ... | Text: ?⑹쁺二?688
+由щ럭 36?ъ쭊 391踰덉㎏ 諛⑸Ц
+   Class: pui__JiVbY3... | Text: ?⑹쁺二?688   
+   Class: pui__uslU0d... | Text: ?⑹쁺二?688
+   Class: pui__NMi-Dp... | Text: ?⑹쁺二?688   
+   Class: pui__RuLAax... | Text: 由щ럭 36?ъ쭊 391踰덉㎏ 諛⑸Ц
+   Class: pui__WN-kAf... | Text: 由щ럭 36      
+?뵇 ===== END FIRST REVIEW =====
+
+  ?뵇 Review 1:
+     Author: '?⑹쁺二?688' (match=False, looking for '留쏆엳??..')
+     Date: '2026. 1. 12(??' ??cleaned='1.12' (match=False, target='25.11.28')
+     Content: match=False, attempted=True     
+       Target (first 30): '?뺢컝?섍퀬 媛?깅퉬 醫??꾩꽌 ?좊뱺?섍쾶 ?먯떖?앹궗濡??몟
+
+異쒖엯援?..'
+       Found (first 30): '?꾩씠? ?⑦렪怨??④퍡?붿뼱???덈Т 醫뗭븘??..'
+  ?뵇 Review 2:
+     Author: 'YW121' (match=False, looking for '留쏆엳??..')
+     Date: '2026. 1. 11(??' ??cleaned='1.11' (match=False, target='25.11.28')
+     Content: match=False, attempted=True     
+       Target (first 30): '?뺢컝?섍퀬 媛?깅퉬 醫??꾩꽌 ?좊뱺?섍쾶 ?먯떖?앹궗濡??몟
+
+異쒖엯援?..'
+       Found (first 30): '?곗뿰???ㅼ씠踰?吏?꾨낫怨?李얠븘???ㅼ뼱?붾뒗??理쒓퀬?덉삤????..'
+  ?뵇 Review 3:
+     Author: '?뱀닔?? (match=False, looking for '留쏆엳??..')
+     Date: '2026. 1. 10(??' ??cleaned='1.10' (match=False, target='25.11.28')
+     Content: match=False, attempted=True     
+       Target (first 30): '?뺢컝?섍퀬 媛?깅퉬 醫??꾩꽌 ?좊뱺?섍쾶 ?먯떖?앹궗濡??몟
+
+異쒖엯援?..'
+       Found (first 30): '留쏆엳寃???癒밴쿋?듬땲?뱅윧?援곗묠 ?뚯븘?뷃윑?..'
+  ?벀 Batch 2: 10 total reviews (0 newly loaded, target=50)
+  ?벀 Batch 3: 20 total reviews (10 newly loaded, target=50)
+  ?벀 Batch 4: 30 total reviews (10 newly loaded, target=50)
+  ?벀 Batch 5: 30 total reviews (0 newly loaded, target=50)
+  ?벀 Batch 6: 40 total reviews (10 newly loaded, target=50)
+  ?벀 Batch 7: 50 total reviews (10 newly loaded, target=50)
+  ?벀 Batch 8: 50 total reviews (0 newly loaded, target=50)
+  ?벀 Batch 9: 60 total reviews (10 newly loaded, target=50)
+  ?벀 Batch 10: 60 total reviews (0 newly loaded, target=50)
+  ?벀 Batch 11: 60 total reviews (0 newly loaded, target=50)
+  ?벀 Batch 12: 70 total reviews (10 newly loaded, target=50)
+  ?벀 Batch 13: 70 total reviews (0 newly loaded, target=50)
+  ?벀 Batch 14: 80 total reviews (10 newly loaded, target=50)
+  ?벀 Batch 15: 80 total reviews (0 newly loaded, target=50)
+  ?벀 Batch 16: 80 total reviews (0 newly loaded, target=50)
+  ?벀 Batch 17: 90 total reviews (10 newly loaded, target=50)
+  ?벀 Batch 18: 90 total reviews (0 newly loaded, target=50)
+  ?벀 Batch 19: 100 total reviews (10 newly loaded, target=50)
+  ?벀 Batch 20: 100 total reviews (0 newly loaded, target=50)
+  ?벀 Batch 21: 110 total reviews (10 newly loaded, target=50)
+  ?벀 Batch 22: 110 total reviews (0 newly loaded, target=50)
+  ?벀 Batch 23: 110 total reviews (0 newly loaded, target=50)
+  ?벀 Batch 24: 120 total reviews (10 newly loaded, target=50)
+  ?벀 Batch 25: 120 total reviews (0 newly loaded, target=50)
+  ?벀 Batch 26: 130 total reviews (10 newly loaded, target=50)
+  ?벀 Batch 27: 130 total reviews (0 newly loaded, target=50)
+  ?벀 Batch 28: 140 total reviews (10 newly loaded, target=50)
+  ?벀 Batch 29: 140 total reviews (0 newly loaded, target=50)
+  ?벀 Batch 30: 150 total reviews (10 newly loaded, target=50)
+
+??Could not find review: 留쏆엳?쇰㈃ 0 Cal (25.11.28)
+   Loaded 150 reviews total
+   Looking for: author starting with '留쏆엳??, date='25.11.28'
+   ?뱄툘 No reviews found with date '25.11.28'
+??Error posting reply: Could not find review: 留쏆엳?쇰㈃ 0 Cal (25.11.28)
+Error in post_reply_by_composite: Could not find review: 留쏆엳?쇰㈃ 0 Cal (25.11.28)
+???듦? 寃뚯떆 ?ㅽ뙣: ?듦? 寃뚯떆 ?ㅽ뙣: Could not find review: 留쏆엳?쇰㈃ 0 Cal (25.11.28)
+INFO:     127.0.0.1:64548 - "POST /api/v1/ai-reply/post HTTP/1.1" 200 OK

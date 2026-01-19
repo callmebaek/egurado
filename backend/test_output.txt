@@ -1,0 +1,19 @@
+﻿python : INFO:app.services.naver_search:[Step 1/4] Starting store search for: 카페
+위치 C:\Users\smbae\AppData\Local\Temp\ps-script-35b15c12-46c8-44e9-9926-20cec62da809.ps1:84 문자:49
++ ... \backend; .\venv\Scripts\activate; python test_search.py 2>&1 | Out-F ...
++                                        ~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (INFO:app.servic... search for: 카페:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+INFO:app.services.naver_search:[Step 2/4] Initializing browser...
+INFO:app.services.naver_search:[Step 3/4] Navigating to: https://m.map.naver.com/search2/search.naver?query=카페
+INFO:app.services.naver_search:[Step 4/4] Parsing search results...
+INFO:app.services.naver_search:Found 75 result items
+INFO:app.services.naver_search:Successfully found 3 stores
+INFO:app.services.naver_search:Browser closed
+INFO:app.services.naver_search:Playwright stopped
+Searching for: 카페
+Found 3 stores
+{'place_id': '2023348447', 'name': '레망도레 광화문점베이커리', 'category': '', 'address': '', 'road_address': ''}
+{'place_id': '11715731', 'name': '롯데호텔서울 델리카한스베이커리', 'category': '', 'address': '', 'road_address': ''}
+{'place_id': '2087787962', 'name': '메가MGC커피 명동입구점카페', 'category': '', 'address': '', 'road_address': ''}

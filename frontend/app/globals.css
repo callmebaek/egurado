@@ -1,0 +1,92 @@
+@import "tailwindcss";
+
+:root {
+  /* 배경색 - 항상 흰색 */
+  --background: #ffffff;
+  --foreground: #1a1a1a;
+  
+  /* 올리브 색상 팔레트 */
+  --olive-50: #f7f8f3;
+  --olive-100: #eef0e4;
+  --olive-200: #dde2c9;
+  --olive-300: #c5cfa4;
+  --olive-400: #a8b87a;
+  --olive-500: #8a9f5e;
+  --olive-600: #6d7f48;
+  --olive-700: #55633a;
+  --olive-800: #464f31;
+  --olive-900: #3b422b;
+  
+  /* 카드 배경 */
+  --card: #ffffff;
+  --card-foreground: #1a1a1a;
+  
+  /* 테두리 */
+  --border: #e5e5e5;
+  
+  /* Muted (보조 텍스트) */
+  --muted: #f5f5f5;
+  --muted-foreground: #737373;
+  
+  /* Accent (hover 상태) */
+  --accent: #f7f8f3;
+  --accent-foreground: #1a1a1a;
+  
+  /* Primary (강조 - 올리브) */
+  --primary: var(--olive-600);
+  --primary-foreground: #ffffff;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-border: var(--border);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  
+  /* 올리브 색상 클래스 */
+  --color-olive-50: var(--olive-50);
+  --color-olive-100: var(--olive-100);
+  --color-olive-200: var(--olive-200);
+  --color-olive-300: var(--olive-300);
+  --color-olive-400: var(--olive-400);
+  --color-olive-500: var(--olive-500);
+  --color-olive-600: var(--olive-600);
+  --color-olive-700: var(--olive-700);
+  --color-olive-800: var(--olive-800);
+  --color-olive-900: var(--olive-900);
+  
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* 스크롤바 스타일 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--muted);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--olive-300);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--olive-500);
+}

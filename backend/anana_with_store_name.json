@@ -1,0 +1,156 @@
+{
+  "place_id": "2072848563",
+  "name": "아나나사진관 성수스튜디오",
+  "category": "사진,스튜디오",
+  "category_code": "223302",
+  "address": "서울 성동구 성수동2가 328-13",
+  "road_address": "서울 성동구 뚝섬로9길 16 4층",
+  "latitude": "37.5396694",
+  "longitude": "127.0564403",
+  "phone_number": "0507-1473-0806",
+  "homepage_url": "",
+  "homepage": "https://ananaphotostudio.com/",
+  "instagram": "https://www.instagram.com/ananastudio_seongsu/",
+  "blog": "https://blog.naver.com/ananastudio",
+  "tv_program": "",
+  "visitor_review_score": 0,
+  "visitor_review_count": 435,
+  "blog_review_count": 306,
+  "booking_review_count": 0,
+  "image_url": "https://ldb-phinf.pstatic.net/20251129_78/17643818701304WGVk_PNG/82.png",
+  "image_count": 120,
+  "booking_url": "https://m.booking.naver.com/booking/6/bizes/1405237",
+  "booking_available": true,
+  "business_hours": null,
+  "business_status": "영업 종료11:00에 영업 시작11시 0분에 영업 시작",
+  "is_open": false,
+  "conveniences": [
+    "단체 이용 가능",
+    "방문접수/출장",
+    "예약",
+    "무선 인터넷",
+    "반려동물 동반",
+    "대기공간",
+    "주차"
+  ],
+  "has_parking": true,
+  "has_wifi": true,
+  "has_delivery": false,
+  "has_takeout": false,
+  "has_reservation": true,
+  "group_seating": true,
+  "payment_methods": [],
+  "menus": [],
+  "menu_count": 0,
+  "micro_reviews": [],
+  "directions": "성수역 3번출구에서 성수동 카페거리쪽으로 쭉 걸어나오시고, 무신사 대림창고를 지나서 무신사 신규사옥 뒷 편에 위치하고 있습니다. 건너편에 성수다락 및 라무라 성수에서 아나나사진관 간판 확인 가능합니다. 성수동2가 328-13 (뚝섬로9길 16) 4층에 위치했습니다.",
+  "description": "<<성수동에서 사진으로 진심을 담다 - 아나나사진관 성수사진관>>\n\nFor your insightful moment!\n\n아나나사진관은 성수동의 감성과 세련된 무드를 고스란히 담은 공간으로 증명사진부터 여권사진 프로필 커플촬영 가족사진까지 고객 한 분 한 분의 진짜 나다움을 정성스럽게 기록하는 사진관입니다\n\n아나나Anana는 여러 언어에서 파인애플을 뜻합니다\n이국적인 이름처럼 아나나사진관은 성수라는 동네의 유니크함을 그대로 담아 사진 한 장을 통해 기록 이상의 경험을 선사하고자 합니다\n\n/성수역 도보 5분 성수동 핵심 위치\n증명사진 여권사진 비자사진 등이 필요하시다면 아나나사진관은 정확한 규격과 자연스럽고 세련된 인상을 함께 담아드립니다\n배경 조명 보정 톤까지 고객의 이미지에 꼭 맞춰 이력서 포트폴리오 비자 사진 등 다양한 용도에 최적화된 컷을 완성합니다\n\n/장인정신으로 보정하는 성수동사진관\n아나나사진관은 단순한 촬영을 넘어서 전문 사진사가 고객의 감정과 이미지를 함께 읽고 담아내는 스튜디오입니다\n한 장의 사진이 완성되기까지 보정은 고객이 마음에 들 때까지 함께 맞춰갑니다\n고객과 진심으로 소통하며 세세한 디테일까지 놓치지 않습니다\n\n/성수 감성을 담은 공간 스튜디오 이상의 경험\n노출 콘크리트 은은한 우드 따뜻한 컬러감으로 완성된 인테리어는 성수동 특유의 빈티지와 모던함이 공존하는 분위기를 연출합니다\n이 공간에 들어서는 순간 고객은 촬영이 아닌 기록의 순간을 경험하게 됩니다\n방문하시는 모든 분들을 정중하고 따뜻하게 응대하는 것 역시 아나나사진관의 중요한 가치입니다\n\n성수사진관, 성수스튜디오, 성수동사진관을 찾고 계신다면\n아나나사진관 성수스튜디오에서 가장 나다운 한 장 오래도록 마음에 남을 사진을 함께 만들어보세요",
+  "ai_briefing": "",
+  "promotions": {
+    "total": 1,
+    "coupons": [
+      {
+        "promotionSeq": 924014,
+        "placeSeq": 11396238,
+        "couponSeq": 926809,
+        "userCouponSeq": null,
+        "promotionTitle": "여권비자사진 만원할인 이벤트",
+        "conditionType": "PLACE_HOME",
+        "couponUseType": "BOOKING",
+        "title": "여권비자사진 만원할인 이벤트 쿠폰",
+        "description": "",
+        "type": "gift",
+        "expiredDateDescription": null,
+        "status": "download",
+        "downloadableCountInfo": "",
+        "expiredPeriodInfo": "오늘 받으면 2026.04.20.까지 유효",
+        "subExpiredPeriodInfo": "쿠폰 발급일 포함 100일 이내 사용 가능",
+        "usedConditionInfos": [
+          "쿠폰 중복 사용 불가",
+          "최종결제 금액에서 10,000원 할인"
+        ],
+        "couponButtonText": "쿠폰 받기",
+        "daysBeforeCouponStartDate": null
+      }
+    ],
+    "has_naver_talk": false
+  },
+  "announcements": [
+    {
+      "feedId": 19542683,
+      "category": "알림",
+      "categoryI18n": null,
+      "title": "예쁨 한가득! 치어리더 차승아 님의 프로필 촬영!",
+      "relativeCreated": "1일 전",
+      "period": null,
+      "thumbnail": {
+        "url": "https://ldb-phinf.pstatic.net/20260110_106/1768013073188aH90w_JPEG/20251124_%C2%F7%BD%C2%BE%C6_%BA%B8%C1%A4%BA%BB15.jpg",
+        "count": 4,
+        "isVideo": false
+      },
+      "url": null,
+      "isNews": null
+    },
+    {
+      "feedId": 19503171,
+      "category": "알림",
+      "categoryI18n": null,
+      "title": "심쿵주의! 치어리더 박수연님의 프로필 촬영!",
+      "relativeCreated": "5일 전",
+      "period": null,
+      "thumbnail": {
+        "url": "https://ldb-phinf.pstatic.net/20260106_66/1767672330154hqu6z_JPEG/20251023_%B9%DA%BC%F6%BF%AC_%BA%B8%C1%A4%BA%BB3.jpg",
+        "count": 4,
+        "isVideo": false
+      },
+      "url": null,
+      "isNews": null
+    },
+    {
+      "feedId": 19430695,
+      "category": "알림",
+      "categoryI18n": null,
+      "title": "2025 Miss Maxim 1위 채솔 님의 프로필 촬영!! ",
+      "relativeCreated": "2025.12.31.",
+      "period": null,
+      "thumbnail": {
+        "url": "https://ldb-phinf.pstatic.net/20251231_194/1767167059182t58O5_JPEG/20251103_%C3%A4%BC%D6_%BA%B8%C1%A4%BA%BB24.jpg",
+        "count": 4,
+        "isVideo": false
+      },
+      "url": null,
+      "isNews": null
+    },
+    {
+      "feedId": 19384168,
+      "category": "알림",
+      "categoryI18n": null,
+      "title": " 미스코리아 허예린님의 프로필 촬영!!",
+      "relativeCreated": "2025.12.28.",
+      "period": null,
+      "thumbnail": {
+        "url": "https://ldb-phinf.pstatic.net/20251228_252/1766904441812FnV1L_JPEG/20251015_%C7%E3%BF%B9%B8%B0_%BA%B8%C1%A4%BA%BB11.jpg",
+        "count": 4,
+        "isVideo": false
+      },
+      "url": null,
+      "isNews": null
+    },
+    {
+      "feedId": 19311429,
+      "category": "알림",
+      "categoryI18n": null,
+      "title": "시티팝 가수 SUMMER 님의 새로운 앨범 커버 사진 촬영!!",
+      "relativeCreated": "2025.12.21.",
+      "period": null,
+      "thumbnail": {
+        "url": "https://ldb-phinf.pstatic.net/20251221_18/1766297099964AmdX3_JPEG/20251010_%B1%E8%BC%BA%C7%CF_%BA%B8%C1%A4%BA%BB17.jpg",
+        "count": 3,
+        "isVideo": false
+      },
+      "url": null,
+      "isNews": null
+    }
+  ],
+  "is_place_plus": false
+}

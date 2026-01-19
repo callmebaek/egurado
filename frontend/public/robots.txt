@@ -1,0 +1,26 @@
+# robots.txt for Egurado
+# 네이버 및 구글 크롤러 최적화
+
+User-agent: *
+Allow: /
+Allow: /dashboard
+Disallow: /api/
+Disallow: /admin/
+Disallow: /_next/
+Disallow: /private/
+
+# 네이버 검색엔진
+User-agent: Yeti
+Allow: /
+
+# 구글 검색엔진
+User-agent: Googlebot
+Allow: /
+Allow: /dashboard
+
+# 네이버 블로그 검색
+User-agent: NaverBot
+Allow: /
+
+# Sitemap 위치
+Sitemap: https://egurado.com/sitemap.xml

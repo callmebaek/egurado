@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>아이콘 생성기</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .canvas-container {
+      margin: 20px 0;
+    }
+    canvas {
+      border: 1px solid #ddd;
+      margin: 10px;
+      background: white;
+    }
+    button {
+      padding: 10px 20px;
+      background: #0d6efd;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      margin: 5px;
+    }
+    button:hover {
+      background: #0b5ed7;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔐 네이버 세션 저장 아이콘 생성기</h1>
+  <p>아래 버튼을 클릭하여 각 크기의 아이콘을 다운로드하세요.</p>
+  
+  <div class="canvas-container">
+    <canvas id="canvas16" width="16" height="16"></canvas>
+    <canvas id="canvas48" width="48" height="48"></canvas>
+    <canvas id="canvas128" width="128" height="128"></canvas>
+  </div>
+  
+  <div>
+    <button onclick="downloadIcon(16)">icon16.png 다운로드</button>
+    <button onclick="downloadIcon(48)">icon48.png 다운로드</button>
+    <button onclick="downloadIcon(128)">icon128.png 다운로드</button>
+  </div>
+
+  <script>
+    // 아이콘 그리기 함수
+    function drawIcon(canvas, size) {
+      const ctx = canvas.getContext('2d');
+      
+      // 배경 (그라데이션)
+      const gradient = ctx.createLinearGradient(0, 0, size, size);
+      gradient.addColorStop(0, '#0d6efd');
+      gradient.addColorStop(1, '#0b5ed7');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, size, size);
+      
+      // 자물쇠 아이콘
+      ctx.fillStyle = 'white';
+      ctx.strokeStyle = 'white';
+      ctx.lineWidth = size / 20;
+      
+      const centerX = size / 2;
+      const centerY = size / 2;
+      const lockWidth = size * 0.5;
+      const lockHeight = size * 0.6;
+      
+      // 자물쇠 몸체
+      ctx.fillRect(
+        centerX - lockWidth/2, 
+        centerY, 
+        lockWidth, 
+        lockHeight/2
+      );
+      
+      // 자물쇠 고리
+      ctx.beginPath();
+      ctx.arc(
+        centerX, 
+        centerY - lockHeight/8, 
+        lockWidth/3, 
+        Math.PI, 
+        0, 
+        true
+      );
+      ctx.stroke();
+      
+      // 키홀
+      if (size >= 48) {
+        ctx.fillStyle = '#0d6efd';
+        ctx.beginPath();
+        ctx.arc(centerX, centerY + lockHeight/8, size/16, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // 모든 캔버스에 아이콘 그리기
+    drawIcon(document.getElementById('canvas16'), 16);
+    drawIcon(document.getElementById('canvas48'), 48);
+    drawIcon(document.getElementById('canvas128'), 128);
+
+    // 다운로드 함수
+    function downloadIcon(size) {
+      const canvas = document.getElementById(`canvas${size}`);
+      const link = document.createElement('a');
+      link.download = `icon${size}.png`;
+      link.href = canvas.toDataURL();
+      link.click();
+    }
+  </script>
+</body>
+</html>

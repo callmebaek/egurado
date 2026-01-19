@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>네이버 세션 저장</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      width: 380px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Apple SD Gothic Neo', sans-serif;
+      background: #f8f9fa;
+    }
+
+    .container {
+      padding: 20px;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 2px solid #e9ecef;
+    }
+
+    .header-icon {
+      font-size: 28px;
+    }
+
+    .header-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #212529;
+    }
+
+    .status-card {
+      background: white;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+      border: 1px solid #e9ecef;
+    }
+
+    .status-title {
+      font-size: 13px;
+      color: #6c757d;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+
+    .status-content {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+    }
+
+    .status-icon {
+      font-size: 18px;
+    }
+
+    .status-text {
+      flex: 1;
+      color: #212529;
+      font-weight: 500;
+    }
+
+    .status-error {
+      color: #dc3545;
+    }
+
+    .status-success {
+      color: #28a745;
+    }
+
+    .status-warning {
+      color: #ffc107;
+    }
+
+    .store-select {
+      background: white;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+      border: 1px solid #e9ecef;
+    }
+
+    .select-label {
+      font-size: 13px;
+      color: #6c757d;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+
+    select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #ced4da;
+      border-radius: 8px;
+      font-size: 14px;
+      background: white;
+      color: #212529;
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+
+    select:focus {
+      outline: none;
+      border-color: #0d6efd;
+    }
+
+    select:disabled {
+      background: #e9ecef;
+      cursor: not-allowed;
+    }
+
+    .button {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .button-primary {
+      background: #0d6efd;
+      color: white;
+    }
+
+    .button-primary:hover:not(:disabled) {
+      background: #0b5ed7;
+      transform: translateY(-1px);
+    }
+
+    .button-secondary {
+      background: white;
+      color: #0d6efd;
+      border: 1px solid #0d6efd;
+      margin-top: 8px;
+    }
+
+    .button-secondary:hover:not(:disabled) {
+      background: #f8f9fa;
+    }
+
+    .button-success {
+      background: #28a745;
+      color: white;
+    }
+
+    .alert {
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .alert-warning {
+      background: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeaa7;
+    }
+
+    .alert-info {
+      background: #d1ecf1;
+      color: #0c5460;
+      border: 1px solid #bee5eb;
+    }
+
+    .alert-success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #ffffff;
+      border-radius: 50%;
+      border-top-color: transparent;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .footer {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid #e9ecef;
+      text-align: center;
+    }
+
+    .footer-link {
+      color: #0d6efd;
+      text-decoration: none;
+      font-size: 13px;
+    }
+
+    .footer-link:hover {
+      text-decoration: underline;
+    }
+
+    .session-info {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 12px;
+      font-size: 12px;
+      color: #6c757d;
+    }
+
+    .session-info-item {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+
+    .session-info-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .session-info-label {
+      font-weight: 600;
+    }
+
+    .session-info-value {
+      color: #212529;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <div class="header-icon">🔐</div>
+      <div class="header-title">네이버 세션 저장</div>
+    </div>
+
+    <!-- Loading State -->
+    <div id="loading" class="status-card">
+      <div class="status-content">
+        <div class="spinner"></div>
+        <span class="status-text">확인 중...</span>
+      </div>
+    </div>
+
+    <!-- Main Content (hidden initially) -->
+    <div id="content" class="hidden">
+      <!-- Naver Login Status -->
+      <div class="status-card">
+        <div class="status-title">📍 네이버 로그인 상태</div>
+        <div class="status-content">
+          <span class="status-icon" id="naverStatusIcon">❌</span>
+          <span class="status-text" id="naverStatusText">확인 중...</span>
+        </div>
+      </div>
+
+      <!-- Warning for not logged in -->
+      <div id="notLoggedInAlert" class="alert alert-warning hidden">
+        <strong>⚠️ 네이버 로그인이 필요합니다</strong><br>
+        먼저 네이버 스마트플레이스에 로그인해주세요.
+      </div>
+
+      <!-- Store Selection -->
+      <div id="storeSection" class="store-select hidden">
+        <div class="select-label">🏪 매장 선택</div>
+        <select id="storeSelect">
+          <option value="">매장을 선택하세요...</option>
+        </select>
+      </div>
+
+      <!-- Save Button -->
+      <button id="saveButton" class="button button-primary hidden" disabled>
+        <span id="saveButtonIcon">💾</span>
+        <span id="saveButtonText">세션 저장하기</span>
+      </button>
+
+      <!-- Open Naver Button -->
+      <button id="openNaverButton" class="button button-secondary hidden">
+        네이버 스마트플레이스 로그인
+      </button>
+
+      <!-- Success Message -->
+      <div id="successAlert" class="alert alert-success hidden">
+        <strong>✅ 저장 완료!</strong><br>
+        이제 AI 답글 생성 기능을 사용할 수 있습니다.
+        <div class="session-info">
+          <div class="session-info-item">
+            <span class="session-info-label">매장:</span>
+            <span class="session-info-value" id="savedStoreName">-</span>
+          </div>
+          <div class="session-info-item">
+            <span class="session-info-label">저장 시간:</span>
+            <span class="session-info-value" id="savedTime">-</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Error Message -->
+      <div id="errorAlert" class="alert alert-warning hidden">
+        <strong>❌ 오류 발생</strong><br>
+        <span id="errorMessage">세션 저장에 실패했습니다.</span>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <a href="http://localhost:3000" target="_blank" class="footer-link" id="websiteLink">
+        웹사이트로 이동하기 →
+      </a>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

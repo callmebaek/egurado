@@ -1,0 +1,1380 @@
+"""
+네이버 플레이스 관련 API 라우터
+(경쟁매장 분석 포함)
+"""
+from fastapi import APIRouter, HTTPException, status, Query
+from pydantic import BaseModel
+from typing import List, Dict, Optional, Any
+from uuid import UUID
+import logging
+
+from app.services.naver_auth import store_naver_cookies
+from app.services.naver_search_new import search_service_new as search_service
+from app.services.naver_search_api import api_search_service
+from app.services.naver_rank_service import rank_service
+# 비공식 API 서비스 (새로 추가)
+from app.services.naver_search_api_unofficial import search_service_api_unofficial
+from app.services.naver_rank_api_unofficial import rank_service_api_unofficial
+from app.services.naver_keywords_analyzer import keywords_analyzer_service
+from app.services.naver_competitor_analysis_service import competitor_analysis_service
+from app.core.database import get_supabase_client
+from datetime import datetime, date
+
+router = APIRouter()
+logger = logging.getLogger(__name__)
+
+# 구독 tier별 키워드 등록 제한
+KEYWORD_LIMITS = {
+    "free": 1,
+    "basic": 10,
+    "pro": 50,
+    "god": 9999  # God tier: 무제한 (커스터마이징 가능)
+}
+
+def check_keyword_limit(supabase, user_id: str) -> tuple[bool, int, int]:
+    """
+    사용자의 키워드 등록 제한을 확인합니다.
+    
+    Returns:
+        tuple: (제한 초과 여부, 현재 키워드 수, 최대 허용 수)
+    """
+    try:
+        # 사용자의 구독 tier 확인
+        user_result = supabase.table("profiles").select("subscription_tier").eq("id", user_id).single().execute()
+        
+        if not user_result.data:
+            logger.warning(f"User not found: {user_id}")
+            return False, 0, KEYWORD_LIMITS["free"]
+        
+        subscription_tier = user_result.data.get("subscription_tier", "free").lower()
+        max_keywords = KEYWORD_LIMITS.get(subscription_tier, KEYWORD_LIMITS["free"])
+        
+        # 해당 사용자의 모든 매장에 등록된 키워드 수 확인
+        stores_result = supabase.table("stores").select("id").eq("user_id", user_id).execute()
+        
+        if not stores_result.data:
+            return False, 0, max_keywords
+        
+        store_ids = [store["id"] for store in stores_result.data]
+        
+        # 모든 매장의 키워드 수 합산
+        keywords_result = supabase.table("keywords").select("id", count="exact").in_("store_id", store_ids).execute()
+        current_keywords = keywords_result.count if keywords_result.count else 0
+        
+        logger.info(
+            f"[Keyword Limit Check] User: {user_id}, Tier: {subscription_tier}, "
+            f"Current: {current_keywords}, Max: {max_keywords}"
+        )
+        
+        return current_keywords >= max_keywords, current_keywords, max_keywords
+        
+    except Exception as e:
+        logger.error(f"Error checking keyword limit: {str(e)}")
+        return False, 0, KEYWORD_LIMITS["free"]
+
+
+class StoreSearchResult(BaseModel):
+    """매장 검색 결과"""
+    place_id: str
+    name: str
+    category: str
+    address: str
+    road_address: Optional[str] = ""
+    thumbnail: Optional[str] = ""
+
+
+class StoreSearchResponse(BaseModel):
+    """매장 검색 응답"""
+    status: str
+    query: str
+    results: List[StoreSearchResult]
+    total_count: int
+
+
+class NaverConnectionRequest(BaseModel):
+    """네이버 플레이스 연결 요청"""
+    user_id: UUID
+    store_id: UUID
+    cookies: List[Dict]
+
+
+class NaverConnectionResponse(BaseModel):
+    """네이버 플레이스 연결 응답"""
+    status: str
+    message: str
+    store_id: UUID
+
+
+class RankCheckRequest(BaseModel):
+    """순위 조회 요청"""
+    store_id: UUID
+    keyword: str
+
+
+class RankCheckResponse(BaseModel):
+    """순위 조회 응답"""
+    status: str
+    keyword: str
+    place_id: str
+    store_name: str
+    rank: Optional[int] = None
+    found: bool
+    total_results: int
+    total_count: Optional[str] = None  # 전체 업체 수 (예: "1,234")
+    previous_rank: Optional[int] = None
+    rank_change: Optional[int] = None  # 순위 변동 (양수: 상승, 음수: 하락)
+    last_checked_at: datetime
+    search_results: List[Dict]  # 전체 검색 결과 (순위 내 매장들)
+
+
+class KeywordListResponse(BaseModel):
+    """매장의 키워드 목록 응답"""
+    status: str
+    store_id: UUID
+    keywords: List[Dict]
+    total_count: int
+
+
+@router.get("/search-stores-test")
+async def search_naver_stores_test(query: str = "카페"):
+    """테스트 엔드포인트"""
+    try:
+        results = await search_service.search_stores(query)
+        return {"status": "success", "count": len(results), "results": results}
+    except Exception as e:
+        import traceback
+        return {"status": "error", "error": str(e), "type": type(e).__name__, "trace": traceback.format_exc()}
+
+
+@router.get("/search-stores", response_model=StoreSearchResponse)
+async def search_naver_stores(
+    query: str = Query(..., min_length=1, description="검색할 매장명")
+):
+    """
+    네이버 모바일 지도에서 매장 검색 (크롤링 방식)
+    
+    Args:
+        query: 검색할 매장명 (필수)
+        
+    Returns:
+        검색 결과 리스트 (최대 10개)
+        
+    Raises:
+        HTTPException: 검색 실패 시
+    """
+    try:
+        logger.info(f"[Crawling] Searching for stores: {query}")
+        
+        # 네이버 모바일 지도에서 검색
+        results = await search_service.search_stores(query)
+        
+        # 응답 변환
+        search_results = [
+            StoreSearchResult(
+                place_id=store["place_id"],
+                name=store["name"],
+                category=store["category"],
+                address=store["address"],
+                road_address=store.get("road_address", ""),
+                thumbnail=store.get("thumbnail", "")
+            )
+            for store in results
+        ]
+        
+        logger.info(f"[Crawling] Found {len(search_results)} stores for query: {query}")
+        
+        return StoreSearchResponse(
+            status="success",
+            query=query,
+            results=search_results,
+            total_count=len(search_results)
+        )
+        
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        logger.error(f"[Crawling] Error searching stores: {str(e)}\n{error_details}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"매장 검색 중 오류가 발생했습니다: {type(e).__name__}: {str(e)}"
+        )
+
+
+@router.get("/search-stores-api", response_model=StoreSearchResponse)
+async def search_naver_stores_api(
+    query: str = Query(..., min_length=1, description="검색할 매장명")
+):
+    """
+    네이버 로컬 검색 API로 매장 검색 (API 방식 - 테스트)
+    
+    - 크롤링보다 빠르고 안정적 (약 2-6배 빠름)
+    - API 키 필요 (환경 변수: NAVER_CLIENT_ID, NAVER_CLIENT_SECRET)
+    - 일일 25,000건 제한
+    - 썸네일 이미지 없음
+    
+    Args:
+        query: 검색할 매장명 (필수)
+        
+    Returns:
+        검색 결과 리스트 (최대 5개)
+        
+    Raises:
+        HTTPException: 검색 실패 시
+    """
+    try:
+        logger.info(f"[API] Searching for stores: {query}")
+        results = await api_search_service.search_stores(query)
+        
+        search_results = [
+            StoreSearchResult(
+                place_id=store["place_id"],
+                name=store["name"],
+                category=store["category"],
+                address=store["address"],
+                road_address=store.get("road_address", ""),
+                thumbnail=store.get("thumbnail", "")
+            )
+            for store in results
+        ]
+        
+        logger.info(f"[API] Found {len(search_results)} stores for query: {query}")
+        
+        return StoreSearchResponse(
+            status="success",
+            query=query,
+            results=search_results,
+            total_count=len(search_results)
+        )
+    except ValueError as e:
+        logger.error(f"[API] Configuration error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="네이버 API 설정이 완료되지 않았습니다. 환경 변수를 확인해주세요."
+        )
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        logger.error(f"[API] Error searching stores: {str(e)}\n{error_details}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"매장 검색 중 오류가 발생했습니다: {type(e).__name__}: {str(e)}"
+        )
+
+
+@router.post("/connect", response_model=NaverConnectionResponse)
+async def connect_naver_store(request: NaverConnectionRequest):
+    """
+    네이버 플레이스 연결 (세션 쿠키 저장)
+    
+    사용자가 로컬 브라우저에서 네이버 로그인 후 추출한 쿠키를 저장합니다.
+    """
+    try:
+        # 매장 존재 확인
+        supabase = get_supabase_client()
+        store_check = supabase.table("stores").select("id, platform").eq(
+            "id", str(request.store_id)
+        ).eq("user_id", str(request.user_id)).single().execute()
+        
+        if not store_check.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="매장을 찾을 수 없거나 권한이 없습니다."
+            )
+        
+        if store_check.data["platform"] != "naver":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="네이버 플레이스 매장이 아닙니다."
+            )
+        
+        # 쿠키 저장
+        success = await store_naver_cookies(
+            str(request.user_id),
+            str(request.store_id),
+            request.cookies
+        )
+        
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="네이버 세션 저장에 실패했습니다."
+            )
+        
+        return NaverConnectionResponse(
+            status="success",
+            message="네이버 플레이스가 성공적으로 연결되었습니다.",
+            store_id=request.store_id
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"서버 오류가 발생했습니다: {str(e)}"
+        )
+
+
+@router.get("/stores/{store_id}/status")
+async def check_naver_store_status(store_id: UUID):
+    """
+    네이버 플레이스 연결 상태 확인
+    """
+    try:
+        supabase = get_supabase_client()
+        result = supabase.table("stores").select("status, last_synced_at, platform").eq(
+            "id", str(store_id)
+        ).single().execute()
+        
+        if not result.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="매장을 찾을 수 없습니다."
+            )
+        
+        return {
+            "store_id": store_id,
+            "status": result.data["status"],
+            "platform": result.data["platform"],
+            "last_synced_at": result.data["last_synced_at"]
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+
+@router.post("/stores/{store_id}/sync-reviews")
+async def sync_naver_reviews(store_id: UUID):
+    """
+    네이버 플레이스 리뷰 수집
+    
+    네트워크 인터셉션을 통해 리뷰 데이터를 수집하고 DB에 저장합니다.
+    """
+    try:
+        from app.services.naver_crawler import crawl_naver_reviews
+        
+        # 매장 정보 조회
+        supabase = get_supabase_client()
+        store = supabase.table("stores").select("place_id, platform").eq(
+            "id", str(store_id)
+        ).single().execute()
+        
+        if not store.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="매장을 찾을 수 없습니다."
+            )
+        
+        if store.data["platform"] != "naver":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="네이버 플레이스 매장이 아닙니다."
+            )
+        
+        place_id = store.data["place_id"]
+        
+        # 리뷰 크롤링
+        reviews = await crawl_naver_reviews(str(store_id), place_id)
+        
+        return {
+            "status": "success",
+            "message": f"{len(reviews)}개의 리뷰를 수집했습니다.",
+            "store_id": store_id,
+            "review_count": len(reviews)
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"리뷰 수집 중 오류 발생: {str(e)}"
+        )
+
+
+@router.post("/check-rank", response_model=RankCheckResponse)
+async def check_place_rank(request: RankCheckRequest):
+    """
+    네이버 플레이스 키워드 순위 조회
+    
+    특정 키워드로 검색했을 때 매장의 순위를 확인하고 DB에 저장합니다.
+    - 최초 조회 시: keywords 테이블에 INSERT
+    - 재조회 시: keywords 테이블 UPDATE, rank_history에 오늘 날짜 데이터 UPSERT
+    
+    속도 최적화:
+    - 최대 40개까지만 확인 (스크롤 2회)
+    - 타겟 매장 발견 시 즉시 중단
+    """
+    try:
+        supabase = get_supabase_client()
+        
+        # 매장 정보 조회
+        store_result = supabase.table("stores").select(
+            "id, place_id, store_name, platform, user_id"
+        ).eq("id", str(request.store_id)).single().execute()
+        
+        if not store_result.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="매장을 찾을 수 없습니다."
+            )
+        
+        if store_result.data["platform"] != "naver":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="네이버 플레이스 매장이 아닙니다."
+            )
+        
+        store_data = store_result.data
+        place_id = store_data["place_id"]
+        store_name = store_data["store_name"]
+        
+        logger.info(
+            f"[Rank Check] Store: {store_name} (ID: {place_id}), "
+            f"Keyword: {request.keyword}"
+        )
+        
+        # 순위 체크 (크롤링) - 최대 300개까지 확인
+        rank_result = await rank_service.check_rank(
+            keyword=request.keyword,
+            target_place_id=place_id,
+            max_results=300
+        )
+        
+        # 기존 키워드 확인
+        keyword_check = supabase.table("keywords").select(
+            "id, current_rank, previous_rank"
+        ).eq("store_id", str(request.store_id)).eq(
+            "keyword", request.keyword
+        ).execute()
+        
+        now = datetime.utcnow()
+        today = date.today()
+        
+        keyword_id = None
+        previous_rank = None
+        
+        if keyword_check.data and len(keyword_check.data) > 0:
+            # 기존 키워드 업데이트
+            existing_keyword = keyword_check.data[0]
+            keyword_id = existing_keyword["id"]
+            previous_rank = existing_keyword["current_rank"]
+            
+            # keywords 테이블 업데이트
+            supabase.table("keywords").update({
+                "previous_rank": previous_rank,
+                "current_rank": rank_result["rank"],
+                "last_checked_at": now.isoformat()
+            }).eq("id", keyword_id).execute()
+            
+            logger.info(
+                f"[Rank Check] Updated existing keyword (ID: {keyword_id}), "
+                f"Rank: {previous_rank} → {rank_result['rank']}"
+            )
+            
+        else:
+            # 새 키워드 등록 전에 제한 확인
+            # store를 통해 user_id 가져오기
+            user_id = store_data.get("user_id")
+            if not user_id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="매장에 연결된 사용자를 찾을 수 없습니다."
+                )
+            
+            is_limit_exceeded, current_count, max_count = check_keyword_limit(supabase, user_id)
+            
+            if is_limit_exceeded:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"키워드 등록 제한에 도달했습니다. (현재: {current_count}/{max_count}개) 구독 플랜을 업그레이드해주세요."
+                )
+            
+            # 새 키워드 등록
+            keyword_insert = supabase.table("keywords").insert({
+                "store_id": str(request.store_id),
+                "keyword": request.keyword,
+                "current_rank": rank_result["rank"],
+                "previous_rank": None,
+                "last_checked_at": now.isoformat()
+            }).execute()
+            
+            keyword_id = keyword_insert.data[0]["id"]
+            
+            logger.info(
+                f"[Rank Check] Created new keyword (ID: {keyword_id}), "
+                f"Rank: {rank_result['rank']}, User keywords: {current_count + 1}/{max_count}"
+            )
+        
+        # rank_history 처리 (오늘 날짜 데이터만 유지)
+        # 1. 오늘 날짜의 기존 기록 삭제
+        supabase.table("rank_history").delete().eq(
+            "keyword_id", keyword_id
+        ).gte(
+            "checked_at", today.isoformat()
+        ).lt(
+            "checked_at", (today.replace(day=today.day + 1)).isoformat() if today.day < 28 else today.isoformat()
+        ).execute()
+        
+        # 2. 새로운 기록 추가
+        supabase.table("rank_history").insert({
+            "keyword_id": keyword_id,
+            "rank": rank_result["rank"],
+            "checked_at": now.isoformat()
+        }).execute()
+        
+        logger.info(f"[Rank Check] Saved rank history for today")
+        
+        # 순위 변동 계산
+        rank_change = None
+        if previous_rank and rank_result["rank"]:
+            # 순위가 낮을수록 좋음 (1위가 최고)
+            rank_change = previous_rank - rank_result["rank"]  # 양수: 순위 상승
+        
+        return RankCheckResponse(
+            status="success",
+            keyword=request.keyword,
+            place_id=place_id,
+            store_name=store_name,
+            rank=rank_result["rank"],
+            found=rank_result["found"],
+            total_results=rank_result["total_results"],
+            total_count=rank_result.get("total_count"),  # 전체 업체 수
+            previous_rank=previous_rank,
+            rank_change=rank_change,
+            last_checked_at=now,
+            search_results=rank_result["search_results"]
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        logger.error(f"[Rank Check] Error: {str(e)}\n{error_details}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"순위 조회 중 오류가 발생했습니다: {str(e)}"
+        )
+
+
+@router.get("/stores/{store_id}/keywords", response_model=KeywordListResponse)
+async def get_store_keywords(store_id: UUID):
+    """
+    매장의 키워드 목록 조회
+    
+    등록된 키워드와 현재 순위, 이전 순위를 반환합니다.
+    """
+    try:
+        supabase = get_supabase_client()
+        
+        # 매장 존재 확인
+        store_check = supabase.table("stores").select("id").eq(
+            "id", str(store_id)
+        ).single().execute()
+        
+        if not store_check.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="매장을 찾을 수 없습니다."
+            )
+        
+        # 키워드 조회
+        keywords_result = supabase.table("keywords").select(
+            "id, keyword, current_rank, previous_rank, last_checked_at, created_at"
+        ).eq("store_id", str(store_id)).order(
+            "last_checked_at", desc=True
+        ).execute()
+        
+        keywords = []
+        for kw in keywords_result.data:
+            rank_change = None
+            if kw["previous_rank"] and kw["current_rank"]:
+                rank_change = kw["previous_rank"] - kw["current_rank"]
+            
+            keywords.append({
+                "id": kw["id"],
+                "keyword": kw["keyword"],
+                "current_rank": kw["current_rank"],
+                "previous_rank": kw["previous_rank"],
+                "rank_change": rank_change,
+                "last_checked_at": kw["last_checked_at"],
+                "created_at": kw["created_at"]
+            })
+        
+        return KeywordListResponse(
+            status="success",
+            store_id=store_id,
+            keywords=keywords,
+            total_count=len(keywords)
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching keywords: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"키워드 조회 중 오류가 발생했습니다: {str(e)}"
+        )
+
+
+@router.get("/keywords/{keyword_id}/history")
+async def get_keyword_rank_history(keyword_id: UUID):
+    """
+    키워드 순위 히스토리 조회
+    
+    날짜별 순위 변화를 조회하여 차트로 표시할 수 있습니다.
+    """
+    try:
+        supabase = get_supabase_client()
+        
+        # 키워드 정보 조회
+        keyword_check = supabase.table("keywords").select(
+            "id, keyword, store_id"
+        ).eq("id", str(keyword_id)).single().execute()
+        
+        if not keyword_check.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="키워드를 찾을 수 없습니다."
+            )
+        
+        keyword_data = keyword_check.data
+        
+        # 순위 히스토리 조회 (날짜순 정렬)
+        history_result = supabase.table("rank_history").select(
+            "id, rank, checked_at"
+        ).eq("keyword_id", str(keyword_id)).order(
+            "checked_at", desc=False  # 오래된 것부터
+        ).execute()
+        
+        history = []
+        for record in history_result.data:
+            history.append({
+                "date": record["checked_at"],
+                "rank": record["rank"],
+                "checked_at": record["checked_at"]
+            })
+        
+        return {
+            "status": "success",
+            "keyword_id": str(keyword_id),
+            "keyword": keyword_data["keyword"],
+            "store_id": keyword_data["store_id"],
+            "history": history,
+            "total_records": len(history)
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[Get Keyword History] Error: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"순위 히스토리 조회 중 오류가 발생했습니다: {str(e)}"
+        )
+
+
+@router.delete("/keywords/{keyword_id}")
+async def delete_keyword(keyword_id: UUID):
+    """
+    키워드 삭제
+    
+    ⚠️ 경고: 이 작업은 되돌릴 수 없습니다.
+    - 키워드 정보가 영구적으로 삭제됩니다.
+    - 과거 순위 기록(rank_history)도 모두 삭제됩니다.
+    - 삭제된 데이터는 복구할 수 없습니다.
+    """
+    try:
+        supabase = get_supabase_client()
+        
+        # 키워드 존재 확인
+        keyword_check = supabase.table("keywords").select(
+            "id, keyword, store_id"
+        ).eq("id", str(keyword_id)).single().execute()
+        
+        if not keyword_check.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="키워드를 찾을 수 없습니다."
+            )
+        
+        keyword_data = keyword_check.data
+        keyword_name = keyword_data["keyword"]
+        
+        logger.info(f"[Delete Keyword] Deleting keyword: {keyword_name} (ID: {keyword_id})")
+        
+        # 1. rank_history 먼저 삭제 (외래 키 제약)
+        history_result = supabase.table("rank_history").delete().eq(
+            "keyword_id", str(keyword_id)
+        ).execute()
+        
+        logger.info(f"[Delete Keyword] Deleted rank history records")
+        
+        # 2. keywords 삭제
+        supabase.table("keywords").delete().eq(
+            "id", str(keyword_id)
+        ).execute()
+        
+        logger.info(f"[Delete Keyword] Successfully deleted keyword: {keyword_name}")
+        
+        return {
+            "status": "success",
+            "message": f"키워드 '{keyword_name}'가 삭제되었습니다.",
+            "keyword_id": str(keyword_id),
+            "keyword": keyword_name
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[Delete Keyword] Error: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"키워드 삭제 중 오류가 발생했습니다: {str(e)}"
+        )
+
+
+# ============================================
+# 비공식 API 방식 엔드포인트 (새로 추가)
+# ============================================
+
+@router.get("/search-stores-unofficial", response_model=StoreSearchResponse)
+async def search_naver_stores_unofficial(
+    query: str = Query(..., min_length=1, description="검색할 매장명")
+):
+    """
+    네이버 모바일 지도에서 매장 검색 (비공식 API 방식)
+    
+    ⚠️ 경고: 이 엔드포인트는 네이버의 비공식 API를 사용합니다.
+             교육 목적으로만 사용하세요.
+    
+    장점:
+    - 크롤링보다 2-3배 빠름
+    - 더 안정적
+    - 리뷰수, 저장수 등 추가 데이터 제공
+    
+    Args:
+        query: 검색할 매장명 (필수)
+        
+    Returns:
+        검색 결과 리스트 (최대 100개)
+        
+    Raises:
+        HTTPException: 검색 실패 시
+    """
+    try:
+        logger.info(f"[Unofficial API] Searching for stores: {query}")
+        
+        # 비공식 API로 검색
+        results = await search_service_api_unofficial.search_stores(query)
+        
+        # 응답 변환
+        search_results = [
+            StoreSearchResult(
+                place_id=store["place_id"],
+                name=store["name"],
+                category=store["category"],
+                address=store["address"],
+                road_address=store.get("road_address", ""),
+                thumbnail=store.get("thumbnail", "")
+            )
+            for store in results
+        ]
+        
+        logger.info(f"[Unofficial API] Found {len(search_results)} stores for query: {query}")
+        
+        return StoreSearchResponse(
+            status="success",
+            query=query,
+            results=search_results,
+            total_count=len(search_results)
+        )
+        
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        logger.error(f"[Unofficial API] Error searching stores: {str(e)}\n{error_details}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"매장 검색 중 오류가 발생했습니다: {type(e).__name__}: {str(e)}"
+        )
+
+
+class RankCheckResponseUnofficial(BaseModel):
+    """순위 조회 응답 (비공식 API - 리뷰수 포함)"""
+    status: str
+    keyword: str
+    place_id: str
+    store_name: str
+    rank: Optional[int] = None
+    found: bool
+    total_results: int
+    total_count: Optional[int] = None  # 전체 업체 수
+    previous_rank: Optional[int] = None
+    rank_change: Optional[int] = None  # 순위 변동
+    last_checked_at: datetime
+    search_results: List[Dict]
+    # 리뷰수 정보 추가 ⭐
+    visitor_review_count: int  # 방문자 리뷰 수
+    blog_review_count: int  # 블로그 리뷰 수
+    save_count: int  # 저장 수
+
+
+@router.post("/check-rank-unofficial", response_model=RankCheckResponseUnofficial)
+async def check_place_rank_unofficial(request: RankCheckRequest):
+    """
+    네이버 플레이스 키워드 순위 조회 (비공식 API 방식)
+    
+    ⚠️ 경고: 이 엔드포인트는 네이버의 비공식 API를 사용합니다.
+             교육 목적으로만 사용하세요.
+    
+    장점:
+    - 크롤링보다 5-10배 빠름 (약 2-3초)
+    - 더 안정적인 응답
+    - 방문자 리뷰수, 블로그 리뷰수, 저장수 추가 제공 ⭐
+    
+    특정 키워드로 검색했을 때 매장의 순위를 확인하고 DB에 저장합니다.
+    - 최초 조회 시: keywords 테이블에 INSERT
+    - 재조회 시: keywords 테이블 UPDATE, rank_history에 오늘 날짜 데이터 UPSERT
+    
+    속도 최적화:
+    - 최대 200개까지 확인
+    - 타겟 매장 발견 시 즉시 중단 가능
+    """
+    try:
+        supabase = get_supabase_client()
+        
+        # 매장 정보 조회
+        store_result = supabase.table("stores").select(
+            "id, place_id, store_name, platform, user_id"
+        ).eq("id", str(request.store_id)).single().execute()
+        
+        if not store_result.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="매장을 찾을 수 없습니다."
+            )
+        
+        if store_result.data["platform"] != "naver":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="네이버 플레이스 매장이 아닙니다."
+            )
+        
+        store_data = store_result.data
+        place_id = store_data["place_id"]
+        store_name = store_data["store_name"]
+        
+        logger.info(
+            f"[Unofficial API Rank] Store: {store_name} (ID: {place_id}), "
+            f"Keyword: {request.keyword}"
+        )
+        
+        # 순위 체크 (비공식 API) - 최대 300개까지 확인
+        rank_result = await rank_service_api_unofficial.check_rank(
+            keyword=request.keyword,
+            target_place_id=place_id,
+            max_results=300
+        )
+        
+        # 타겟 매장의 리뷰수 정보 추출
+        target_store = rank_result.get("target_store", {})
+        visitor_review_count = target_store.get("visitor_review_count", 0)
+        blog_review_count = target_store.get("blog_review_count", 0)
+        save_count = target_store.get("save_count", 0)
+        
+        logger.info(
+            f"[Unofficial API Rank] Target store stats: "
+            f"Visitor Reviews={visitor_review_count}, "
+            f"Blog Reviews={blog_review_count}, "
+            f"Saves={save_count}"
+        )
+        
+        # 기존 키워드 확인
+        keyword_check = supabase.table("keywords").select(
+            "id, current_rank, previous_rank"
+        ).eq("store_id", str(request.store_id)).eq(
+            "keyword", request.keyword
+        ).execute()
+        
+        now = datetime.utcnow()
+        today = date.today()
+        
+        keyword_id = None
+        previous_rank = None
+        
+        if keyword_check.data and len(keyword_check.data) > 0:
+            # 기존 키워드 업데이트
+            existing_keyword = keyword_check.data[0]
+            keyword_id = existing_keyword["id"]
+            previous_rank = existing_keyword["current_rank"]
+            
+            # keywords 테이블 업데이트
+            supabase.table("keywords").update({
+                "previous_rank": previous_rank,
+                "current_rank": rank_result["rank"],
+                "last_checked_at": now.isoformat()
+            }).eq("id", keyword_id).execute()
+            
+            logger.info(
+                f"[Unofficial API Rank] Updated existing keyword (ID: {keyword_id}), "
+                f"Rank: {previous_rank} → {rank_result['rank']}"
+            )
+            
+        else:
+            # 새 키워드 등록 전에 제한 확인
+            # store를 통해 user_id 가져오기
+            user_id = store_data.get("user_id")
+            if not user_id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="매장에 연결된 사용자를 찾을 수 없습니다."
+                )
+            
+            is_limit_exceeded, current_count, max_count = check_keyword_limit(supabase, user_id)
+            
+            if is_limit_exceeded:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"키워드 등록 제한에 도달했습니다. (현재: {current_count}/{max_count}개) 구독 플랜을 업그레이드해주세요."
+                )
+            
+            # 새 키워드 등록
+            keyword_insert = supabase.table("keywords").insert({
+                "store_id": str(request.store_id),
+                "keyword": request.keyword,
+                "current_rank": rank_result["rank"],
+                "previous_rank": None,
+                "last_checked_at": now.isoformat()
+            }).execute()
+            
+            keyword_id = keyword_insert.data[0]["id"]
+            
+            logger.info(
+                f"[Unofficial API Rank] Created new keyword (ID: {keyword_id}), "
+                f"Rank: {rank_result['rank']}, User keywords: {current_count + 1}/{max_count}"
+            )
+        
+        # rank_history 처리 (오늘 날짜 데이터만 유지)
+        # 1. 오늘 날짜의 기존 기록 삭제
+        supabase.table("rank_history").delete().eq(
+            "keyword_id", keyword_id
+        ).gte(
+            "checked_at", today.isoformat()
+        ).lt(
+            "checked_at", (today.replace(day=today.day + 1)).isoformat() if today.day < 28 else today.isoformat()
+        ).execute()
+        
+        # 2. 새로운 기록 추가
+        supabase.table("rank_history").insert({
+            "keyword_id": keyword_id,
+            "rank": rank_result["rank"],
+            "checked_at": now.isoformat()
+        }).execute()
+        
+        logger.info(f"[Unofficial API Rank] Saved rank history for today")
+        
+        # 순위 변동 계산
+        rank_change = None
+        if previous_rank and rank_result["rank"]:
+            # 순위가 낮을수록 좋음 (1위가 최고)
+            rank_change = previous_rank - rank_result["rank"]  # 양수: 순위 상승
+        
+        return RankCheckResponseUnofficial(
+            status="success",
+            keyword=request.keyword,
+            place_id=place_id,
+            store_name=store_name,
+            rank=rank_result["rank"],
+            found=rank_result["found"],
+            total_results=rank_result["total_results"],
+            total_count=rank_result.get("total_count"),
+            previous_rank=previous_rank,
+            rank_change=rank_change,
+            last_checked_at=now,
+            search_results=rank_result["search_results"],
+            # 리뷰수 정보 추가 ⭐
+            visitor_review_count=visitor_review_count,
+            blog_review_count=blog_review_count,
+            save_count=save_count
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        logger.error(f"[Unofficial API Rank] Error: {str(e)}\n{error_details}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"순위 조회 중 오류가 발생했습니다: {str(e)}"
+        )
+
+
+# ============================================
+# 대표키워드 분석 API
+# ============================================
+
+class KeywordsAnalysisRequest(BaseModel):
+    """대표키워드 분석 요청"""
+    query: str
+
+
+class StoreKeywordInfo(BaseModel):
+    """매장별 키워드 정보"""
+    rank: int
+    place_id: str
+    name: str
+    category: str
+    address: str
+    thumbnail: Optional[str] = ""
+    rating: Optional[float] = None
+    review_count: str
+    keywords: List[str]
+
+
+class KeywordsAnalysisResponse(BaseModel):
+    """대표키워드 분석 응답"""
+    status: str
+    query: str
+    total_stores: int
+    stores_analyzed: List[StoreKeywordInfo]
+
+
+@router.post("/analyze-main-keywords", response_model=KeywordsAnalysisResponse)
+async def analyze_main_keywords(request: KeywordsAnalysisRequest):
+    """
+    대표키워드 분석
+    
+    검색 키워드로 상위 15개 매장의 대표 키워드를 분석합니다.
+    """
+    try:
+        logger.info(f"[대표키워드 분석] 요청: {request.query}")
+        
+        result = await keywords_analyzer_service.analyze_top_stores_keywords(
+            query=request.query,
+            top_n=15
+        )
+        
+        return KeywordsAnalysisResponse(**result)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        logger.error(f"[대표키워드 분석] Error: {str(e)}\n{error_details}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"대표키워드 분석 중 오류가 발생했습니다: {str(e)}"
+        )
+
+
+# ============================================
+# 플레이스 진단 API
+# ============================================
+
+@router.get("/place-details/{place_id}")
+async def get_place_details(place_id: str, mode: str = "complete", store_name: str = None):
+    """
+    플레이스 상세 정보 조회 (진단용)
+    
+    Args:
+        place_id: 네이버 플레이스 ID
+        mode: 진단 모드 (기본값: complete)
+            - "quick": 빠른 진단 (GraphQL만, 1-2초)
+            - "standard": 표준 진단 (GraphQL + HTML, 3-5초) - 미구현
+            - "complete": 완전 진단 (모든 데이터, 5-10초)
+        store_name: 매장명 (선택, 제공하면 검색 API 사용으로 정확도 향상)
+    """
+    try:
+        logger.info(f"[플레이스 진단] 요청: place_id={place_id}, mode={mode}, store_name={store_name}")
+        
+        # 완전 진단 서비스 사용
+        from app.services.naver_complete_diagnosis_service import complete_diagnosis_service
+        
+        details = await complete_diagnosis_service.diagnose_place(place_id, store_name)
+        
+        if not details:
+            raise HTTPException(
+                status_code=404,
+                detail="플레이스 정보를 찾을 수 없습니다. 잘못된 place_id이거나 정보가 없습니다."
+            )
+        
+        # name이 비어있어도 place_id가 있으면 계속 진행
+        if not details.get("name"):
+            logger.warning(f"[플레이스 진단] Name 필드가 비어있지만 진행: place_id={place_id}")
+        
+        # 진단 평가 실행
+        from app.services.naver_diagnosis_engine import diagnosis_engine
+        diagnosis_result = diagnosis_engine.diagnose(details)
+        
+        # 채워진 필드 통계
+        filled_count = sum(1 for v in details.values() if v not in [None, "", [], {}, 0, False])
+        total_count = len(details)
+        fill_rate = (filled_count / total_count * 100) if total_count > 0 else 0
+        
+        logger.info(f"[플레이스 진단] 완료: {details['name']}")
+        logger.info(f"[플레이스 진단] 채워진 정보: {filled_count}/{total_count} ({fill_rate:.1f}%)")
+        logger.info(f"[플레이스 진단] 평가 점수: {diagnosis_result['total_score']}/{diagnosis_result['max_score']}점 ({diagnosis_result['grade']}등급)")
+        
+        return {
+            "status": "success",
+            "place_id": place_id,
+            "mode": mode,
+            "fill_rate": round(fill_rate, 1),
+            "details": details,
+            "diagnosis": diagnosis_result  # 진단 평가 결과 추가
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        logger.error(f"[플레이스 진단] Error: {str(e)}\n{error_details}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"플레이스 진단 중 오류가 발생했습니다: {str(e)}"
+        )
+
+
+# ============================================
+# 경쟁매장 분석 API
+# ============================================
+
+class CompetitorSearchRequest(BaseModel):
+    """경쟁매장 검색 요청"""
+    keyword: str
+    limit: int = 20
+
+
+class CompetitorSearchResponse(BaseModel):
+    """경쟁매장 검색 응답"""
+    status: str
+    keyword: str
+    total: int
+    stores: List[Dict]
+
+
+class CompetitorAnalysisRequest(BaseModel):
+    """경쟁매장 분석 요청"""
+    keyword: str
+    my_place_id: str
+    limit: int = 20
+
+
+class CompetitorCompareRequest(BaseModel):
+    """경쟁매장 비교 분석 요청"""
+    my_store: dict
+    competitors: list
+    
+    class Config:
+        arbitrary_types_allowed = True
+
+
+class CompetitorAnalysisResponse(BaseModel):
+    """경쟁매장 분석 응답"""
+    status: str
+    keyword: str
+    my_store: Dict
+    competitors: List[Dict]
+    comparison: Dict
+
+
+@router.post("/competitor/search", response_model=CompetitorSearchResponse)
+async def search_competitors(request: CompetitorSearchRequest):
+    """
+    키워드로 상위 노출 경쟁매장 검색
+    
+    Args:
+        request: 검색 요청 (키워드, 개수)
+        
+    Returns:
+        상위 노출 매장 목록
+    """
+    try:
+        logger.info(f"[경쟁매장] 검색 시작: keyword={request.keyword}, limit={request.limit}")
+        
+        # 상위 매장 검색
+        stores = await competitor_analysis_service.get_top_competitors(
+            keyword=request.keyword,
+            limit=request.limit
+        )
+        
+        logger.info(f"[경쟁매장] 검색 완료: {len(stores)}개 발견")
+        
+        return {
+            "status": "success",
+            "keyword": request.keyword,
+            "total": len(stores),
+            "stores": stores
+        }
+        
+    except Exception as e:
+        logger.error(f"[경쟁매장] 검색 실패: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"경쟁매장 검색 중 오류가 발생했습니다: {str(e)}"
+        )
+
+
+@router.post("/competitor/analyze", response_model=CompetitorAnalysisResponse)
+async def analyze_competitors(request: CompetitorAnalysisRequest):
+    """
+    경쟁매장 전체 분석 및 비교
+    
+    Args:
+        request: 분석 요청 (키워드, 우리 매장 ID, 개수)
+        
+    Returns:
+        경쟁매장 분석 결과 + 우리 매장 비교
+    """
+    try:
+        logger.info(f"[경쟁매장] 전체 분석 시작: keyword={request.keyword}, my_place_id={request.my_place_id}")
+        
+        # 1. 우리 매장 분석
+        logger.info(f"[경쟁매장] 우리 매장 분석 중...")
+        my_store = await competitor_analysis_service.analyze_competitor(
+            place_id=request.my_place_id,
+            rank=0  # 우리 매장은 순위 0
+        )
+        
+        if not my_store:
+            raise HTTPException(
+                status_code=404,
+                detail="우리 매장 정보를 찾을 수 없습니다."
+            )
+        
+        # 2. 경쟁매장 분석
+        logger.info(f"[경쟁매장] 경쟁사 분석 중...")
+        competitors = await competitor_analysis_service.analyze_all_competitors(
+            keyword=request.keyword,
+            limit=request.limit
+        )
+        
+        # 3. 비교 분석 (LLM 기반)
+        logger.info(f"[경쟁매장] 비교 분석 중 (LLM 사용)...")
+        comparison = await competitor_analysis_service.compare_with_my_store(
+            my_store_data=my_store,
+            competitors=competitors
+        )
+        
+        logger.info(f"[경쟁매장] 전체 분석 완료: {len(competitors)}개 경쟁사")
+        
+        return {
+            "status": "success",
+            "keyword": request.keyword,
+            "my_store": my_store,
+            "competitors": competitors,
+            "comparison": comparison
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        logger.error(f"[경쟁매장] 분석 실패: {str(e)}\n{error_details}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"경쟁매장 분석 중 오류가 발생했습니다: {str(e)}"
+        )
+
+
+@router.post("/competitor/compare")
+async def compare_competitors(request: dict):
+    """
+    경쟁매장 비교 분석 (LLM 기반)
+    
+    Args:
+        request: 우리 매장 + 경쟁매장 데이터
+        
+    Returns:
+        LLM 기반 비교 분석 결과
+    """
+    try:
+        print(f"[DEBUG] 비교 분석 요청 받음")
+        my_store = request.get("my_store", {})
+        competitors = request.get("competitors", [])
+        print(f"[DEBUG] my_store type: {type(my_store)}")
+        print(f"[DEBUG] competitors type: {type(competitors)}")
+        print(f"[DEBUG] competitors length: {len(competitors)}")
+        logger.info(f"[경쟁매장] 비교 분석 요청: {len(competitors)}개 경쟁사")
+        
+        comparison = await competitor_analysis_service.compare_with_my_store(
+            my_store_data=my_store,
+            competitors=competitors
+        )
+        
+        logger.info(f"[경쟁매장] 비교 분석 완료: {len(comparison.get('recommendations', []))}개 권장사항")
+        
+        return comparison
+        
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        logger.error(f"[경쟁매장] 비교 분석 실패: {str(e)}\n{error_details}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"비교 분석 중 오류가 발생했습니다: {str(e)}"
+        )
+
+
+@router.get("/competitor/analyze-single/{place_id}")
+async def analyze_single_competitor(place_id: str, rank: int = 0, store_name: str = None):
+    """
+    단일 경쟁매장 분석 (점진적 로딩용)
+    
+    Args:
+        place_id: 네이버 플레이스 ID
+        rank: 검색 순위
+        store_name: 매장명 (선택, 제공하면 정확도 향상)
+        
+    Returns:
+        매장 분석 결과
+    """
+    try:
+        logger.info(f"[경쟁매장] 단일 분석 시작: place_id={place_id}, store_name={store_name}, rank={rank}")
+        
+        result = await competitor_analysis_service.analyze_competitor(
+            place_id=place_id,
+            rank=rank,
+            store_name=store_name
+        )
+        
+        if not result:
+            logger.error(f"[경쟁매장] place_id={place_id}로 매장 정보를 찾을 수 없습니다")
+            raise HTTPException(
+                status_code=404,
+                detail=f"매장 정보를 찾을 수 없습니다. place_id: {place_id}"
+            )
+        
+        logger.info(f"[경쟁매장] 단일 분석 완료: {result.get('name', 'Unknown')}")
+        
+        return {
+            "status": "success",
+            "result": result
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        logger.error(f"[경쟁매장] 단일 분석 실패: {str(e)}\n{error_trace}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"매장 분석 중 오류가 발생했습니다: {str(e)}"
+        )

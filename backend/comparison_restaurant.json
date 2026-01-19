@@ -1,0 +1,142 @@
+{
+  "place_id": "1086067689",
+  "name": "스타벅스 강남R점",
+  "category": "카페",
+  "category_code": "221275",
+  "address": "서울 강남구 역삼동 825",
+  "road_address": "서울 강남구 강남대로 390 (역삼동)",
+  "latitude": "37.497711",
+  "longitude": "127.028439",
+  "phone_number": "1522-3232",
+  "homepage_url": "",
+  "homepage": "http://www.starbucks.co.kr/",
+  "instagram": "http://www.instagram.com/starbuckskorea",
+  "blog": "",
+  "tv_program": "",
+  "visitor_review_score": 4.51,
+  "visitor_review_count": 8220,
+  "blog_review_count": 991,
+  "booking_review_count": 0,
+  "image_url": "https://ldb-phinf.pstatic.net/20190828_93/1566953601239OT9MQ_PNG/xX7Wv642gXMoTI0DAv0hRymS.png",
+  "image_count": 2,
+  "booking_url": "https://m.booking.naver.com/booking/6/bizes/391494",
+  "booking_available": true,
+  "business_hours": null,
+  "business_status": "영업 종료매장06:30에 영업 시작",
+  "is_open": false,
+  "conveniences": [
+    "리저브"
+  ],
+  "has_parking": false,
+  "has_wifi": false,
+  "has_delivery": false,
+  "has_takeout": false,
+  "has_reservation": false,
+  "group_seating": false,
+  "payment_methods": [],
+  "menus": [
+    {
+      "name": "카페 아메리카노",
+      "price": "4700",
+      "description": "강렬한 에스프레소 샷에 뜨거운 물의 조화",
+      "is_representative": false,
+      "images": []
+    },
+    {
+      "name": "콜드 브루",
+      "price": "5100",
+      "description": "스타벅스 바리스타의 정성으로 탄생한 콜드 브루! 콜드 브루 전용 원두를 차가운 물로 14시간 동안 추출하여 한정된 양만 제공됩니다. 깊은 풍미의 새로운 커피 경험",
+      "is_representative": false,
+      "images": []
+    },
+    {
+      "name": "카페 라떼",
+      "price": "5200",
+      "description": "에스프레소 샷과 따뜻한 우유와 거품으로 마무리된 음료.",
+      "is_representative": false,
+      "images": []
+    },
+    {
+      "name": "카푸치노",
+      "price": "5200",
+      "description": "벨벳같은 우유 거품과 에스프레소 샷의 절묘한 조화!",
+      "is_representative": false,
+      "images": []
+    },
+    {
+      "name": "카페 모카",
+      "price": "5700",
+      "description": "모카시럽과 스팀밀크에 휘핑크림이 토핑된 에스프레소.",
+      "is_representative": false,
+      "images": []
+    },
+    {
+      "name": "에스프레소 프라푸치노",
+      "price": "5700",
+      "description": "에스프레소의 강렬함과 약간의 단맛을 시원하게 즐기는 프라푸치노 라이트 프라푸치노용 시럽 선택 가능-Tall 사이즈 기준, 25% 이상 줄어든 저당으로 즐기세요",
+      "is_representative": false,
+      "images": []
+    },
+    {
+      "name": "자몽 허니 블랙 티",
+      "price": "5900",
+      "description": "새콤달콤한 자몽과 꿀이 깊고 그윽한 풍미의 스타벅스 티바나의 블랙 티와 만났습니다. 화려한 색감과 톡 쏘는 상큼함이 더해진 스타벅스의 새로운 티 음료입니다.",
+      "is_representative": false,
+      "images": []
+    },
+    {
+      "name": "아이스 자몽 허니 블랙 티",
+      "price": "5900",
+      "description": "새콤달콤한 자몽과 꿀이 깊고 그윽한 풍미의 스타벅스 티바나의 블랙 티와 만났습니다. 화려한 색감과 톡 쏘는 상큼함이 더해진 스타벅스의 새로운 티 음료입니다.",
+      "is_representative": false,
+      "images": []
+    },
+    {
+      "name": "스타벅스 돌체 라떼",
+      "price": "6100",
+      "description": "깊은 에스프레소와 깔끔한 무지방 우유가 어우러진 달콤한 음료.",
+      "is_representative": false,
+      "images": []
+    },
+    {
+      "name": "카라멜 마키아또",
+      "price": "6100",
+      "description": "바닐라 시럽과 우유, 그리고 그 위에 얹어진 에스프레소 샷과 달콤한 카라멜 드리즐의 조화",
+      "is_representative": false,
+      "images": []
+    },
+    {
+      "name": "화이트 초콜릿 모카",
+      "price": "6100",
+      "description": "화이트 초콜릿과 스팀밀크가 첨가된 에스프레소 음료.",
+      "is_representative": false,
+      "images": []
+    },
+    {
+      "name": "자바 칩 프라푸치노",
+      "price": "6500",
+      "description": "커피 프라푸치노에 초콜릿, 초콜릿 칩이 첨가된 아이스 블렌드로 달콤 아삭한 음료. 라이트 프라푸치노용 시럽 선택 가능-Tall 사이즈 기준, 저당으로 즐기세요",
+      "is_representative": false,
+      "images": []
+    },
+    {
+      "name": "망고 바나나 블렌디드",
+      "price": "6600",
+      "description": "인기 음료인 망고 패션후르츠 블렌디드에 신선한 바나나 1개가 통째로 들어간 달콤한 프라푸치노",
+      "is_representative": false,
+      "images": []
+    }
+  ],
+  "menu_count": 13,
+  "micro_reviews": [],
+  "directions": "지하철 2호선/신분당선 강남역 1번 출구, 미진프라자 1층 ",
+  "description": "1. 주차 불가",
+  "ai_briefing": "",
+  "promotions": {
+    "total": 0,
+    "coupons": [],
+    "has_naver_talk": false
+  },
+  "announcements": [],
+  "is_place_plus": true
+}

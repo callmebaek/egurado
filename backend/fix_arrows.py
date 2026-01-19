@@ -1,0 +1,12 @@
+file_path = 'app/services/naver_selenium_service.py'
+
+with open(file_path, 'r', encoding='utf-8') as f:
+    content = f.read()
+
+# Replace arrow characters
+content = content.replace('→', '->')
+
+with open(file_path, 'w', encoding='utf-8') as f:
+    f.write(content)
+
+print('Arrow characters replaced!')

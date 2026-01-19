@@ -1,0 +1,615 @@
+"""
+네이버 플레이스 경쟁매장 분석 서비스
+
+키워드 기반으로 상위 노출 매장들을 분석하고 우리 매장과 비교
+(매장명 검색량 포함 + NoneType 에러 완전 수정)
+"""
+import logging
+from typing import List, Dict, Any, Optional
+from datetime import datetime, timedelta
+import asyncio
+import re
+
+from .naver_search_api_unofficial import NaverPlaceNewAPIService
+from .naver_complete_diagnosis_service import complete_diagnosis_service
+from .naver_diagnosis_engine import diagnosis_engine
+from .llm_recommendation_service import llm_recommendation_service
+from .naver_keyword_search_volume_service import NaverKeywordSearchVolumeService
+
+logger = logging.getLogger(__name__)
+
+
+class NaverCompetitorAnalysisService:
+    """경쟁매장 분석 서비스"""
+    
+    def __init__(self):
+        self.search_service = NaverPlaceNewAPIService()
+    
+    async def get_top_competitors(
+        self,
+        keyword: str,
+        limit: int = 20
+    ) -> List[Dict[str, Any]]:
+        """
+        키워드로 상위 노출 매장 검색
+        
+        Args:
+            keyword: 검색 키워드
+            limit: 가져올 매장 수 (기본 20개)
+            
+        Returns:
+            상위 매장 목록 (기본 정보 포함)
+        """
+        logger.info(f"[경쟁분석] 키워드 '{keyword}' 상위 {limit}개 매장 검색")
+        
+        try:
+            # 네이버 검색 API로 매장 검색
+            stores = await self.search_service.search_stores(keyword, max_results=limit)
+            
+            # 상위 limit개만 추출
+            top_stores = stores[:limit]
+            
+            logger.info(f"[경쟁분석] {len(top_stores)}개 매장 검색 완료")
+            return top_stores
+            
+        except Exception as e:
+            logger.error(f"[경쟁분석] 검색 실패: {str(e)}")
+            raise
+    
+    async def analyze_competitor(
+        self,
+        place_id: str,
+        rank: int,
+        store_name: str = None
+    ) -> Optional[Dict[str, Any]]:
+        """
+        경쟁 매장 상세 분석 (플레이스 진단 실행)
+        
+        Args:
+            place_id: 네이버 플레이스 ID
+            rank: 검색 순위
+            store_name: 매장명 (선택, 제공하면 정확도 향상)
+            
+        Returns:
+            매장 상세 정보 + 진단 결과
+        """
+        logger.info(f"[경쟁분석] 매장 {place_id} (순위 {rank}, 이름: {store_name}) 분석 시작")
+        
+        try:
+            # 완전한 플레이스 정보 수집 (store_name 전달)
+            logger.info(f"[경쟁분석-DEBUG] Step 1: diagnose_place 호출")
+            place_data = await complete_diagnosis_service.diagnose_place(place_id, store_name)
+            
+            if not place_data:
+                logger.warning(f"[경쟁분석] 매장 {place_id} 정보 수집 실패")
+                return None
+            
+            # 플레이스 진단 실행
+            logger.info(f"[경쟁분석-DEBUG] Step 2: diagnosis_engine.diagnose 호출")
+            diagnosis_result = diagnosis_engine.diagnose(place_data)
+            
+            # 7일간 리뷰 통계 추출
+            logger.info(f"[경쟁분석-DEBUG] Step 3: 방문자 리뷰 통계 계산")
+            visitor_reviews_7d = self._calculate_recent_reviews(
+                place_data.get("visitor_review_count", 0),
+                place_data.get("recent_visitor_reviews") or []
+            )
+            logger.info(f"[경쟁분석-DEBUG] Step 4: 블로그 리뷰 통계 계산")
+            blog_reviews_7d = self._calculate_recent_reviews(
+                place_data.get("blog_review_count", 0),
+                place_data.get("recent_blog_reviews") or []
+            )
+            
+            # 공지 통계
+            logger.info(f"[경쟁분석-DEBUG] Step 5: 공지 통계 계산")
+            recent_announcements = self._count_recent_announcements(
+                place_data.get("announcements") or [],
+                days=7
+            )
+            
+            # 중요 리뷰 (네이버 하이라이트 리뷰)
+            micro_reviews = place_data.get("micro_reviews") or []
+            important_review = ""
+            if micro_reviews and len(micro_reviews) > 0:
+                # 네이버가 하이라이트한 첫 번째 리뷰 사용
+                first_review = micro_reviews[0]
+                if isinstance(first_review, dict):
+                    important_review = first_review.get("sentence", "") or first_review.get("description", "")
+                elif isinstance(first_review, str):
+                    important_review = first_review
+            
+            # 네이버페이 지원 여부 확인
+            payment_methods = place_data.get("payment_methods") or []
+            supports_naverpay = False
+            if payment_methods:
+                payment_str = str(payment_methods)
+                supports_naverpay = "네이버페이" in payment_str or "naverpay" in payment_str.lower()
+            
+            # 쿠폰 보유 여부 확인
+            promotions = place_data.get("promotions") or {}
+            coupons = promotions.get("coupons") if isinstance(promotions, dict) else []
+            has_coupon = len(coupons or []) > 0
+            
+            # 전체 리뷰수 계산
+            visitor_review_count = place_data.get("visitor_review_count", 0)
+            blog_review_count = place_data.get("blog_review_count", 0)
+            total_review_count = visitor_review_count + blog_review_count
+            
+            # 네이버 예약 여부 확인
+            has_naver_booking = place_data.get("has_reservation", False) or place_data.get("booking_available", False)
+            
+            # 매장명 검색량 조회 (음절별 로직)
+            store_search_volume = await self._get_store_search_volume(place_data.get("name", ""))
+            
+            # 결과 조합
+            result = {
+                "rank": rank,
+                "place_id": place_id,
+                "name": place_data.get("name", ""),
+                "category": place_data.get("category", ""),
+                "address": place_data.get("address", ""),
+                
+                # 진단 점수
+                "diagnosis_score": diagnosis_result.get("total_score", 0),
+                "diagnosis_grade": diagnosis_result.get("grade", "N/A"),
+                
+                # 리뷰 통계
+                "visitor_review_count": visitor_review_count,
+                "blog_review_count": blog_review_count,
+                "total_review_count": total_review_count,
+                
+                # 7일 통계
+                "visitor_reviews_7d_avg": round(visitor_reviews_7d / 7, 1),
+                "blog_reviews_7d_avg": round(blog_reviews_7d / 7, 1),
+                "announcements_7d": recent_announcements,
+                
+                # 기타 정보
+                "has_coupon": has_coupon,
+                "is_place_plus": place_data.get("is_place_plus", False),
+                "is_new_business": place_data.get("is_new_business", False),
+                "supports_naverpay": supports_naverpay,
+                "has_naver_booking": has_naver_booking,  # 네이버 예약
+                "store_search_volume": store_search_volume,  # 매장명 검색량
+                "important_review": important_review,  # 네이버 하이라이트 리뷰
+                
+                # 전체 데이터 (상세 분석용)
+                "full_data": place_data,
+                "diagnosis_details": diagnosis_result,
+            }
+            
+            logger.info(f"[경쟁분석] 매장 {place_id} 분석 완료 (점수: {result['diagnosis_score']})")
+            return result
+            
+        except Exception as e:
+            import traceback
+            logger.error(f"[경쟁분석] 매장 {place_id} 분석 실패: {str(e)}")
+            logger.error(f"[경쟁분석] Traceback:\n{traceback.format_exc()}")
+            return None
+    
+    async def analyze_all_competitors(
+        self,
+        keyword: str,
+        limit: int = 20,
+        callback = None
+    ) -> List[Dict[str, Any]]:
+        """
+        키워드로 검색된 모든 경쟁매장 분석
+        
+        Args:
+            keyword: 검색 키워드
+            limit: 분석할 매장 수
+            callback: 진행 상황 콜백 함수 (optional)
+            
+        Returns:
+            분석된 매장 목록
+        """
+        logger.info(f"[경쟁분석] 키워드 '{keyword}' 전체 분석 시작 (최대 {limit}개)")
+        
+        # 1단계: 상위 매장 검색
+        top_stores = await self.get_top_competitors(keyword, limit)
+        
+        if callback:
+            callback({
+                "stage": "search_completed",
+                "total": len(top_stores),
+                "stores": top_stores
+            })
+        
+        # 2단계: 각 매장 상세 분석
+        analyzed_stores = []
+        
+        for idx, store in enumerate(top_stores, start=1):
+            place_id = store.get("place_id")
+            
+            if not place_id:
+                logger.warning(f"[경쟁분석] 순위 {idx} 매장 ID 없음")
+                continue
+            
+            # 분석 실행
+            result = await self.analyze_competitor(place_id, idx)
+            
+            if result:
+                analyzed_stores.append(result)
+            
+            # 진행 상황 콜백
+            if callback:
+                callback({
+                    "stage": "analyzing",
+                    "current": idx,
+                    "total": len(top_stores),
+                    "place_name": store.get("name", ""),
+                    "completed": result is not None
+                })
+            
+            # Rate limiting (1초 대기)
+            await asyncio.sleep(1.0)
+        
+        logger.info(f"[경쟁분석] 전체 분석 완료: {len(analyzed_stores)}/{len(top_stores)}개 성공")
+        
+        if callback:
+            callback({
+                "stage": "completed",
+                "total": len(analyzed_stores),
+                "analyzed_stores": analyzed_stores
+            })
+        
+        return analyzed_stores
+    
+    async def compare_with_my_store(
+        self,
+        my_store_data: Dict[str, Any],
+        competitors: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """
+        우리 매장과 경쟁사 비교 분석
+        
+        Args:
+            my_store_data: 우리 매장 분석 결과
+            competitors: 경쟁매장 분석 결과 리스트
+            
+        Returns:
+            비교 분석 결과
+        """
+        logger.info(f"[경쟁분석] 우리 매장 vs 경쟁사 {len(competitors)}개 비교")
+        
+        if not competitors:
+            return {
+                "error": "비교할 경쟁매장이 없습니다"
+            }
+        
+        # Top 5와 Top 20 분리
+        top5_competitors = competitors[:5] if len(competitors) >= 5 else competitors
+        top20_competitors = competitors[:20]
+        
+        # Top 5 평균 계산
+        avg_diagnosis_score_top5 = sum(c["diagnosis_score"] for c in top5_competitors) / len(top5_competitors)
+        avg_visitor_reviews_7d_top5 = sum(c["visitor_reviews_7d_avg"] for c in top5_competitors) / len(top5_competitors)
+        avg_blog_reviews_7d_top5 = sum(c["blog_reviews_7d_avg"] for c in top5_competitors) / len(top5_competitors)
+        avg_announcements_7d_top5 = sum(c["announcements_7d"] for c in top5_competitors) / len(top5_competitors)
+        
+        # Top 20 평균 계산
+        avg_diagnosis_score_top20 = sum(c["diagnosis_score"] for c in top20_competitors) / len(top20_competitors)
+        avg_visitor_reviews_7d_top20 = sum(c["visitor_reviews_7d_avg"] for c in top20_competitors) / len(top20_competitors)
+        avg_blog_reviews_7d_top20 = sum(c["blog_reviews_7d_avg"] for c in top20_competitors) / len(top20_competitors)
+        avg_announcements_7d_top20 = sum(c["announcements_7d"] for c in top20_competitors) / len(top20_competitors)
+        
+        coupon_rate = sum(1 for c in competitors if c["has_coupon"]) / len(competitors) * 100
+        place_plus_rate = sum(1 for c in competitors if c["is_place_plus"]) / len(competitors) * 100
+        naverpay_rate = sum(1 for c in competitors if c["supports_naverpay"]) / len(competitors) * 100
+        
+        # 우리 매장 데이터
+        my_score = my_store_data.get("diagnosis_score", 0)
+        my_visitor_reviews = my_store_data.get("visitor_reviews_7d_avg", 0)
+        my_blog_reviews = my_store_data.get("blog_reviews_7d_avg", 0)
+        my_announcements = my_store_data.get("announcements_7d", 0)
+        my_has_coupon = my_store_data.get("has_coupon", False)
+        my_is_place_plus = my_store_data.get("is_place_plus", False)
+        my_naverpay = my_store_data.get("supports_naverpay", False)
+        
+        # 차이 분석 (Top 5 & Top 20)
+        gaps = {
+            "diagnosis_score": {
+                "my_value": my_score,
+                "competitor_avg_top5": round(avg_diagnosis_score_top5, 1),
+                "competitor_avg_top20": round(avg_diagnosis_score_top20, 1),
+                "gap_top5": round(my_score - avg_diagnosis_score_top5, 1),
+                "gap_top20": round(my_score - avg_diagnosis_score_top20, 1),
+                "status_top5": "good" if my_score >= avg_diagnosis_score_top5 else "bad",
+                "status_top20": "good" if my_score >= avg_diagnosis_score_top20 else "bad",
+            },
+            "visitor_reviews_7d_avg": {
+                "my_value": my_visitor_reviews,
+                "competitor_avg_top5": round(avg_visitor_reviews_7d_top5, 1),
+                "competitor_avg_top20": round(avg_visitor_reviews_7d_top20, 1),
+                "gap_top5": round(my_visitor_reviews - avg_visitor_reviews_7d_top5, 1),
+                "gap_top20": round(my_visitor_reviews - avg_visitor_reviews_7d_top20, 1),
+                "status_top5": "good" if my_visitor_reviews >= avg_visitor_reviews_7d_top5 else "bad",
+                "status_top20": "good" if my_visitor_reviews >= avg_visitor_reviews_7d_top20 else "bad",
+            },
+            "blog_reviews_7d_avg": {
+                "my_value": my_blog_reviews,
+                "competitor_avg_top5": round(avg_blog_reviews_7d_top5, 1),
+                "competitor_avg_top20": round(avg_blog_reviews_7d_top20, 1),
+                "gap_top5": round(my_blog_reviews - avg_blog_reviews_7d_top5, 1),
+                "gap_top20": round(my_blog_reviews - avg_blog_reviews_7d_top20, 1),
+                "status_top5": "good" if my_blog_reviews >= avg_blog_reviews_7d_top5 else "bad",
+                "status_top20": "good" if my_blog_reviews >= avg_blog_reviews_7d_top20 else "bad",
+            },
+            "announcements_7d": {
+                "my_value": my_announcements,
+                "competitor_avg_top5": round(avg_announcements_7d_top5, 1),
+                "competitor_avg_top20": round(avg_announcements_7d_top20, 1),
+                "gap_top5": round(my_announcements - avg_announcements_7d_top5, 1),
+                "gap_top20": round(my_announcements - avg_announcements_7d_top20, 1),
+                "status_top5": "good" if my_announcements >= avg_announcements_7d_top5 else "bad",
+                "status_top20": "good" if my_announcements >= avg_announcements_7d_top20 else "bad",
+            },
+            "has_coupon": {
+                "my_value": my_has_coupon,
+                "competitor_rate": round(coupon_rate, 1),
+                "status": "good" if my_has_coupon else "bad",
+            },
+            "is_place_plus": {
+                "my_value": my_is_place_plus,
+                "competitor_rate": round(place_plus_rate, 1),
+                "status": "good" if my_is_place_plus else "bad",
+            },
+            "supports_naverpay": {
+                "my_value": my_naverpay,
+                "competitor_rate": round(naverpay_rate, 1),
+                "status": "good" if my_naverpay else "bad",
+            },
+        }
+        
+        # LLM 기반 개선 권장사항 생성
+        recommendations = await llm_recommendation_service.generate_detailed_recommendations(
+            my_store_data, competitors, gaps
+        )
+        
+        # 순위별 분포
+        score_distribution = {
+            "S": sum(1 for c in competitors if c["diagnosis_grade"] == "S"),
+            "A": sum(1 for c in competitors if c["diagnosis_grade"] == "A"),
+            "B": sum(1 for c in competitors if c["diagnosis_grade"] == "B"),
+            "C": sum(1 for c in competitors if c["diagnosis_grade"] == "C"),
+            "D": sum(1 for c in competitors if c["diagnosis_grade"] == "D"),
+        }
+        
+        result = {
+            "my_store": my_store_data,
+            "competitor_count": len(competitors),
+            "gaps": gaps,
+            "recommendations": recommendations,
+            "score_distribution": score_distribution,
+            "analysis_date": datetime.now().isoformat(),
+        }
+        
+        logger.info(f"[경쟁분석] 비교 완료: 우리 {my_score}점 vs Top5 평균 {avg_diagnosis_score_top5:.1f}점, Top20 평균 {avg_diagnosis_score_top20:.1f}점")
+        return result
+    
+    def _calculate_recent_reviews(
+        self,
+        total_count: int,
+        recent_reviews: List[Dict],
+        days: int = 7
+    ) -> float:
+        """최근 N일간 리뷰 수 추정"""
+        # 실제 최근 리뷰 데이터가 있으면 사용
+        if recent_reviews:
+            cutoff_date = datetime.now() - timedelta(days=days)
+            recent_count = sum(
+                1 for review in recent_reviews
+                if self._parse_review_date(review.get("date")) >= cutoff_date
+            )
+            return recent_count
+        
+        # 없으면 추정 (전체 리뷰의 1/30 * days)
+        estimated_daily_avg = total_count / 365 if total_count > 0 else 0
+        return estimated_daily_avg * days
+    
+    def _parse_review_date(self, date_str: str) -> datetime:
+        """리뷰 날짜 파싱"""
+        try:
+            # None이나 빈 문자열 처리
+            if not date_str:
+                return datetime.min
+            
+            # "3일 전", "1주일 전" 등 파싱
+            if "일 전" in date_str:
+                days = int(date_str.split("일")[0].strip())
+                return datetime.now() - timedelta(days=days)
+            elif "주일 전" in date_str:
+                weeks = int(date_str.split("주일")[0].strip())
+                return datetime.now() - timedelta(weeks=weeks)
+            elif "개월 전" in date_str:
+                months = int(date_str.split("개월")[0].strip())
+                return datetime.now() - timedelta(days=months * 30)
+            else:
+                # 날짜 형식이면 파싱
+                return datetime.strptime(date_str, "%Y.%m.%d")
+        except:
+            return datetime.min
+    
+    def _count_recent_announcements(
+        self,
+        announcements: List[Dict],
+        days: int = 7
+    ) -> int:
+        """최근 N일간 공지 수 계산"""
+        # announcements가 None일 경우 처리
+        if not announcements:
+            return 0
+        
+        count = 0
+        cutoff_date = datetime.now() - timedelta(days=days)
+        
+        for ann in announcements:
+            # relativeCreated가 None일 수 있으므로 명시적으로 빈 문자열로 처리
+            relative = ann.get("relativeCreated") or ""
+            if relative and "일 전" in relative:
+                try:
+                    days_ago = int(relative.split("일")[0].strip())
+                    if days_ago <= days:
+                        count += 1
+                except:
+                    pass
+        
+        return count
+    
+    async def _get_store_search_volume(self, store_name: str) -> int:
+        """
+        매장명 검색량 조회
+        
+        Args:
+            store_name: 매장명
+            
+        Returns:
+            검색량 (전체 검색량)
+            
+        로직:
+        - 매장명의 띄어쓰기를 제거한 형태의 검색량만 조회
+        - 예: "금금 광화문점" → "금금광화문점"의 검색량
+        - 예: "인사도담" → "인사도담"의 검색량
+        """
+        if not store_name:
+            return 0
+        
+        try:
+            # 특수문자 제거 (띄어쓰기는 유지)
+            cleaned_name = re.sub(r'[^\w가-힣\s]', '', store_name)
+            
+            # 띄어쓰기 제거한 전체 매장명
+            full_without_space = cleaned_name.replace(' ', '').strip()
+            
+            logger.info(f"[검색량] 원본 매장명: {store_name}")
+            logger.info(f"[검색량] 정제 후 (띄어쓰기 제거): {full_without_space}")
+            
+            keywords_to_search = [full_without_space]
+            logger.info(f"[검색량] 검색할 키워드: {keywords_to_search}")
+            
+            # 검색량 API 호출
+            search_service = NaverKeywordSearchVolumeService()
+            result = search_service.get_keyword_search_volume(keywords_to_search)
+            
+            if result.get("status") != "success":
+                logger.warning(f"[검색량] API 실패: {result.get('message')}")
+                return 0
+            
+            # 검색량 합산
+            total_volume = 0
+            # result 구조: {"status": "success", "data": {"keywordList": [...]}}
+            keyword_list = result.get("data", {}).get("keywordList", [])
+            logger.info(f"[검색량] 키워드 리스트 길이: {len(keyword_list)}")
+            
+            for keyword_data in keyword_list:
+                keyword = keyword_data.get("relKeyword", "")
+                # 명시적으로 정수 변환 (API가 문자열로 반환할 수 있음)
+                try:
+                    monthly_pc = int(keyword_data.get("monthlyPcQcCnt", 0) or 0)
+                    monthly_mobile = int(keyword_data.get("monthlyMobileQcCnt", 0) or 0)
+                except (ValueError, TypeError):
+                    monthly_pc = 0
+                    monthly_mobile = 0
+                
+                keyword_volume = monthly_pc + monthly_mobile
+                total_volume += keyword_volume
+                logger.info(f"[검색량] '{keyword}': PC {monthly_pc:,} + Mobile {monthly_mobile:,} = {keyword_volume:,}")
+            
+            logger.info(f"[검색량] {store_name} 총 검색량: {total_volume:,}")
+            return total_volume
+            
+        except Exception as e:
+            logger.error(f"[검색량] 조회 실패 ({store_name}): {str(e)}")
+            import traceback
+            logger.error(traceback.format_exc())
+            return 0
+    
+    def _generate_recommendations(
+        self,
+        gaps: Dict[str, Any],
+        competitors: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """비교 분석 기반 개선 권장사항 생성"""
+        recommendations = []
+        
+        # 진단 점수가 낮은 경우
+        if gaps["diagnosis_score"]["status"] == "bad":
+            gap_value = abs(gaps["diagnosis_score"]["gap"])
+            recommendations.append({
+                "priority": "high",
+                "category": "overall",
+                "title": "전체 플레이스 진단 점수 개선 필요",
+                "description": f"경쟁매장 평균 대비 {gap_value}점 낮습니다. 플레이스 진단 기능을 통해 개선이 필요한 항목을 확인하세요.",
+                "impact": "high"
+            })
+        
+        # 방문자 리뷰가 적은 경우
+        if gaps["visitor_reviews_7d_avg"]["status"] == "bad":
+            gap_value = abs(gaps["visitor_reviews_7d_avg"]["gap"])
+            recommendations.append({
+                "priority": "high",
+                "category": "reviews",
+                "title": "방문자 리뷰 활성화 필요",
+                "description": f"경쟁매장은 일평균 {gaps['visitor_reviews_7d_avg']['competitor_avg']}개의 리뷰를 받고 있습니다. 리뷰 요청 프로세스를 개선하세요.",
+                "impact": "high"
+            })
+        
+        # 블로그 리뷰가 적은 경우
+        if gaps["blog_reviews_7d_avg"]["status"] == "bad":
+            recommendations.append({
+                "priority": "medium",
+                "category": "blog",
+                "title": "블로그 마케팅 강화 필요",
+                "description": f"경쟁매장 대비 블로그 리뷰가 부족합니다. 체험단이나 인플루언서 협업을 고려하세요.",
+                "impact": "medium"
+            })
+        
+        # 공지가 적은 경우
+        if gaps["announcements_7d"]["status"] == "bad":
+            recommendations.append({
+                "priority": "medium",
+                "category": "announcements",
+                "title": "정기 공지 업데이트 필요",
+                "description": "경쟁매장은 정기적으로 공지를 업데이트하고 있습니다. 신메뉴, 이벤트 소식을 공유하세요.",
+                "impact": "medium"
+            })
+        
+        # 쿠폰이 없는 경우
+        if not gaps["has_coupon"]["my_value"] and gaps["has_coupon"]["competitor_rate"] > 50:
+            recommendations.append({
+                "priority": "high",
+                "category": "coupon",
+                "title": "쿠폰 발행 권장",
+                "description": f"경쟁매장의 {gaps['has_coupon']['competitor_rate']}%가 쿠폰을 사용하고 있습니다. 첫 방문 할인 쿠폰을 발행하세요.",
+                "impact": "high"
+            })
+        
+        # 플레이스 플러스 미가입
+        if not gaps["is_place_plus"]["my_value"] and gaps["is_place_plus"]["competitor_rate"] > 50:
+            recommendations.append({
+                "priority": "high",
+                "category": "place_plus",
+                "title": "플레이스 플러스 가입 권장",
+                "description": f"경쟁매장의 {gaps['is_place_plus']['competitor_rate']}%가 플레이스 플러스를 사용하고 있습니다. 고급 관리 기능을 활용하세요.",
+                "impact": "high"
+            })
+        
+        # 네이버페이 미지원
+        if not gaps["supports_naverpay"]["my_value"] and gaps["supports_naverpay"]["competitor_rate"] > 50:
+            recommendations.append({
+                "priority": "medium",
+                "category": "payment",
+                "title": "네이버페이 도입 권장",
+                "description": f"경쟁매장의 {gaps['supports_naverpay']['competitor_rate']}%가 네이버페이를 지원합니다. 결제 편의성을 개선하세요.",
+                "impact": "medium"
+            })
+        
+        # 우선순위로 정렬
+        priority_order = {"high": 0, "medium": 1, "low": 2}
+        recommendations.sort(key=lambda x: priority_order.get(x["priority"], 2))
+        
+        return recommendations
+
+
+# 싱글톤 인스턴스
+competitor_analysis_service = NaverCompetitorAnalysisService()

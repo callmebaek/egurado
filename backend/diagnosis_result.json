@@ -1,0 +1,285 @@
+{
+  "total_score": 53.0,
+  "max_score": 100,
+  "grade": "D",
+  "evaluations": {
+    "visitor_reviews": {
+      "score": 4,
+      "max_score": 12,
+      "status": "WARN",
+      "evidence": {
+        "count": 435,
+        "tier": "하위권"
+      },
+      "recommendations": [
+        {
+          "action": "방문자 리뷰 565개 더 받기 (목표: 1000개)",
+          "method": "서비스 품질 개선, 리뷰 요청 프로세스 개선 (결제 시 QR 코드 안내 등)",
+          "estimated_gain": 4,
+          "priority": "high"
+        }
+      ]
+    },
+    "blog_reviews": {
+      "score": 8,
+      "max_score": 8,
+      "status": "PASS",
+      "evidence": {
+        "total_count": 306,
+        "estimated_recent_90d": 102,
+        "accuracy_warning": true,
+        "note": "실제 최근 90일 데이터 수집 필요"
+      },
+      "recommendations": []
+    },
+    "images": {
+      "score": 10.0,
+      "max_score": 10,
+      "status": "PASS",
+      "evidence": {
+        "image_count": 120,
+        "quantity_score": 7.0,
+        "freshness_score": 3,
+        "last_upload": "정보 없음"
+      },
+      "recommendations": []
+    },
+    "menus": {
+      "score": 0,
+      "max_score": 12,
+      "status": "FAIL",
+      "evidence": {
+        "menu_count": 0,
+        "description_filled_rate": 0
+      },
+      "recommendations": [
+        {
+          "action": "메뉴 최소 5개 이상 등록",
+          "method": "대표메뉴, 시즌메뉴, 세트메뉴 포함하여 구성",
+          "estimated_gain": 8,
+          "priority": "critical"
+        },
+        {
+          "action": "메뉴별 상세 설명 작성",
+          "method": "재료, 맛, 추천 대상 등 구체적으로 기술",
+          "estimated_gain": 4,
+          "priority": "critical"
+        }
+      ]
+    },
+    "conveniences": {
+      "score": 6,
+      "max_score": 6,
+      "status": "PASS",
+      "evidence": {
+        "count": 7,
+        "items": [
+          "단체 이용 가능",
+          "방문접수/출장",
+          "예약",
+          "무선 인터넷",
+          "반려동물 동반",
+          "대기공간",
+          "주차"
+        ]
+      },
+      "recommendations": []
+    },
+    "naverpay": {
+      "score": 0,
+      "max_score": 6,
+      "status": "FAIL",
+      "evidence": {
+        "supports_naverpay": false,
+        "payment_methods": []
+      },
+      "recommendations": [
+        {
+          "action": "네이버페이 결제 도입",
+          "method": "네이버페이 가맹점 신청 → POS 연동 또는 QR 결제 도입",
+          "estimated_gain": 6,
+          "priority": "high",
+          "note": "네이버 플레이스 노출 우대 혜택"
+        }
+      ]
+    },
+    "coupons": {
+      "score": 6,
+      "max_score": 10,
+      "status": "WARN",
+      "evidence": {
+        "coupon_count": 1,
+        "has_recent_update": true
+      },
+      "recommendations": [
+        {
+          "action": "쿠폰 3개 생성 (현재 1개 → 목표 4개)",
+          "method": "웰컴 쿠폰, 재방문 쿠폰, 리뷰 이벤트 쿠폰, 시즌 특별 쿠폰",
+          "copy_example": "첫 방문 고객 10% 할인 쿠폰 / 리뷰 작성 시 음료 1잔 무료",
+          "estimated_gain": 6,
+          "priority": "medium"
+        }
+      ]
+    },
+    "announcements": {
+      "score": 8,
+      "max_score": 8,
+      "status": "PASS",
+      "evidence": {
+        "total_count": 5,
+        "recent_60d_count": 2,
+        "latest_days_ago": 1
+      },
+      "recommendations": []
+    },
+    "description_seo": {
+      "score": 6,
+      "max_score": 12,
+      "status": "WARN",
+      "evidence": {
+        "length": 857,
+        "length_score": 4,
+        "keyword_score": 2,
+        "trust_score": 0,
+        "keyword_checks": {
+          "region": true,
+          "category": false,
+          "menu": false
+        }
+      },
+      "recommendations": [
+        {
+          "action": "지역 + 업종 키워드 자연스럽게 배치",
+          "method": "검색 노출 최적화를 위해 소개글 첫 문장에 포함",
+          "estimated_gain": 4,
+          "priority": "high"
+        }
+      ]
+    },
+    "directions_seo": {
+      "score": 1,
+      "max_score": 8,
+      "status": "FAIL",
+      "evidence": {
+        "length": 148,
+        "length_score": 1,
+        "detail_score": 0,
+        "keyword_score": 0,
+        "detail_checks": {
+          "exit_walk": false,
+          "landmark": false,
+          "parking": false,
+          "transport": false
+        }
+      },
+      "recommendations": [
+        {
+          "action": "찾아오는길 상세 정보 추가 (현재 148자 → 목표 200자)",
+          "method": "지하철 출구, 도보 시간, 주요 건물, 주차 안내 포함",
+          "copy_example": "지하철 2호선 강남역 11번 출구에서 도보 5분. 강남파이낸스센터 건너편 골목 안쪽에 위치. 주차는 건물 지하 1층 (2시간 무료).",
+          "estimated_gain": 2,
+          "priority": "medium"
+        },
+        {
+          "action": "길 찾기 정보 보강 (4가지 누락)",
+          "method": "출구/도보시간, 랜드마크, 주차정보, 대중교통 팁 추가",
+          "estimated_gain": 4,
+          "priority": "medium"
+        }
+      ]
+    },
+    "sns_web": {
+      "score": 4,
+      "max_score": 4,
+      "status": "PASS",
+      "evidence": {
+        "count": 3,
+        "homepage": true,
+        "instagram": true,
+        "blog": true
+      },
+      "recommendations": []
+    },
+    "tv_program": {
+      "score": 0,
+      "max_score": 2,
+      "status": "FAIL",
+      "evidence": {
+        "has_tv_featured": false,
+        "program": null
+      },
+      "recommendations": [
+        {
+          "action": "TV 프로그램 출연 기회 모색",
+          "method": "지역 방송국 맛집 코너 제보, 유튜브 먹방 채널 협업",
+          "estimated_gain": 2,
+          "priority": "low",
+          "note": "장기 브랜딩 전략"
+        }
+      ]
+    },
+    "place_plus": {
+      "score": 0,
+      "max_score": 2,
+      "status": "FAIL",
+      "evidence": {
+        "uses_place_plus": false
+      },
+      "recommendations": [
+        {
+          "action": "플레이스 플러스 가입 (사장님 인증)",
+          "method": "네이버 플레이스 앱에서 사업자 인증 → 플러스 기능 활성화",
+          "estimated_gain": 2,
+          "priority": "high",
+          "note": "쿠폰, 공지, 예약 등 관리 기능 확대"
+        }
+      ]
+    }
+  },
+  "priority_actions": [
+    {
+      "category": "menus",
+      "status": "FAIL",
+      "action": "메뉴 최소 5개 이상 등록",
+      "method": "대표메뉴, 시즌메뉴, 세트메뉴 포함하여 구성",
+      "estimated_gain": 8,
+      "priority": "critical"
+    },
+    {
+      "category": "menus",
+      "status": "FAIL",
+      "action": "메뉴별 상세 설명 작성",
+      "method": "재료, 맛, 추천 대상 등 구체적으로 기술",
+      "estimated_gain": 4,
+      "priority": "critical"
+    },
+    {
+      "category": "naverpay",
+      "status": "FAIL",
+      "action": "네이버페이 결제 도입",
+      "method": "네이버페이 가맹점 신청 → POS 연동 또는 QR 결제 도입",
+      "estimated_gain": 6,
+      "priority": "high",
+      "note": "네이버 플레이스 노출 우대 혜택"
+    },
+    {
+      "category": "visitor_reviews",
+      "status": "WARN",
+      "action": "방문자 리뷰 565개 더 받기 (목표: 1000개)",
+      "method": "서비스 품질 개선, 리뷰 요청 프로세스 개선 (결제 시 QR 코드 안내 등)",
+      "estimated_gain": 4,
+      "priority": "high"
+    },
+    {
+      "category": "description_seo",
+      "status": "WARN",
+      "action": "지역 + 업종 키워드 자연스럽게 배치",
+      "method": "검색 노출 최적화를 위해 소개글 첫 문장에 포함",
+      "estimated_gain": 4,
+      "priority": "high"
+    }
+  ],
+  "diagnosis_date": "2026-01-12T00:01:55.024613",
+  "place_name": "아나나사진관 성수스튜디오",
+  "place_id": "2072848563"
+}
