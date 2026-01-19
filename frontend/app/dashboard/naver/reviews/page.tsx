@@ -317,7 +317,7 @@ export default function ReviewManagementPage() {
         console.log("📦 전체 매장 수:", data.stores?.length)
         console.log("📦 전체 매장 데이터 (첫 번째):", data.stores?.[0])
         
-        const naverStores = data.stores.filter((s: Store) => s.platform === "naver" && s.place_id)
+        const naverStores = data.stores.filter((s: Store) => s.platform === "naver" && (s as any).place_id)
         console.log("🏪 네이버 매장 수:", naverStores.length)
         console.log("🏪 네이버 매장 목록:", naverStores)
         
