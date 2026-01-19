@@ -300,9 +300,9 @@ export const Sidebar = memo(function Sidebar({ isOpen, onClose }: SidebarProps) 
         <div className="h-16 px-6 border-b border-[var(--border-light)] flex items-center justify-between">
           <Link href="/dashboard" className="flex items-center gap-3 group" onClick={onClose}>
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[var(--primary)] to-[var(--olive-700)] flex items-center justify-center shadow-[var(--shadow-sm)] group-hover:shadow-[var(--shadow-md)] transition-shadow duration-[var(--transition-base)]">
-              <span className="text-white font-semibold text-lg">E</span>
+              <span className="text-white font-semibold text-lg">W</span>
             </div>
-            <span className="text-xl font-semibold text-[var(--foreground)] tracking-tight">이거라도</span>
+            <span className="text-xl font-semibold text-[var(--foreground)] tracking-tight">위플레이스</span>
           </Link>
           
           {/* 모바일 닫기 버튼 */}
@@ -324,7 +324,7 @@ export const Sidebar = memo(function Sidebar({ isOpen, onClose }: SidebarProps) 
 
         {/* 하단 정보 */}
         <div className="px-6 py-4 border-t border-[var(--border-light)] text-xs text-[var(--muted-foreground)]">
-          <p className="font-medium">© 2026 Egurado</p>
+          <p className="font-medium">© 2026 Whiplace</p>
           <p className="text-[var(--muted-foreground)] mt-0.5">Version 1.0.0</p>
         </div>
       </aside>

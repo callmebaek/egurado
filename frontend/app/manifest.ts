@@ -6,8 +6,8 @@ import { MetadataRoute } from 'next'
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: '이거라도 - 네이버 플레이스 & 구글 비즈니스 통합 관리',
-    short_name: '이거라도',
+    name: '위플레이스 - 네이버 플레이스 & 구글 비즈니스 통합 관리',
+    short_name: '위플레이스',
     description: '네이버 플레이스와 구글 비즈니스 프로필을 한 곳에서 관리하세요.',
     start_url: '/dashboard',
     display: 'standalone',

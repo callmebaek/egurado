@@ -87,7 +87,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold text-center">
-            Egurado
+            Whiplace
           </CardTitle>
           <CardDescription className="text-center">
             {isSignUp
@@ -170,7 +170,7 @@ export default function LoginPage() {
               💡 개발 테스트용
             </p>
             <p className="text-xs text-gray-500">
-              이메일: test@egurado.com<br />
+              이메일: test@whiplace.com<br />
               비밀번호: test123
             </p>
           </div>

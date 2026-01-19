@@ -37,7 +37,7 @@ export default function DashboardPage() {
           환영합니다 👋
         </h2>
         <p className="text-[var(--muted-foreground)] mt-3 text-[15px] leading-relaxed">
-          <strong className="text-[var(--foreground)] font-medium">이거라도</strong>에서 네이버 플레이스와 구글 비즈니스를 손쉽게 관리하세요.
+          <strong className="text-[var(--foreground)] font-medium">위플레이스</strong>에서 네이버 플레이스와 구글 비즈니스를 손쉽게 관리하세요.
         </p>
         <p className="text-sm text-[var(--muted-foreground)] mt-2">
           현재 <strong className="text-[var(--foreground)] font-semibold">{storeCount}개</strong>의 매장이 등록되어 있습니다.

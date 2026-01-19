@@ -1,4 +1,4 @@
-# robots.txt for Egurado
+# robots.txt for Whiplace
 # 네이버 및 구글 크롤러 최적화
 
 User-agent: *

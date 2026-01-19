@@ -21,8 +21,8 @@ const notoSansKR = Noto_Sans_KR({
 // SEO 최적화된 메타데이터
 export const metadata: Metadata = {
   title: {
-    default: "이거라도 - 네이버 플레이스 & 구글 비즈니스 통합 관리",
-    template: "%s | 이거라도"
+    default: "위플레이스 - 네이버 플레이스 & 구글 비즈니스 통합 관리",
+    template: "%s | 위플레이스"
   },
   description: "네이버 플레이스와 구글 비즈니스 프로필을 한 곳에서 관리하세요. AI 리뷰 답글, 키워드 순위 추적, 자동화된 매장 관리 솔루션.",
   keywords: [
@@ -36,9 +36,9 @@ export const metadata: Metadata = {
     "자영업자",
     "매장 마케팅"
   ],
-  authors: [{ name: "Egurado Team" }],
-  creator: "Egurado",
-  publisher: "Egurado",
+  authors: [{ name: "Whiplace Team" }],
+  creator: "Whiplace",
+  publisher: "Whiplace",
   robots: {
     index: true,
     follow: true,
@@ -54,21 +54,21 @@ export const metadata: Metadata = {
     type: "website",
     locale: "ko_KR",
     url: "https://egurado.com",
-    siteName: "이거라도",
-    title: "이거라도 - 네이버 플레이스 & 구글 비즈니스 통합 관리",
+    siteName: "위플레이스",
+    title: "위플레이스 - 네이버 플레이스 & 구글 비즈니스 통합 관리",
     description: "네이버 플레이스와 구글 비즈니스 프로필을 한 곳에서 관리하세요.",
     images: [
       {
         url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "이거라도 - 매장 관리 솔루션",
+        alt: "위플레이스 - 매장 관리 솔루션",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "이거라도 - 네이버 플레이스 & 구글 비즈니스 통합 관리",
+    title: "위플레이스 - 네이버 플레이스 & 구글 비즈니스 통합 관리",
     description: "네이버 플레이스와 구글 비즈니스 프로필을 한 곳에서 관리하세요.",
     images: ["/og-image.png"],
   },
