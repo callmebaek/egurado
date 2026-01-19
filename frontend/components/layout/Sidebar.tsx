@@ -6,6 +6,7 @@
  * 반응형 디자인: 모바일에서는 햄버거 메뉴로 변환
  */
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import {
@@ -299,8 +300,15 @@ export const Sidebar = memo(function Sidebar({ isOpen, onClose }: SidebarProps) 
         {/* 로고 및 닫기 버튼 */}
         <div className="h-16 px-6 border-b border-[var(--border-light)] flex items-center justify-between">
           <Link href="/dashboard" className="flex items-center gap-3 group" onClick={onClose}>
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[var(--primary)] to-[var(--olive-700)] flex items-center justify-center shadow-[var(--shadow-sm)] group-hover:shadow-[var(--shadow-md)] transition-shadow duration-[var(--transition-base)]">
-              <span className="text-white font-semibold text-lg">W</span>
+            <div className="relative w-9 h-9 flex items-center justify-center group-hover:opacity-90 transition-opacity duration-[var(--transition-base)]">
+              <Image
+                src="/logo.svg"
+                alt="Whiplace Logo"
+                width={36}
+                height={36}
+                className="object-contain"
+                priority
+              />
             </div>
             <span className="text-xl font-semibold text-[var(--foreground)] tracking-tight">위플레이스</span>
           </Link>
