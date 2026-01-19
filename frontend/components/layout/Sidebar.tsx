@@ -302,7 +302,7 @@ export const Sidebar = memo(function Sidebar({ isOpen, onClose }: SidebarProps) 
           <Link href="/dashboard" className="flex items-center group" onClick={onClose}>
             <div className="relative w-48 h-14 flex items-center justify-center group-hover:opacity-90 transition-opacity duration-[var(--transition-base)]">
               <Image
-                src="/whiplace-logo.png"
+                src="/whiplace-logo.svg"
                 alt="Whiplace Logo"
                 width={192}
                 height={56}
