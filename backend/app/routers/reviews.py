@@ -474,7 +474,7 @@ async def analyze_reviews_stream(store_id: str, start_date: str, end_date: str):
                     print(f"Empty review included as neutral (idx={idx}): naver_id={review.get('naver_review_id')}", flush=True)
                     
                     # 빈 리뷰도 전송
-                    yield f"data: {json.dumps({
+                    empty_review_data = {
                         'type': 'review_analyzed',
                         'review': {
                             'id': review.get('naver_review_id'),
@@ -484,7 +484,8 @@ async def analyze_reviews_stream(store_id: str, start_date: str, end_date: str):
                             'temperature_score': 50,
                             'rating': review.get('rating')
                         }
-                    })}\n\n"
+                    }
+                    yield f"data: {json.dumps(empty_review_data)}\n\n"
                     
                     # 통계 전송
                     yield f"data: {json.dumps({'type': 'stats_update', **stats})}\n\n"
@@ -508,7 +509,7 @@ async def analyze_reviews_stream(store_id: str, start_date: str, end_date: str):
                     stats[sentiment] = stats.get(sentiment, 0) + 1
                     
                     # 분석된 리뷰 전송
-                    yield f"data: {json.dumps({
+                    review_data = {
                         'type': 'review_analyzed',
                         'review': {
                             'id': review.get('naver_review_id'),
@@ -518,7 +519,8 @@ async def analyze_reviews_stream(store_id: str, start_date: str, end_date: str):
                             'temperature_score': analysis.get('temperature_score'),
                             'rating': review.get('rating')
                         }
-                    })}\n\n"
+                    }
+                    yield f"data: {json.dumps(review_data)}\n\n"
                     
                     # 통계 전송
                     yield f"data: {json.dumps({'type': 'stats_update', **stats})}\n\n"
@@ -541,7 +543,7 @@ async def analyze_reviews_stream(store_id: str, start_date: str, end_date: str):
                     stats["neutral"] = stats.get("neutral", 0) + 1
                     
                     # 실패한 리뷰도 전송
-                    yield f"data: {json.dumps({
+                    failed_review_data = {
                         'type': 'review_analyzed',
                         'review': {
                             'id': review.get('naver_review_id'),
@@ -551,7 +553,8 @@ async def analyze_reviews_stream(store_id: str, start_date: str, end_date: str):
                             'temperature_score': 50,
                             'rating': review.get('rating')
                         }
-                    })}\n\n"
+                    }
+                    yield f"data: {json.dumps(failed_review_data)}\n\n"
                     
                     # 통계 전송
                     yield f"data: {json.dumps({'type': 'stats_update', **stats})}\n\n"
@@ -671,12 +674,13 @@ async def analyze_reviews_stream(store_id: str, start_date: str, end_date: str):
             print(f"Review save summary: {saved_count} saved ({skipped_count} updated), {failed_count} failed out of {len(analyzed_reviews)} total", flush=True)
             
             # 7. 완료 전송
-            yield f"data: {json.dumps({
+            complete_data = {
                 'type': 'complete',
                 'summary': summary,
                 'total_analyzed': len(analyzed_reviews),
                 'stats': stats
-            })}\n\n"
+            }
+            yield f"data: {json.dumps(complete_data)}\n\n"
             
             logger.info(f"✅ 스트리밍 분석 완료: {len(analyzed_reviews)}개")
             

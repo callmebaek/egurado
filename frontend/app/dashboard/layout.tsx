@@ -33,6 +33,19 @@ export default function DashboardLayout({
         router.push('/login')
       } else {
         setIsLoading(false)
+        
+        // Chrome Extension을 위해 userId를 Chrome Storage에 저장
+        if (session.user && typeof chrome !== 'undefined' && chrome.storage) {
+          try {
+            await chrome.storage.local.set({
+              userId: session.user.id,
+              lastUpdated: Date.now()
+            })
+            console.log('✅ Chrome Storage에 userId 저장 완료:', session.user.id)
+          } catch (error) {
+            console.log('ℹ️ Chrome Storage 저장 실패 (확장 프로그램이 설치되지 않았을 수 있음):', error)
+          }
+        }
       }
     }
 
@@ -42,6 +55,16 @@ export default function DashboardLayout({
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!session) {
         router.push('/login')
+      } else if (session.user && typeof chrome !== 'undefined' && chrome.storage) {
+        // 인증 상태 변경 시에도 Chrome Storage 업데이트
+        try {
+          chrome.storage.local.set({
+            userId: session.user.id,
+            lastUpdated: Date.now()
+          })
+        } catch (error) {
+          console.log('ℹ️ Chrome Storage 저장 실패:', error)
+        }
       }
     })
 

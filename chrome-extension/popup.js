@@ -1,8 +1,8 @@
 // 설정
 const CONFIG = {
-  API_BASE_URL: 'http://localhost:8000', // 개발 환경
-  // API_BASE_URL: 'https://your-api.vercel.app', // 프로덕션 환경
-  FRONTEND_URL: 'http://localhost:3000',
+  // API_BASE_URL: 'http://localhost:8000', // 개발 환경
+  API_BASE_URL: 'https://api.whiplace.com', // 프로덕션 환경
+  FRONTEND_URL: 'https://egurado.vercel.app',
   NAVER_DOMAINS: [
     'https://new.smartplace.naver.com',
     'https://smartplace.naver.com',
@@ -98,7 +98,7 @@ async function checkAuthentication() {
 // 매장 목록 로드
 async function loadStores() {
   try {
-    const response = await fetch(`${CONFIG.API_BASE_URL}/api/v1/stores?user_id=${userId}`)
+    const response = await fetch(`${CONFIG.API_BASE_URL}/api/v1/stores/?user_id=${userId}`)
     
     if (!response.ok) {
       throw new Error('매장 목록을 불러올 수 없습니다')
@@ -120,7 +120,7 @@ async function loadStores() {
     currentStores.forEach(store => {
       const option = document.createElement('option')
       option.value = store.id
-      option.textContent = store.name
+      option.textContent = store.store_name || store.name
       elements.storeSelect.appendChild(option)
     })
     
@@ -280,7 +280,7 @@ elements.saveButton.addEventListener('click', async () => {
     
     // 4. 성공 메시지 표시
     const selectedStore = currentStores.find(s => s.id === selectedStoreId)
-    elements.savedStoreName.textContent = selectedStore?.name || '알 수 없음'
+    elements.savedStoreName.textContent = selectedStore?.store_name || selectedStore?.name || '알 수 없음'
     elements.savedTime.textContent = new Date().toLocaleString('ko-KR')
     
     elements.successAlert.classList.remove('hidden')
