@@ -56,16 +56,29 @@ class ReplyJob:
         self.is_cancelled: bool = False  # 취소 플래그
 
     def to_dict(self) -> dict:
-        """딕셔너리로 변환"""
+        """딕셔너리로 변환 (UTC 타임존 명시)"""
+        def format_datetime(dt):
+            """datetime을 UTC ISO 문자열로 변환 (Z 접미사 포함)"""
+            if dt is None:
+                return None
+            # isoformat() 결과에서 +00:00 제거하고 Z 추가
+            iso_str = dt.isoformat()
+            if iso_str.endswith('+00:00'):
+                return iso_str[:-6] + 'Z'
+            elif '+' not in iso_str and 'Z' not in iso_str:
+                # 타임존 정보가 없으면 Z 추가
+                return iso_str + 'Z'
+            return iso_str
+        
         return {
             "job_id": self.job_id,
             "store_id": self.store_id,
             "naver_review_id": self.naver_review_id,
             "author": self.author,
             "status": self.status.value,
-            "created_at": self.created_at.isoformat().replace('+00:00', 'Z'),
-            "started_at": self.started_at.isoformat().replace('+00:00', 'Z') if self.started_at else None,
-            "completed_at": self.completed_at.isoformat().replace('+00:00', 'Z') if self.completed_at else None,
+            "created_at": format_datetime(self.created_at),
+            "started_at": format_datetime(self.started_at),
+            "completed_at": format_datetime(self.completed_at),
             "error_message": self.error_message,
             "estimated_time": self.estimated_time,
             "position_in_queue": self.position_in_queue
