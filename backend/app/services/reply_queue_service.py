@@ -7,7 +7,7 @@ import asyncio
 import uuid
 import time
 from typing import Dict, Optional, List
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 import logging
 
@@ -46,13 +46,13 @@ class ReplyJob:
         self.reply_text = reply_text
         self.user_id = user_id
         self.status = JobStatus.QUEUED
-        self.created_at = datetime.now()
+        self.created_at = datetime.now(timezone.utc)
         self.started_at: Optional[datetime] = None
         self.completed_at: Optional[datetime] = None
         self.error_message: Optional[str] = None
         self.estimated_time: int = 15  # 기본 예상 시간 (초)
         self.position_in_queue: int = 0
-        self.last_poll_time: datetime = datetime.now()  # 마지막 폴링 시간
+        self.last_poll_time: datetime = datetime.now(timezone.utc)  # 마지막 폴링 시간
         self.is_cancelled: bool = False  # 취소 플래그
 
     def to_dict(self) -> dict:
@@ -100,7 +100,7 @@ class ReplyQueueService:
         from datetime import datetime
         import re
         
-        today = datetime.now()
+        today = datetime.now(timezone.utc)
         
         # "25.12.4.목" 또는 "1.10.금" 또는 "2025. 12. 21(토)" 형식 파싱
         date_parts = re.findall(r'\d+', date_string)
@@ -186,7 +186,7 @@ class ReplyQueueService:
             return None
         
         # 폴링 시간 업데이트 (프론트엔드가 아직 연결되어 있음을 확인)
-        job.last_poll_time = datetime.now()
+        job.last_poll_time = datetime.now(timezone.utc)
         
         return job.to_dict()
     
@@ -216,7 +216,7 @@ class ReplyQueueService:
         try:
             while self.queue:
                 # 오래된 작업 정리 (대기 중인 작업 중 폴링이 60초 이상 없는 것)
-                now = datetime.now()
+                now = datetime.now(timezone.utc)
                 to_remove = []
                 for job_id in list(self.queue):
                     job = self.jobs.get(job_id)
@@ -233,7 +233,7 @@ class ReplyQueueService:
                         self.jobs[job_id].status = JobStatus.FAILED
                         self.jobs[job_id].error_message = "프론트엔드 연결 끊김"
                         self.jobs[job_id].is_cancelled = True
-                        self.jobs[job_id].completed_at = datetime.now()
+                        self.jobs[job_id].completed_at = datetime.now(timezone.utc)
                 
                 if not self.queue:
                     break
@@ -247,13 +247,13 @@ class ReplyQueueService:
                     continue
                 
                 # 작업 시작 전 폴링 확인 (프론트엔드가 여전히 연결되어 있는지)
-                time_since_poll = (datetime.now() - job.last_poll_time).total_seconds()
+                time_since_poll = (datetime.now(timezone.utc) - job.last_poll_time).total_seconds()
                 if time_since_poll > 30:  # 30초 동안 폴링 없음
                     logger.warning(f"[QUEUE] Job cancelled (no polling): {job_id} (author: {job.author})")
                     job.status = JobStatus.FAILED
                     job.error_message = "프론트엔드 연결 끊김 (새로고침 또는 페이지 이동)"
                     job.is_cancelled = True
-                    job.completed_at = datetime.now()
+                    job.completed_at = datetime.now(timezone.utc)
                     self.queue.pop(0)
                     self.current_job_id = None
                     self._update_queue_positions()
@@ -262,7 +262,7 @@ class ReplyQueueService:
                 # 작업 시작
                 self.current_job_id = job_id
                 job.status = JobStatus.PROCESSING
-                job.started_at = datetime.now()
+                job.started_at = datetime.now(timezone.utc)
                 logger.info(f"[QUEUE] Processing job: {job_id} (author: {job.author})")
                 
                 # 큐 위치 업데이트
@@ -297,7 +297,7 @@ class ReplyQueueService:
                     logger.error(f"[QUEUE] Job error: {job_id} - {e}", exc_info=True)
                 
                 finally:
-                    job.completed_at = datetime.now()
+                    job.completed_at = datetime.now(timezone.utc)
                     self.queue.pop(0)
                     self.current_job_id = None
                     
@@ -313,7 +313,7 @@ class ReplyQueueService:
     
     def clear_completed_jobs(self, older_than_minutes: int = 30):
         """완료된 작업 정리 (N분 이전 작업)"""
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         to_remove = []
         
         for job_id, job in self.jobs.items():
