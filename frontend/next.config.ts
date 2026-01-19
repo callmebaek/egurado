@@ -6,10 +6,6 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  // ESLint 에러를 경고로 변경 (배포 시)
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   // 환경 변수 검증 (개발 모드에서만)
   ...(process.env.NODE_ENV === 'development' && {
     env: {

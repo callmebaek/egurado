@@ -135,7 +135,7 @@ export default function TargetKeywordsPage() {
 
   const fetchRegisteredStores = async () => {
     try {
-      const response = await fetch(`${api.baseUrl}/api/v1/stores?user_id=${userId}`)
+      const response = await fetch(`${api.baseUrl}/api/v1/stores/?user_id=${userId}`)
       if (!response.ok) throw new Error("매장 조회 실패")
       
       const result = await response.json()
