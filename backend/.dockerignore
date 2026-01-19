@@ -21,7 +21,10 @@ Thumbs.db
 
 # Logs
 *.log
-*.txt
+error.txt
+debug.txt
+test.txt
+!requirements.txt
 
 # Environment
 .env
