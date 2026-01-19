@@ -1,40 +1,52 @@
 @import "tailwindcss";
 
 :root {
-  /* 배경색 - 항상 흰색 */
+  /* Apple-inspired color system */
   --background: #ffffff;
-  --foreground: #1a1a1a;
+  --foreground: #1d1d1f;
   
-  /* 올리브 색상 팔레트 */
-  --olive-50: #f7f8f3;
-  --olive-100: #eef0e4;
-  --olive-200: #dde2c9;
-  --olive-300: #c5cfa4;
-  --olive-400: #a8b87a;
-  --olive-500: #8a9f5e;
-  --olive-600: #6d7f48;
-  --olive-700: #55633a;
-  --olive-800: #464f31;
-  --olive-900: #3b422b;
+  /* Refined olive palette - more subtle and modern */
+  --olive-50: #fafaf9;
+  --olive-100: #f5f5f4;
+  --olive-200: #e7e5e4;
+  --olive-300: #d6d3d1;
+  --olive-400: #a8a29e;
+  --olive-500: #78716c;
+  --olive-600: #57534e;
+  --olive-700: #44403c;
+  --olive-800: #292524;
+  --olive-900: #1c1917;
   
-  /* 카드 배경 */
+  /* Card system */
   --card: #ffffff;
-  --card-foreground: #1a1a1a;
+  --card-foreground: #1d1d1f;
   
-  /* 테두리 */
-  --border: #e5e5e5;
+  /* Borders - lighter and more subtle */
+  --border: #d2d2d7;
+  --border-light: #e5e5ea;
   
-  /* Muted (보조 텍스트) */
-  --muted: #f5f5f5;
-  --muted-foreground: #737373;
+  /* Muted colors */
+  --muted: #f5f5f7;
+  --muted-foreground: #86868b;
   
-  /* Accent (hover 상태) */
-  --accent: #f7f8f3;
-  --accent-foreground: #1a1a1a;
+  /* Accent colors */
+  --accent: #f5f5f7;
+  --accent-foreground: #1d1d1f;
   
-  /* Primary (강조 - 올리브) */
-  --primary: var(--olive-600);
+  /* Primary - refined olive tone */
+  --primary: #57534e;
   --primary-foreground: #ffffff;
+  
+  /* Apple-style shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  
+  /* Smooth transitions */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 @theme inline {
@@ -69,24 +81,125 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+  font-feature-settings: "kern" 1, "liga" 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
-/* 스크롤바 스타일 */
+/* Apple-style scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--muted);
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--olive-300);
-  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--olive-500);
+  background: rgba(0, 0, 0, 0.3);
+  background-clip: padding-box;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Apple-style focus states */
+*:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Reduce motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Apple-style animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out;
+}
+
+.animate-slide-in {
+  animation: slideIn 0.4s ease-out;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.3s ease-out;
+}
+
+/* Apple-style glass effect */
+.glass-effect {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* Smooth hover effects */
+.hover-lift {
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+}
+
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* Text gradient */
+.text-gradient {
+  background: linear-gradient(135deg, var(--foreground) 0%, var(--olive-600) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }

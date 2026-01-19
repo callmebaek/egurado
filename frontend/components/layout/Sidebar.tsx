@@ -24,7 +24,7 @@ import {
   X,
   Key,
 } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, memo } from 'react'
 
 interface NavItem {
   title: string
@@ -164,7 +164,7 @@ interface SidebarProps {
   onClose: () => void
 }
 
-export function Sidebar({ isOpen, onClose }: SidebarProps) {
+export const Sidebar = memo(function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname()
   // 네이버 플레이스, 구글 비즈니스, 리뷰 관리를 기본으로 펼쳐진 상태로 설정
   const [openItems, setOpenItems] = useState<string[]>(['네이버 플레이스', '구글 비즈니스', '리뷰 관리'])
@@ -174,13 +174,13 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     onClose()
   }, [pathname, onClose])
 
-  const toggleItem = (title: string) => {
+  const toggleItem = useCallback((title: string) => {
     setOpenItems((prev) =>
       prev.includes(title)
         ? prev.filter((item) => item !== title)
         : [...prev, title]
     )
-  }
+  }, [])
 
   const renderNavItem = (item: NavItem, level: number = 0) => {
     const isActive = item.href && pathname === item.href
@@ -194,22 +194,22 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           isDisabled ? (
             <div
               className={cn(
-                'flex items-center gap-3 px-3 py-2 rounded-md text-sm',
-                level > 0 && 'pl-10',
-                level > 1 && 'pl-14',
-                level === 0 && 'font-semibold',
-                'text-muted-foreground/40 cursor-not-allowed opacity-60'
+                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px]',
+                level > 0 && 'pl-11',
+                level > 1 && 'pl-[60px]',
+                level === 0 && 'font-medium',
+                'text-[var(--muted-foreground)]/40 cursor-not-allowed opacity-50'
               )}
             >
               {item.icon}
               <span className="flex-1">{item.title}</span>
               {item.comingSoon && (
-                <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-gray-300 text-gray-600 rounded whitespace-nowrap">
+                <span className="px-2 py-0.5 text-[10px] font-medium bg-[var(--muted)] text-[var(--muted-foreground)] rounded-md">
                   Soon
                 </span>
               )}
               {item.badge && !item.comingSoon && (
-                <span className="px-1.5 py-0.5 text-xs font-semibold bg-amber-500 text-white rounded">
+                <span className="px-2 py-0.5 text-[10px] font-medium bg-amber-500 text-white rounded-md">
                   {item.badge}
                 </span>
               )}
@@ -218,19 +218,19 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             <Link
               href={item.href}
               className={cn(
-                'flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors',
-                level > 0 && 'pl-10',
-                level > 1 && 'pl-14',
-                level === 0 && 'font-semibold',
+                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] transition-all duration-[var(--transition-fast)]',
+                level > 0 && 'pl-11',
+                level > 1 && 'pl-[60px]',
+                level === 0 && 'font-medium',
                 isActive
-                  ? 'bg-primary text-primary-foreground font-semibold'
-                  : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                  ? 'bg-[var(--primary)] text-white font-medium shadow-[var(--shadow-sm)]'
+                  : 'text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--foreground)]'
               )}
             >
               {item.icon}
               <span className="flex-1">{item.title}</span>
               {item.badge && (
-                <span className="px-1.5 py-0.5 text-xs font-semibold bg-amber-500 text-white rounded">
+                <span className="px-2 py-0.5 text-[10px] font-medium bg-amber-500 text-white rounded-md">
                   {item.badge}
                 </span>
               )}
@@ -241,23 +241,23 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             onClick={() => !isDisabled && hasChildren && toggleItem(item.title)}
             disabled={isDisabled}
             className={cn(
-              'w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors',
-              level > 0 && 'pl-10',
-              level === 0 && 'font-semibold text-olive-800',
+              'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] transition-all duration-[var(--transition-fast)]',
+              level > 0 && 'pl-11',
+              level === 0 && 'font-medium text-[var(--foreground)]',
               isDisabled
-                ? 'text-muted-foreground/40 cursor-not-allowed opacity-60'
-                : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                ? 'text-[var(--muted-foreground)]/40 cursor-not-allowed opacity-50'
+                : 'text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--foreground)]'
             )}
           >
             {item.icon}
             <span className="flex-1 text-left">{item.title}</span>
             {item.comingSoon && (
-              <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-gray-300 text-gray-600 rounded whitespace-nowrap">
+              <span className="px-2 py-0.5 text-[10px] font-medium bg-[var(--muted)] text-[var(--muted-foreground)] rounded-md">
                 Soon
               </span>
             )}
             {item.badge && !item.comingSoon && (
-              <span className="px-1.5 py-0.5 text-xs font-semibold bg-amber-500 text-white rounded">
+              <span className="px-2 py-0.5 text-[10px] font-medium bg-amber-500 text-white rounded-md">
                 {item.badge}
               </span>
             )}
@@ -267,7 +267,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           </button>
         )}
         {hasChildren && isOpen && !isDisabled && (
-          <div className="mt-1 space-y-1">
+          <div className="mt-0.5 space-y-0.5 overflow-hidden">
             {item.children!.map((child) => renderNavItem(child, level + 1))}
           </div>
         )}
@@ -280,7 +280,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       {/* 모바일 오버레이 배경 */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 lg:hidden transition-opacity duration-[var(--transition-base)]"
           onClick={onClose}
           aria-hidden="true"
         />
@@ -290,45 +290,46 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       <aside
         className={cn(
           "fixed lg:static inset-y-0 left-0 z-50",
-          "w-64 h-screen border-r bg-background flex flex-col",
-          "transition-transform duration-300 ease-in-out lg:translate-x-0",
+          "w-[280px] h-screen border-r border-[var(--border-light)] bg-[var(--card)] flex flex-col",
+          "transition-transform duration-[var(--transition-slow)] ease-[cubic-bezier(0.4,0,0.2,1)] lg:translate-x-0",
+          "shadow-[var(--shadow-lg)]",
           isOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
         {/* 로고 및 닫기 버튼 */}
-        <div className="p-4 border-b flex items-center justify-between">
-          <Link href="/dashboard" className="flex items-center gap-2" onClick={onClose}>
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <span className="text-white font-bold text-lg">E</span>
+        <div className="h-16 px-6 border-b border-[var(--border-light)] flex items-center justify-between">
+          <Link href="/dashboard" className="flex items-center gap-3 group" onClick={onClose}>
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[var(--primary)] to-[var(--olive-700)] flex items-center justify-center shadow-[var(--shadow-sm)] group-hover:shadow-[var(--shadow-md)] transition-shadow duration-[var(--transition-base)]">
+              <span className="text-white font-semibold text-lg">E</span>
             </div>
-            <span className="text-xl font-bold text-olive-800">이거라도</span>
+            <span className="text-xl font-semibold text-[var(--foreground)] tracking-tight">이거라도</span>
           </Link>
           
           {/* 모바일 닫기 버튼 */}
           <button
             onClick={onClose}
-            className="lg:hidden p-2 rounded-md hover:bg-accent transition-colors"
+            className="lg:hidden p-2 rounded-lg hover:bg-[var(--accent)] transition-colors duration-[var(--transition-fast)]"
             aria-label="메뉴 닫기"
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5 text-[var(--muted-foreground)]" />
           </button>
         </div>
 
         {/* 네비게이션 */}
-        <nav className="flex-1 p-4 overflow-y-auto">
-          <div className="space-y-1">
+        <nav className="flex-1 px-3 py-4 overflow-y-auto">
+          <div className="space-y-0.5">
             {navigation.map((item) => renderNavItem(item))}
           </div>
         </nav>
 
         {/* 하단 정보 */}
-        <div className="p-4 border-t text-xs text-muted-foreground">
-          <p>© 2026 Egurado</p>
-          <p className="text-olive-600">Version 1.0.0</p>
+        <div className="px-6 py-4 border-t border-[var(--border-light)] text-xs text-[var(--muted-foreground)]">
+          <p className="font-medium">© 2026 Egurado</p>
+          <p className="text-[var(--muted-foreground)] mt-0.5">Version 1.0.0</p>
         </div>
       </aside>
     </>
   )
-}
+})
 
 
