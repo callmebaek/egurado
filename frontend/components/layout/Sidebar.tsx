@@ -300,12 +300,12 @@ export const Sidebar = memo(function Sidebar({ isOpen, onClose }: SidebarProps) 
         {/* 로고 및 닫기 버튼 */}
         <div className="h-16 px-6 border-b border-[var(--border-light)] flex items-center justify-between">
           <Link href="/dashboard" className="flex items-center group" onClick={onClose}>
-            <div className="relative w-32 h-12 flex items-center justify-center group-hover:opacity-90 transition-opacity duration-[var(--transition-base)]">
+            <div className="relative w-48 h-14 flex items-center justify-center group-hover:opacity-90 transition-opacity duration-[var(--transition-base)]">
               <Image
-                src="/logo.svg"
+                src="/whiplace-logo.png"
                 alt="Whiplace Logo"
-                width={128}
-                height={48}
+                width={192}
+                height={56}
                 className="object-contain"
                 priority
               />
