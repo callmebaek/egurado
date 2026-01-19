@@ -331,20 +331,24 @@ export default function NaverAIReplyPage() {
         
         // 진행 상황 업데이트 (remainingTime은 타이머가 업데이트)
         setPostingProgress(prev => {
+          const prevProgress = prev[reviewId]
+          
           const newStartTime = data.started_at 
             ? new Date(data.started_at).getTime() 
             : null
           
           // 기존 startTime이 있고 새로운 startTime이 있으면 기존 것 유지 (중복 업데이트 방지)
-          const startTime = prev[reviewId]?.startTime || newStartTime
+          const startTime = prevProgress?.startTime || newStartTime
           
           // startTime이 새로 설정되면 로그 출력
-          if (!prev[reviewId]?.startTime && startTime) {
+          if (!prevProgress?.startTime && startTime) {
             console.log(`[Poll] Start time set: ${new Date(startTime).toISOString()}`)
           }
           
-          // remainingTime은 기존 값 유지 (타이머가 업데이트함)
-          const remainingTime = prev[reviewId]?.remainingTime ?? data.estimated_time
+          // remainingTime: 기존 진행상황이 있으면 remainingTime 유지 (타이머가 관리), 없으면 초기값
+          const remainingTime = prevProgress 
+            ? prevProgress.remainingTime  // 기존 값 완전 유지
+            : data.estimated_time  // 처음 생성 시에만 설정
           
           return {
             ...prev,
