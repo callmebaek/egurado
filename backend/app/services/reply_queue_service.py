@@ -63,9 +63,9 @@ class ReplyJob:
             "naver_review_id": self.naver_review_id,
             "author": self.author,
             "status": self.status.value,
-            "created_at": self.created_at.isoformat(),
-            "started_at": self.started_at.isoformat() if self.started_at else None,
-            "completed_at": self.completed_at.isoformat() if self.completed_at else None,
+            "created_at": self.created_at.isoformat().replace('+00:00', 'Z'),
+            "started_at": self.started_at.isoformat().replace('+00:00', 'Z') if self.started_at else None,
+            "completed_at": self.completed_at.isoformat().replace('+00:00', 'Z') if self.completed_at else None,
             "error_message": self.error_message,
             "estimated_time": self.estimated_time,
             "position_in_queue": self.position_in_queue
