@@ -480,10 +480,6 @@ export default function ConnectStorePage() {
                             if (parent) parent.style.display = 'none'
                           }}
                           onError={(e) => {
-                            e.currentTarget.style.display = 'none'
-                          }}
-                          loading="lazy"
-                          onError={(e) => {
                             // 이미지 로드 실패 시 아이콘으로 대체
                             e.currentTarget.style.display = 'none'
                           }}

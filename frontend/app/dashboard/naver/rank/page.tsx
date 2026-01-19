@@ -766,7 +766,7 @@ export default function NaverRankPage() {
                         <div className="text-sm flex items-center gap-1 flex-shrink-0">
                           <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
                           {/* 평점이 있으면 표시 */}
-                          {result.rating && result.rating !== "None" && typeof result.rating === 'number' && result.rating > 0 && (
+                          {result.rating && typeof result.rating === 'number' && result.rating > 0 && (
                             <span className="font-medium">{result.rating.toFixed(1)}</span>
                           )}
                           {/* 리뷰수는 항상 표시 */}
@@ -1055,12 +1055,13 @@ export default function NaverRankPage() {
                       stroke="#8884d8" 
                       strokeWidth={2}
                       dot={(props: any) => {
+                          if (!props) return <circle r={0} />
                         const { cx, cy, payload } = props
-                        if (!payload.rank || !payload.rawDate) return null
+                        if (!payload.rank || !payload.rawDate) return <circle r={0} />
                         
                         // 최신 데이터인지 확인
                         const allData = rankHistory.filter(h => h.rank !== null)
-                        if (allData.length === 0) return null
+                        if (allData.length === 0) return <circle r={0} />
                         
                         const latestDate = new Date(Math.max(...allData.map(h => new Date(h.checked_at).getTime())))
                         const currentDate = new Date(payload.rawDate)

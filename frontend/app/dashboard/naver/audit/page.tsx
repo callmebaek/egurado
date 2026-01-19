@@ -39,6 +39,7 @@ interface PlaceDetails {
   
   // 이미지
   image_url?: string
+  image_count?: number
   menu_images?: string[]
   facility_images?: string[]
   
@@ -82,6 +83,16 @@ interface PlaceDetails {
   bookmark_count?: number
   is_claimed?: boolean
   is_ad?: boolean
+  announcements?: any[]
+  promotions?: {
+    total: number
+    coupons?: any[]
+  }
+  payment_methods?: string[]
+  conveniences?: string[]
+  micro_reviews?: string[]
+  menus?: any[]
+  [key: string]: any  // 추가 속성 허용
 }
 
 interface DiagnosisEvaluation {
@@ -598,10 +609,10 @@ export default function AuditPage() {
                     <td className="p-4 font-semibold bg-orange-50 text-orange-900 border-r">메뉴</td>
                     <td className="p-4 text-gray-700">등록된 메뉴</td>
                     <td className="p-4">
-                      {placeDetails.menus && placeDetails.menus.length > 0 ? (
+                      {placeDetails.menu_list && placeDetails.menu_list.length > 0 ? (
                         <div className="text-sm space-y-2 max-h-96 overflow-y-auto border border-gray-200 rounded p-3 bg-gray-50">
-                          <div className="font-bold mb-2 sticky top-0 bg-gray-50 text-gray-900">총 {placeDetails.menus.length}개</div>
-                          {placeDetails.menus.map((menu: any, idx: number) => (
+                          <div className="font-bold mb-2 sticky top-0 bg-gray-50 text-gray-900">총 {placeDetails.menu_list.length}개</div>
+                          {placeDetails.menu_list.map((menu: any, idx: number) => (
                             <div key={idx} className="border-l-3 border-orange-400 pl-3 py-1">
                               <div className="font-semibold text-gray-900">{menu.name}</div>
                               {menu.price && <div className="text-xs text-gray-600">{Number(menu.price).toLocaleString()}원</div>}
@@ -625,9 +636,9 @@ export default function AuditPage() {
                     <td className="p-4 font-semibold bg-pink-50 text-pink-900 border-r">편의시설</td>
                     <td className="p-4 text-gray-700">편의시설 목록</td>
                     <td className="p-4">
-                      {placeDetails.conveniences && placeDetails.conveniences.length > 0 ? (
+                      {(placeDetails as any).conveniences && (placeDetails as any).conveniences.length > 0 ? (
                         <div className="flex flex-wrap gap-2">
-                          {placeDetails.conveniences.map((item: string, idx: number) => (
+                          {(placeDetails as any).conveniences.map((item: string, idx: number) => (
                             <span key={idx} className="px-3 py-1 bg-pink-100 text-pink-800 rounded-full text-xs font-medium">
                               {item}
                             </span>
@@ -643,9 +654,9 @@ export default function AuditPage() {
                     <td className="p-4 font-semibold bg-purple-50 text-purple-900 border-r">결제 수단</td>
                     <td className="p-4 text-gray-700">지원 결제 방식</td>
                     <td className="p-4">
-                      {placeDetails.payment_methods && placeDetails.payment_methods.length > 0 ? (
+                      {(placeDetails as any).payment_methods && (placeDetails as any).payment_methods.length > 0 ? (
                         <div className="flex flex-wrap gap-2">
-                          {placeDetails.payment_methods.map((method: string, idx: number) => (
+                          {(placeDetails as any).payment_methods.map((method: string, idx: number) => (
                             <span key={idx} className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-xs font-medium">
                               {method}
                             </span>
@@ -661,9 +672,9 @@ export default function AuditPage() {
                     <td className="p-4 font-semibold bg-teal-50 text-teal-900 border-r">마이크로 리뷰</td>
                     <td className="p-4 text-gray-700">대표 한줄평</td>
                     <td className="p-4">
-                      {placeDetails.micro_reviews && placeDetails.micro_reviews.length > 0 ? (
+                      {(placeDetails as any).micro_reviews && (placeDetails as any).micro_reviews.length > 0 ? (
                         <div className="text-sm italic text-teal-700 font-medium">
-                          "{placeDetails.micro_reviews[0]}"
+                          "{(placeDetails as any).micro_reviews[0]}"
                         </div>
                       ) : <span className="text-gray-400 text-sm">정보 없음</span>}
                     </td>
@@ -675,12 +686,12 @@ export default function AuditPage() {
                     <td className="p-4 font-semibold bg-red-50 text-red-900 border-r">프로모션/쿠폰</td>
                     <td className="p-4 text-gray-700">사용 가능한 쿠폰</td>
                     <td className="p-4">
-                      {placeDetails.promotions && placeDetails.promotions.total > 0 ? (
+                      {(placeDetails as any).promotions && (placeDetails as any).promotions.total > 0 ? (
                         <div className="text-sm">
                           <span className="font-bold text-red-600">
-                            {placeDetails.promotions.total}개
+                            {(placeDetails as any).promotions.total}개
                           </span>
-                          {placeDetails.promotions.coupons?.slice(0, 2).map((coupon: any, idx: number) => (
+                          {(placeDetails as any).promotions.coupons?.slice(0, 2).map((coupon: any, idx: number) => (
                             <div key={idx} className="text-xs text-gray-600 mt-1">
                               • {coupon.title}
                             </div>

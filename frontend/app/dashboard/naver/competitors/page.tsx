@@ -50,9 +50,13 @@ interface CompetitorStore {
 interface ComparisonGap {
   my_value: number | boolean
   competitor_avg?: number
+  competitor_avg_top5?: number
+  competitor_avg_top20?: number
   competitor_rate?: number
   gap?: number
   status: "good" | "bad"
+  status_top5?: "good" | "bad"
+  status_top20?: "good" | "bad"
 }
 
 interface ComparisonResult {
@@ -433,45 +437,53 @@ export default function CompetitorsPage() {
       D: competitors.filter(c => c.diagnosis_grade === "D").length,
     }
     
-    const gaps = {
+    const gaps: {
+      diagnosis_score: ComparisonGap
+      visitor_reviews_7d_avg: ComparisonGap
+      blog_reviews_7d_avg: ComparisonGap
+      announcements_7d: ComparisonGap
+      has_coupon: ComparisonGap
+      is_place_plus: ComparisonGap
+      supports_naverpay: ComparisonGap
+    } = {
       diagnosis_score: {
         my_value: myStore.diagnosis_score || 0,
         competitor_avg: avgScore,
         gap: (myStore.diagnosis_score || 0) - avgScore,
-        status: (myStore.diagnosis_score || 0) >= avgScore ? "good" : "bad",
+        status: ((myStore.diagnosis_score || 0) >= avgScore ? "good" : "bad") as "good" | "bad",
       },
       visitor_reviews_7d_avg: {
         my_value: myStore.visitor_reviews_7d_avg || 0,
         competitor_avg: avgVisitorReviews,
         gap: (myStore.visitor_reviews_7d_avg || 0) - avgVisitorReviews,
-        status: (myStore.visitor_reviews_7d_avg || 0) >= avgVisitorReviews ? "good" : "bad",
+        status: ((myStore.visitor_reviews_7d_avg || 0) >= avgVisitorReviews ? "good" : "bad") as "good" | "bad",
       },
       blog_reviews_7d_avg: {
         my_value: myStore.blog_reviews_7d_avg || 0,
         competitor_avg: avgBlogReviews,
         gap: (myStore.blog_reviews_7d_avg || 0) - avgBlogReviews,
-        status: (myStore.blog_reviews_7d_avg || 0) >= avgBlogReviews ? "good" : "bad",
+        status: ((myStore.blog_reviews_7d_avg || 0) >= avgBlogReviews ? "good" : "bad") as "good" | "bad",
       },
       announcements_7d: {
         my_value: myStore.announcements_7d || 0,
         competitor_avg: avgAnnouncements,
         gap: (myStore.announcements_7d || 0) - avgAnnouncements,
-        status: (myStore.announcements_7d || 0) >= avgAnnouncements ? "good" : "bad",
+        status: ((myStore.announcements_7d || 0) >= avgAnnouncements ? "good" : "bad") as "good" | "bad",
       },
       has_coupon: {
         my_value: myStore.has_coupon || false,
         competitor_rate: couponRate,
-        status: myStore.has_coupon ? "good" : "bad",
+        status: (myStore.has_coupon ? "good" : "bad") as "good" | "bad",
       },
       is_place_plus: {
         my_value: myStore.is_place_plus || false,
         competitor_rate: placePlusRate,
-        status: myStore.is_place_plus ? "good" : "bad",
+        status: (myStore.is_place_plus ? "good" : "bad") as "good" | "bad",
       },
       supports_naverpay: {
         my_value: myStore.supports_naverpay || false,
         competitor_rate: naverpayRate,
-        status: myStore.supports_naverpay ? "good" : "bad",
+        status: (myStore.supports_naverpay ? "good" : "bad") as "good" | "bad",
       },
     }
     
@@ -734,38 +746,38 @@ export default function CompetitorsPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <ComparisonMetric
                     label="플레이스 진단 점수"
-                    myValue={comparison.gaps.diagnosis_score.my_value}
+                    myValue={comparison.gaps.diagnosis_score.my_value as number}
                     avgValueTop5={comparison.gaps.diagnosis_score.competitor_avg_top5 || 0}
                     avgValueTop20={comparison.gaps.diagnosis_score.competitor_avg_top20 || 0}
-                    statusTop5={comparison.gaps.diagnosis_score.status_top5}
-                    statusTop20={comparison.gaps.diagnosis_score.status_top20}
+                    statusTop5={(comparison.gaps.diagnosis_score.status_top5 || "good") as "good" | "bad"}
+                    statusTop20={(comparison.gaps.diagnosis_score.status_top20 || "good") as "good" | "bad"}
                     unit="점"
                   />
                   <ComparisonMetric
                     label="일평균 방문자 리뷰 (지난 7일)"
-                    myValue={comparison.gaps.visitor_reviews_7d_avg.my_value}
+                    myValue={comparison.gaps.visitor_reviews_7d_avg.my_value as number}
                     avgValueTop5={comparison.gaps.visitor_reviews_7d_avg.competitor_avg_top5 || 0}
                     avgValueTop20={comparison.gaps.visitor_reviews_7d_avg.competitor_avg_top20 || 0}
-                    statusTop5={comparison.gaps.visitor_reviews_7d_avg.status_top5}
-                    statusTop20={comparison.gaps.visitor_reviews_7d_avg.status_top20}
+                    statusTop5={(comparison.gaps.visitor_reviews_7d_avg.status_top5 || "good") as "good" | "bad"}
+                    statusTop20={(comparison.gaps.visitor_reviews_7d_avg.status_top20 || "good") as "good" | "bad"}
                     unit="개"
                   />
                   <ComparisonMetric
                     label="일평균 블로그 리뷰 (지난 7일)"
-                    myValue={comparison.gaps.blog_reviews_7d_avg.my_value}
+                    myValue={comparison.gaps.blog_reviews_7d_avg.my_value as number}
                     avgValueTop5={comparison.gaps.blog_reviews_7d_avg.competitor_avg_top5 || 0}
                     avgValueTop20={comparison.gaps.blog_reviews_7d_avg.competitor_avg_top20 || 0}
-                    statusTop5={comparison.gaps.blog_reviews_7d_avg.status_top5}
-                    statusTop20={comparison.gaps.blog_reviews_7d_avg.status_top20}
+                    statusTop5={(comparison.gaps.blog_reviews_7d_avg.status_top5 || "good") as "good" | "bad"}
+                    statusTop20={(comparison.gaps.blog_reviews_7d_avg.status_top20 || "good") as "good" | "bad"}
                     unit="개"
                   />
                   <ComparisonMetric
                     label="7일간 공지 등록 수"
-                    myValue={comparison.gaps.announcements_7d.my_value}
+                    myValue={comparison.gaps.announcements_7d.my_value as number}
                     avgValueTop5={comparison.gaps.announcements_7d.competitor_avg_top5 || 0}
                     avgValueTop20={comparison.gaps.announcements_7d.competitor_avg_top20 || 0}
-                    statusTop5={comparison.gaps.announcements_7d.status_top5}
-                    statusTop20={comparison.gaps.announcements_7d.status_top20}
+                    statusTop5={(comparison.gaps.announcements_7d.status_top5 || "good") as "good" | "bad"}
+                    statusTop20={(comparison.gaps.announcements_7d.status_top20 || "good") as "good" | "bad"}
                     unit="개"
                   />
                 </div>

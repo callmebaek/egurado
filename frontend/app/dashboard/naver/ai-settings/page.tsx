@@ -181,7 +181,7 @@ export default function AISettingsPage() {
               <SelectContent>
                 {stores.map((store) => (
                   <SelectItem key={store.id} value={store.id}>
-                    {store.store_name || store.name}
+                    {store.store_name || (store as any).name || '매장'}
                   </SelectItem>
                 ))}
               </SelectContent>
