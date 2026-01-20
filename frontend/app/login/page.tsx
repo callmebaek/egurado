@@ -74,19 +74,16 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-white p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
-          <div className="flex justify-center mb-2">
+          <div className="flex justify-center mb-6">
             <Image
               src="/whiplace-logo.svg"
               alt="WhiPlace"
-              width={180}
-              height={60}
+              width={900}
+              height={300}
               priority
-              className="h-12 w-auto"
+              className="h-60 w-auto"
             />
           </div>
-          <CardDescription className="text-center">
-            네이버 플레이스 마케팅 플랫폼
-          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* 이메일 로그인 폼 */}
