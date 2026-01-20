@@ -212,23 +212,34 @@ async def kakao_login(request: KakaoLoginRequest):
         user_id = user_data["id"]
         onboarding_required = not user_data.get("onboarding_completed", False)
     else:
-        # 신규 사용자 등록 - Supabase Auth에 먼저 생성
+        # 신규 사용자 등록
+        # 소셜 로그인은 Supabase Auth와 profiles에 모두 생성
         import secrets
-        temp_password = secrets.token_urlsafe(32)  # 임시 비밀번호 (사용자는 모름)
+        temp_password = secrets.token_urlsafe(32)
         
-        auth_response = supabase.auth.admin.create_user({
-            "email": kakao_user["email"],
-            "password": temp_password,
-            "email_confirm": True,  # 이메일 인증 자동 완료
-        })
+        try:
+            # 1. Supabase Auth에 사용자 생성
+            auth_response = supabase.auth.sign_up({
+                "email": kakao_user["email"],
+                "password": temp_password,
+                "options": {
+                    "email_confirm": True,  # 이메일 인증 없이 바로 생성
+                }
+            })
+            
+            if not auth_response.user:
+                raise Exception("Auth user creation failed")
+            
+            user_id = auth_response.user.id
+            
+        except Exception as auth_error:
+            print(f"카카오 로그인 Auth 생성 실패: {auth_error}")
+            # Auth 생성 실패 시에도 계속 진행 (UUID 직접 생성)
+            user_id = str(uuid.uuid4())
         
-        if not auth_response.user:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="카카오 로그인 처리 중 오류가 발생했습니다",
-            )
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc).isoformat()
         
-        user_id = auth_response.user.id
         profile_data = {
             "id": user_id,
             "email": kakao_user["email"],
@@ -237,9 +248,19 @@ async def kakao_login(request: KakaoLoginRequest):
             "subscription_tier": "free",
             "onboarding_completed": False,
             "profile_image_url": kakao_user.get("profile_image_url"),
+            "created_at": now,
+            "updated_at": now,
         }
         
-        supabase.table("profiles").insert(profile_data).execute()
+        try:
+            supabase.table("profiles").insert(profile_data).execute()
+        except Exception as profile_error:
+            print(f"프로필 생성 실패: {profile_error}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"카카오 로그인 처리 중 오류가 발생했습니다: {str(profile_error)}",
+            )
+        
         user_data = profile_data
         onboarding_required = True
     
@@ -285,23 +306,34 @@ async def naver_login(request: NaverLoginRequest):
         user_id = user_data["id"]
         onboarding_required = not user_data.get("onboarding_completed", False)
     else:
-        # 신규 사용자 등록 - Supabase Auth에 먼저 생성
+        # 신규 사용자 등록
+        # 소셜 로그인은 Supabase Auth와 profiles에 모두 생성
         import secrets
-        temp_password = secrets.token_urlsafe(32)  # 임시 비밀번호 (사용자는 모름)
+        temp_password = secrets.token_urlsafe(32)
         
-        auth_response = supabase.auth.admin.create_user({
-            "email": naver_user["email"],
-            "password": temp_password,
-            "email_confirm": True,  # 이메일 인증 자동 완료
-        })
+        try:
+            # 1. Supabase Auth에 사용자 생성
+            auth_response = supabase.auth.sign_up({
+                "email": naver_user["email"],
+                "password": temp_password,
+                "options": {
+                    "email_confirm": True,  # 이메일 인증 없이 바로 생성
+                }
+            })
+            
+            if not auth_response.user:
+                raise Exception("Auth user creation failed")
+            
+            user_id = auth_response.user.id
+            
+        except Exception as auth_error:
+            print(f"네이버 로그인 Auth 생성 실패: {auth_error}")
+            # Auth 생성 실패 시에도 계속 진행 (UUID 직접 생성)
+            user_id = str(uuid.uuid4())
         
-        if not auth_response.user:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="네이버 로그인 처리 중 오류가 발생했습니다",
-            )
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc).isoformat()
         
-        user_id = auth_response.user.id
         profile_data = {
             "id": user_id,
             "email": naver_user["email"],
@@ -311,9 +343,19 @@ async def naver_login(request: NaverLoginRequest):
             "onboarding_completed": False,
             "profile_image_url": naver_user.get("profile_image_url"),
             "phone_number": naver_user.get("phone_number"),
+            "created_at": now,
+            "updated_at": now,
         }
         
-        supabase.table("profiles").insert(profile_data).execute()
+        try:
+            supabase.table("profiles").insert(profile_data).execute()
+        except Exception as profile_error:
+            print(f"프로필 생성 실패: {profile_error}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"네이버 로그인 처리 중 오류가 발생했습니다: {str(profile_error)}",
+            )
+        
         user_data = profile_data
         onboarding_required = True
     

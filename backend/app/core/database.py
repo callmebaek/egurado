@@ -13,7 +13,7 @@ _supabase_client: Client | None = None
 
 def get_supabase_client() -> Client:
     """
-    Supabase 클라이언트 싱글톤 인스턴스 반환
+    Supabase 클라이언트 싱글톤 인스턴스 반환 (Service Role Key 사용)
     
     Returns:
         Client: Supabase 클라이언트
@@ -22,11 +22,12 @@ def get_supabase_client() -> Client:
     
     if _supabase_client is None:
         supabase_url = os.getenv("SUPABASE_URL")
-        supabase_key = os.getenv("SUPABASE_KEY")
+        # Service Role Key를 우선 사용 (Admin API 호출 가능)
+        supabase_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_KEY")
         
         if not supabase_url or not supabase_key:
             raise ValueError(
-                "SUPABASE_URL and SUPABASE_KEY must be set in environment variables"
+                "SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set in environment variables"
             )
         
         _supabase_client = create_client(supabase_url, supabase_key)
