@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException, Depends, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Optional
 import uuid
+from datetime import datetime, timezone
 
 from ..models.schemas import (
     UserSignupRequest,
@@ -99,12 +100,51 @@ async def signup(request: UserSignupRequest):
                 detail="회원가입 처리 중 오류가 발생했습니다",
             )
         
+        user_id = auth_response.user.id
+        email_confirmed = auth_response.user.email_confirmed_at is not None
+        
+        print(f"[회원가입] 사용자 생성됨: {user_id}")
+        print(f"[회원가입] 이메일 확인 상태: {auth_response.user.email_confirmed_at}")
+        print(f"[회원가입] 이메일 인증 필요 여부: {not email_confirmed}")
+        
+        # 이메일이 이미 확인됨 (Supabase에서 이메일 인증이 비활성화된 경우)
+        if email_confirmed:
+            print(f"[회원가입] 이메일 인증이 비활성화되어 있음 - 바로 프로필 생성")
+            
+            # profiles 테이블에 사용자 정보 저장
+            profile_data = {
+                "id": user_id,
+                "email": request.email,
+                "display_name": request.display_name or request.email.split("@")[0],
+                "auth_provider": "email",
+                "subscription_tier": "free",
+                "onboarding_completed": False,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }
+            
+            supabase.table("profiles").insert(profile_data).execute()
+            
+            # JWT 토큰 생성
+            access_token = create_access_token({"user_id": user_id, "email": request.email})
+            
+            # 프로필 조회
+            profile = supabase.table("profiles").select("*").eq("id", user_id).execute()
+            
+            return AuthResponse(
+                access_token=access_token,
+                user=Profile(**profile.data[0]),
+                onboarding_required=True,
+            )
+        
         # 이메일 인증 대기 중 - JWT 토큰 발급하지 않음
-        return {
+        response_data = {
             "message": "회원가입이 완료되었습니다. 이메일을 확인해주세요.",
             "email": request.email,
             "requires_email_confirmation": True
         }
+        print(f"[회원가입] 응답 데이터: {response_data}")
+        return response_data
     
     except Exception as e:
         print(f"회원가입 오류: {e}")
@@ -453,6 +493,92 @@ async def get_me(current_user: dict = Depends(get_current_user)):
     현재 로그인한 사용자 정보 조회
     """
     return Profile(**current_user)
+
+
+@router.post("/forgot-password")
+async def forgot_password(email: str):
+    """
+    비밀번호 재설정 이메일 발송
+    """
+    supabase = get_supabase_client()
+    
+    try:
+        # 이메일 존재 확인
+        profile_check = supabase.table("profiles").select("id, auth_provider").eq("email", email).execute()
+        
+        if not profile_check.data or len(profile_check.data) == 0:
+            # 보안상 이메일이 없어도 성공 메시지 반환 (계정 존재 여부 노출 방지)
+            return {
+                "message": "비밀번호 재설정 링크를 이메일로 보냈습니다."
+            }
+        
+        user_data = profile_check.data[0]
+        
+        # 소셜 로그인 사용자인지 확인
+        if user_data.get("auth_provider") in ["kakao", "naver"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="소셜 로그인으로 가입한 계정은 비밀번호 재설정이 불가능합니다.",
+            )
+        
+        # Supabase Auth의 비밀번호 재설정 이메일 발송
+        result = supabase.auth.reset_password_email(
+            email,
+            {
+                "redirect_to": "https://whiplace.com/reset-password"
+            }
+        )
+        
+        print(f"[비밀번호 재설정] 이메일 발송: {email}")
+        
+        return {
+            "message": "비밀번호 재설정 링크를 이메일로 보냈습니다."
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"비밀번호 재설정 이메일 발송 오류: {e}")
+        # 보안상 에러 상세 내용 숨김
+        return {
+            "message": "비밀번호 재설정 링크를 이메일로 보냈습니다."
+        }
+
+
+@router.post("/reset-password")
+async def reset_password(access_token: str, new_password: str):
+    """
+    비밀번호 재설정 (이메일 링크에서 받은 토큰 사용)
+    """
+    supabase = get_supabase_client()
+    
+    try:
+        # Supabase Auth의 비밀번호 업데이트
+        result = supabase.auth.update_user(
+            access_token,
+            {"password": new_password}
+        )
+        
+        if not result.user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="비밀번호 재설정에 실패했습니다. 링크가 만료되었거나 유효하지 않습니다.",
+            )
+        
+        print(f"[비밀번호 재설정] 완료: {result.user.email}")
+        
+        return {
+            "message": "비밀번호가 성공적으로 변경되었습니다."
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"비밀번호 재설정 오류: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="비밀번호 재설정 처리 중 오류가 발생했습니다.",
+        )
 
 
 @router.post("/logout")
