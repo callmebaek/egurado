@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/components/ui/use-toast"
+import { useAuth } from "@/lib/auth-context"
 import { supabase } from "@/lib/supabase"
 import { api } from "@/lib/config"
 import { 
@@ -205,6 +206,7 @@ interface Review {
 
 export default function ReviewManagementPage() {
   const { toast } = useToast()
+  const { user } = useAuth()
   
   // 상태
   const [stores, setStores] = useState<Store[]>([])
@@ -298,7 +300,6 @@ export default function ReviewManagementPage() {
     console.log("🔍 loadStores 호출됨")
     setLoadingStores(true)
     try {
-      const { data: { user } } = await supabase.auth.getUser()
       console.log("👤 User:", user?.id)
       
       if (!user) {

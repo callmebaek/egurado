@@ -1,6 +1,7 @@
 "use client"
 
 import { useStores } from "@/lib/hooks/useStores"
+import { useAuth } from "@/lib/auth-context"
 import { EmptyStoreMessage } from "@/components/EmptyStoreMessage"
 import { Loader2, TrendingUp, TrendingDown, Search, Minus, MapPin, Star, X, LineChart as LineChartIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -63,6 +64,7 @@ interface SearchResult {
 export default function NaverRankPage() {
   const { hasStores, isLoading: storesLoading } = useStores()
   const { toast } = useToast()
+  const { user } = useAuth()
 
   const [stores, setStores] = useState<Store[]>([])
   const [selectedStoreId, setSelectedStoreId] = useState<string>("")
@@ -85,7 +87,6 @@ export default function NaverRankPage() {
   useEffect(() => {
     const loadUserTier = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser()
         if (!user) {
           console.log("⚠️ 사용자 인증 정보가 없습니다")
           setKeywordLimit(1)
@@ -110,13 +111,12 @@ export default function NaverRankPage() {
           console.log("⚠️ Users 테이블에 레코드가 없습니다. 자동 생성 시도...")
           
           try {
-            const { data: authUser } = await supabase.auth.getUser()
-            if (authUser && authUser.user) {
+            if (user) {
               const { data: insertedUser, error: insertError } = await supabase
                 .from("users")
                 .insert({
-                  id: authUser.user.id,
-                  email: authUser.user.email,
+                  id: user.id,
+                  email: user.email,
                   subscription_tier: "pro", // 기본값: pro
                   subscription_status: "active"
                 })
@@ -189,8 +189,10 @@ export default function NaverRankPage() {
       }
     }
 
-    loadUserTier()
-  }, [supabase.auth])
+    if (user) {
+      loadUserTier()
+    }
+  }, [user])
 
   // 매장 목록 로드 ⭐
   useEffect(() => {
@@ -201,7 +203,6 @@ export default function NaverRankPage() {
       }
       
       try {
-        const { data: { user } } = await supabase.auth.getUser()
         if (!user) {
           console.log("사용자 인증 정보가 없습니다")
           return
@@ -239,10 +240,10 @@ export default function NaverRankPage() {
       }
     }
 
-    if (hasStores && tierLoaded) {
+    if (hasStores && tierLoaded && user) {
       loadStores()
     }
-  }, [hasStores, tierLoaded, supabase.auth, toast])
+  }, [hasStores, tierLoaded, user, toast])
 
   // 선택된 매장의 키워드 목록 로드
   useEffect(() => {
@@ -254,7 +255,6 @@ export default function NaverRankPage() {
 
       setLoadingKeywords(true)
       try {
-        const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
         
         // 모든 매장의 키워드 개수 계산 (전체 quota) ⭐
@@ -372,7 +372,6 @@ export default function NaverRankPage() {
         })
 
         // 키워드 목록 새로고침 및 전체 카운트 업데이트 ⭐
-        const { data: { user } } = await supabase.auth.getUser()
         if (user) {
           // 전체 키워드 수 재계산
           const allStoresResponse = await fetch(api.stores.list(user.id))
@@ -495,7 +494,6 @@ export default function NaverRankPage() {
       }
 
       // 키워드 목록 새로고침 및 전체 카운트 업데이트 ⭐
-      const { data: { user } } = await supabase.auth.getUser()
       if (user) {
         // 전체 키워드 수 재계산
         const allStoresResponse = await fetch(api.stores.list(user.id))

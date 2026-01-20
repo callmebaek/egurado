@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/components/ui/use-toast"
+import { useAuth } from "@/lib/auth-context"
 import { supabase } from "@/lib/supabase"
 import { api } from "@/lib/config"
 
@@ -89,6 +90,7 @@ interface ComparisonResult {
 
 export default function CompetitorsPage() {
   const { toast } = useToast()
+  const { user } = useAuth()
   
   // 단계 관리
   const [step, setStep] = useState<1 | 2 | 3>(1)
@@ -121,7 +123,6 @@ export default function CompetitorsPage() {
   const fetchStores = async () => {
     setLoadingStores(true)
     try {
-      const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
         toast({
           title: "로그인 필요",
@@ -131,29 +132,20 @@ export default function CompetitorsPage() {
         return
       }
       
-      const { data, error } = await supabase
-        .from("stores")
-        .select("*")
-        .eq("user_id", user.id)
-        .eq("platform", "naver")
-        .order("created_at", { ascending: false })
+      const response = await fetch(api.stores.list(user.id))
       
-      if (error) throw error
-      
-      setStores(data || [])
-      
-      if (data && data.length === 0) {
-        toast({
-          title: "등록된 매장 없음",
-          description: "먼저 네이버 플레이스 매장을 등록해주세요.",
-          variant: "destructive",
-        })
+      if (!response.ok) {
+        throw new Error("Failed to fetch stores")
       }
-    } catch (error: any) {
-      console.error("매장 조회 실패:", error)
+      
+      const data = await response.json()
+      const naverStores = (data.stores || []).filter((s: RegisteredStore) => s.platform === "naver")
+      setStores(naverStores)
+    } catch (error) {
+      console.error("매장 로드 실패:", error)
       toast({
         title: "오류",
-        description: "매장 목록을 불러오는데 실패했습니다.",
+        description: "매장 목록을 불러오는 중 오류가 발생했습니다.",
         variant: "destructive",
       })
     } finally {
@@ -168,14 +160,14 @@ export default function CompetitorsPage() {
     // 해당 매장의 등록된 키워드 가져오기
     setLoadingKeywords(true)
     try {
-      const { data, error } = await supabase
-        .from("keywords")
-        .select("*")
-        .eq("store_id", store.id)
+      const response = await fetch(api.keywords.list(store.id))
       
-      if (error) throw error
+      if (!response.ok) {
+        throw new Error("Failed to fetch keywords")
+      }
       
-      setRegisteredKeywords(data || [])
+      const data = await response.json()
+      setRegisteredKeywords(data.keywords || [])
     } catch (error) {
       console.error("키워드 조회 실패:", error)
     } finally {
