@@ -212,9 +212,23 @@ async def kakao_login(request: KakaoLoginRequest):
         user_id = user_data["id"]
         onboarding_required = not user_data.get("onboarding_completed", False)
     else:
-        # 신규 사용자 등록
-        # Supabase Auth에는 등록하지 않고, profiles 테이블에만 등록
-        user_id = str(uuid.uuid4())
+        # 신규 사용자 등록 - Supabase Auth에 먼저 생성
+        import secrets
+        temp_password = secrets.token_urlsafe(32)  # 임시 비밀번호 (사용자는 모름)
+        
+        auth_response = supabase.auth.admin.create_user({
+            "email": kakao_user["email"],
+            "password": temp_password,
+            "email_confirm": True,  # 이메일 인증 자동 완료
+        })
+        
+        if not auth_response.user:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="카카오 로그인 처리 중 오류가 발생했습니다",
+            )
+        
+        user_id = auth_response.user.id
         profile_data = {
             "id": user_id,
             "email": kakao_user["email"],
@@ -271,8 +285,23 @@ async def naver_login(request: NaverLoginRequest):
         user_id = user_data["id"]
         onboarding_required = not user_data.get("onboarding_completed", False)
     else:
-        # 신규 사용자 등록
-        user_id = str(uuid.uuid4())
+        # 신규 사용자 등록 - Supabase Auth에 먼저 생성
+        import secrets
+        temp_password = secrets.token_urlsafe(32)  # 임시 비밀번호 (사용자는 모름)
+        
+        auth_response = supabase.auth.admin.create_user({
+            "email": naver_user["email"],
+            "password": temp_password,
+            "email_confirm": True,  # 이메일 인증 자동 완료
+        })
+        
+        if not auth_response.user:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="네이버 로그인 처리 중 오류가 발생했습니다",
+            )
+        
+        user_id = auth_response.user.id
         profile_data = {
             "id": user_id,
             "email": naver_user["email"],
