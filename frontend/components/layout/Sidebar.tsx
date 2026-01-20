@@ -58,6 +58,11 @@ const navigation: NavItem[] = [
         icon: <TrendingUp className="w-4 h-4" />,
       },
       {
+        title: '주요지표 추적',
+        href: '/dashboard/naver/metrics-tracker',
+        icon: <BarChart3 className="w-4 h-4" />,
+      },
+      {
         title: '대표키워드 분석',
         href: '/dashboard/naver/main-keywords',
         icon: <Star className="w-4 h-4" />,

@@ -89,6 +89,7 @@ from app.routers.stores import router as stores_router
 from app.routers.ai_reply import router as ai_reply_router
 from app.routers.naver_session import router as naver_session_router
 from app.routers.ai_settings import router as ai_settings_router
+from app.routers.metric_tracker import router as metric_tracker_router
 
 # 라우터 등록
 app.include_router(auth_router, prefix="/api/v1", tags=["Auth"])
@@ -102,4 +103,5 @@ app.include_router(target_keywords_router, prefix="/api/v1/target-keywords", tag
 app.include_router(ai_reply_router, prefix="/api/v1/ai-reply", tags=["AI Reply"])
 app.include_router(naver_session_router, prefix="/api/v1/naver-session", tags=["Naver Session"])
 app.include_router(ai_settings_router, tags=["AI Settings"])
+app.include_router(metric_tracker_router, prefix="/api/v1/metrics", tags=["Metric Tracker"])
 

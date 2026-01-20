@@ -10,6 +10,7 @@ import logging
 from app.core.database import get_supabase_client
 from app.services.naver_crawler import crawl_naver_reviews
 from app.services.naver_rank_service import rank_service
+from app.services.metric_tracker_service import metric_tracker_service
 
 logger = logging.getLogger(__name__)
 
@@ -175,6 +176,60 @@ async def check_all_keywords_rank():
         logger.error(f"[ERROR] Rank check scheduler error: {str(e)}", exc_info=True)
 
 
+async def collect_all_metrics():
+    """
+    주요지표 추적 - 스케줄된 시간에 자동 수집
+    매 시간마다 실행하여 수집이 필요한 추적 설정들을 처리
+    """
+    try:
+        logger.info(f"[{datetime.now()}] 📊 주요지표 자동 수집 시작")
+        
+        # 수집이 필요한 활성 추적 설정 조회
+        trackers = metric_tracker_service.get_all_active_trackers()
+        
+        if not trackers:
+            logger.info("[INFO] No trackers scheduled for collection at this time")
+            return
+        
+        logger.info(f"[INFO] {len(trackers)} trackers scheduled for metric collection")
+        
+        success_count = 0
+        error_count = 0
+        
+        for tracker in trackers:
+            try:
+                tracker_id = tracker["id"]
+                keyword_info = tracker.get("keywords", {})
+                store_info = tracker.get("stores", {})
+                
+                keyword_text = keyword_info.get("keyword", "Unknown") if keyword_info else "Unknown"
+                store_name = store_info.get("store_name", "Unknown") if store_info else "Unknown"
+                
+                logger.info(f"📊 '{keyword_text}' (매장: {store_name}) 지표 수집 중...")
+                
+                # 지표 수집
+                await metric_tracker_service.collect_metrics(tracker_id)
+                
+                logger.info(f"[OK] '{keyword_text}' (매장: {store_name}) 지표 수집 완료")
+                success_count += 1
+                    
+            except Exception as e:
+                error_count += 1
+                logger.error(
+                    f"[ERROR] Tracker {tracker.get('id', 'Unknown')} metric collection failed: {str(e)}",
+                    exc_info=True
+                )
+                continue
+        
+        logger.info(
+            f"[{datetime.now()}] [COLLECT] 주요지표 수집 완료 - "
+            f"성공: {success_count}, 실패: {error_count}"
+        )
+        
+    except Exception as e:
+        logger.error(f"[ERROR] Metric collection scheduler error: {str(e)}", exc_info=True)
+
+
 def start_scheduler():
     """스케줄러 시작"""
     # 매일 오전 6시: 리뷰 수집
@@ -195,10 +250,21 @@ def start_scheduler():
         replace_existing=True
     )
     
+    # 매 시간마다: 주요지표 추적 자동 수집
+    # 각 추적 설정의 next_collection_at을 확인하여 수집 시간이 된 항목만 처리
+    scheduler.add_job(
+        collect_all_metrics,
+        CronTrigger(minute=0),  # 매 시간 정각
+        id="collect_metrics",
+        name="주요지표 추적 자동 수집",
+        replace_existing=True
+    )
+    
     scheduler.start()
     logger.info("[OK] Scheduler started")
     logger.info("  - Rank check: 3 AM daily (KST)")
     logger.info("  - Review sync: 6 AM daily (KST)")
+    logger.info("  - Metric tracking: Every hour (KST)")
 
 
 def stop_scheduler():

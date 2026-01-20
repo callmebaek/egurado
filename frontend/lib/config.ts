@@ -100,6 +100,22 @@ export const api = {
     },
     placeInfo: (storeId: string) => api.url(`/api/v1/reviews/place-info/${storeId}`),
   },
+  
+  /**
+   * 주요지표 추적 API
+   */
+  metrics: {
+    trackers: () => api.url('/api/v1/metrics/trackers'),
+    tracker: (trackerId: string) => api.url(`/api/v1/metrics/trackers/${trackerId}`),
+    metrics: (trackerId: string, startDate?: string, endDate?: string) => {
+      const params = new URLSearchParams()
+      if (startDate) params.append('start_date', startDate)
+      if (endDate) params.append('end_date', endDate)
+      const queryString = params.toString()
+      return api.url(`/api/v1/metrics/trackers/${trackerId}/metrics${queryString ? `?${queryString}` : ''}`)
+    },
+    collect: (trackerId: string) => api.url(`/api/v1/metrics/trackers/${trackerId}/collect`),
+  },
 } as const
 
 /**

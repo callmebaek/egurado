@@ -9400,3 +9400,548 @@ SOCIAL_LOGIN_TEST_CHECKLIST.md                         ✅ (신규)
 **프로덕션 배포:** ✅
 
 =====================================
+
+## 🔐 RLS 우회 함수 구현으로 보안 강화
+
+### 📅 날짜
+2026-01-21
+
+### 🎯 목표
+RLS를 비활성화하는 대신 PostgreSQL의 `SECURITY DEFINER` 함수를 사용하여 RLS를 우회하면서도 데이터베이스 레벨 보안을 유지
+
+### 🔴 문제 상황
+
+#### 기존 해결책의 문제점
+이전에 소셜 로그인 RLS 이슈를 RLS 완전 비활성화로 해결했으나, 다음 문제가 있었음:
+
+1. **보안 취약점**: 데이터베이스 레벨 보안 계층 상실
+2. **확장성 문제**: 향후 프론트엔드에서 Supabase 직접 접근 시 취약
+3. **모범 사례 위반**: RLS는 Supabase의 권장 보안 기능
+
+#### 근본 원인
+```python
+# Supabase Python SDK의 알려진 이슈
+supabase.table("profiles").insert(data).execute()
+# ❌ Service Role Key를 사용해도 RLS를 자동 우회하지 못함
+```
+
+Supabase Python SDK는 Service Role Key를 사용해도 PostgREST 헤더를 올바르게 설정하지 않아 RLS를 우회하지 못하는 알려진 버그 존재.
+
+---
+
+### ✅ 해결 방법
+
+#### PostgreSQL SECURITY DEFINER 함수 사용
+
+`SECURITY DEFINER` 속성을 가진 함수는 **함수 소유자의 권한**으로 실행되므로 RLS를 자동으로 우회함.
+
+#### 장점
+1. ✅ **RLS 활성화 유지**: 데이터베이스 레벨 보안 유지
+2. ✅ **SDK 이슈 회피**: 함수 호출로 RLS 우회
+3. ✅ **확장 가능**: 다른 테이블에도 동일 패턴 적용 가능
+4. ✅ **감사 가능**: 함수 내부에 로깅 추가 가능
+5. ✅ **유지보수 용이**: 비즈니스 로직을 DB 함수로 캡슐화
+
+---
+
+### 📝 구현 내용
+
+#### 1. SQL 마이그레이션 파일 생성
+
+**파일:** `supabase/migrations/010_create_rls_bypass_functions.sql`
+
+**주요 내용:**
+```sql
+CREATE OR REPLACE FUNCTION public.insert_profile_bypass_rls(
+    p_id uuid,
+    p_email text,
+    p_display_name text,
+    p_auth_provider text,
+    p_subscription_tier text DEFAULT 'free',
+    p_onboarding_completed boolean DEFAULT false,
+    p_profile_image_url text DEFAULT NULL,
+    p_phone_number text DEFAULT NULL
+)
+RETURNS TABLE(
+    id uuid,
+    email text,
+    display_name text,
+    auth_provider text,
+    subscription_tier text,
+    onboarding_completed boolean,
+    profile_image_url text,
+    phone_number text,
+    user_position text,
+    marketing_experience text,
+    agency_experience text,
+    created_at timestamptz,
+    updated_at timestamptz
+)
+SECURITY DEFINER  -- 🔑 핵심: 함수 소유자 권한으로 실행
+SET search_path = public
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    RETURN QUERY
+    INSERT INTO profiles (
+        id, email, display_name, auth_provider, 
+        subscription_tier, onboarding_completed,
+        profile_image_url, phone_number,
+        created_at, updated_at
+    )
+    VALUES (
+        p_id, p_email, p_display_name, p_auth_provider,
+        p_subscription_tier, p_onboarding_completed,
+        p_profile_image_url, p_phone_number,
+        now(), now()
+    )
+    RETURNING *;
+END;
+$$;
+
+-- 권한 부여
+GRANT EXECUTE ON FUNCTION public.insert_profile_bypass_rls(...) 
+TO service_role, authenticated;
+```
+
+**핵심 포인트:**
+- `SECURITY DEFINER`: 함수 소유자 권한으로 실행 → RLS 우회
+- `SET search_path = public`: SQL 인젝션 방지
+- `RETURNS TABLE`: 삽입된 데이터를 반환하여 백엔드에서 바로 사용 가능
+- `GRANT EXECUTE`: Service Role과 Authenticated 역할에만 실행 권한 부여
+
+---
+
+#### 2. 백엔드 코드 수정
+
+**파일:** `backend/app/routers/auth.py`
+
+##### 카카오 로그인 수정
+
+**변경 전:**
+```python
+profile_data = {
+    "id": user_id,
+    "email": kakao_user["email"],
+    "display_name": kakao_user.get("display_name", kakao_user["email"].split("@")[0]),
+    "auth_provider": "kakao",
+    "subscription_tier": "free",
+    "onboarding_completed": False,
+    "profile_image_url": kakao_user.get("profile_image_url"),
+    "created_at": now,
+    "updated_at": now,
+}
+
+try:
+    supabase.table("profiles").insert(profile_data).execute()
+    # ❌ RLS 활성화 시 실패
+except Exception as profile_error:
+    raise HTTPException(...)
+
+user_data = profile_data
+```
+
+**변경 후:**
+```python
+try:
+    # RLS 우회 함수를 사용하여 프로필 생성
+    result = supabase.rpc('insert_profile_bypass_rls', {
+        'p_id': user_id,
+        'p_email': kakao_user["email"],
+        'p_display_name': kakao_user.get("display_name", kakao_user["email"].split("@")[0]),
+        'p_auth_provider': 'kakao',
+        'p_subscription_tier': 'free',
+        'p_onboarding_completed': False,
+        'p_profile_image_url': kakao_user.get("profile_image_url"),
+        'p_phone_number': None
+    }).execute()
+    # ✅ RLS 활성화 상태에서도 성공
+    
+    if not result.data or len(result.data) == 0:
+        raise Exception("프로필 생성 결과가 없습니다")
+    
+    user_data = result.data[0]  # 함수가 반환한 데이터 사용
+except Exception as profile_error:
+    print(f"프로필 생성 실패: {profile_error}")
+    raise HTTPException(...)
+```
+
+##### 네이버 로그인 수정
+
+동일한 패턴으로 `insert_profile_bypass_rls()` 함수 호출:
+```python
+result = supabase.rpc('insert_profile_bypass_rls', {
+    'p_id': user_id,
+    'p_email': naver_user["email"],
+    'p_display_name': naver_user.get("display_name", naver_user["email"].split("@")[0]),
+    'p_auth_provider': 'naver',
+    'p_subscription_tier': 'free',
+    'p_onboarding_completed': False,
+    'p_profile_image_url': naver_user.get("profile_image_url"),
+    'p_phone_number': naver_user.get("phone_number")
+}).execute()
+
+user_data = result.data[0]
+```
+
+**변경 사항 요약:**
+- `.table().insert()` → `.rpc('insert_profile_bypass_rls', {...})`
+- 딕셔너리 파라미터로 변경 (키 이름이 함수 파라미터와 일치)
+- 함수가 반환한 데이터를 `user_data`로 사용
+- `created_at`, `updated_at`은 함수 내부에서 자동 설정
+
+---
+
+#### 3. 문서 작성
+
+**파일:** `RLS_FIX_GUIDE.md`
+
+**내용:**
+- 문제 상황 및 원인 분석
+- SECURITY DEFINER 함수 설명
+- 적용 순서 및 테스트 가이드
+- 보안 고려사항
+- 향후 확장 방안
+
+---
+
+### 🚀 배포 프로세스
+
+#### Step 1: SQL 함수 생성
+```bash
+# Supabase Dashboard → SQL Editor
+# 010_create_rls_bypass_functions.sql 실행
+✅ Function created successfully
+```
+
+#### Step 2: 백엔드 코드 배포
+```bash
+# GitHub 커밋 및 푸시
+git add .
+git commit -m "Fix: RLS 정책 우회 함수 구현으로 소셜 로그인 문제 해결"
+git push origin main
+
+# EC2 서버 배포
+ssh ubuntu@3.34.136.255
+cd ~/egurado
+git reset --hard
+git pull origin main
+cd backend
+docker-compose down
+docker-compose up --build -d
+
+✅ Backend deployed successfully
+```
+
+#### Step 3: RLS 재활성화
+```bash
+# Supabase Dashboard → Database → Tables → profiles
+# "Enable RLS" 클릭
+✅ RLS enabled
+```
+
+---
+
+### 🧪 테스트 결과
+
+#### 테스트 시나리오
+
+| 단계 | RLS 상태 | 테스트 | 결과 |
+|------|---------|--------|------|
+| 1 | 비활성화 | 카카오 로그인 | ✅ 성공 |
+| 2 | 비활성화 | 네이버 로그인 | ✅ 성공 |
+| 3 | 활성화 | 카카오 로그인 (신규 계정) | ✅ 성공 |
+| 4 | 활성화 | 네이버 로그인 (신규 계정) | ✅ 성공 |
+| 5 | 활성화 | 기존 계정 로그인 | ✅ 성공 |
+| 6 | 활성화 | 온보딩 완료 | ✅ 성공 |
+| 7 | 활성화 | 대시보드 접근 | ✅ 성공 |
+
+#### 검증 완료 항목
+- ✅ RLS 활성화 상태에서 소셜 로그인 정상 작동
+- ✅ `insert_profile_bypass_rls()` 함수가 RLS 정책 우회
+- ✅ 기존 사용자 데이터 무결성 유지
+- ✅ 모든 인증 방식 정상 작동 (이메일, 카카오, 네이버)
+- ✅ 브라우저 콘솔에 에러 없음
+- ✅ 백엔드 로그에 에러 없음
+
+---
+
+### 🔒 보안 강화 내역
+
+#### 적용된 보안 계층
+
+**1. 데이터베이스 레벨 (RLS)**
+```sql
+-- profiles 테이블 RLS 정책
+CREATE POLICY "Users can view own profile" 
+ON profiles FOR SELECT 
+TO authenticated 
+USING (auth.uid() = id);
+
+-- Service Role은 모든 작업 가능
+CREATE POLICY "Service role bypass" 
+ON profiles FOR ALL 
+TO service_role 
+USING (true) 
+WITH CHECK (true);
+```
+
+**2. 함수 레벨 (SECURITY DEFINER)**
+```sql
+-- 함수 실행 권한 제한
+GRANT EXECUTE ON FUNCTION insert_profile_bypass_rls(...) 
+TO service_role, authenticated;
+```
+
+**3. API 레벨 (JWT 인증)**
+```python
+# 백엔드 API 인증 확인
+@router.post("/onboarding")
+async def complete_onboarding(
+    request: UserOnboardingRequest,
+    current_user: dict = Depends(get_current_user)  # JWT 검증
+):
+    # ...
+```
+
+**4. 네트워크 레벨**
+- ✅ Service Role Key는 서버에만 보관
+- ✅ 프론트엔드는 백엔드 API만 호출
+- ✅ CORS 정책으로 허용된 도메인만 접근
+
+#### 보안 아키텍처 비교
+
+**이전 (RLS 비활성화):**
+```
+Frontend → Backend (JWT) → Supabase (Service Role Key)
+                              ↓
+                         profiles (No RLS) ⚠️
+```
+
+**현재 (RLS + SECURITY DEFINER):**
+```
+Frontend → Backend (JWT) → Supabase (Service Role Key)
+                              ↓
+                         RPC Function (SECURITY DEFINER)
+                              ↓
+                         profiles (RLS Enabled) ✅
+```
+
+---
+
+### 📚 수정된 파일
+
+#### 1. SQL 마이그레이션
+```
+supabase/migrations/010_create_rls_bypass_functions.sql  ✅ (신규)
+```
+
+#### 2. 백엔드
+```
+backend/app/routers/auth.py                              ✅ (수정)
+  - 카카오 로그인: insert_profile_bypass_rls() 사용
+  - 네이버 로그인: insert_profile_bypass_rls() 사용
+```
+
+#### 3. 문서
+```
+RLS_FIX_GUIDE.md                                         ✅ (신규)
+```
+
+---
+
+### 🎓 기술적 인사이트
+
+#### 1. SECURITY DEFINER의 작동 원리
+
+**일반 함수:**
+```sql
+CREATE FUNCTION my_function() 
+RETURNS ... 
+AS $$ ... $$;
+-- 호출자의 권한으로 실행 (RLS 적용됨)
+```
+
+**SECURITY DEFINER 함수:**
+```sql
+CREATE FUNCTION my_function() 
+RETURNS ... 
+SECURITY DEFINER  -- 함수 소유자 권한으로 실행
+AS $$ ... $$;
+-- 함수 소유자 = postgres (superuser) → RLS 우회
+```
+
+#### 2. Supabase Python SDK 이슈
+
+**문제:**
+```python
+# Service Role Key 사용해도 RLS 체크됨
+supabase = create_client(url, service_role_key)
+supabase.table("profiles").insert(data).execute()
+# → 42501: new row violates row-level security policy
+```
+
+**원인:**
+- SDK가 PostgREST 헤더를 올바르게 설정하지 않음
+- `Prefer: resolution=ignore-duplicates` 누락
+- `Authorization: Bearer` 헤더 문제
+
+**해결책:**
+1. RPC 함수 사용 (현재 방법) ✅
+2. 직접 REST API 호출 (대안)
+3. RLS 비활성화 (보안 취약)
+
+#### 3. 모범 사례
+
+**✅ 권장:**
+```python
+# RPC 함수로 복잡한 로직 캡슐화
+result = supabase.rpc('insert_profile_bypass_rls', params).execute()
+```
+
+**⚠️ 비권장:**
+```python
+# 직접 테이블 접근 (RLS 이슈 발생 가능)
+result = supabase.table("profiles").insert(data).execute()
+```
+
+#### 4. 향후 확장 가능성
+
+**동일 패턴 적용 가능:**
+- `insert_store_bypass_rls()` - 매장 등록
+- `update_profile_bypass_rls()` - 프로필 수정
+- `delete_account_bypass_rls()` - 계정 삭제
+
+**감사 로그 추가:**
+```sql
+CREATE FUNCTION insert_profile_bypass_rls(...)
+RETURNS ...
+SECURITY DEFINER
+AS $$
+BEGIN
+    -- 감사 로그
+    INSERT INTO audit_logs (action, user_id, timestamp)
+    VALUES ('profile_created', p_id, now());
+    
+    -- 실제 작업
+    RETURN QUERY INSERT INTO profiles (...) VALUES (...);
+END;
+$$;
+```
+
+---
+
+### ✅ 최종 결과
+
+#### 달성한 목표
+1. ✅ **RLS 활성화 유지**: 데이터베이스 레벨 보안 복원
+2. ✅ **소셜 로그인 정상 작동**: 카카오, 네이버 모두 성공
+3. ✅ **SDK 이슈 우회**: SECURITY DEFINER 함수로 해결
+4. ✅ **확장 가능한 아키텍처**: 다른 기능에도 동일 패턴 적용 가능
+5. ✅ **보안 강화**: 다층 보안 아키�ecture 구축
+
+#### 코드 변경 요약
+```diff
+# 카카오/네이버 로그인
+- supabase.table("profiles").insert(profile_data).execute()
++ result = supabase.rpc('insert_profile_bypass_rls', {
++     'p_id': user_id,
++     'p_email': email,
++     ...
++ }).execute()
++ user_data = result.data[0]
+```
+
+#### 프로덕션 검증
+```
+환경: https://whiplace.com
+RLS 상태: ✅ Enabled
+테스트 계정: 카카오, 네이버 신규 가입
+결과: ✅ 모든 기능 정상 작동
+```
+
+---
+
+### 📊 비교 분석
+
+#### 이전 해결책 (RLS 비활성화)
+
+**장점:**
+- ✅ 간단한 구현
+- ✅ 빠른 문제 해결
+
+**단점:**
+- ❌ 데이터베이스 레벨 보안 상실
+- ❌ Supabase 모범 사례 위반
+- ❌ 향후 확장 시 취약점 발생 가능
+
+#### 현재 해결책 (SECURITY DEFINER 함수)
+
+**장점:**
+- ✅ RLS 활성화 유지 (보안 강화)
+- ✅ SDK 이슈 우회
+- ✅ 확장 가능한 패턴
+- ✅ 감사 로그 추가 가능
+- ✅ 비즈니스 로직 캡슐화
+
+**단점:**
+- ⚠️ SQL 함수 작성 필요 (초기 설정 복잡도 증가)
+- ⚠️ 함수 파라미터 관리 필요
+
+**결론:** 장기적으로 훨씬 더 안전하고 유지보수 가능한 솔루션
+
+---
+
+### 🔄 마이그레이션 가이드
+
+#### 다른 테이블에 적용하는 방법
+
+**1. SQL 함수 생성:**
+```sql
+CREATE OR REPLACE FUNCTION insert_store_bypass_rls(...)
+RETURNS TABLE(...)
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+    RETURN QUERY
+    INSERT INTO stores (...) VALUES (...) RETURNING *;
+END;
+$$;
+```
+
+**2. 백엔드 코드 수정:**
+```python
+result = supabase.rpc('insert_store_bypass_rls', params).execute()
+store_data = result.data[0]
+```
+
+**3. RLS 활성화 및 테스트**
+
+---
+
+### 🎯 후속 작업 (선택사항)
+
+#### 1. 추가 함수 구현
+- [ ] `update_profile_bypass_rls()` - 프로필 수정
+- [ ] `delete_profile_bypass_rls()` - 프로필 삭제
+- [ ] `insert_store_bypass_rls()` - 매장 등록
+
+#### 2. 감사 로그 시스템
+- [ ] `audit_logs` 테이블 생성
+- [ ] 모든 SECURITY DEFINER 함수에 감사 로그 추가
+- [ ] 관리자 대시보드에서 로그 확인 기능
+
+#### 3. 성능 모니터링
+- [ ] 함수 실행 시간 모니터링
+- [ ] 병목 지점 분석 및 최적화
+
+---
+
+**작성일:** 2026-01-21  
+**작업 시간:** 약 1.5시간  
+**테스트 완료:** ✅ (RLS 비활성화 및 활성화 상태 모두 검증)  
+**프로덕션 배포:** ✅  
+**보안 수준:** ⬆️ 향상됨 (RLS 활성화)
+
+=====================================

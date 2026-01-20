@@ -273,3 +273,102 @@ class HealthCheckResponse(BaseModel):
     database_connected: bool = False
 
 
+# ============================================
+# Metric Tracker Schemas (주요지표 추적)
+# ============================================
+
+class MetricTrackerBase(BaseModel):
+    """주요지표 추적 기본 스키마"""
+    store_id: UUID
+    keyword_id: UUID
+    update_frequency: Literal['daily_once', 'daily_twice', 'daily_thrice'] = 'daily_once'
+    update_times: list[int] = Field(default=[16])  # 기본값: 오후 4시
+    notification_enabled: bool = False
+    notification_type: Optional[Literal['kakao', 'sms', 'email']] = None
+    notification_consent: bool = False
+    notification_phone: Optional[str] = None
+    notification_email: Optional[str] = None
+
+
+class MetricTrackerCreate(MetricTrackerBase):
+    """주요지표 추적 생성 요청"""
+    user_id: UUID
+
+
+class MetricTrackerUpdate(BaseModel):
+    """주요지표 추적 업데이트 요청"""
+    update_frequency: Optional[Literal['daily_once', 'daily_twice', 'daily_thrice']] = None
+    update_times: Optional[list[int]] = None
+    notification_enabled: Optional[bool] = None
+    notification_type: Optional[Literal['kakao', 'sms', 'email']] = None
+    notification_consent: Optional[bool] = None
+    notification_phone: Optional[str] = None
+    notification_email: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
+class MetricTracker(MetricTrackerBase):
+    """주요지표 추적 응답"""
+    id: UUID
+    user_id: UUID
+    is_active: bool
+    last_collected_at: Optional[datetime] = None
+    next_collection_at: Optional[datetime] = None
+    created_at: datetime
+    updated_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+
+class MetricTrackerWithDetails(MetricTracker):
+    """주요지표 추적 (상세 정보 포함)"""
+    store_name: str
+    keyword: str
+    platform: str
+
+
+class DailyMetricBase(BaseModel):
+    """일별 지표 기본 스키마"""
+    tracker_id: UUID
+    keyword_id: UUID
+    store_id: UUID
+    collection_date: datetime  # 날짜만
+    rank: Optional[int] = None
+    visitor_review_count: int = 0
+    blog_review_count: int = 0
+    rank_change: Optional[int] = None
+    previous_rank: Optional[int] = None
+
+
+class DailyMetricCreate(DailyMetricBase):
+    """일별 지표 생성 요청"""
+    pass
+
+
+class DailyMetric(DailyMetricBase):
+    """일별 지표 응답"""
+    id: UUID
+    collected_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+
+class DailyMetricWithKeyword(DailyMetric):
+    """일별 지표 (키워드 정보 포함)"""
+    keyword: str
+    store_name: str
+
+
+class MetricTrackerListResponse(BaseModel):
+    """주요지표 추적 목록 응답"""
+    trackers: list[MetricTrackerWithDetails]
+    total_count: int
+
+
+class DailyMetricsListResponse(BaseModel):
+    """일별 지표 목록 응답"""
+    metrics: list[DailyMetricWithKeyword]
+    total_count: int
+
