@@ -110,6 +110,8 @@ async def get_kakao_token(code: str) -> Optional[str]:
             print(f"[카카오 토큰 요청] client_id: {KAKAO_REST_API_KEY}")
             print(f"[카카오 토큰 요청] redirect_uri: {KAKAO_REDIRECT_URI}")
             print(f"[카카오 토큰 요청] code: {code[:20]}..." if len(code) > 20 else f"[카카오 토큰 요청] code: {code}")
+            print(f"[카카오 토큰 요청] client_secret included: {client_secret is not None}")
+            print(f"[카카오 토큰 요청] data keys: {list(data.keys())}")
             
             response = await client.post(url, data=data)
             print(f"[카카오 토큰 응답] status: {response.status_code}")
