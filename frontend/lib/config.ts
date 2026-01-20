@@ -51,7 +51,7 @@ export const api = {
   stores: {
     list: (userId: string) => api.url(`/api/v1/stores/?user_id=${userId}`),
     create: () => api.url('/api/v1/stores/'),
-    delete: (storeId: string) => api.url(`/api/v1/stores/${storeId}`),
+    delete: (storeId: string, userId: string) => api.url(`/api/v1/stores/${storeId}?user_id=${userId}`),
   },
   
   /**

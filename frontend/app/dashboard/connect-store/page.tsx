@@ -111,7 +111,7 @@ export default function ConnectStorePage() {
     setDeletingStoreId(storeId)
     try {
       const response = await fetch(
-        api.stores.delete(storeId),
+        api.stores.delete(storeId, userId),
         {
           method: "DELETE",
         }
