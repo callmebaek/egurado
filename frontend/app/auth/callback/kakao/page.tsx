@@ -13,8 +13,12 @@ function KakaoCallbackContent() {
   const searchParams = useSearchParams()
   const { loginWithKakao } = useAuth()
   const [error, setError] = useState<string | null>(null)
+  const [isProcessing, setIsProcessing] = useState(false)
 
   useEffect(() => {
+    // 중복 실행 방지
+    if (isProcessing) return
+
     const code = searchParams.get("code")
     const errorParam = searchParams.get("error")
 
@@ -30,13 +34,14 @@ function KakaoCallbackContent() {
       return
     }
 
-    // 카카오 로그인 처리
+    // 카카오 로그인 처리 (1회만 실행)
+    setIsProcessing(true)
     loginWithKakao(code).catch((err) => {
       console.error("카카오 로그인 오류:", err)
       setError(err.message || "카카오 로그인에 실패했습니다.")
       setTimeout(() => router.push("/login"), 2000)
     })
-  }, [searchParams, loginWithKakao, router])
+  }, [searchParams, loginWithKakao, router, isProcessing])
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-yellow-50 to-white">

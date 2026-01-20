@@ -13,8 +13,12 @@ function NaverCallbackContent() {
   const searchParams = useSearchParams()
   const { loginWithNaver } = useAuth()
   const [error, setError] = useState<string | null>(null)
+  const [isProcessing, setIsProcessing] = useState(false)
 
   useEffect(() => {
+    // 중복 실행 방지
+    if (isProcessing) return
+
     const code = searchParams.get("code")
     const state = searchParams.get("state")
     const errorParam = searchParams.get("error")
@@ -39,13 +43,14 @@ function NaverCallbackContent() {
       return
     }
 
-    // 네이버 로그인 처리
+    // 네이버 로그인 처리 (1회만 실행)
+    setIsProcessing(true)
     loginWithNaver(code, state).catch((err) => {
       console.error("네이버 로그인 오류:", err)
       setError(err.message || "네이버 로그인에 실패했습니다.")
       setTimeout(() => router.push("/login"), 2000)
     })
-  }, [searchParams, loginWithNaver, router])
+  }, [searchParams, loginWithNaver, router, isProcessing])
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-white">
