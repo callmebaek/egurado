@@ -14,6 +14,7 @@ interface RegisteredStore {
   id: string
   place_id: string
   store_name: string
+  name?: string // API 응답에서 name으로 올 수도 있음
   category: string
   address: string
   platform: string
@@ -139,7 +140,13 @@ export default function CompetitorsPage() {
       }
       
       const data = await response.json()
-      const naverStores = (data.stores || []).filter((s: RegisteredStore) => s.platform === "naver")
+      // API는 'name' 필드를 반환하지만, 이 컴포넌트는 'store_name'을 기대함
+      const naverStores = (data.stores || [])
+        .filter((s: any) => s.platform === "naver")
+        .map((s: any) => ({
+          ...s,
+          store_name: s.name || s.store_name // name을 store_name으로 매핑
+        }))
       setStores(naverStores)
     } catch (error) {
       console.error("매장 로드 실패:", error)
