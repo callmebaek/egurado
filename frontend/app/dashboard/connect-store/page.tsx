@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useToast } from "@/components/ui/use-toast"
+import { useAuth } from "@/lib/auth-context"
 import { supabase } from "@/lib/supabase"
 import { api } from "@/lib/config"
 
@@ -46,6 +47,7 @@ interface StoresListResponse {
 
 export default function ConnectStorePage() {
   const { toast } = useToast()
+  const { user } = useAuth()
   const [searchQuery, setSearchQuery] = useState("")
   const [isSearching, setIsSearching] = useState(false)
   const [searchResults, setSearchResults] = useState<StoreSearchResult[]>([])
@@ -53,35 +55,23 @@ export default function ConnectStorePage() {
   const [connectingPlaceId, setConnectingPlaceId] = useState<string | null>(null)
   const [searchCompleted, setSearchCompleted] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [userId, setUserId] = useState<string | null>(null)
   const [registeredStores, setRegisteredStores] = useState<RegisteredStore[]>([])
   const [isLoadingStores, setIsLoadingStores] = useState(false)
   const [deletingStoreId, setDeletingStoreId] = useState<string | null>(null)
 
-  // 현재 로그인한 사용자 ID 가져오기
-  useEffect(() => {
-    const getCurrentUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session?.user) {
-        setUserId(session.user.id)
-      }
-    }
-    getCurrentUser()
-  }, [])
-
   // 등록된 매장 목록 가져오기
   useEffect(() => {
-    if (userId) {
+    if (user) {
       fetchRegisteredStores()
     }
-  }, [userId])
+  }, [user])
 
   const fetchRegisteredStores = async () => {
-    if (!userId) return
+    if (!user) return
 
     setIsLoadingStores(true)
     try {
-      const response = await fetch(api.stores.list(userId))
+      const response = await fetch(api.stores.list(user.id))
 
       if (!response.ok) {
         throw new Error("매장 목록 조회에 실패했습니다.")
@@ -179,7 +169,7 @@ export default function ConnectStorePage() {
   }
 
   const handleConnectStore = async (store: StoreSearchResult) => {
-    if (!userId) {
+    if (!user) {
       toast({
         variant: "destructive",
         title: "❌ 오류",
@@ -199,7 +189,7 @@ export default function ConnectStorePage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          user_id: userId,
+          user_id: user.id,
           place_id: store.place_id,
           name: store.name,
           category: store.category,

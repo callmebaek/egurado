@@ -5,6 +5,7 @@ import { Store, Loader2, CheckCircle2, AlertCircle, X, ExternalLink } from "luci
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { useToast } from "@/components/ui/use-toast"
+import { useAuth } from "@/lib/auth-context"
 import { supabase } from "@/lib/supabase"
 import { api } from "@/lib/config"
 
@@ -138,7 +139,7 @@ interface DiagnosisResult {
 
 export default function AuditPage() {
   const { toast } = useToast()
-  const [userId, setUserId] = useState<string | null>(null)
+  const { user } = useAuth()
   const [stores, setStores] = useState<RegisteredStore[]>([])
   const [isLoadingStores, setIsLoadingStores] = useState(false)
   const [selectedStore, setSelectedStore] = useState<RegisteredStore | null>(null)
@@ -147,30 +148,19 @@ export default function AuditPage() {
   const [placeDetails, setPlaceDetails] = useState<PlaceDetails | null>(null)
   const [diagnosisResult, setDiagnosisResult] = useState<DiagnosisResult | null>(null)
 
-  // 현재 로그인한 사용자 ID 가져오기
-  useEffect(() => {
-    const getCurrentUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session?.user) {
-        setUserId(session.user.id)
-      }
-    }
-    getCurrentUser()
-  }, [])
-
   // 등록된 매장 목록 가져오기
   useEffect(() => {
-    if (userId) {
+    if (user) {
       fetchStores()
     }
-  }, [userId])
+  }, [user])
 
   const fetchStores = async () => {
-    if (!userId) return
+    if (!user) return
 
     setIsLoadingStores(true)
     try {
-      const response = await fetch(api.stores.list(userId))
+      const response = await fetch(api.stores.list(user.id))
 
       if (!response.ok) {
         throw new Error("매장 목록 조회에 실패했습니다.")
