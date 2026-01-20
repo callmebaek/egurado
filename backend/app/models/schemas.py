@@ -89,6 +89,13 @@ class AuthResponse(BaseModel):
     onboarding_required: bool = False
 
 
+class SignupResponse(BaseModel):
+    """회원가입 응답 (이메일 인증 필요)"""
+    message: str
+    email: str
+    requires_email_confirmation: bool = True
+
+
 # ============================================
 # Store Schemas
 # ============================================

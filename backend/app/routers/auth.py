@@ -65,10 +65,10 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
     return response.data[0]
 
 
-@router.post("/signup", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/signup", status_code=status.HTTP_201_CREATED)
 async def signup(request: UserSignupRequest):
     """
-    이메일 회원가입
+    이메일 회원가입 (이메일 인증 필요)
     """
     supabase = get_supabase_client()
     
@@ -80,11 +80,17 @@ async def signup(request: UserSignupRequest):
             detail="이미 사용 중인 이메일입니다",
         )
     
-    # Supabase Auth에 사용자 생성
+    # Supabase Auth에 사용자 생성 (이메일 인증 활성화 시 자동으로 이메일 발송됨)
     try:
         auth_response = supabase.auth.sign_up({
             "email": request.email,
             "password": request.password,
+            "options": {
+                "email_redirect_to": "https://whiplace.com/auth/confirm",
+                "data": {
+                    "display_name": request.display_name or request.email.split("@")[0]
+                }
+            }
         })
         
         if not auth_response.user:
@@ -93,31 +99,12 @@ async def signup(request: UserSignupRequest):
                 detail="회원가입 처리 중 오류가 발생했습니다",
             )
         
-        user_id = auth_response.user.id
-        
-        # profiles 테이블에 사용자 정보 저장
-        profile_data = {
-            "id": user_id,
+        # 이메일 인증 대기 중 - JWT 토큰 발급하지 않음
+        return {
+            "message": "회원가입이 완료되었습니다. 이메일을 확인해주세요.",
             "email": request.email,
-            "display_name": request.display_name or request.email.split("@")[0],
-            "auth_provider": "email",
-            "subscription_tier": "free",
-            "onboarding_completed": False,
+            "requires_email_confirmation": True
         }
-        
-        supabase.table("profiles").insert(profile_data).execute()
-        
-        # JWT 토큰 생성
-        access_token = create_access_token({"user_id": user_id, "email": request.email})
-        
-        # 프로필 조회
-        profile = supabase.table("profiles").select("*").eq("id", user_id).execute()
-        
-        return AuthResponse(
-            access_token=access_token,
-            user=Profile(**profile.data[0]),
-            onboarding_required=True,
-        )
     
     except Exception as e:
         print(f"회원가입 오류: {e}")
@@ -177,6 +164,64 @@ async def login(request: UserLoginRequest):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="이메일 또는 비밀번호가 올바르지 않습니다",
+        )
+
+
+@router.post("/confirm-email", response_model=AuthResponse)
+async def confirm_email_and_create_profile(user_id: str, email: str, display_name: str = None):
+    """
+    이메일 확인 후 프로필 생성 및 로그인 처리
+    """
+    supabase = get_supabase_client()
+    
+    try:
+        # 이미 프로필이 있는지 확인
+        existing_profile = supabase.table("profiles").select("*").eq("id", user_id).execute()
+        
+        if existing_profile.data and len(existing_profile.data) > 0:
+            # 이미 프로필이 있으면 바로 로그인
+            user_data = existing_profile.data[0]
+        else:
+            # 프로필 생성
+            profile_data = {
+                "id": user_id,
+                "email": email,
+                "display_name": display_name or email.split("@")[0],
+                "auth_provider": "email",
+                "subscription_tier": "free",
+                "onboarding_completed": False,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }
+            
+            profile_response = supabase.table("profiles").insert(profile_data).execute()
+            
+            if not profile_response.data or len(profile_response.data) == 0:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="프로필 생성에 실패했습니다",
+                )
+            
+            user_data = profile_response.data[0]
+        
+        # JWT 토큰 생성
+        access_token = create_access_token({"user_id": user_id, "email": email})
+        
+        onboarding_required = not user_data.get("onboarding_completed", False)
+        
+        return AuthResponse(
+            access_token=access_token,
+            user=Profile(**user_data),
+            onboarding_required=onboarding_required,
+        )
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"이메일 확인 오류: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="이메일 인증 처리 중 오류가 발생했습니다",
         )
 
 

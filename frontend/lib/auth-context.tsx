@@ -26,6 +26,7 @@ interface AuthContextType {
   loading: boolean
   login: (email: string, password: string) => Promise<void>
   signup: (email: string, password: string, displayName?: string) => Promise<void>
+  confirmEmail: (userId: string, email: string, displayName?: string) => Promise<void>
   loginWithKakao: (code: string) => Promise<void>
   loginWithNaver: (code: string, state: string) => Promise<void>
   logout: () => void
@@ -140,6 +141,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     const data = await response.json()
+    
+    // 이메일 인증 필요 시 인증 대기 페이지로 이동
+    if (data.requires_email_confirmation) {
+      router.push('/auth/verify-email?email=' + encodeURIComponent(email))
+      return
+    }
+    
+    // 이메일 인증 불필요 (예: 소셜 로그인) - 바로 로그인
+    setToken(data.access_token)
+    setUser(data.user)
+
+    // 온보딩 페이지로 이동
+    router.push('/onboarding')
+  }
+
+  // 이메일 확인 후 프로필 생성 및 로그인
+  const confirmEmail = async (userId: string, email: string, displayName?: string) => {
+    const response = await fetch(`${API_URL}/api/v1/auth/confirm-email`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ 
+        user_id: userId, 
+        email, 
+        display_name: displayName 
+      }),
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.detail || '이메일 인증에 실패했습니다')
+    }
+
+    const data = await response.json()
     setToken(data.access_token)
     setUser(data.user)
 
@@ -215,6 +251,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         loading,
         login,
         signup,
+        confirmEmail,
         loginWithKakao,
         loginWithNaver,
         logout,
