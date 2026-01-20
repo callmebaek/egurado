@@ -10,7 +10,7 @@ import { TopMenu } from '@/components/layout/TopMenu'
 import { Toaster } from '@/components/ui/toaster'
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/lib/auth-context'
 
 export default function DashboardLayout({
   children,
@@ -18,62 +18,33 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   const router = useRouter()
+  const { user, loading } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
   
   const handleSidebarClose = useCallback(() => setSidebarOpen(false), [])
   const handleSidebarOpen = useCallback(() => setSidebarOpen(true), [])
 
   useEffect(() => {
     // 인증 상태 체크
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      
-      if (!session) {
-        router.push('/login')
-      } else {
-        setIsLoading(false)
-        
-        // Chrome Extension을 위해 userId를 Chrome Storage에 저장
-        if (session.user && typeof chrome !== 'undefined' && chrome.storage) {
-          try {
-            await chrome.storage.local.set({
-              userId: session.user.id,
-              lastUpdated: Date.now()
-            })
-            console.log('✅ Chrome Storage에 userId 저장 완료:', session.user.id)
-          } catch (error) {
-            console.log('ℹ️ Chrome Storage 저장 실패 (확장 프로그램이 설치되지 않았을 수 있음):', error)
-          }
-        }
+    if (!loading && !user) {
+      router.push('/login')
+    }
+    
+    // Chrome Extension을 위해 userId를 Chrome Storage에 저장
+    if (user && typeof chrome !== 'undefined' && chrome.storage) {
+      try {
+        chrome.storage.local.set({
+          userId: user.id,
+          lastUpdated: Date.now()
+        })
+        console.log('✅ Chrome Storage에 userId 저장 완료:', user.id)
+      } catch (error) {
+        console.log('ℹ️ Chrome Storage 저장 실패 (확장 프로그램이 설치되지 않았을 수 있음):', error)
       }
     }
+  }, [user, loading, router])
 
-    checkAuth()
-
-    // 인증 상태 변경 리스너
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session) {
-        router.push('/login')
-      } else if (session.user && typeof chrome !== 'undefined' && chrome.storage) {
-        // 인증 상태 변경 시에도 Chrome Storage 업데이트
-        try {
-          chrome.storage.local.set({
-            userId: session.user.id,
-            lastUpdated: Date.now()
-          })
-        } catch (error) {
-          console.log('ℹ️ Chrome Storage 저장 실패:', error)
-        }
-      }
-    })
-
-    return () => {
-      subscription.unsubscribe()
-    }
-  }, [router])
-
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[var(--background)]">
         <div className="text-center">
@@ -82,6 +53,11 @@ export default function DashboardLayout({
         </div>
       </div>
     )
+  }
+
+  // 인증되지 않은 경우 (리다이렉트 중)
+  if (!user) {
+    return null
   }
 
   return (

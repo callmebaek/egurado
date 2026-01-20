@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { supabase } from "@/lib/supabase"
+import { useAuth } from "@/lib/auth-context"
 import { api } from "@/lib/config"
 
 interface Store {
@@ -16,25 +16,21 @@ interface Store {
 }
 
 export function useStores() {
+  const { user } = useAuth()
   const [stores, setStores] = useState<Store[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [userId, setUserId] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchStores = async () => {
       try {
-        // 1. 현재 사용자 ID 가져오기
-        const { data: { session } } = await supabase.auth.getSession()
-        
-        if (!session?.user) {
+        // 1. 사용자 인증 확인
+        if (!user) {
           setIsLoading(false)
           return
         }
 
-        setUserId(session.user.id)
-
         // 2. 등록된 매장 목록 가져오기
-        const response = await fetch(api.stores.list(session.user.id))
+        const response = await fetch(api.stores.list(user.id))
 
         if (!response.ok) {
           throw new Error("Failed to fetch stores")
@@ -50,13 +46,13 @@ export function useStores() {
     }
 
     fetchStores()
-  }, [])
+  }, [user])
 
   return {
     stores,
     hasStores: stores.length > 0,
     storeCount: stores.length,
     isLoading,
-    userId,
+    userId: user?.id || null,
   }
 }
