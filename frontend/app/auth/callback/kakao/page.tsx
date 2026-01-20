@@ -5,6 +5,9 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { Loader2 } from "lucide-react"
 
+// 동적 렌더링 강제 (빌드 타임 prerender 방지)
+export const dynamic = 'force-dynamic'
+
 export default function KakaoCallbackPage() {
   const router = useRouter()
   const searchParams = useSearchParams()

@@ -8,6 +8,9 @@ import { Label } from "@/components/ui/label"
 import { Loader2 } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 
+// 동적 렌더링 강제 (localStorage 사용)
+export const dynamic = 'force-dynamic'
+
 export default function OnboardingPage() {
   const router = useRouter()
   const { toast } = useToast()

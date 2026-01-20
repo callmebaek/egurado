@@ -11,6 +11,9 @@ import { useToast } from "@/components/ui/use-toast"
 import { useAuth } from "@/lib/auth-context"
 import { startKakaoLogin, startNaverLogin } from "@/lib/social-login"
 
+// 동적 렌더링 강제
+export const dynamic = 'force-dynamic'
+
 export default function LoginPage() {
   const router = useRouter()
   const { toast } = useToast()
