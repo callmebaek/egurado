@@ -40,24 +40,31 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
     현재 인증된 사용자 정보 가져오기 (의존성)
     Supabase JWT 토큰과 자체 JWT 토큰 모두 지원
     """
+    from jose import jwt, JWTError
+    import os
+    import logging
+    
+    logger = logging.getLogger(__name__)
     token = credentials.credentials
     supabase = get_supabase_client()
+    user_id = None
     
-    # 먼저 Supabase JWT 토큰으로 검증 시도
+    # 먼저 Supabase JWT 토큰으로 검증 시도 (검증 없이 디코딩만)
     try:
-        # Supabase 클라이언트로 사용자 정보 가져오기
-        user_response = supabase.auth.get_user(token)
+        # JWT를 검증 없이 디코딩하여 user_id 추출
+        unverified_payload = jwt.get_unverified_claims(token)
+        user_id = unverified_payload.get("sub")  # Supabase JWT는 'sub'에 user_id 저장
         
-        if user_response.user:
-            user_id = user_response.user.id
-            
+        if user_id:
+            logger.info(f"Extracted user_id from Supabase JWT: {user_id}")
             # Profiles 테이블에서 사용자 정보 조회
             response = supabase.table("profiles").select("*").eq("id", user_id).execute()
             
             if response.data and len(response.data) > 0:
                 return response.data[0]
     except Exception as e:
-        # Supabase 토큰 검증 실패 시, 자체 JWT 토큰으로 시도
+        logger.warning(f"Failed to extract user from Supabase JWT: {e}")
+        # Supabase 토큰 처리 실패 시, 자체 JWT 토큰으로 시도
         pass
     
     # 자체 JWT 토큰으로 검증 시도
