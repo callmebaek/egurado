@@ -38,8 +38,29 @@ security = HTTPBearer()
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:
     """
     현재 인증된 사용자 정보 가져오기 (의존성)
+    Supabase JWT 토큰과 자체 JWT 토큰 모두 지원
     """
     token = credentials.credentials
+    supabase = get_supabase_client()
+    
+    # 먼저 Supabase JWT 토큰으로 검증 시도
+    try:
+        # Supabase 클라이언트로 사용자 정보 가져오기
+        user_response = supabase.auth.get_user(token)
+        
+        if user_response.user:
+            user_id = user_response.user.id
+            
+            # Profiles 테이블에서 사용자 정보 조회
+            response = supabase.table("profiles").select("*").eq("id", user_id).execute()
+            
+            if response.data and len(response.data) > 0:
+                return response.data[0]
+    except Exception as e:
+        # Supabase 토큰 검증 실패 시, 자체 JWT 토큰으로 시도
+        pass
+    
+    # 자체 JWT 토큰으로 검증 시도
     payload = decode_access_token(token)
     
     if not payload:
@@ -56,7 +77,6 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         )
     
     # Supabase에서 사용자 정보 조회
-    supabase = get_supabase_client()
     response = supabase.table("profiles").select("*").eq("id", user_id).execute()
     
     if not response.data or len(response.data) == 0:
