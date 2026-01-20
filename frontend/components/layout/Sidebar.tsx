@@ -298,19 +298,21 @@ export const Sidebar = memo(function Sidebar({ isOpen, onClose }: SidebarProps) 
         )}
       >
         {/* 로고 및 닫기 버튼 */}
-        <div className="h-16 px-6 border-b border-[var(--border-light)] flex items-center justify-between">
-          <Link href="/dashboard" className="flex items-center group py-2" onClick={onClose}>
-            <div className="relative h-12 w-auto flex items-center group-hover:opacity-90 transition-opacity duration-[var(--transition-base)]">
+        <div className="h-16 px-4 border-b border-[var(--border-light)] flex items-center justify-between">
+          <Link href="/dashboard" className="flex items-center group py-1.5" onClick={onClose}>
+            <div className="relative h-14 w-auto flex items-center group-hover:opacity-90 transition-opacity duration-[var(--transition-base)]">
               <Image
                 src="/whiplace-logo.svg"
                 alt="Whiplace Logo"
-                width={240}
-                height={80}
+                width={280}
+                height={90}
                 className="object-contain h-full w-auto"
                 style={{
-                  maxHeight: '48px',
+                  maxHeight: '56px',
                   width: 'auto',
                   height: '100%',
+                  transform: 'scale(1.15)',
+                  transformOrigin: 'left center',
                 }}
                 priority
               />
