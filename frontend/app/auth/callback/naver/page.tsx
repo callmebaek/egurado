@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { Loader2 } from "lucide-react"
@@ -8,7 +8,7 @@ import { Loader2 } from "lucide-react"
 // 동적 렌더링 강제 (빌드 타임 prerender 방지)
 export const dynamic = 'force-dynamic'
 
-export default function NaverCallbackPage() {
+function NaverCallbackContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { loginWithNaver } = useAuth()
@@ -65,5 +65,20 @@ export default function NaverCallbackPage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function NaverCallbackPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-white">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-12 w-12 animate-spin mx-auto text-green-500" />
+          <h2 className="text-xl font-semibold text-gray-800">로딩 중...</h2>
+        </div>
+      </div>
+    }>
+      <NaverCallbackContent />
+    </Suspense>
   )
 }
