@@ -292,8 +292,13 @@ export default function NaverSessionPage() {
                   </p>
                   <Button 
                     onClick={() => {
-                      // TODO: 실제 다운로드 링크로 교체
-                      window.open('/chrome-extension.zip', '_blank')
+                      // chrome-extension.zip 다운로드
+                      const link = document.createElement('a')
+                      link.href = '/chrome-extension.zip'
+                      link.download = 'chrome-extension.zip'
+                      document.body.appendChild(link)
+                      link.click()
+                      document.body.removeChild(link)
                     }}
                     className="w-full"
                   >
