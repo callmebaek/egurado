@@ -16,6 +16,8 @@ from ..models.schemas import (
     NaverLoginRequest,
     OnboardingRequest,
     Profile,
+    ForgotPasswordRequest,
+    ResetPasswordRequest,
 )
 from ..services.auth_service import (
     hash_password,
@@ -325,28 +327,29 @@ async def kakao_login(request: KakaoLoginRequest):
         from datetime import datetime, timezone
         now = datetime.now(timezone.utc).isoformat()
         
-        profile_data = {
-            "id": user_id,
-            "email": kakao_user["email"],
-            "display_name": kakao_user.get("display_name", kakao_user["email"].split("@")[0]),
-            "auth_provider": "kakao",
-            "subscription_tier": "free",
-            "onboarding_completed": False,
-            "profile_image_url": kakao_user.get("profile_image_url"),
-            "created_at": now,
-            "updated_at": now,
-        }
-        
         try:
-            supabase.table("profiles").insert(profile_data).execute()
+            # RLS 우회 함수를 사용하여 프로필 생성
+            result = supabase.rpc('insert_profile_bypass_rls', {
+                'p_id': user_id,
+                'p_email': kakao_user["email"],
+                'p_display_name': kakao_user.get("display_name", kakao_user["email"].split("@")[0]),
+                'p_auth_provider': 'kakao',
+                'p_subscription_tier': 'free',
+                'p_onboarding_completed': False,
+                'p_profile_image_url': kakao_user.get("profile_image_url"),
+                'p_phone_number': None
+            }).execute()
+            
+            if not result.data or len(result.data) == 0:
+                raise Exception("프로필 생성 결과가 없습니다")
+            
+            user_data = result.data[0]
         except Exception as profile_error:
             print(f"프로필 생성 실패: {profile_error}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"카카오 로그인 처리 중 오류가 발생했습니다: {str(profile_error)}",
             )
-        
-        user_data = profile_data
         onboarding_required = True
     
     # JWT 토큰 생성
@@ -419,29 +422,29 @@ async def naver_login(request: NaverLoginRequest):
         from datetime import datetime, timezone
         now = datetime.now(timezone.utc).isoformat()
         
-        profile_data = {
-            "id": user_id,
-            "email": naver_user["email"],
-            "display_name": naver_user.get("display_name", naver_user["email"].split("@")[0]),
-            "auth_provider": "naver",
-            "subscription_tier": "free",
-            "onboarding_completed": False,
-            "profile_image_url": naver_user.get("profile_image_url"),
-            "phone_number": naver_user.get("phone_number"),
-            "created_at": now,
-            "updated_at": now,
-        }
-        
         try:
-            supabase.table("profiles").insert(profile_data).execute()
+            # RLS 우회 함수를 사용하여 프로필 생성
+            result = supabase.rpc('insert_profile_bypass_rls', {
+                'p_id': user_id,
+                'p_email': naver_user["email"],
+                'p_display_name': naver_user.get("display_name", naver_user["email"].split("@")[0]),
+                'p_auth_provider': 'naver',
+                'p_subscription_tier': 'free',
+                'p_onboarding_completed': False,
+                'p_profile_image_url': naver_user.get("profile_image_url"),
+                'p_phone_number': naver_user.get("phone_number")
+            }).execute()
+            
+            if not result.data or len(result.data) == 0:
+                raise Exception("프로필 생성 결과가 없습니다")
+            
+            user_data = result.data[0]
         except Exception as profile_error:
             print(f"프로필 생성 실패: {profile_error}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"네이버 로그인 처리 중 오류가 발생했습니다: {str(profile_error)}",
             )
-        
-        user_data = profile_data
         onboarding_required = True
     
     # JWT 토큰 생성
@@ -496,7 +499,7 @@ async def get_me(current_user: dict = Depends(get_current_user)):
 
 
 @router.post("/forgot-password")
-async def forgot_password(email: str):
+async def forgot_password(request: ForgotPasswordRequest):
     """
     비밀번호 재설정 이메일 발송
     """
@@ -504,7 +507,7 @@ async def forgot_password(email: str):
     
     try:
         # 이메일 존재 확인
-        profile_check = supabase.table("profiles").select("id, auth_provider").eq("email", email).execute()
+        profile_check = supabase.table("profiles").select("id, auth_provider").eq("email", request.email).execute()
         
         if not profile_check.data or len(profile_check.data) == 0:
             # 보안상 이메일이 없어도 성공 메시지 반환 (계정 존재 여부 노출 방지)
@@ -523,13 +526,13 @@ async def forgot_password(email: str):
         
         # Supabase Auth의 비밀번호 재설정 이메일 발송
         result = supabase.auth.reset_password_email(
-            email,
+            request.email,
             {
                 "redirect_to": "https://whiplace.com/reset-password"
             }
         )
         
-        print(f"[비밀번호 재설정] 이메일 발송: {email}")
+        print(f"[비밀번호 재설정] 이메일 발송: {request.email}")
         
         return {
             "message": "비밀번호 재설정 링크를 이메일로 보냈습니다."
@@ -546,30 +549,44 @@ async def forgot_password(email: str):
 
 
 @router.post("/reset-password")
-async def reset_password(access_token: str, new_password: str):
+async def reset_password(request: ResetPasswordRequest):
     """
     비밀번호 재설정 (이메일 링크에서 받은 토큰 사용)
     """
-    supabase = get_supabase_client()
+    import httpx
+    import os
+    
+    supabase_url = os.getenv("SUPABASE_URL")
     
     try:
-        # Supabase Auth의 비밀번호 업데이트
-        result = supabase.auth.update_user(
-            access_token,
-            {"password": new_password}
-        )
+        # Supabase REST API를 직접 호출하여 비밀번호 업데이트
+        supabase_key = os.getenv("SUPABASE_ANON_KEY") or os.getenv("SUPABASE_KEY")
         
-        if not result.user:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="비밀번호 재설정에 실패했습니다. 링크가 만료되었거나 유효하지 않습니다.",
+        async with httpx.AsyncClient() as client:
+            response = await client.put(
+                f"{supabase_url}/auth/v1/user",
+                headers={
+                    "Authorization": f"Bearer {request.access_token}",
+                    "apikey": supabase_key,
+                    "Content-Type": "application/json",
+                },
+                json={"password": request.new_password}
             )
-        
-        print(f"[비밀번호 재설정] 완료: {result.user.email}")
-        
-        return {
-            "message": "비밀번호가 성공적으로 변경되었습니다."
-        }
+            
+            if response.status_code != 200:
+                error_data = response.json()
+                print(f"[비밀번호 재설정 실패] status: {response.status_code}, error: {error_data}")
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="비밀번호 재설정에 실패했습니다. 링크가 만료되었거나 유효하지 않습니다.",
+                )
+            
+            result = response.json()
+            print(f"[비밀번호 재설정] 완료: {result.get('email', 'unknown')}")
+            
+            return {
+                "message": "비밀번호가 성공적으로 변경되었습니다."
+            }
     
     except HTTPException:
         raise

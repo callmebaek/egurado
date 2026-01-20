@@ -96,6 +96,17 @@ class SignupResponse(BaseModel):
     requires_email_confirmation: bool = True
 
 
+class ForgotPasswordRequest(BaseModel):
+    """비밀번호 재설정 요청"""
+    email: str
+
+
+class ResetPasswordRequest(BaseModel):
+    """비밀번호 재설정"""
+    access_token: str
+    new_password: str
+
+
 # ============================================
 # Store Schemas
 # ============================================
