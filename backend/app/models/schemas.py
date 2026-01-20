@@ -15,25 +15,78 @@ from uuid import UUID
 class ProfileBase(BaseModel):
     email: EmailStr
     display_name: Optional[str] = None
-    subscription_tier: Literal['free', 'basic', 'pro'] = 'free'
+    subscription_tier: Literal['free', 'basic', 'pro', 'god'] = 'free'
 
 
 class ProfileCreate(ProfileBase):
     id: UUID
+    auth_provider: Literal['email', 'kakao', 'naver'] = 'email'
 
 
 class ProfileUpdate(BaseModel):
     display_name: Optional[str] = None
-    subscription_tier: Optional[Literal['free', 'basic', 'pro']] = None
+    subscription_tier: Optional[Literal['free', 'basic', 'pro', 'god']] = None
+    phone_number: Optional[str] = None
+    profile_image_url: Optional[str] = None
 
 
 class Profile(ProfileBase):
     id: UUID
+    auth_provider: str
+    user_position: Optional[str] = None
+    marketing_experience: Optional[str] = None
+    agency_experience: Optional[str] = None
+    onboarding_completed: bool
+    phone_number: Optional[str] = None
+    profile_image_url: Optional[str] = None
     created_at: datetime
     updated_at: datetime
     
     class Config:
         from_attributes = True
+
+
+# ============================================
+# Auth Schemas (회원가입/로그인)
+# ============================================
+
+class UserSignupRequest(BaseModel):
+    """이메일 회원가입 요청"""
+    email: EmailStr
+    password: str = Field(min_length=8, max_length=100)
+    display_name: Optional[str] = None
+
+
+class UserLoginRequest(BaseModel):
+    """이메일 로그인 요청"""
+    email: EmailStr
+    password: str
+
+
+class OnboardingRequest(BaseModel):
+    """온보딩 정보 제출"""
+    user_position: Literal['advertiser', 'agency']
+    marketing_experience: Literal['beginner', 'intermediate', 'advanced']
+    agency_experience: Optional[Literal['past_used', 'currently_using', 'considering', 'doing_alone']] = None
+
+
+class KakaoLoginRequest(BaseModel):
+    """카카오 로그인 요청"""
+    code: str  # 카카오 인증 코드
+
+
+class NaverLoginRequest(BaseModel):
+    """네이버 로그인 요청"""
+    code: str  # 네이버 인증 코드
+    state: str  # 네이버 state 파라미터
+
+
+class AuthResponse(BaseModel):
+    """인증 응답"""
+    access_token: str
+    token_type: str = "bearer"
+    user: Profile
+    onboarding_required: bool = False
 
 
 # ============================================

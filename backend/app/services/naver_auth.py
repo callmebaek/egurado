@@ -18,8 +18,8 @@ ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY")
 if not ENCRYPTION_KEY:
     # 개발 환경에서 키가 없으면 새로 생성 (프로덕션에서는 반드시 설정 필요)
     ENCRYPTION_KEY = Fernet.generate_key().decode()
-    print(f"⚠️ ENCRYPTION_KEY가 설정되지 않았습니다. 생성된 키: {ENCRYPTION_KEY}")
-    print("이 키를 .env 파일에 저장하세요!")
+    print(f"WARNING: ENCRYPTION_KEY not set. Generated key: {ENCRYPTION_KEY}")
+    print("Please save this key to .env file!")
 
 cipher = Fernet(ENCRYPTION_KEY.encode())
 

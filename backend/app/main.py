@@ -78,6 +78,7 @@ async def health_check():
 
 # 라우터 등록
 # 라우터 import
+from app.routers.auth import router as auth_router
 from app.routers.naver import router as naver_router
 from app.routers.reviews import router as reviews_router
 from app.routers.keywords import router as keywords_router
@@ -90,6 +91,7 @@ from app.routers.naver_session import router as naver_session_router
 from app.routers.ai_settings import router as ai_settings_router
 
 # 라우터 등록
+app.include_router(auth_router, prefix="/api/v1", tags=["Auth"])
 app.include_router(stores_router, prefix="/api/v1/stores", tags=["Stores"])
 app.include_router(naver_router, prefix="/api/v1/naver", tags=["Naver"])
 app.include_router(google_router, prefix="/api/v1/google", tags=["Google"])
