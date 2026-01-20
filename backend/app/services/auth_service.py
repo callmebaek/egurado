@@ -90,6 +90,10 @@ async def get_kakao_token(code: str) -> Optional[str]:
         카카오 액세스 토큰
     """
     url = "https://kauth.kakao.com/oauth/token"
+    
+    # 클라이언트 시크릿 가져오기
+    client_secret = os.getenv("KAKAO_CLIENT_SECRET")
+    
     data = {
         "grant_type": "authorization_code",
         "client_id": KAKAO_REST_API_KEY,
@@ -97,9 +101,20 @@ async def get_kakao_token(code: str) -> Optional[str]:
         "code": code,
     }
     
+    # 클라이언트 시크릿이 있으면 추가
+    if client_secret:
+        data["client_secret"] = client_secret
+    
     async with httpx.AsyncClient() as client:
         try:
+            print(f"[카카오 토큰 요청] client_id: {KAKAO_REST_API_KEY}")
+            print(f"[카카오 토큰 요청] redirect_uri: {KAKAO_REDIRECT_URI}")
+            print(f"[카카오 토큰 요청] code: {code[:20]}..." if len(code) > 20 else f"[카카오 토큰 요청] code: {code}")
+            
             response = await client.post(url, data=data)
+            print(f"[카카오 토큰 응답] status: {response.status_code}")
+            print(f"[카카오 토큰 응답] body: {response.text}")
+            
             response.raise_for_status()
             result = response.json()
             return result.get("access_token")
