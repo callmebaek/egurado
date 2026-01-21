@@ -52,7 +52,7 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         # Supabase JWT는 'sub' 필드에 user_id가 있음
         # JWT Secret이 없으므로, 일단 디코딩만 시도하여 user_id를 추출
         # 실제 검증은 RLS 정책에 의해 Supabase DB에서 이루어짐
-        payload = jwt.decode(token, options={"verify_signature": False}) # 서명 검증 없이 디코딩
+        payload = jwt.decode(token, "", options={"verify_signature": False}) # 서명 검증 없이 디코딩 (key="" 필수)
         user_id = payload.get("sub") # Supabase JWT는 'sub'에 user_id가 있음
         
         if user_id:
