@@ -103,12 +103,16 @@ export default function MetricsTrackerPage() {
       try {
         if (!user) return
 
-        const { data: userData } = await supabase
+        const { data: userData, error } = await supabase
           .from("profiles")
           .select("subscription_tier")
           .eq("id", user.id)
           .single()
-          .execute()
+        
+        if (error) {
+          console.error("Tier 로드 실패:", error)
+          return
+        }
         
         if (userData) {
           const tier = userData.subscription_tier?.toLowerCase() || "free"
@@ -124,7 +128,7 @@ export default function MetricsTrackerPage() {
           setTrackerLimit(limits[tier] || 1)
         }
       } catch (error) {
-        console.error("Tier 로드 실패:", error)
+        console.error("Tier 로드 예외:", error)
       }
     }
 
