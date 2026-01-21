@@ -29,14 +29,21 @@ export function useStores() {
           return
         }
 
+        // 디버깅: user 정보 로깅
+        console.log("[DEBUG] useStores - user:", user)
+        console.log("[DEBUG] useStores - user.id:", user.id)
+
         // 2. 등록된 매장 목록 가져오기
         const response = await fetch(api.stores.list(user.id))
 
         if (!response.ok) {
+          console.error("[DEBUG] useStores - API 실패:", response.status, response.statusText)
           throw new Error("Failed to fetch stores")
         }
 
         const data = await response.json()
+        console.log("[DEBUG] useStores - API 응답:", data)
+        console.log("[DEBUG] useStores - 매장 개수:", data.stores?.length || 0)
         setStores(data.stores || [])
       } catch (error) {
         console.error("Error fetching stores:", error)

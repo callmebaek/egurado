@@ -324,6 +324,7 @@ async def kakao_login(request: KakaoLoginRequest):
         user_data = existing_user.data[0]
         user_id = user_data["id"]
         onboarding_required = not user_data.get("onboarding_completed", False)
+        print(f"[DEBUG] 카카오 로그인 - 기존 사용자 발견: user_id={user_id}, email={kakao_user['email']}")
     else:
         # 신규 사용자 등록
         # 소셜 로그인은 Supabase Auth와 profiles에 모두 생성
@@ -419,6 +420,7 @@ async def naver_login(request: NaverLoginRequest):
         user_data = existing_user.data[0]
         user_id = user_data["id"]
         onboarding_required = not user_data.get("onboarding_completed", False)
+        print(f"[DEBUG] 네이버 로그인 - 기존 사용자 발견: user_id={user_id}, email={naver_user['email']}")
     else:
         # 신규 사용자 등록
         # 소셜 로그인은 Supabase Auth와 profiles에 모두 생성

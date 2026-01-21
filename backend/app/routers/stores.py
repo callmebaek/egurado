@@ -232,9 +232,15 @@ async def list_stores(user_id: UUID):
     try:
         supabase = get_supabase_client()
         
+        # 디버깅: user_id 로깅
+        logger.info(f"[DEBUG] list_stores called with user_id: {user_id}")
+        
         result = supabase.table("stores").select("*").eq(
             "user_id", str(user_id)
         ).order("created_at", desc=True).execute()
+        
+        # 디버깅: 조회 결과 로깅
+        logger.info(f"[DEBUG] list_stores found {len(result.data) if result.data else 0} stores for user_id: {user_id}")
         
         stores = []
         if result.data:
