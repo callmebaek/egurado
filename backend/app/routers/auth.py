@@ -366,31 +366,42 @@ async def kakao_login(request: KakaoLoginRequest):
                 )
         except Exception as login_error:
             print(f"[DEBUG] 기존 사용자 Supabase 로그인 실패: {login_error}")
-            # 로그인 실패 시 비밀번호 업데이트 시도
+            # 로그인 실패 시 Auth 계정 생성 시도 (profiles에는 있지만 auth.users에는 없는 경우)
             try:
-                supabase.auth.admin.update_user_by_id(
-                    user_id,
-                    {"password": fixed_password}
-                )
-                print(f"[DEBUG] 비밀번호 업데이트 완료, 재로그인 시도")
-                # 재시도
-                auth_response = supabase.auth.sign_in_with_password({
+                # Admin API로 기존 user_id로 Auth 계정 생성
+                print(f"[DEBUG] Auth 계정이 없는 기존 사용자, 새로 Auth 계정 생성 시도")
+                create_response = supabase.auth.admin.create_user({
                     "email": kakao_user["email"],
-                    "password": fixed_password
+                    "password": fixed_password,
+                    "email_confirm": True,
+                    "user_metadata": {
+                        "display_name": kakao_user.get("display_name", kakao_user["email"].split("@")[0]),
+                        "auth_provider": "kakao"
+                    }
                 })
-                if auth_response.session:
-                    return AuthResponse(
-                        access_token=auth_response.session.access_token,
-                        user=Profile(**user_data),
-                        onboarding_required=onboarding_required,
-                    )
+                
+                if create_response.user:
+                    print(f"[DEBUG] Auth 계정 생성 완료, 로그인 시도")
+                    # 새로 생성한 계정으로 로그인
+                    auth_response = supabase.auth.sign_in_with_password({
+                        "email": kakao_user["email"],
+                        "password": fixed_password
+                    })
+                    if auth_response.session:
+                        return AuthResponse(
+                            access_token=auth_response.session.access_token,
+                            user=Profile(**user_data),
+                            onboarding_required=onboarding_required,
+                        )
+                    else:
+                        raise Exception("Auth 계정 생성 후 로그인 시도했지만 세션이 없습니다")
                 else:
-                    raise Exception("재로그인 시도 후에도 세션이 없습니다")
-            except Exception as update_error:
-                print(f"[DEBUG] 비밀번호 업데이트 또는 재로그인 실패: {update_error}")
+                    raise Exception("Auth 계정 생성 실패")
+            except Exception as create_error:
+                print(f"[DEBUG] Auth 계정 생성 실패: {create_error}")
                 raise HTTPException(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail=f"카카오 로그인 처리 중 오류가 발생했습니다: {str(update_error)}",
+                    detail=f"카카오 로그인 처리 중 오류가 발생했습니다: {str(create_error)}",
                 )
     else:
         # 신규 사용자 등록
@@ -523,31 +534,42 @@ async def naver_login(request: NaverLoginRequest):
                 )
         except Exception as login_error:
             print(f"[DEBUG] 기존 사용자 Supabase 로그인 실패: {login_error}")
-            # 로그인 실패 시 비밀번호 업데이트 시도
+            # 로그인 실패 시 Auth 계정 생성 시도 (profiles에는 있지만 auth.users에는 없는 경우)
             try:
-                supabase.auth.admin.update_user_by_id(
-                    user_id,
-                    {"password": fixed_password}
-                )
-                print(f"[DEBUG] 비밀번호 업데이트 완료, 재로그인 시도")
-                # 재시도
-                auth_response = supabase.auth.sign_in_with_password({
+                # Admin API로 기존 user_id로 Auth 계정 생성
+                print(f"[DEBUG] Auth 계정이 없는 기존 사용자, 새로 Auth 계정 생성 시도")
+                create_response = supabase.auth.admin.create_user({
                     "email": naver_user["email"],
-                    "password": fixed_password
+                    "password": fixed_password,
+                    "email_confirm": True,
+                    "user_metadata": {
+                        "display_name": naver_user.get("display_name", naver_user["email"].split("@")[0]),
+                        "auth_provider": "naver"
+                    }
                 })
-                if auth_response.session:
-                    return AuthResponse(
-                        access_token=auth_response.session.access_token,
-                        user=Profile(**user_data),
-                        onboarding_required=onboarding_required,
-                    )
+                
+                if create_response.user:
+                    print(f"[DEBUG] Auth 계정 생성 완료, 로그인 시도")
+                    # 새로 생성한 계정으로 로그인
+                    auth_response = supabase.auth.sign_in_with_password({
+                        "email": naver_user["email"],
+                        "password": fixed_password
+                    })
+                    if auth_response.session:
+                        return AuthResponse(
+                            access_token=auth_response.session.access_token,
+                            user=Profile(**user_data),
+                            onboarding_required=onboarding_required,
+                        )
+                    else:
+                        raise Exception("Auth 계정 생성 후 로그인 시도했지만 세션이 없습니다")
                 else:
-                    raise Exception("재로그인 시도 후에도 세션이 없습니다")
-            except Exception as update_error:
-                print(f"[DEBUG] 비밀번호 업데이트 또는 재로그인 실패: {update_error}")
+                    raise Exception("Auth 계정 생성 실패")
+            except Exception as create_error:
+                print(f"[DEBUG] Auth 계정 생성 실패: {create_error}")
                 raise HTTPException(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail=f"네이버 로그인 처리 중 오류가 발생했습니다: {str(update_error)}",
+                    detail=f"네이버 로그인 처리 중 오류가 발생했습니다: {str(create_error)}",
                 )
     else:
         # 신규 사용자 등록
