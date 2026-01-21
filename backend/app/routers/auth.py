@@ -410,6 +410,20 @@ async def kakao_login(request: KakaoLoginRequest):
                         
                         if auth_user:
                             print(f"[DEBUG] Auth 사용자 찾음: auth_user_id={auth_user.id}, 비밀번호 업데이트 시도")
+                            
+                            # Auth user_id로 profiles에서 프로필 조회 (Auth와 profiles의 user_id가 다를 수 있음)
+                            auth_profile_result = supabase.rpc('get_profile_by_id_bypass_rls', {'p_id': str(auth_user.id)}).execute()
+                            
+                            if auth_profile_result.data and len(auth_profile_result.data) > 0:
+                                # Auth user_id에 해당하는 프로필이 이미 있음
+                                print(f"[DEBUG] Auth user_id에 해당하는 프로필 발견: {auth_user.id}")
+                                user_data = auth_profile_result.data[0]
+                                onboarding_required = not user_data.get("onboarding_completed", False)
+                            else:
+                                # Auth user_id에 해당하는 프로필이 없음 - 기존 프로필 데이터의 id를 auth_user.id로 사용
+                                print(f"[DEBUG] Auth user_id에 해당하는 프로필 없음, 기존 프로필 데이터 사용 (id를 {auth_user.id}로 변경)")
+                                user_data["id"] = auth_user.id
+                            
                             # 비밀번호 업데이트
                             supabase.auth.admin.update_user_by_id(
                                 auth_user.id,
@@ -618,6 +632,20 @@ async def naver_login(request: NaverLoginRequest):
                         
                         if auth_user:
                             print(f"[DEBUG] Auth 사용자 찾음: auth_user_id={auth_user.id}, 비밀번호 업데이트 시도")
+                            
+                            # Auth user_id로 profiles에서 프로필 조회 (Auth와 profiles의 user_id가 다를 수 있음)
+                            auth_profile_result = supabase.rpc('get_profile_by_id_bypass_rls', {'p_id': str(auth_user.id)}).execute()
+                            
+                            if auth_profile_result.data and len(auth_profile_result.data) > 0:
+                                # Auth user_id에 해당하는 프로필이 이미 있음
+                                print(f"[DEBUG] Auth user_id에 해당하는 프로필 발견: {auth_user.id}")
+                                user_data = auth_profile_result.data[0]
+                                onboarding_required = not user_data.get("onboarding_completed", False)
+                            else:
+                                # Auth user_id에 해당하는 프로필이 없음 - 기존 프로필 데이터의 id를 auth_user.id로 사용
+                                print(f"[DEBUG] Auth user_id에 해당하는 프로필 없음, 기존 프로필 데이터 사용 (id를 {auth_user.id}로 변경)")
+                                user_data["id"] = auth_user.id
+                            
                             # 비밀번호 업데이트
                             supabase.auth.admin.update_user_by_id(
                                 auth_user.id,
