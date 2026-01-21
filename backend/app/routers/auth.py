@@ -47,6 +47,8 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
     token = credentials.credentials
     supabase = get_supabase_client()
     
+    print(f"[DEBUG] get_current_user - 토큰 수신됨 (처음 20자): {token[:20]}...")
+    
     # Supabase JWT 토큰으로 검증 시도 (JWT Secret 없이 디코딩만 시도)
     try:
         # Supabase JWT는 'sub' 필드에 user_id가 있음
@@ -54,43 +56,57 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         # 실제 검증은 RLS 정책에 의해 Supabase DB에서 이루어짐
         payload = jwt.decode(token, "", options={"verify_signature": False}) # 서명 검증 없이 디코딩 (key="" 필수)
         user_id = payload.get("sub") # Supabase JWT는 'sub'에 user_id가 있음
+        print(f"[DEBUG] get_current_user - Supabase JWT 디코딩 시도, user_id: {user_id}")
         
         if user_id:
             # Profiles 테이블에서 사용자 정보 조회
             response = supabase.table("profiles").select("*").eq("id", user_id).execute()
+            print(f"[DEBUG] get_current_user - Supabase 프로필 조회 결과: {len(response.data) if response.data else 0}개")
             
             if response.data and len(response.data) > 0:
+                print(f"[DEBUG] get_current_user - Supabase JWT로 사용자 인증 성공: {user_id}")
                 return response.data[0]
     except Exception as e:
+        print(f"[DEBUG] get_current_user - Supabase JWT 실패: {e}")
         logger.warning(f"Supabase JWT decoding failed or user not found: {e}")
         # Supabase 토큰 검증 실패 시, 자체 JWT 토큰으로 시도
         pass
     
     # 자체 JWT 토큰으로 검증 시도
+    print(f"[DEBUG] get_current_user - 자체 JWT 토큰으로 검증 시도")
     payload = decode_access_token(token)
+    print(f"[DEBUG] get_current_user - 자체 JWT 디코딩 결과: {payload}")
     
     if not payload:
+        print(f"[DEBUG] get_current_user - 자체 JWT 디코딩 실패")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="유효하지 않은 인증 토큰입니다",
         )
     
     user_id = payload.get("user_id")
+    print(f"[DEBUG] get_current_user - 자체 JWT에서 추출한 user_id: {user_id}")
+    
     if not user_id:
+        print(f"[DEBUG] get_current_user - user_id가 없음")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="사용자 정보를 찾을 수 없습니다",
         )
     
     # Supabase에서 사용자 정보 조회
+    print(f"[DEBUG] get_current_user - Supabase에서 사용자 조회: {user_id}")
     response = supabase.table("profiles").select("*").eq("id", user_id).execute()
+    print(f"[DEBUG] get_current_user - 프로필 조회 결과: {len(response.data) if response.data else 0}개")
     
     if not response.data or len(response.data) == 0:
+        print(f"[DEBUG] get_current_user - 프로필을 찾을 수 없음: {user_id}")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="사용자를 찾을 수 없습니다",
         )
     
+    print(f"[DEBUG] get_current_user - 자체 JWT로 사용자 인증 성공: {user_id}")
     return response.data[0]
 
 
