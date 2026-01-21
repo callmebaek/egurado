@@ -72,7 +72,7 @@ interface DailyMetric {
 export default function MetricsTrackerPage() {
   const { hasStores, isLoading: storesLoading } = useStores()
   const { toast } = useToast()
-  const { user } = useAuth()
+  const { user, getToken } = useAuth()
 
   const [stores, setStores] = useState<Store[]>([])
   const [keywords, setKeywords] = useState<Keyword[]>([])
@@ -90,6 +90,17 @@ export default function MetricsTrackerPage() {
   
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [showAddKeyword, setShowAddKeyword] = useState(false)
+  
+  // 설정 모달 관련
+  const [editingTracker, setEditingTracker] = useState<string | null>(null)
+  const [settingsForm, setSettingsForm] = useState({
+    update_frequency: 'daily_once' as 'daily_once' | 'daily_twice' | 'daily_thrice',
+    update_times: [16] as number[],
+    notification_enabled: false,
+    notification_type: '' as 'kakao' | 'sms' | 'email' | '',
+    notification_phone: '',
+    notification_email: '',
+  })
 
   // 구독 tier 및 제한
   const [subscriptionTier, setSubscriptionTier] = useState<string>("free")
@@ -406,7 +417,7 @@ export default function MetricsTrackerPage() {
   // 지금 수집 (수동 트리거)
   const handleCollectNow = async (tracker: MetricTracker) => {
     try {
-      const token = localStorage.getItem('access_token')
+      const token = getToken()
       const response = await fetch(
         `${api.baseUrl}/api/v1/metrics/trackers/${tracker.id}/collect`,
         {
@@ -450,6 +461,82 @@ export default function MetricsTrackerPage() {
         variant: "destructive",
       })
     }
+  }
+
+  // 설정 편집 시작
+  const handleEditSettings = (tracker: MetricTracker) => {
+    setEditingTracker(tracker.id)
+    setSettingsForm({
+      update_frequency: tracker.update_frequency,
+      update_times: tracker.update_times,
+      notification_enabled: tracker.notification_enabled,
+      notification_type: tracker.notification_type || '',
+      notification_phone: '',
+      notification_email: '',
+    })
+  }
+
+  // 설정 저장
+  const handleSaveSettings = async (trackerId: string) => {
+    try:
+      const token = getToken()
+      if (!token) throw new Error("인증 토큰을 찾을 수 없습니다.")
+
+      const response = await fetch(`${api.baseUrl}/api/v1/metrics/trackers/${trackerId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify(settingsForm),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.detail || "설정 저장 실패")
+      }
+
+      toast({
+        title: "설정이 저장되었습니다",
+        description: "스케줄러가 새 설정에 따라 작동합니다.",
+      })
+
+      // 추적 목록 새로고침
+      const trackersResponse = await fetch(`${api.baseUrl}/api/v1/metrics/trackers`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      if (trackersResponse.ok) {
+        const data = await trackersResponse.json()
+        setTrackers(data.trackers || [])
+      }
+
+      setEditingTracker(null)
+
+    } catch (error: any) {
+      console.error("설정 저장 실패:", error)
+      toast({
+        title: "설정 저장 실패",
+        description: error.message,
+        variant: "destructive",
+      })
+    }
+  }
+
+  // 업데이트 주기 변경 시 시간 자동 설정
+  const handleFrequencyChange = (frequency: 'daily_once' | 'daily_twice' | 'daily_thrice') => {
+    const defaultTimes: Record<string, number[]> = {
+      daily_once: [16],
+      daily_twice: [6, 16],
+      daily_thrice: [6, 12, 18],
+    }
+    setSettingsForm({
+      ...settingsForm,
+      update_frequency: frequency,
+      update_times: defaultTimes[frequency],
+    })
   }
 
   if (storesLoading) {
@@ -676,6 +763,20 @@ export default function MetricsTrackerPage() {
                       지금 수집
                     </Button>
                     <Button
+                      variant={editingTracker === tracker.id ? "secondary" : "ghost"}
+                      size="sm"
+                      onClick={() => {
+                        if (editingTracker === tracker.id) {
+                          setEditingTracker(null)
+                        } else {
+                          handleEditSettings(tracker)
+                        }
+                      }}
+                      title="스케줄러 및 알림 설정"
+                    >
+                      <Settings className="w-4 h-4" />
+                    </Button>
+                    <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => handleDeleteTracker(tracker.id)}
@@ -684,6 +785,136 @@ export default function MetricsTrackerPage() {
                     </Button>
                   </div>
                 </div>
+
+                {/* 설정 폼 (펼쳐지는 형태) */}
+                {editingTracker === tracker.id && (
+                  <div className="mt-4 pt-4 border-t space-y-4">
+                    <h4 className="font-medium text-sm">스케줄러 및 알림 설정</h4>
+                    
+                    {/* 업데이트 주기 */}
+                    <div>
+                      <label className="text-sm font-medium mb-2 block">업데이트 주기</label>
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          variant={settingsForm.update_frequency === 'daily_once' ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => handleFrequencyChange('daily_once')}
+                        >
+                          하루 1회
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={settingsForm.update_frequency === 'daily_twice' ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => handleFrequencyChange('daily_twice')}
+                        >
+                          하루 2회
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={settingsForm.update_frequency === 'daily_thrice' ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => handleFrequencyChange('daily_thrice')}
+                        >
+                          하루 3회
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {settingsForm.update_frequency === 'daily_once' && '매일 오후 4시'}
+                        {settingsForm.update_frequency === 'daily_twice' && '매일 오전 6시, 오후 4시'}
+                        {settingsForm.update_frequency === 'daily_thrice' && '매일 오전 6시, 낮 12시, 오후 6시'}
+                      </p>
+                    </div>
+
+                    {/* 알림 설정 */}
+                    <div>
+                      <label className="text-sm font-medium mb-2 block">알림 설정</label>
+                      <div className="flex items-center gap-2 mb-2">
+                        <input
+                          type="checkbox"
+                          checked={settingsForm.notification_enabled}
+                          onChange={(e) => setSettingsForm({
+                            ...settingsForm,
+                            notification_enabled: e.target.checked
+                          })}
+                          className="w-4 h-4"
+                        />
+                        <span className="text-sm">순위 변동 알림 받기</span>
+                      </div>
+
+                      {settingsForm.notification_enabled && (
+                        <div className="space-y-2 ml-6">
+                          <div className="flex gap-2">
+                            <Button
+                              type="button"
+                              variant={settingsForm.notification_type === 'kakao' ? 'default' : 'outline'}
+                              size="sm"
+                              onClick={() => setSettingsForm({...settingsForm, notification_type: 'kakao'})}
+                            >
+                              카카오톡
+                            </Button>
+                            <Button
+                              type="button"
+                              variant={settingsForm.notification_type === 'sms' ? 'default' : 'outline'}
+                              size="sm"
+                              onClick={() => setSettingsForm({...settingsForm, notification_type: 'sms'})}
+                            >
+                              SMS
+                            </Button>
+                            <Button
+                              type="button"
+                              variant={settingsForm.notification_type === 'email' ? 'default' : 'outline'}
+                              size="sm"
+                              onClick={() => setSettingsForm({...settingsForm, notification_type: 'email'})}
+                            >
+                              이메일
+                            </Button>
+                          </div>
+
+                          {settingsForm.notification_type === 'sms' && (
+                            <Input
+                              placeholder="전화번호 (예: 010-1234-5678)"
+                              value={settingsForm.notification_phone}
+                              onChange={(e) => setSettingsForm({...settingsForm, notification_phone: e.target.value})}
+                            />
+                          )}
+
+                          {settingsForm.notification_type === 'email' && (
+                            <Input
+                              placeholder="이메일 주소"
+                              type="email"
+                              value={settingsForm.notification_email}
+                              onChange={(e) => setSettingsForm({...settingsForm, notification_email: e.target.value})}
+                            />
+                          )}
+
+                          <p className="text-xs text-muted-foreground">
+                            순위가 변동되었을 때 알림을 받습니다.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* 저장/취소 버튼 */}
+                    <div className="flex gap-2 justify-end">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setEditingTracker(null)}
+                      >
+                        취소
+                      </Button>
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => handleSaveSettings(tracker.id)}
+                      >
+                        저장
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
