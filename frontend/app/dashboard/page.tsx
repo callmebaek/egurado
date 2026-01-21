@@ -180,7 +180,7 @@ export default function DashboardPage() {
     }
 
     loadDashboardData()
-  }, [user, getToken])
+  }, [user]) // getToken은 함수이므로 의존성에서 제거
 
   // 로딩 중
   if (authLoading || isLoadingData) {

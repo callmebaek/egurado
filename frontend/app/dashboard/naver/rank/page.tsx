@@ -248,7 +248,7 @@ export default function NaverRankPage() {
     if (hasStores && tierLoaded && user) {
       loadStores()
     }
-  }, [hasStores, tierLoaded, user, toast])
+  }, [hasStores, tierLoaded, user]) // toast는 함수이므로 의존성에서 제거
 
   // 선택된 매장의 키워드 목록 로드
   useEffect(() => {
@@ -302,7 +302,7 @@ export default function NaverRankPage() {
     }
 
     loadKeywords()
-  }, [selectedStoreId, keywordLimit, tierLoaded, supabase.auth])
+  }, [selectedStoreId, keywordLimit, tierLoaded]) // supabase.auth는 객체이므로 의존성에서 제거
 
   // 순위 조회
   const handleCheckRank = async () => {

@@ -60,7 +60,7 @@ export function useStores() {
     }
 
     fetchStores()
-  }, [user, getToken])
+  }, [user]) // getToken은 함수이므로 의존성에서 제거
 
   return {
     stores,
