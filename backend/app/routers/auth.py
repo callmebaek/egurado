@@ -350,7 +350,7 @@ async def kakao_login(request: KakaoLoginRequest):
         # profiles ID 기준으로 고정 비밀번호 생성
         fixed_password = hashlib.sha256(f"{user_id}{SECRET_SALT}kakao".encode()).hexdigest()
         
-        # Auth 계정 확인: profiles ID와 일치하는 Auth 계정이 있는지 확인
+        # Auth 계정 확인 및 비밀번호 동기화 (삭제하지 않음)
         try:
             # 이메일로 Auth 사용자 조회
             list_response = supabase.auth.admin.list_users()
@@ -360,18 +360,23 @@ async def kakao_login(request: KakaoLoginRequest):
                     auth_user = u
                     break
             
-            # Auth 계정이 profiles ID와 다르면 삭제 후 재생성
-            if auth_user and str(auth_user.id) != str(user_id):
-                print(f"[DEBUG] Auth ID({auth_user.id})와 profiles ID({user_id}) 불일치, Auth 계정 삭제 후 재생성")
-                # 기존 Auth 계정 삭제
-                supabase.auth.admin.delete_user(auth_user.id)
-                auth_user = None  # 재생성을 위해 None 설정
-            
-            # Auth 계정이 없으면 profiles ID로 생성
-            if not auth_user:
-                print(f"[DEBUG] profiles ID로 Auth 계정 생성: {user_id}")
+            if auth_user:
+                # Auth 계정 존재: 비밀번호만 업데이트
+                print(f"[DEBUG] Auth 계정 존재: {auth_user.id}, 비밀번호 동기화")
+                # 비밀번호를 Auth ID 기준으로 재생성
+                fixed_password = hashlib.sha256(f"{auth_user.id}{SECRET_SALT}kakao".encode()).hexdigest()
                 try:
-                    # Admin API로 user_id 지정해서 생성 시도
+                    supabase.auth.admin.update_user_by_id(
+                        auth_user.id,
+                        {"password": fixed_password}
+                    )
+                    print(f"[DEBUG] 비밀번호 업데이트 완료")
+                except Exception as pwd_error:
+                    print(f"[WARN] 비밀번호 업데이트 실패: {pwd_error}, 계속 진행")
+            else:
+                # Auth 계정 없음: 새로 생성
+                print(f"[DEBUG] Auth 계정 없음, 새로 생성")
+                try:
                     create_response = supabase.auth.admin.create_user({
                         "email": kakao_user["email"],
                         "password": fixed_password,
@@ -383,25 +388,17 @@ async def kakao_login(request: KakaoLoginRequest):
                     })
                     if create_response.user:
                         print(f"[DEBUG] Auth 계정 생성 완료: {create_response.user.id}")
-                        # 생성된 ID가 profiles ID와 다르면 경고 (예상됨)
-                        if str(create_response.user.id) != str(user_id):
-                            print(f"[WARN] 생성된 Auth ID({create_response.user.id})가 profiles ID({user_id})와 다름")
-                            # 비밀번호를 생성된 Auth ID로 재생성
-                            fixed_password = hashlib.sha256(f"{create_response.user.id}{SECRET_SALT}kakao".encode()).hexdigest()
-                            # 비밀번호 업데이트
+                        # 비밀번호를 생성된 Auth ID로 재생성
+                        fixed_password = hashlib.sha256(f"{create_response.user.id}{SECRET_SALT}kakao".encode()).hexdigest()
+                        try:
                             supabase.auth.admin.update_user_by_id(
                                 create_response.user.id,
                                 {"password": fixed_password}
                             )
+                        except Exception as pwd_error:
+                            print(f"[WARN] 생성 후 비밀번호 업데이트 실패: {pwd_error}")
                 except Exception as create_error:
                     print(f"[WARN] Auth 계정 생성 실패: {create_error}, 로그인 시도")
-            else:
-                print(f"[DEBUG] Auth 계정 존재: {auth_user.id}, 비밀번호 업데이트")
-                # 비밀번호 동기화
-                supabase.auth.admin.update_user_by_id(
-                    auth_user.id,
-                    {"password": fixed_password}
-                )
         except Exception as auth_prep_error:
             print(f"[WARN] Auth 계정 준비 실패: {auth_prep_error}, 계속 진행")
         
@@ -675,7 +672,7 @@ async def naver_login(request: NaverLoginRequest):
         # profiles ID 기준으로 고정 비밀번호 생성
         fixed_password = hashlib.sha256(f"{user_id}{SECRET_SALT}naver".encode()).hexdigest()
         
-        # Auth 계정 확인: profiles ID와 일치하는 Auth 계정이 있는지 확인
+        # Auth 계정 확인 및 비밀번호 동기화 (삭제하지 않음)
         try:
             # 이메일로 Auth 사용자 조회
             list_response = supabase.auth.admin.list_users()
@@ -685,18 +682,23 @@ async def naver_login(request: NaverLoginRequest):
                     auth_user = u
                     break
             
-            # Auth 계정이 profiles ID와 다르면 삭제 후 재생성
-            if auth_user and str(auth_user.id) != str(user_id):
-                print(f"[DEBUG] Auth ID({auth_user.id})와 profiles ID({user_id}) 불일치, Auth 계정 삭제 후 재생성")
-                # 기존 Auth 계정 삭제
-                supabase.auth.admin.delete_user(auth_user.id)
-                auth_user = None  # 재생성을 위해 None 설정
-            
-            # Auth 계정이 없으면 profiles ID로 생성
-            if not auth_user:
-                print(f"[DEBUG] profiles ID로 Auth 계정 생성: {user_id}")
+            if auth_user:
+                # Auth 계정 존재: 비밀번호만 업데이트
+                print(f"[DEBUG] Auth 계정 존재: {auth_user.id}, 비밀번호 동기화")
+                # 비밀번호를 Auth ID 기준으로 재생성
+                fixed_password = hashlib.sha256(f"{auth_user.id}{SECRET_SALT}naver".encode()).hexdigest()
                 try:
-                    # Admin API로 user_id 지정해서 생성 시도
+                    supabase.auth.admin.update_user_by_id(
+                        auth_user.id,
+                        {"password": fixed_password}
+                    )
+                    print(f"[DEBUG] 비밀번호 업데이트 완료")
+                except Exception as pwd_error:
+                    print(f"[WARN] 비밀번호 업데이트 실패: {pwd_error}, 계속 진행")
+            else:
+                # Auth 계정 없음: 새로 생성
+                print(f"[DEBUG] Auth 계정 없음, 새로 생성")
+                try:
                     create_response = supabase.auth.admin.create_user({
                         "email": naver_user["email"],
                         "password": fixed_password,
@@ -708,25 +710,17 @@ async def naver_login(request: NaverLoginRequest):
                     })
                     if create_response.user:
                         print(f"[DEBUG] Auth 계정 생성 완료: {create_response.user.id}")
-                        # 생성된 ID가 profiles ID와 다르면 경고 (예상됨)
-                        if str(create_response.user.id) != str(user_id):
-                            print(f"[WARN] 생성된 Auth ID({create_response.user.id})가 profiles ID({user_id})와 다름")
-                            # 비밀번호를 생성된 Auth ID로 재생성
-                            fixed_password = hashlib.sha256(f"{create_response.user.id}{SECRET_SALT}naver".encode()).hexdigest()
-                            # 비밀번호 업데이트
+                        # 비밀번호를 생성된 Auth ID로 재생성
+                        fixed_password = hashlib.sha256(f"{create_response.user.id}{SECRET_SALT}naver".encode()).hexdigest()
+                        try:
                             supabase.auth.admin.update_user_by_id(
                                 create_response.user.id,
                                 {"password": fixed_password}
                             )
+                        except Exception as pwd_error:
+                            print(f"[WARN] 생성 후 비밀번호 업데이트 실패: {pwd_error}")
                 except Exception as create_error:
                     print(f"[WARN] Auth 계정 생성 실패: {create_error}, 로그인 시도")
-            else:
-                print(f"[DEBUG] Auth 계정 존재: {auth_user.id}, 비밀번호 업데이트")
-                # 비밀번호 동기화
-                supabase.auth.admin.update_user_by_id(
-                    auth_user.id,
-                    {"password": fixed_password}
-                )
         except Exception as auth_prep_error:
             print(f"[WARN] Auth 계정 준비 실패: {auth_prep_error}, 계속 진행")
         
