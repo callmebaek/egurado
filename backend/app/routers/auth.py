@@ -59,9 +59,9 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         print(f"[DEBUG] get_current_user - Supabase JWT 디코딩 시도, user_id: {user_id}")
         
         if user_id:
-            # Profiles 테이블에서 사용자 정보 조회
-            response = supabase.table("profiles").select("*").eq("id", user_id).execute()
-            print(f"[DEBUG] get_current_user - Supabase 프로필 조회 결과: {len(response.data) if response.data else 0}개")
+            # Profiles 테이블에서 사용자 정보 조회 (RLS bypass 함수 사용)
+            response = supabase.rpc('get_profile_by_id_bypass_rls', {'p_id': str(user_id)}).execute()
+            print(f"[DEBUG] get_current_user - Supabase 프로필 조회 결과 (RLS bypass): {len(response.data) if response.data else 0}개")
             
             if response.data and len(response.data) > 0:
                 print(f"[DEBUG] get_current_user - Supabase JWT로 사용자 인증 성공: {user_id}")
@@ -94,10 +94,10 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
             detail="사용자 정보를 찾을 수 없습니다",
         )
     
-    # Supabase에서 사용자 정보 조회
-    print(f"[DEBUG] get_current_user - Supabase에서 사용자 조회: {user_id}")
-    response = supabase.table("profiles").select("*").eq("id", user_id).execute()
-    print(f"[DEBUG] get_current_user - 프로필 조회 결과: {len(response.data) if response.data else 0}개")
+    # Supabase에서 사용자 정보 조회 (RLS bypass 함수 사용)
+    print(f"[DEBUG] get_current_user - Supabase에서 사용자 조회 (RLS bypass): {user_id}")
+    response = supabase.rpc('get_profile_by_id_bypass_rls', {'p_id': str(user_id)}).execute()
+    print(f"[DEBUG] get_current_user - 프로필 조회 결과 (RLS bypass): {len(response.data) if response.data else 0}개")
     
     if not response.data or len(response.data) == 0:
         print(f"[DEBUG] get_current_user - 프로필을 찾을 수 없음: {user_id}")
