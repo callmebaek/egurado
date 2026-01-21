@@ -26,7 +26,6 @@ import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
 import { useToast } from "@/components/ui/use-toast"
 import { useState, useEffect } from "react"
-import { supabase } from "@/lib/supabase"
 import { api } from "@/lib/config"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
@@ -102,31 +101,19 @@ export default function MetricsTrackerPage() {
     const loadUserTier = async () => {
       try {
         if (!user) return
-
-        const { data: userData, error } = await supabase
-          .from("profiles")
-          .select("subscription_tier")
-          .eq("id", user.id)
-          .single()
         
-        if (error) {
-          console.error("Tier 로드 실패:", error)
-          return
+        // user 객체에서 직접 tier 정보 가져오기
+        const tier = user.subscription_tier?.toLowerCase() || "free"
+        setSubscriptionTier(tier)
+        
+        const limits: Record<string, number> = {
+          free: 1,
+          basic: 3,
+          pro: 10,
+          god: 9999
         }
         
-        if (userData) {
-          const tier = userData.subscription_tier?.toLowerCase() || "free"
-          setSubscriptionTier(tier)
-          
-          const limits: Record<string, number> = {
-            free: 1,
-            basic: 3,
-            pro: 10,
-            god: 9999
-          }
-          
-          setTrackerLimit(limits[tier] || 1)
-        }
+        setTrackerLimit(limits[tier] || 1)
       } catch (error) {
         console.error("Tier 로드 예외:", error)
       }
@@ -190,9 +177,10 @@ export default function MetricsTrackerPage() {
 
       setIsLoadingTrackers(true)
       try {
+        const token = localStorage.getItem('access_token')
         const response = await fetch(`${api.baseUrl}/api/v1/metrics/trackers`, {
           headers: {
-            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+            'Authorization': `Bearer ${token}`
           }
         })
 
@@ -282,12 +270,12 @@ export default function MetricsTrackerPage() {
 
     setIsCreating(true)
     try {
-      const session = await supabase.auth.getSession()
+      const token = localStorage.getItem('access_token')
       const response = await fetch(`${api.baseUrl}/api/v1/metrics/trackers`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${session.data.session?.access_token}`
+          "Authorization": `Bearer ${token}`
         },
         body: JSON.stringify({
           user_id: user?.id,
@@ -343,11 +331,11 @@ export default function MetricsTrackerPage() {
     }
 
     try {
-      const session = await supabase.auth.getSession()
+      const token = localStorage.getItem('access_token')
       const response = await fetch(`${api.baseUrl}/api/v1/metrics/trackers/${trackerId}`, {
         method: "DELETE",
         headers: {
-          "Authorization": `Bearer ${session.data.session?.access_token}`
+          "Authorization": `Bearer ${token}`
         },
       })
 
@@ -358,7 +346,7 @@ export default function MetricsTrackerPage() {
       // 추적 설정 목록 새로고침
       const trackersResponse = await fetch(`${api.baseUrl}/api/v1/metrics/trackers`, {
         headers: {
-          'Authorization': `Bearer ${session.data.session?.access_token}`
+          'Authorization': `Bearer ${token}`
         }
       })
 
@@ -390,12 +378,12 @@ export default function MetricsTrackerPage() {
     setIsLoadingMetrics(true)
 
     try {
-      const session = await supabase.auth.getSession()
+      const token = localStorage.getItem('access_token')
       const response = await fetch(
         `${api.baseUrl}/api/v1/metrics/trackers/${tracker.id}/metrics`,
         {
           headers: {
-            'Authorization': `Bearer ${session.data.session?.access_token}`
+            'Authorization': `Bearer ${token}`
           }
         }
       )
