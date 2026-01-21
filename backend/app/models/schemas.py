@@ -371,4 +371,3 @@ class DailyMetricsListResponse(BaseModel):
     """일별 지표 목록 응답"""
     metrics: list[DailyMetricWithKeyword]
     total_count: int
-
