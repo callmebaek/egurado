@@ -332,6 +332,11 @@ async def kakao_login(request: KakaoLoginRequest):
     
     supabase = get_supabase_client()
     
+    # 소셜 로그인 사용자의 고정 비밀번호 생성 (user_id 기반)
+    import hashlib
+    import os
+    SECRET_SALT = os.getenv("JWT_SECRET_KEY", "fallback-secret")
+    
     # 기존 사용자 확인 (RLS bypass 함수 사용)
     existing_user = supabase.rpc('get_profile_by_email_bypass_rls', {'p_email': kakao_user["email"]}).execute()
     
@@ -341,17 +346,57 @@ async def kakao_login(request: KakaoLoginRequest):
         user_id = user_data["id"]
         onboarding_required = not user_data.get("onboarding_completed", False)
         print(f"[DEBUG] 카카오 로그인 - 기존 사용자 발견: user_id={user_id}, email={kakao_user['email']}")
+        
+        # 기존 사용자: 고정 비밀번호로 Supabase 로그인
+        fixed_password = hashlib.sha256(f"{user_id}{SECRET_SALT}kakao".encode()).hexdigest()
+        
+        try:
+            # Supabase Auth로 로그인 (세션 생성)
+            auth_response = supabase.auth.sign_in_with_password({
+                "email": kakao_user["email"],
+                "password": fixed_password
+            })
+            
+            if auth_response.session:
+                # Supabase JWT 반환
+                return AuthResponse(
+                    access_token=auth_response.session.access_token,
+                    user=Profile(**user_data),
+                    onboarding_required=onboarding_required,
+                )
+        except Exception as login_error:
+            print(f"[DEBUG] 기존 사용자 Supabase 로그인 실패: {login_error}")
+            # 로그인 실패 시 비밀번호 업데이트 시도
+            try:
+                supabase.auth.admin.update_user_by_id(
+                    user_id,
+                    {"password": fixed_password}
+                )
+                # 재시도
+                auth_response = supabase.auth.sign_in_with_password({
+                    "email": kakao_user["email"],
+                    "password": fixed_password
+                })
+                if auth_response.session:
+                    return AuthResponse(
+                        access_token=auth_response.session.access_token,
+                        user=Profile(**user_data),
+                        onboarding_required=onboarding_required,
+                    )
+            except Exception as update_error:
+                print(f"[DEBUG] 비밀번호 업데이트 실패: {update_error}")
+                pass
     else:
         # 신규 사용자 등록
         # 소셜 로그인은 Supabase Auth와 profiles에 모두 생성
-        import secrets
-        temp_password = secrets.token_urlsafe(32)
+        user_id_for_password = str(uuid.uuid4())  # 비밀번호 생성용 임시 ID
+        fixed_password = hashlib.sha256(f"{user_id_for_password}{SECRET_SALT}kakao".encode()).hexdigest()
         
         try:
-            # 1. Supabase Auth에 사용자 생성
+            # 1. Supabase Auth에 사용자 생성 (고정 비밀번호 사용)
             auth_response = supabase.auth.sign_up({
                 "email": kakao_user["email"],
-                "password": temp_password,
+                "password": fixed_password,
                 "options": {
                     "email_confirm": True,  # 이메일 인증 없이 바로 생성
                 }
@@ -361,11 +406,14 @@ async def kakao_login(request: KakaoLoginRequest):
                 raise Exception("Auth user creation failed")
             
             user_id = auth_response.user.id
+            print(f"[DEBUG] 신규 카카오 사용자 Supabase Auth 생성: user_id={user_id}")
             
         except Exception as auth_error:
             print(f"카카오 로그인 Auth 생성 실패: {auth_error}")
-            # Auth 생성 실패 시에도 계속 진행 (UUID 직접 생성)
-            user_id = str(uuid.uuid4())
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"계정 생성에 실패했습니다: {str(auth_error)}",
+            )
         
         from datetime import datetime, timezone
         now = datetime.now(timezone.utc).isoformat()
@@ -387,6 +435,7 @@ async def kakao_login(request: KakaoLoginRequest):
                 raise Exception("프로필 생성 결과가 없습니다")
             
             user_data = result.data[0]
+            print(f"[DEBUG] 신규 카카오 사용자 프로필 생성 완료")
         except Exception as profile_error:
             print(f"프로필 생성 실패: {profile_error}")
             raise HTTPException(
@@ -394,15 +443,21 @@ async def kakao_login(request: KakaoLoginRequest):
                 detail=f"카카오 로그인 처리 중 오류가 발생했습니다: {str(profile_error)}",
             )
         onboarding_required = True
-    
-    # JWT 토큰 생성
-    access_token = create_access_token({"user_id": user_id, "email": kakao_user["email"]})
-    
-    return AuthResponse(
-        access_token=access_token,
-        user=Profile(**user_data),
-        onboarding_required=onboarding_required,
-    )
+        
+        # 신규 사용자: Supabase JWT 반환
+        if auth_response.session and auth_response.session.access_token:
+            print(f"[DEBUG] 신규 사용자 Supabase JWT 반환")
+            return AuthResponse(
+                access_token=auth_response.session.access_token,
+                user=Profile(**user_data),
+                onboarding_required=onboarding_required,
+            )
+        else:
+            # 세션이 없으면 에러
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="인증 세션 생성에 실패했습니다",
+            )
 
 
 @router.post("/naver", response_model=AuthResponse)
@@ -431,23 +486,68 @@ async def naver_login(request: NaverLoginRequest):
     # 기존 사용자 확인 (RLS bypass 함수 사용)
     existing_user = supabase.rpc('get_profile_by_email_bypass_rls', {'p_email': naver_user["email"]}).execute()
     
+    # 소셜 로그인 사용자의 고정 비밀번호 생성 (user_id 기반)
+    import hashlib
+    import os
+    SECRET_SALT = os.getenv("JWT_SECRET_KEY", "fallback-secret")
+    
     if existing_user.data and len(existing_user.data) > 0:
         # 기존 사용자 로그인
         user_data = existing_user.data[0]
         user_id = user_data["id"]
         onboarding_required = not user_data.get("onboarding_completed", False)
         print(f"[DEBUG] 네이버 로그인 - 기존 사용자 발견: user_id={user_id}, email={naver_user['email']}")
+        
+        # 기존 사용자: 고정 비밀번호로 Supabase 로그인
+        fixed_password = hashlib.sha256(f"{user_id}{SECRET_SALT}naver".encode()).hexdigest()
+        
+        try:
+            # Supabase Auth로 로그인 (세션 생성)
+            auth_response = supabase.auth.sign_in_with_password({
+                "email": naver_user["email"],
+                "password": fixed_password
+            })
+            
+            if auth_response.session:
+                # Supabase JWT 반환
+                return AuthResponse(
+                    access_token=auth_response.session.access_token,
+                    user=Profile(**user_data),
+                    onboarding_required=onboarding_required,
+                )
+        except Exception as login_error:
+            print(f"[DEBUG] 기존 사용자 Supabase 로그인 실패: {login_error}")
+            # 로그인 실패 시 비밀번호 업데이트 시도
+            try:
+                supabase.auth.admin.update_user_by_id(
+                    user_id,
+                    {"password": fixed_password}
+                )
+                # 재시도
+                auth_response = supabase.auth.sign_in_with_password({
+                    "email": naver_user["email"],
+                    "password": fixed_password
+                })
+                if auth_response.session:
+                    return AuthResponse(
+                        access_token=auth_response.session.access_token,
+                        user=Profile(**user_data),
+                        onboarding_required=onboarding_required,
+                    )
+            except Exception as update_error:
+                print(f"[DEBUG] 비밀번호 업데이트 실패: {update_error}")
+                pass
     else:
         # 신규 사용자 등록
         # 소셜 로그인은 Supabase Auth와 profiles에 모두 생성
-        import secrets
-        temp_password = secrets.token_urlsafe(32)
+        user_id_for_password = str(uuid.uuid4())  # 비밀번호 생성용 임시 ID
+        fixed_password = hashlib.sha256(f"{user_id_for_password}{SECRET_SALT}naver".encode()).hexdigest()
         
         try:
-            # 1. Supabase Auth에 사용자 생성
+            # 1. Supabase Auth에 사용자 생성 (고정 비밀번호 사용)
             auth_response = supabase.auth.sign_up({
                 "email": naver_user["email"],
-                "password": temp_password,
+                "password": fixed_password,
                 "options": {
                     "email_confirm": True,  # 이메일 인증 없이 바로 생성
                 }
@@ -457,11 +557,14 @@ async def naver_login(request: NaverLoginRequest):
                 raise Exception("Auth user creation failed")
             
             user_id = auth_response.user.id
+            print(f"[DEBUG] 신규 네이버 사용자 Supabase Auth 생성: user_id={user_id}")
             
         except Exception as auth_error:
             print(f"네이버 로그인 Auth 생성 실패: {auth_error}")
-            # Auth 생성 실패 시에도 계속 진행 (UUID 직접 생성)
-            user_id = str(uuid.uuid4())
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"계정 생성에 실패했습니다: {str(auth_error)}",
+            )
         
         from datetime import datetime, timezone
         now = datetime.now(timezone.utc).isoformat()
@@ -483,6 +586,7 @@ async def naver_login(request: NaverLoginRequest):
                 raise Exception("프로필 생성 결과가 없습니다")
             
             user_data = result.data[0]
+            print(f"[DEBUG] 신규 네이버 사용자 프로필 생성 완료")
         except Exception as profile_error:
             print(f"프로필 생성 실패: {profile_error}")
             raise HTTPException(
@@ -490,15 +594,21 @@ async def naver_login(request: NaverLoginRequest):
                 detail=f"네이버 로그인 처리 중 오류가 발생했습니다: {str(profile_error)}",
             )
         onboarding_required = True
-    
-    # JWT 토큰 생성
-    access_token = create_access_token({"user_id": user_id, "email": naver_user["email"]})
-    
-    return AuthResponse(
-        access_token=access_token,
-        user=Profile(**user_data),
-        onboarding_required=onboarding_required,
-    )
+        
+        # 신규 사용자: Supabase JWT 반환
+        if auth_response.session and auth_response.session.access_token:
+            print(f"[DEBUG] 신규 사용자 Supabase JWT 반환")
+            return AuthResponse(
+                access_token=auth_response.session.access_token,
+                user=Profile(**user_data),
+                onboarding_required=onboarding_required,
+            )
+        else:
+            # 세션이 없으면 에러
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="인증 세션 생성에 실패했습니다",
+            )
 
 
 @router.post("/onboarding")
