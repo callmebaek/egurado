@@ -106,6 +106,7 @@ export default function MetricsTrackerPage() {
   const [showMetricsDialog, setShowMetricsDialog] = useState(false)
   const [showSettingsDialog, setShowSettingsDialog] = useState(false)
   const [editingTracker, setEditingTracker] = useState<string | null>(null)
+  const [isSavingSettings, setIsSavingSettings] = useState(false)
   const [settingsForm, setSettingsForm] = useState({
     update_frequency: 'daily_once' as 'daily_once' | 'daily_twice' | 'daily_thrice',
     update_times: [16] as number[],
@@ -495,6 +496,7 @@ export default function MetricsTrackerPage() {
 
   // 설정 저장
   const handleSaveSettings = async (trackerId: string) => {
+    setIsSavingSettings(true)
     try {
       const token = getToken()
       if (!token) throw new Error("인증 토큰을 찾을 수 없습니다.")
@@ -548,6 +550,8 @@ export default function MetricsTrackerPage() {
         description: error.message,
         variant: "destructive",
       })
+    } finally {
+      setIsSavingSettings(false)
     }
   }
 
