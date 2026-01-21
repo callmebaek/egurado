@@ -139,7 +139,7 @@ interface DiagnosisResult {
 
 export default function AuditPage() {
   const { toast } = useToast()
-  const { user } = useAuth()
+  const { user, getToken } = useAuth()
   const [stores, setStores] = useState<RegisteredStore[]>([])
   const [isLoadingStores, setIsLoadingStores] = useState(false)
   const [selectedStore, setSelectedStore] = useState<RegisteredStore | null>(null)
@@ -156,11 +156,16 @@ export default function AuditPage() {
   }, [user])
 
   const fetchStores = async () => {
-    if (!user) return
+    const token = getToken()
+    if (!user || !token) return
 
     setIsLoadingStores(true)
     try {
-      const response = await fetch(api.stores.list(user.id))
+      const response = await fetch(api.stores.list(), {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
 
       if (!response.ok) {
         throw new Error("매장 목록 조회에 실패했습니다.")

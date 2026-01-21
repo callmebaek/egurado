@@ -12,7 +12,7 @@ def _log(msg, data=None, hyp=None):
 _log("stores.py module loading started", {}, "H1")
 # #endregion
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 from pydantic import BaseModel
 from typing import List, Optional
 from uuid import UUID, uuid4
@@ -20,6 +20,7 @@ from datetime import datetime
 import logging
 
 from app.core.database import get_supabase_client
+from app.routers.auth import get_current_user
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -65,8 +66,7 @@ async def search_stores(query: str):
 
 
 class StoreCreateRequest(BaseModel):
-    """매장 등록 요청"""
-    user_id: UUID
+    """매장 등록 요청 (인증된 사용자의 ID는 JWT에서 추출)"""
     place_id: str
     name: str
     category: Optional[str] = ""
@@ -109,12 +109,16 @@ class StoreListResponse(BaseModel):
 
 
 @router.post("/", response_model=StoreResponse, status_code=status.HTTP_201_CREATED)
-async def create_store(request: StoreCreateRequest):
+async def create_store(
+    request: StoreCreateRequest,
+    current_user: dict = Depends(get_current_user)
+):
     """
-    매장 등록
+    매장 등록 (인증 필요)
     
     Args:
         request: 매장 등록 정보
+        current_user: 인증된 사용자 정보
         
     Returns:
         등록된 매장 정보
@@ -124,6 +128,7 @@ async def create_store(request: StoreCreateRequest):
     """
     try:
         supabase = get_supabase_client()
+        user_id = current_user["id"]  # 인증된 사용자의 ID 사용
         
         # 1. 사용자 프로필 조회 (subscription_tier 확인) - 프로필이 없으면 기본값 사용
         user_tier = "free"  # 기본값
@@ -131,7 +136,7 @@ async def create_store(request: StoreCreateRequest):
         
         try:
             profile_result = supabase.table("profiles").select("subscription_tier").eq(
-                "id", str(request.user_id)
+                "id", str(user_id)
             ).execute()
             
             if profile_result.data and len(profile_result.data) > 0:
@@ -142,7 +147,7 @@ async def create_store(request: StoreCreateRequest):
         
         # 2. 현재 등록된 매장 개수 확인
         stores_count_result = supabase.table("stores").select("id", count="exact").eq(
-            "user_id", str(request.user_id)
+            "user_id", str(user_id)
         ).execute()
         
         current_store_count = stores_count_result.count or 0
@@ -157,7 +162,7 @@ async def create_store(request: StoreCreateRequest):
         
         # 4. 중복 확인 (같은 user_id와 place_id)
         existing = supabase.table("stores").select("id").eq(
-            "user_id", str(request.user_id)
+            "user_id", str(user_id)
         ).eq("place_id", request.place_id).execute()
         
         if existing.data:
@@ -169,7 +174,7 @@ async def create_store(request: StoreCreateRequest):
         # 매장 등록
         new_store = {
             "id": str(uuid4()),
-            "user_id": str(request.user_id),
+            "user_id": str(user_id),
             "place_id": request.place_id,
             "store_name": request.name,
             "category": request.category,
@@ -219,21 +224,19 @@ async def create_store(request: StoreCreateRequest):
 
 
 @router.get("/", response_model=StoreListResponse)
-async def list_stores(user_id: UUID):
+async def list_stores(current_user: dict = Depends(get_current_user)):
     """
-    사용자의 매장 목록 조회
+    사용자의 매장 목록 조회 (인증 필요)
     
-    Args:
-        user_id: 사용자 ID
-        
     Returns:
         매장 목록
     """
     try:
         supabase = get_supabase_client()
+        user_id = current_user["id"]
         
         # 디버깅: user_id 로깅
-        logger.info(f"[DEBUG] list_stores called with user_id: {user_id}")
+        logger.info(f"[DEBUG] list_stores called with authenticated user_id: {user_id}")
         
         result = supabase.table("stores").select("*").eq(
             "user_id", str(user_id)
@@ -326,16 +329,16 @@ async def get_store(store_id: UUID):
 
 
 @router.delete("/{store_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_store(store_id: UUID, user_id: UUID):
+async def delete_store(store_id: UUID, current_user: dict = Depends(get_current_user)):
     """
-    매장 삭제
+    매장 삭제 (인증 필요)
     
     Args:
         store_id: 매장 ID
-        user_id: 사용자 ID (권한 확인용)
     """
     try:
         supabase = get_supabase_client()
+        user_id = current_user["id"]
         
         # 권한 확인
         store = supabase.table("stores").select("user_id").eq(

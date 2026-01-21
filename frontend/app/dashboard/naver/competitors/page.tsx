@@ -91,7 +91,7 @@ interface ComparisonResult {
 
 export default function CompetitorsPage() {
   const { toast } = useToast()
-  const { user } = useAuth()
+  const { user, getToken } = useAuth()
   
   // 단계 관리
   const [step, setStep] = useState<1 | 2 | 3>(1)
@@ -124,7 +124,8 @@ export default function CompetitorsPage() {
   const fetchStores = async () => {
     setLoadingStores(true)
     try {
-      if (!user) {
+      const token = getToken()
+      if (!user || !token) {
         toast({
           title: "로그인 필요",
           description: "로그인이 필요한 서비스입니다.",
@@ -133,7 +134,11 @@ export default function CompetitorsPage() {
         return
       }
       
-      const response = await fetch(api.stores.list(user.id))
+      const response = await fetch(api.stores.list(), {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
       
       if (!response.ok) {
         throw new Error("Failed to fetch stores")

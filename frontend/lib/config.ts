@@ -49,9 +49,9 @@ export const api = {
    * 매장 관련 API
    */
   stores: {
-    list: (userId: string) => api.url(`/api/v1/stores/?user_id=${userId}`),
+    list: () => api.url('/api/v1/stores/'),
     create: () => api.url('/api/v1/stores/'),
-    delete: (storeId: string, userId: string) => api.url(`/api/v1/stores/${storeId}?user_id=${userId}`),
+    delete: (storeId: string) => api.url(`/api/v1/stores/${storeId}`),
   },
   
   /**

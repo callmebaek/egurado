@@ -64,7 +64,7 @@ interface SearchResult {
 export default function NaverRankPage() {
   const { hasStores, isLoading: storesLoading } = useStores()
   const { toast } = useToast()
-  const { user } = useAuth()
+  const { user, getToken } = useAuth()
 
   const [stores, setStores] = useState<Store[]>([])
   const [selectedStoreId, setSelectedStoreId] = useState<string>("")
@@ -203,14 +203,19 @@ export default function NaverRankPage() {
       }
       
       try {
-        if (!user) {
+        const token = getToken()
+        if (!user || !token) {
           console.log("사용자 인증 정보가 없습니다")
           return
         }
 
         console.log("📦 매장 목록 로드 중..., user_id:", user.id)
         
-        const response = await fetch(api.stores.list(user.id))
+        const response = await fetch(api.stores.list(), {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
         
         if (!response.ok) {
           console.error("매장 목록 조회 실패:", response.status)
@@ -255,10 +260,15 @@ export default function NaverRankPage() {
 
       setLoadingKeywords(true)
       try {
-        if (!user) return
+        const token = getToken()
+        if (!user || !token) return
         
         // 모든 매장의 키워드 개수 계산 (전체 quota) ⭐
-        const allStoresResponse = await fetch(api.stores.list(user.id))
+        const allStoresResponse = await fetch(api.stores.list(), {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
         
         if (allStoresResponse.ok) {
           const allStoresData = await allStoresResponse.json()
@@ -372,9 +382,14 @@ export default function NaverRankPage() {
         })
 
         // 키워드 목록 새로고침 및 전체 카운트 업데이트 ⭐
-        if (user) {
+        const token = getToken()
+        if (user && token) {
           // 전체 키워드 수 재계산
-          const allStoresResponse = await fetch(api.stores.list(user.id))
+          const allStoresResponse = await fetch(api.stores.list(), {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          })
           
           if (allStoresResponse.ok) {
             const allStoresData = await allStoresResponse.json()
@@ -494,9 +509,14 @@ export default function NaverRankPage() {
       }
 
       // 키워드 목록 새로고침 및 전체 카운트 업데이트 ⭐
-      if (user) {
+      const token = getToken()
+      if (user && token) {
         // 전체 키워드 수 재계산
-        const allStoresResponse = await fetch(api.stores.list(user.id))
+        const allStoresResponse = await fetch(api.stores.list(), {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
         
         if (allStoresResponse.ok) {
           const allStoresData = await allStoresResponse.json()

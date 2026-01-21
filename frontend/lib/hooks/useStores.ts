@@ -16,7 +16,7 @@ interface Store {
 }
 
 export function useStores() {
-  const { user } = useAuth()
+  const { user, getToken } = useAuth()
   const [stores, setStores] = useState<Store[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
@@ -24,7 +24,9 @@ export function useStores() {
     const fetchStores = async () => {
       try {
         // 1. 사용자 인증 확인
-        if (!user) {
+        const token = getToken()
+        if (!user || !token) {
+          console.log("[DEBUG] useStores - No user or token")
           setIsLoading(false)
           return
         }
@@ -32,9 +34,14 @@ export function useStores() {
         // 디버깅: user 정보 로깅
         console.log("[DEBUG] useStores - user:", user)
         console.log("[DEBUG] useStores - user.id:", user.id)
+        console.log("[DEBUG] useStores - token exists:", !!token)
 
-        // 2. 등록된 매장 목록 가져오기
-        const response = await fetch(api.stores.list(user.id))
+        // 2. 등록된 매장 목록 가져오기 (Authorization 헤더 포함)
+        const response = await fetch(api.stores.list(), {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
 
         if (!response.ok) {
           console.error("[DEBUG] useStores - API 실패:", response.status, response.statusText)
@@ -53,7 +60,7 @@ export function useStores() {
     }
 
     fetchStores()
-  }, [user])
+  }, [user, getToken])
 
   return {
     stores,

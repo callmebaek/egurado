@@ -6,6 +6,7 @@
  */
 import { useState, useEffect } from "react"
 import { useStores } from "@/lib/hooks/useStores"
+import { useAuth } from "@/lib/auth-context"
 import { EmptyStoreMessage } from "@/components/EmptyStoreMessage"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -91,6 +92,7 @@ interface AnalysisResult {
 
 export default function TargetKeywordsPage() {
   const { hasStores, isLoading: storesLoading, userId } = useStores()
+  const { getToken } = useAuth()
   const { toast } = useToast()
 
   const [registeredStores, setRegisteredStores] = useState<RegisteredStore[]>([])
@@ -135,7 +137,14 @@ export default function TargetKeywordsPage() {
 
   const fetchRegisteredStores = async () => {
     try {
-      const response = await fetch(`${api.baseUrl}/api/v1/stores/?user_id=${userId}`)
+      const token = getToken()
+      if (!token) throw new Error("인증 토큰 없음")
+      
+      const response = await fetch(api.stores.list(), {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
       if (!response.ok) throw new Error("매장 조회 실패")
       
       const result = await response.json()

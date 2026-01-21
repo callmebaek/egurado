@@ -122,8 +122,12 @@ export default function DashboardPage() {
         }
 
         // 2. 매장 목록 조회
-        console.log("[DEBUG] Fetching stores for user:", user.id)
-        const storesRes = await fetch(api.stores.list(user.id))
+        console.log("[DEBUG] Fetching stores with auth token")
+        const storesRes = await fetch(api.stores.list(), {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
         console.log("[DEBUG] Stores response status:", storesRes.status)
         
         if (storesRes.ok) {

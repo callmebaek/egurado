@@ -47,7 +47,7 @@ interface StoresListResponse {
 
 export default function ConnectStorePage() {
   const { toast } = useToast()
-  const { user } = useAuth()
+  const { user, getToken } = useAuth()
   const [searchQuery, setSearchQuery] = useState("")
   const [isSearching, setIsSearching] = useState(false)
   const [searchResults, setSearchResults] = useState<StoreSearchResult[]>([])
@@ -67,11 +67,16 @@ export default function ConnectStorePage() {
   }, [user])
 
   const fetchRegisteredStores = async () => {
-    if (!user) return
+    const token = getToken()
+    if (!user || !token) return
 
     setIsLoadingStores(true)
     try {
-      const response = await fetch(api.stores.list(user.id))
+      const response = await fetch(api.stores.list(), {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
 
       if (!response.ok) {
         throw new Error("매장 목록 조회에 실패했습니다.")
@@ -92,7 +97,8 @@ export default function ConnectStorePage() {
   }
 
   const handleDeleteStore = async (storeId: string, storeName: string) => {
-    if (!userId) return
+    const token = getToken()
+    if (!user || !token) return
 
     if (!confirm(`"${storeName}" 매장을 삭제하시겠습니까?`)) {
       return
@@ -101,9 +107,12 @@ export default function ConnectStorePage() {
     setDeletingStoreId(storeId)
     try {
       const response = await fetch(
-        api.stores.delete(storeId, userId),
+        api.stores.delete(storeId),
         {
           method: "DELETE",
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
         }
       )
 
@@ -183,13 +192,23 @@ export default function ConnectStorePage() {
 
     try {
       // 매장 등록 API 호출
+      const token = getToken()
+      if (!token) {
+        toast({
+          variant: "destructive",
+          title: "❌ 오류",
+          description: "인증 토큰이 없습니다. 다시 로그인해주세요.",
+        })
+        return
+      }
+
       const response = await fetch(api.stores.create(), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
         },
         body: JSON.stringify({
-          user_id: user.id,
           place_id: store.place_id,
           name: store.name,
           category: store.category,

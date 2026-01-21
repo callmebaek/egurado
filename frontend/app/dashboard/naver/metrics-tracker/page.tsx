@@ -155,9 +155,14 @@ export default function MetricsTrackerPage() {
   useEffect(() => {
     const loadStores = async () => {
       try {
-        if (!user) return
+        const token = getToken()
+        if (!user || !token) return
 
-        const response = await fetch(api.stores.list(user.id))
+        const response = await fetch(api.stores.list(), {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
         
         if (!response.ok) return
         

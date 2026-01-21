@@ -206,7 +206,7 @@ interface Review {
 
 export default function ReviewManagementPage() {
   const { toast } = useToast()
-  const { user } = useAuth()
+  const { user, getToken } = useAuth()
   
   // 상태
   const [stores, setStores] = useState<Store[]>([])
@@ -302,15 +302,20 @@ export default function ReviewManagementPage() {
     try {
       console.log("👤 User:", user?.id)
       
-      if (!user) {
-        console.log("❌ 로그인된 사용자 없음")
+      const token = getToken()
+      if (!user || !token) {
+        console.log("❌ 로그인된 사용자 또는 토큰 없음")
         return
       }
       
-      const apiUrl = api.stores.list(user.id)
+      const apiUrl = api.stores.list()
       console.log("🌐 API URL:", apiUrl)
       
-      const response = await fetch(apiUrl)
+      const response = await fetch(apiUrl, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
       console.log("📡 Response status:", response.status)
       
       if (response.ok) {
