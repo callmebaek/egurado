@@ -54,7 +54,7 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         # Supabase JWT는 'sub' 필드에 user_id가 있음
         # JWT Secret이 없으므로, 일단 디코딩만 시도하여 user_id를 추출
         # 실제 검증은 RLS 정책에 의해 Supabase DB에서 이루어짐
-        payload = jwt.decode(token, "", options={"verify_signature": False}) # 서명 검증 없이 디코딩 (key="" 필수)
+        payload = jwt.decode(token, "", options={"verify_signature": False, "verify_aud": False}) # 서명 및 audience 검증 없이 디코딩
         user_id = payload.get("sub") # Supabase JWT는 'sub'에 user_id가 있음
         print(f"[DEBUG] get_current_user - Supabase JWT 디코딩 시도, user_id: {user_id}")
         
@@ -396,8 +396,8 @@ async def kakao_login(request: KakaoLoginRequest):
                     else:
                         raise Exception("Auth 계정 생성 후 로그인 시도했지만 세션이 없습니다")
             except Exception as create_error:
-                # Auth 계정이 이미 존재하는 경우 (다른 user_id로)
-                if "already been registered" in str(create_error):
+                # Auth 계정이 이미 존재하는 경우 (다른 user_id로) 또는 권한 문제
+                if "already been registered" in str(create_error) or "User not allowed" in str(create_error):
                     print(f"[DEBUG] Auth 계정이 이미 존재함, 이메일로 조회 후 비밀번호 업데이트")
                     try:
                         # 이메일로 Auth 사용자 조회
@@ -604,8 +604,8 @@ async def naver_login(request: NaverLoginRequest):
                     else:
                         raise Exception("Auth 계정 생성 후 로그인 시도했지만 세션이 없습니다")
             except Exception as create_error:
-                # Auth 계정이 이미 존재하는 경우 (다른 user_id로)
-                if "already been registered" in str(create_error):
+                # Auth 계정이 이미 존재하는 경우 (다른 user_id로) 또는 권한 문제
+                if "already been registered" in str(create_error) or "User not allowed" in str(create_error):
                     print(f"[DEBUG] Auth 계정이 이미 존재함, 이메일로 조회 후 비밀번호 업데이트")
                     try:
                         # 이메일로 Auth 사용자 조회
