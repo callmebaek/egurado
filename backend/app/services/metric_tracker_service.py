@@ -44,13 +44,13 @@ class MetricTrackerService:
         """
         try:
             # 사용자의 구독 tier 확인
-            user_result = self.supabase.table("profiles").select("subscription_tier").eq("id", user_id).single().execute()
+            user_result = self.supabase.table("profiles").select("subscription_tier").eq("id", user_id).execute()
             
-            if not user_result.data:
+            if not user_result.data or len(user_result.data) == 0:
                 logger.warning(f"User not found: {user_id}")
                 return False, 0, TRACKER_LIMITS["free"]
             
-            subscription_tier = user_result.data.get("subscription_tier", "free").lower()
+            subscription_tier = user_result.data[0].get("subscription_tier", "free").lower()
             max_trackers = TRACKER_LIMITS.get(subscription_tier, TRACKER_LIMITS["free"])
             
             # 현재 추적 중인 항목 수 확인
@@ -137,8 +137,8 @@ class MetricTrackerService:
     def get_tracker(self, tracker_id: str, user_id: str) -> Optional[Dict[str, Any]]:
         """특정 추적 설정 조회"""
         try:
-            result = self.supabase.table("metric_trackers").select("*").eq("id", tracker_id).eq("user_id", user_id).single().execute()
-            return result.data if result.data else None
+            result = self.supabase.table("metric_trackers").select("*").eq("id", tracker_id).eq("user_id", user_id).execute()
+            return result.data[0] if result.data and len(result.data) > 0 else None
         except Exception as e:
             logger.error(f"Error getting tracker: {str(e)}")
             return None
@@ -221,13 +221,12 @@ class MetricTrackerService:
             tracker_result = self.supabase.table("metric_trackers") \
                 .select("*, stores(place_id, store_name), keywords(id, keyword)") \
                 .eq("id", tracker_id) \
-                .single() \
                 .execute()
             
-            if not tracker_result.data:
+            if not tracker_result.data or len(tracker_result.data) == 0:
                 raise Exception(f"추적 설정을 찾을 수 없습니다: {tracker_id}")
             
-            tracker = tracker_result.data
+            tracker = tracker_result.data[0]
             store_id = tracker["store_id"]
             keyword_id = tracker["keyword_id"]
             place_id = tracker["stores"]["place_id"]
