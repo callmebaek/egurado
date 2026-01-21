@@ -79,7 +79,11 @@ class MetricTrackerService:
             생성된 추적 설정 데이터
         """
         try:
+            # UUID를 문자열로 변환
             user_id = str(data.get("user_id"))
+            data["user_id"] = user_id
+            data["store_id"] = str(data.get("store_id"))
+            data["keyword_id"] = str(data.get("keyword_id"))
             
             # 제한 확인
             is_limit_exceeded, current_count, max_count = self.check_tracker_limit(user_id)
