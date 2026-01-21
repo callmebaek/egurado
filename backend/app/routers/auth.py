@@ -373,9 +373,31 @@ async def kakao_login(request: KakaoLoginRequest):
                         user_data = auth_profile_result.data[0]
                         onboarding_required = not user_data.get("onboarding_completed", False)
                     else:
-                        # Auth user_id에 해당하는 프로필이 없음 - id를 auth_user_id로 변경
-                        print(f"[DEBUG] Auth user_id에 해당하는 프로필 없음, id를 {auth_user_id}로 변경")
-                        user_data["id"] = auth_user_id
+                        # Auth user_id에 해당하는 프로필이 없음 - 새 프로필 생성
+                        print(f"[DEBUG] Auth user_id에 해당하는 프로필 없음, 새 프로필 생성: {auth_user_id}")
+                        try:
+                            # RLS bypass 함수로 새 프로필 생성
+                            result = supabase.rpc('insert_profile_bypass_rls', {
+                                'p_id': str(auth_user_id),
+                                'p_email': user_data["email"],
+                                'p_display_name': user_data.get("display_name", user_data["email"].split("@")[0]),
+                                'p_auth_provider': 'kakao',
+                                'p_subscription_tier': user_data.get("subscription_tier", "free"),
+                                'p_onboarding_completed': user_data.get("onboarding_completed", False),
+                                'p_profile_image_url': user_data.get("profile_image_url"),
+                                'p_phone_number': user_data.get("phone_number")
+                            }).execute()
+                            
+                            if result.data and len(result.data) > 0:
+                                user_data = result.data[0]
+                                onboarding_required = not user_data.get("onboarding_completed", False)
+                                print(f"[DEBUG] 새 프로필 생성 완료: {auth_user_id}")
+                            else:
+                                print(f"[WARN] 프로필 생성 결과 없음, 기존 데이터 사용")
+                                user_data["id"] = auth_user_id
+                        except Exception as profile_create_error:
+                            print(f"[WARN] 프로필 생성 실패: {profile_create_error}, 기존 데이터 사용")
+                            user_data["id"] = auth_user_id
                 
                 # Supabase JWT 반환
                 return AuthResponse(
@@ -614,9 +636,31 @@ async def naver_login(request: NaverLoginRequest):
                         user_data = auth_profile_result.data[0]
                         onboarding_required = not user_data.get("onboarding_completed", False)
                     else:
-                        # Auth user_id에 해당하는 프로필이 없음 - id를 auth_user_id로 변경
-                        print(f"[DEBUG] Auth user_id에 해당하는 프로필 없음, id를 {auth_user_id}로 변경")
-                        user_data["id"] = auth_user_id
+                        # Auth user_id에 해당하는 프로필이 없음 - 새 프로필 생성
+                        print(f"[DEBUG] Auth user_id에 해당하는 프로필 없음, 새 프로필 생성: {auth_user_id}")
+                        try:
+                            # RLS bypass 함수로 새 프로필 생성
+                            result = supabase.rpc('insert_profile_bypass_rls', {
+                                'p_id': str(auth_user_id),
+                                'p_email': user_data["email"],
+                                'p_display_name': user_data.get("display_name", user_data["email"].split("@")[0]),
+                                'p_auth_provider': 'naver',
+                                'p_subscription_tier': user_data.get("subscription_tier", "free"),
+                                'p_onboarding_completed': user_data.get("onboarding_completed", False),
+                                'p_profile_image_url': user_data.get("profile_image_url"),
+                                'p_phone_number': user_data.get("phone_number")
+                            }).execute()
+                            
+                            if result.data and len(result.data) > 0:
+                                user_data = result.data[0]
+                                onboarding_required = not user_data.get("onboarding_completed", False)
+                                print(f"[DEBUG] 새 프로필 생성 완료: {auth_user_id}")
+                            else:
+                                print(f"[WARN] 프로필 생성 결과 없음, 기존 데이터 사용")
+                                user_data["id"] = auth_user_id
+                        except Exception as profile_create_error:
+                            print(f"[WARN] 프로필 생성 실패: {profile_create_error}, 기존 데이터 사용")
+                            user_data["id"] = auth_user_id
                 
                 # Supabase JWT 반환
                 return AuthResponse(
