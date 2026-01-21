@@ -62,7 +62,7 @@ interface MetricTracker {
 }
 
 export default function DashboardPage() {
-  const { user, token } = useAuth()
+  const { user, getToken } = useAuth()
   const { hasStores, isLoading: storesLoading, storeCount } = useStores()
   
   const [profile, setProfile] = useState<UserProfile | null>(null)
@@ -76,6 +76,8 @@ export default function DashboardPage() {
     const loadDashboardData = async () => {
       console.log("[DEBUG] loadDashboardData called")
       console.log("[DEBUG] user:", user)
+      
+      const token = getToken()
       console.log("[DEBUG] token:", token ? "exists" : "null")
       
       if (!user || !token) {
@@ -142,7 +144,7 @@ export default function DashboardPage() {
         // 4. 추적 키워드 목록 조회
         const trackersRes = await fetch(api.metrics.trackers(), {
           headers: {
-            'Authorization': `Bearer ${token}`
+            'Authorization': `Bearer ${getToken()}`
           }
         })
         if (trackersRes.ok) {
@@ -159,7 +161,7 @@ export default function DashboardPage() {
     }
 
     loadDashboardData()
-  }, [user, token])
+  }, [user, getToken])
 
   // 로딩 중
   if (storesLoading || isLoadingData) {
