@@ -478,7 +478,7 @@ export default function MetricsTrackerPage() {
 
   // 설정 저장
   const handleSaveSettings = async (trackerId: string) => {
-    try:
+    try {
       const token = getToken()
       if (!token) throw new Error("인증 토큰을 찾을 수 없습니다.")
 
