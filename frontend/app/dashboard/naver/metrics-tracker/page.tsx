@@ -89,6 +89,7 @@ export default function MetricsTrackerPage() {
   const [keywords, setKeywords] = useState<Keyword[]>([])
   const [trackers, setTrackers] = useState<MetricTracker[]>([])
   const [dailyMetrics, setDailyMetrics] = useState<DailyMetric[]>([])
+  const [latestMetrics, setLatestMetrics] = useState<Record<string, DailyMetric | null>>({})
   
   const [selectedStoreId, setSelectedStoreId] = useState<string>("")
   const [selectedKeywordId, setSelectedKeywordId] = useState<string>("")
@@ -211,8 +212,12 @@ export default function MetricsTrackerPage() {
 
         if (response.ok) {
           const data = await response.json()
-          setTrackers(data.trackers || [])
+          const loadedTrackers = data.trackers || []
+          setTrackers(loadedTrackers)
           setCurrentTrackerCount(data.total_count || 0)
+
+          // 각 tracker의 최근 metric 가져오기
+          loadLatestMetrics(loadedTrackers, token)
         }
       } catch (error) {
         console.error("추적 설정 로드 실패:", error)
@@ -223,6 +228,39 @@ export default function MetricsTrackerPage() {
 
     loadTrackers()
   }, [user])
+
+  // 최근 metric 로드
+  const loadLatestMetrics = async (trackerList: MetricTracker[], token: string | null) => {
+    const metricsMap: Record<string, DailyMetric | null> = {}
+    
+    await Promise.all(
+      trackerList.map(async (tracker) => {
+        try {
+          const response = await fetch(
+            `${api.baseUrl}/api/v1/metrics/trackers/${tracker.id}/metrics`,
+            {
+              headers: {
+                'Authorization': `Bearer ${token}`
+              }
+            }
+          )
+
+          if (response.ok) {
+            const data = await response.json()
+            // 최근 데이터 (첫 번째) 사용
+            metricsMap[tracker.id] = data.metrics && data.metrics.length > 0 
+              ? data.metrics[0] 
+              : null
+          }
+        } catch (error) {
+          console.error(`최근 metric 로드 실패 (tracker: ${tracker.id}):`, error)
+          metricsMap[tracker.id] = null
+        }
+      })
+    )
+
+    setLatestMetrics(metricsMap)
+  }
 
   // 키워드 추가
   const handleAddKeyword = async () => {
@@ -462,6 +500,30 @@ export default function MetricsTrackerPage() {
       if (trackersResponse.ok) {
         const data = await trackersResponse.json()
         setTrackers(data.trackers || [])
+      }
+
+      // 해당 tracker의 최근 metric 새로고침
+      try {
+        const metricResponse = await fetch(
+          `${api.baseUrl}/api/v1/metrics/trackers/${tracker.id}/metrics`,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          }
+        )
+
+        if (metricResponse.ok) {
+          const metricData = await metricResponse.json()
+          setLatestMetrics(prev => ({
+            ...prev,
+            [tracker.id]: metricData.metrics && metricData.metrics.length > 0 
+              ? metricData.metrics[0] 
+              : null
+          }))
+        }
+      } catch (error) {
+        console.error("최근 metric 로드 실패:", error)
       }
 
       // 현재 선택된 추적의 지표를 보고 있다면 자동 새로고침
@@ -742,19 +804,70 @@ export default function MetricsTrackerPage() {
                 className="p-5 hover:shadow-md transition-shadow"
               >
                 {/* 헤더 */}
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-lg mb-1">{tracker.store_name}</h3>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs px-2.5 py-1 bg-purple-100 text-purple-700 rounded-full font-medium">
-                        {tracker.keyword}
-                      </span>
-                      {!tracker.is_active && (
-                        <span className="text-xs px-2.5 py-1 bg-red-100 text-red-700 rounded-full font-medium">
-                          일시정지
+                <div className="mb-4">
+                  <div className="flex items-start justify-between gap-4 mb-3">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-lg mb-1 truncate">{tracker.store_name}</h3>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs px-2.5 py-1 bg-purple-100 text-purple-700 rounded-full font-medium">
+                          {tracker.keyword}
                         </span>
-                      )}
+                        {!tracker.is_active && (
+                          <span className="text-xs px-2.5 py-1 bg-red-100 text-red-700 rounded-full font-medium">
+                            일시정지
+                          </span>
+                        )}
+                      </div>
                     </div>
+                  </div>
+                  
+                  {/* 최근 지표 미리보기 */}
+                  <div className="w-full">
+                    {latestMetrics[tracker.id] ? (
+                      <div className="grid grid-cols-3 gap-2">
+                        {/* 순위 */}
+                        <div className="text-center bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg px-2 py-2.5">
+                          <div className="text-[10px] text-blue-600 font-medium mb-1">순위</div>
+                          <div className="flex items-center justify-center gap-0.5">
+                            <span className="text-xl font-bold text-blue-700">
+                              {latestMetrics[tracker.id].rank || '-'}
+                            </span>
+                            {latestMetrics[tracker.id].rank_change && (
+                              <span className={`text-xs ${latestMetrics[tracker.id].rank_change! > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                {latestMetrics[tracker.id].rank_change! > 0 ? '↑' : '↓'}
+                                {Math.abs(latestMetrics[tracker.id].rank_change!)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        
+                        {/* 방문자 리뷰 */}
+                        <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg px-2 py-2.5">
+                          <div className="text-[10px] text-green-600 font-medium mb-1 flex items-center justify-center gap-1">
+                            <Users className="w-3 h-3" />
+                            방문자
+                          </div>
+                          <div className="text-base font-bold text-green-700 text-center">
+                            {latestMetrics[tracker.id].visitor_review_count.toLocaleString()}
+                          </div>
+                        </div>
+                        
+                        {/* 블로그 리뷰 */}
+                        <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-lg px-2 py-2.5">
+                          <div className="text-[10px] text-amber-600 font-medium mb-1 flex items-center justify-center gap-1">
+                            <FileText className="w-3 h-3" />
+                            블로그
+                          </div>
+                          <div className="text-base font-bold text-amber-700 text-center">
+                            {latestMetrics[tracker.id].blog_review_count.toLocaleString()}
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center text-xs text-gray-400 bg-gray-50 rounded-lg py-3">
+                        데이터 없음
+                      </div>
+                    )}
                   </div>
                 </div>
 
