@@ -237,9 +237,23 @@ async def get_tracker_metrics(
             end_date=end
         )
         
+        # 데이터 평탄화 (nested 구조를 flat하게 변환)
+        flattened_metrics = []
+        for metric in metrics:
+            flat_metric = {**metric}
+            # keywords 객체를 keyword 필드로 변환
+            if 'keywords' in metric and metric['keywords']:
+                flat_metric['keyword'] = metric['keywords']['keyword']
+                del flat_metric['keywords']
+            # stores 객체를 store_name 필드로 변환
+            if 'stores' in metric and metric['stores']:
+                flat_metric['store_name'] = metric['stores']['store_name']
+                del flat_metric['stores']
+            flattened_metrics.append(flat_metric)
+        
         return {
-            "metrics": metrics,
-            "total_count": len(metrics)
+            "metrics": flattened_metrics,
+            "total_count": len(flattened_metrics)
         }
     except HTTPException:
         raise

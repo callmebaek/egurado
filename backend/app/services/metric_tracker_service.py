@@ -217,11 +217,11 @@ class MetricTrackerService:
             수집된 지표 데이터
         """
         try:
-            # 추적 설정 조회
-            tracker_result = self.supabase.table("metric_trackers") \
-                .select("*, stores(place_id, store_name), keywords(id, keyword)") \
-                .eq("id", tracker_id) \
-                .execute()
+            # 추적 설정 조회 (RLS bypass function 사용)
+            tracker_result = self.supabase.rpc(
+                'get_metric_tracker_bypass_rls',
+                {'p_tracker_id': tracker_id}
+            ).execute()
             
             if not tracker_result.data or len(tracker_result.data) == 0:
                 raise Exception(f"추적 설정을 찾을 수 없습니다: {tracker_id}")
@@ -229,8 +229,9 @@ class MetricTrackerService:
             tracker = tracker_result.data[0]
             store_id = tracker["store_id"]
             keyword_id = tracker["keyword_id"]
-            place_id = tracker["stores"]["place_id"]
-            keyword = tracker["keywords"]["keyword"]
+            user_id = tracker["user_id"]
+            place_id = tracker["place_id"]
+            keyword = tracker["keyword"]
             
             logger.info(f"[Collecting Metrics] Tracker: {tracker_id}, Keyword: {keyword}, Place ID: {place_id}")
             
@@ -244,47 +245,56 @@ class MetricTrackerService:
             # 오늘 날짜 (서울 시간대)
             today = datetime.now(self.timezone).date()
             
-            # 어제 데이터 조회 (순위 변동 계산용)
+            # 어제 데이터 조회 (RLS bypass function 사용)
             yesterday = today - timedelta(days=1)
-            yesterday_result = self.supabase.table("daily_metrics") \
-                .select("rank") \
-                .eq("tracker_id", tracker_id) \
-                .eq("collection_date", yesterday.isoformat()) \
-                .execute()
+            yesterday_result = self.supabase.rpc(
+                'get_yesterday_metric_bypass_rls',
+                {
+                    'p_tracker_id': tracker_id,
+                    'p_yesterday': yesterday.isoformat()
+                }
+            ).execute()
             
             previous_rank = yesterday_result.data[0].get("rank") if yesterday_result.data and len(yesterday_result.data) > 0 else None
             rank_change = None
             if rank_result.get("rank") and previous_rank:
                 rank_change = previous_rank - rank_result.get("rank")  # 양수면 순위 상승
             
-            # 일별 지표 데이터 생성
-            metric_data = {
-                "tracker_id": tracker_id,
-                "keyword_id": keyword_id,
-                "store_id": store_id,
-                "collection_date": today.isoformat(),
-                "rank": rank_result.get("rank"),
-                "visitor_review_count": rank_result.get("visitor_review_count", 0),
-                "blog_review_count": rank_result.get("blog_review_count", 0),
-                "rank_change": rank_change,
-                "previous_rank": previous_rank,
-                "collected_at": datetime.now(self.timezone).isoformat(),
-            }
+            # 데이터베이스에 저장 (RLS bypass function 사용)
+            result = self.supabase.rpc(
+                'insert_daily_metric_bypass_rls',
+                {
+                    'p_tracker_id': tracker_id,
+                    'p_keyword_id': keyword_id,
+                    'p_store_id': store_id,
+                    'p_collection_date': today.isoformat(),
+                    'p_rank': rank_result.get("rank"),
+                    'p_visitor_review_count': rank_result.get("visitor_review_count", 0),
+                    'p_blog_review_count': rank_result.get("blog_review_count", 0),
+                    'p_rank_change': rank_change,
+                    'p_previous_rank': previous_rank
+                }
+            ).execute()
             
-            # 데이터베이스에 저장 (UPSERT: 같은 날짜면 업데이트)
-            result = self.supabase.table("daily_metrics") \
-                .upsert(metric_data, on_conflict="tracker_id,collection_date") \
-                .execute()
-            
-            # 추적 설정의 last_collected_at, next_collection_at 업데이트
-            next_collection_at = self._calculate_next_collection_time(tracker["update_times"])
-            self.supabase.table("metric_trackers") \
-                .update({
-                    "last_collected_at": datetime.now(self.timezone).isoformat(),
-                    "next_collection_at": next_collection_at.isoformat(),
-                }) \
+            # 추적 설정의 last_collected_at, next_collection_at 업데이트 (RLS bypass function 사용)
+            # update_times를 가져오기 위해 원본 tracker 조회
+            original_tracker = self.supabase.table("metric_trackers") \
+                .select("update_times") \
                 .eq("id", tracker_id) \
+                .eq("user_id", user_id) \
                 .execute()
+            
+            update_times = original_tracker.data[0]["update_times"] if original_tracker.data else [16]
+            next_collection_at = self._calculate_next_collection_time(update_times)
+            
+            self.supabase.rpc(
+                'update_metric_tracker_bypass_rls',
+                {
+                    'p_tracker_id': tracker_id,
+                    'p_last_collected_at': datetime.now(self.timezone).isoformat(),
+                    'p_next_collection_at': next_collection_at.isoformat()
+                }
+            ).execute()
             
             logger.info(
                 f"[Metrics Collected] Tracker: {tracker_id}, Rank: {rank_result.get('rank')}, "
@@ -292,7 +302,7 @@ class MetricTrackerService:
                 f"Blog Reviews: {rank_result.get('blog_review_count')}"
             )
             
-            return result.data[0] if result.data else metric_data
+            return result.data[0] if result.data else {}
             
         except Exception as e:
             logger.error(f"Error collecting metrics: {str(e)}")
