@@ -90,6 +90,7 @@ export default function MetricsTrackerPage() {
   const [trackers, setTrackers] = useState<MetricTracker[]>([])
   const [dailyMetrics, setDailyMetrics] = useState<DailyMetric[]>([])
   const [latestMetrics, setLatestMetrics] = useState<Record<string, DailyMetric | null>>({})
+  const [previousMetrics, setPreviousMetrics] = useState<Record<string, DailyMetric | null>>({})
   
   const [selectedStoreId, setSelectedStoreId] = useState<string>("")
   const [selectedKeywordId, setSelectedKeywordId] = useState<string>("")
@@ -229,9 +230,10 @@ export default function MetricsTrackerPage() {
     loadTrackers()
   }, [user])
 
-  // 최근 metric 로드
+  // 최근 metric 로드 (최근 2개 데이터 가져오기)
   const loadLatestMetrics = async (trackerList: MetricTracker[], token: string | null) => {
-    const metricsMap: Record<string, DailyMetric | null> = {}
+    const latestMap: Record<string, DailyMetric | null> = {}
+    const previousMap: Record<string, DailyMetric | null> = {}
     
     await Promise.all(
       trackerList.map(async (tracker) => {
@@ -247,19 +249,24 @@ export default function MetricsTrackerPage() {
 
           if (response.ok) {
             const data = await response.json()
-            // 최근 데이터 (첫 번째) 사용
-            metricsMap[tracker.id] = data.metrics && data.metrics.length > 0 
+            // 최근 데이터 (첫 번째)와 전일 데이터 (두 번째)
+            latestMap[tracker.id] = data.metrics && data.metrics.length > 0 
               ? data.metrics[0] 
+              : null
+            previousMap[tracker.id] = data.metrics && data.metrics.length > 1 
+              ? data.metrics[1] 
               : null
           }
         } catch (error) {
           console.error(`최근 metric 로드 실패 (tracker: ${tracker.id}):`, error)
-          metricsMap[tracker.id] = null
+          latestMap[tracker.id] = null
+          previousMap[tracker.id] = null
         }
       })
     )
 
-    setLatestMetrics(metricsMap)
+    setLatestMetrics(latestMap)
+    setPreviousMetrics(previousMap)
   }
 
   // 키워드 추가
@@ -502,7 +509,7 @@ export default function MetricsTrackerPage() {
         setTrackers(data.trackers || [])
       }
 
-      // 해당 tracker의 최근 metric 새로고침
+      // 해당 tracker의 최근 metric 새로고침 (최근 2개)
       try {
         const metricResponse = await fetch(
           `${api.baseUrl}/api/v1/metrics/trackers/${tracker.id}/metrics`,
@@ -519,6 +526,12 @@ export default function MetricsTrackerPage() {
             ...prev,
             [tracker.id]: metricData.metrics && metricData.metrics.length > 0 
               ? metricData.metrics[0] 
+              : null
+          }))
+          setPreviousMetrics(prev => ({
+            ...prev,
+            [tracker.id]: metricData.metrics && metricData.metrics.length > 1 
+              ? metricData.metrics[1] 
               : null
           }))
         }
@@ -828,15 +841,19 @@ export default function MetricsTrackerPage() {
                         {/* 순위 */}
                         <div className="text-center bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg px-2 py-2.5">
                           <div className="text-[10px] text-blue-600 font-medium mb-1">순위</div>
-                          <div className="flex items-center justify-center gap-0.5">
+                          <div className="flex flex-col items-center justify-center">
                             <span className="text-xl font-bold text-blue-700">
                               {latestMetrics[tracker.id].rank || '-'}
                             </span>
-                            {latestMetrics[tracker.id].rank_change && (
-                              <span className={`text-xs ${latestMetrics[tracker.id].rank_change! > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                {latestMetrics[tracker.id].rank_change! > 0 ? '↑' : '↓'}
-                                {Math.abs(latestMetrics[tracker.id].rank_change!)}
-                              </span>
+                            {previousMetrics[tracker.id] && latestMetrics[tracker.id].rank && previousMetrics[tracker.id]!.rank && (
+                              (() => {
+                                const change = latestMetrics[tracker.id].rank! - previousMetrics[tracker.id]!.rank!
+                                return change !== 0 ? (
+                                  <span className={`text-[10px] font-medium ${change > 0 ? 'text-red-600' : 'text-blue-600'}`}>
+                                    {change > 0 ? '↓' : '↑'}{Math.abs(change)}
+                                  </span>
+                                ) : null
+                              })()
                             )}
                           </div>
                         </div>
@@ -847,8 +864,20 @@ export default function MetricsTrackerPage() {
                             <Users className="w-3 h-3" />
                             방문자
                           </div>
-                          <div className="text-base font-bold text-green-700 text-center">
-                            {latestMetrics[tracker.id].visitor_review_count.toLocaleString()}
+                          <div className="flex flex-col items-center justify-center">
+                            <span className="text-base font-bold text-green-700">
+                              {latestMetrics[tracker.id].visitor_review_count.toLocaleString()}
+                            </span>
+                            {previousMetrics[tracker.id] && (
+                              (() => {
+                                const change = latestMetrics[tracker.id].visitor_review_count - previousMetrics[tracker.id]!.visitor_review_count
+                                return change !== 0 ? (
+                                  <span className={`text-[10px] font-medium ${change > 0 ? 'text-red-600' : 'text-blue-600'}`}>
+                                    {change > 0 ? '↑' : '↓'}{Math.abs(change)}
+                                  </span>
+                                ) : null
+                              })()
+                            )}
                           </div>
                         </div>
                         
@@ -858,8 +887,20 @@ export default function MetricsTrackerPage() {
                             <FileText className="w-3 h-3" />
                             블로그
                           </div>
-                          <div className="text-base font-bold text-amber-700 text-center">
-                            {latestMetrics[tracker.id].blog_review_count.toLocaleString()}
+                          <div className="flex flex-col items-center justify-center">
+                            <span className="text-base font-bold text-amber-700">
+                              {latestMetrics[tracker.id].blog_review_count.toLocaleString()}
+                            </span>
+                            {previousMetrics[tracker.id] && (
+                              (() => {
+                                const change = latestMetrics[tracker.id].blog_review_count - previousMetrics[tracker.id]!.blog_review_count
+                                return change !== 0 ? (
+                                  <span className={`text-[10px] font-medium ${change > 0 ? 'text-red-600' : 'text-blue-600'}`}>
+                                    {change > 0 ? '↑' : '↓'}{Math.abs(change)}
+                                  </span>
+                                ) : null
+                              })()
+                            )}
                           </div>
                         </div>
                       </div>
