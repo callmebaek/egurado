@@ -317,7 +317,7 @@ class MetricTrackerService:
         """
         try:
             query = self.supabase.table("daily_metrics") \
-                .select("*") \
+                .select("*, keywords(keyword), stores(store_name)") \
                 .eq("tracker_id", tracker_id) \
                 .order("collection_date", desc=True)
             
