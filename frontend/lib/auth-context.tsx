@@ -31,6 +31,7 @@ interface AuthContextType {
   loginWithNaver: (code: string, state: string) => Promise<void>
   logout: () => void
   refreshUser: () => Promise<void>
+  getToken: () => string | null
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -256,6 +257,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         loginWithNaver,
         logout,
         refreshUser,
+        getToken,
       }}
     >
       {children}
