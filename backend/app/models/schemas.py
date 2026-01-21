@@ -42,8 +42,8 @@ class Profile(ProfileBase):
     total_credits: Optional[int] = 1000
     used_credits: Optional[int] = 0
     max_stores: Optional[int] = 1
-    max_keywords: Optional[int] = 10
-    max_trackers: Optional[int] = 3
+    max_keywords: Optional[int] = 3
+    max_trackers: Optional[int] = 1
     created_at: datetime
     updated_at: datetime
     

@@ -90,7 +90,17 @@ export default function DashboardPage() {
         })
         if (profileRes.ok) {
           const profileData = await profileRes.json()
+          console.log("[DEBUG] Profile data:", profileData)
+          console.log("[DEBUG] Credit/Quota:", {
+            total_credits: profileData.total_credits,
+            used_credits: profileData.used_credits,
+            max_stores: profileData.max_stores,
+            max_keywords: profileData.max_keywords,
+            max_trackers: profileData.max_trackers
+          })
           setProfile(profileData)
+        } else {
+          console.error("[DEBUG] Profile fetch failed:", profileRes.status, await profileRes.text())
         }
 
         // 2. 매장 목록 조회
