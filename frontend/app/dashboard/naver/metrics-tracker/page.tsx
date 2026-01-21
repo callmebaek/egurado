@@ -52,6 +52,8 @@ interface MetricTracker {
   update_times: number[]
   notification_enabled: boolean
   notification_type?: 'kakao' | 'sms' | 'email'
+  notification_phone?: string
+  notification_email?: string
   is_active: boolean
   last_collected_at?: string
   next_collection_at?: string
@@ -472,8 +474,8 @@ export default function MetricsTrackerPage() {
       update_times: tracker.update_times,
       notification_enabled: tracker.notification_enabled,
       notification_type: tracker.notification_type || '',
-      notification_phone: '',
-      notification_email: '',
+      notification_phone: tracker.notification_phone || '',
+      notification_email: tracker.notification_email || '',
     })
   }
 
