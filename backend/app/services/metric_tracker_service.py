@@ -233,12 +233,13 @@ class MetricTrackerService:
             place_id = tracker["stores"]["place_id"]
             keyword = tracker["keywords"]["keyword"]
             
-            logger.info(f"[Collecting Metrics] Tracker: {tracker_id}, Keyword: {keyword}")
+            logger.info(f"[Collecting Metrics] Tracker: {tracker_id}, Keyword: {keyword}, Place ID: {place_id}")
             
             # 순위 및 리뷰수 조회 (비공식 API 사용)
             rank_result = await rank_service_api_unofficial.check_rank(
-                store_id=store_id,
-                keyword=keyword
+                keyword=keyword,
+                target_place_id=place_id,
+                max_results=300
             )
             
             # 오늘 날짜 (서울 시간대)

@@ -295,7 +295,7 @@ export default function MetricsTrackerPage() {
       // 추적 설정 목록 새로고침
       const trackersResponse = await fetch(`${api.baseUrl}/api/v1/metrics/trackers`, {
         headers: {
-          'Authorization': `Bearer ${session.data.session?.access_token}`
+          'Authorization': `Bearer ${token}`
         }
       })
 
