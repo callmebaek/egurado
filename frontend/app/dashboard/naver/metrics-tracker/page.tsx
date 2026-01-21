@@ -454,10 +454,11 @@ export default function MetricsTrackerPage() {
         await handleViewMetrics(tracker)
       }
 
-    } catch (error) {
+    } catch (error: any) {
+      console.error("지표 수집 에러:", error)
       toast({
         title: "지표 수집 실패",
-        description: "잠시 후 다시 시도해주세요.",
+        description: error.message || "잠시 후 다시 시도해주세요.",
         variant: "destructive",
       })
     }
@@ -483,7 +484,7 @@ export default function MetricsTrackerPage() {
       if (!token) throw new Error("인증 토큰을 찾을 수 없습니다.")
 
       const response = await fetch(`${api.baseUrl}/api/v1/metrics/trackers/${trackerId}`, {
-        method: "PUT",
+        method: "PATCH",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`
