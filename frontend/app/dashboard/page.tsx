@@ -74,7 +74,12 @@ export default function DashboardPage() {
   // 데이터 로드
   useEffect(() => {
     const loadDashboardData = async () => {
+      console.log("[DEBUG] loadDashboardData called")
+      console.log("[DEBUG] user:", user)
+      console.log("[DEBUG] token:", token ? "exists" : "null")
+      
       if (!user || !token) {
+        console.log("[DEBUG] No user or token, returning")
         setIsLoadingData(false)
         return
       }
@@ -83,11 +88,14 @@ export default function DashboardPage() {
         setIsLoadingData(true)
 
         // 1. 사용자 프로필 조회
+        console.log("[DEBUG] Fetching profile from:", `${api.baseUrl}/api/v1/auth/me`)
         const profileRes = await fetch(`${api.baseUrl}/api/v1/auth/me`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
         })
+        console.log("[DEBUG] Profile response status:", profileRes.status)
+        
         if (profileRes.ok) {
           const profileData = await profileRes.json()
           console.log("[DEBUG] Profile data:", profileData)
@@ -100,7 +108,8 @@ export default function DashboardPage() {
           })
           setProfile(profileData)
         } else {
-          console.error("[DEBUG] Profile fetch failed:", profileRes.status, await profileRes.text())
+          const errorText = await profileRes.text()
+          console.error("[DEBUG] Profile fetch failed:", profileRes.status, errorText)
         }
 
         // 2. 매장 목록 조회
@@ -142,8 +151,9 @@ export default function DashboardPage() {
         }
 
       } catch (error) {
-        console.error("Error loading dashboard data:", error)
+        console.error("[DEBUG] Error loading dashboard data:", error)
       } finally {
+        console.log("[DEBUG] Loading complete")
         setIsLoadingData(false)
       }
     }
