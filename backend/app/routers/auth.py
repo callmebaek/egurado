@@ -316,8 +316,8 @@ async def kakao_login(request: KakaoLoginRequest):
     
     supabase = get_supabase_client()
     
-    # 기존 사용자 확인
-    existing_user = supabase.table("profiles").select("*").eq("email", kakao_user["email"]).execute()
+    # 기존 사용자 확인 (RLS bypass 함수 사용)
+    existing_user = supabase.rpc('get_profile_by_email_bypass_rls', {'p_email': kakao_user["email"]}).execute()
     
     if existing_user.data and len(existing_user.data) > 0:
         # 기존 사용자 로그인
@@ -411,8 +411,8 @@ async def naver_login(request: NaverLoginRequest):
     
     supabase = get_supabase_client()
     
-    # 기존 사용자 확인
-    existing_user = supabase.table("profiles").select("*").eq("email", naver_user["email"]).execute()
+    # 기존 사용자 확인 (RLS bypass 함수 사용)
+    existing_user = supabase.rpc('get_profile_by_email_bypass_rls', {'p_email': naver_user["email"]}).execute()
     
     if existing_user.data and len(existing_user.data) > 0:
         # 기존 사용자 로그인
