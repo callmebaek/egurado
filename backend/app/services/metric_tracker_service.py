@@ -82,8 +82,24 @@ class MetricTrackerService:
             # UUID를 문자열로 변환
             user_id = str(data.get("user_id"))
             data["user_id"] = user_id
-            data["store_id"] = str(data.get("store_id"))
-            data["keyword_id"] = str(data.get("keyword_id"))
+            store_id = str(data.get("store_id"))
+            keyword_id = str(data.get("keyword_id"))
+            data["store_id"] = store_id
+            data["keyword_id"] = keyword_id
+            
+            # 중복 체크 (같은 매장 x 키워드 조합이 이미 존재하는지)
+            existing = self.supabase.table("metric_trackers") \
+                .select("id") \
+                .eq("user_id", user_id) \
+                .eq("store_id", store_id) \
+                .eq("keyword_id", keyword_id) \
+                .execute()
+            
+            if existing.data and len(existing.data) > 0:
+                raise Exception(
+                    "이미 동일한 매장과 키워드 조합의 추적 설정이 존재합니다. "
+                    "기존 추적 설정을 삭제한 후 다시 시도해주세요."
+                )
             
             # 제한 확인
             is_limit_exceeded, current_count, max_count = self.check_tracker_limit(user_id)

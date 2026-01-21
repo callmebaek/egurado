@@ -182,15 +182,18 @@ async def collect_all_metrics():
     매 시간마다 실행하여 수집이 필요한 추적 설정들을 처리
     """
     try:
+        print(f"[{datetime.now()}] 📊 주요지표 자동 수집 시작")
         logger.info(f"[{datetime.now()}] 📊 주요지표 자동 수집 시작")
         
         # 수집이 필요한 활성 추적 설정 조회
         trackers = metric_tracker_service.get_all_active_trackers()
         
         if not trackers:
+            print("[INFO] No trackers scheduled for collection at this time")
             logger.info("[INFO] No trackers scheduled for collection at this time")
             return
         
+        print(f"[INFO] {len(trackers)} trackers scheduled for metric collection")
         logger.info(f"[INFO] {len(trackers)} trackers scheduled for metric collection")
         
         success_count = 0
@@ -221,12 +224,17 @@ async def collect_all_metrics():
                 )
                 continue
         
+        print(
+            f"[{datetime.now()}] [COLLECT] 주요지표 수집 완료 - "
+            f"성공: {success_count}, 실패: {error_count}"
+        )
         logger.info(
             f"[{datetime.now()}] [COLLECT] 주요지표 수집 완료 - "
             f"성공: {success_count}, 실패: {error_count}"
         )
         
     except Exception as e:
+        print(f"[ERROR] Metric collection scheduler error: {str(e)}")
         logger.error(f"[ERROR] Metric collection scheduler error: {str(e)}", exc_info=True)
 
 
@@ -261,6 +269,10 @@ def start_scheduler():
     )
     
     scheduler.start()
+    print("[OK] Scheduler started")
+    print("  - Rank check: 3 AM daily (KST)")
+    print("  - Review sync: 6 AM daily (KST)")
+    print("  - Metric tracking: Every hour (KST)")
     logger.info("[OK] Scheduler started")
     logger.info("  - Rank check: 3 AM daily (KST)")
     logger.info("  - Review sync: 6 AM daily (KST)")

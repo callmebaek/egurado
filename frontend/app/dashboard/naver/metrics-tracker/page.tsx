@@ -403,6 +403,55 @@ export default function MetricsTrackerPage() {
     }
   }
 
+  // 지금 수집 (수동 트리거)
+  const handleCollectNow = async (tracker: MetricTracker) => {
+    try {
+      const token = localStorage.getItem('access_token')
+      const response = await fetch(
+        `${api.baseUrl}/api/v1/metrics/trackers/${tracker.id}/collect`,
+        {
+          method: "POST",
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      )
+
+      if (!response.ok) {
+        throw new Error("수집 실패")
+      }
+
+      toast({
+        title: "지표 수집 완료",
+        description: "최신 순위 및 리뷰 데이터가 수집되었습니다.",
+      })
+
+      // 추적 목록 새로고침
+      const trackersResponse = await fetch(`${api.baseUrl}/api/v1/metrics/trackers`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      if (trackersResponse.ok) {
+        const data = await trackersResponse.json()
+        setTrackers(data.trackers || [])
+      }
+
+      // 현재 선택된 추적의 지표를 보고 있다면 자동 새로고침
+      if (selectedTracker && selectedTracker.id === tracker.id) {
+        await handleViewMetrics(tracker)
+      }
+
+    } catch (error) {
+      toast({
+        title: "지표 수집 실패",
+        description: "잠시 후 다시 시도해주세요.",
+        variant: "destructive",
+      })
+    }
+  }
+
   if (storesLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -616,6 +665,15 @@ export default function MetricsTrackerPage() {
                     >
                       <LineChartIcon className="w-4 h-4 mr-1" />
                       지표 보기
+                    </Button>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => handleCollectNow(tracker)}
+                      title="지금 순위와 리뷰 데이터를 수집합니다"
+                    >
+                      <TrendingUp className="w-4 h-4 mr-1" />
+                      지금 수집
                     </Button>
                     <Button
                       variant="ghost"
