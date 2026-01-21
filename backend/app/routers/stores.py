@@ -238,9 +238,10 @@ async def list_stores(current_user: dict = Depends(get_current_user)):
         # 디버깅: user_id 로깅
         logger.info(f"[DEBUG] list_stores called with authenticated user_id: {user_id}")
         
-        result = supabase.table("stores").select("*").eq(
-            "user_id", str(user_id)
-        ).order("created_at", desc=True).execute()
+        # RLS bypass 함수 사용 (소셜 로그인 사용자 지원)
+        result = supabase.rpc('get_stores_by_user_bypass_rls', {
+            'p_user_id': str(user_id)
+        }).execute()
         
         # 디버깅: 조회 결과 로깅
         logger.info(f"[DEBUG] list_stores found {len(result.data) if result.data else 0} stores for user_id: {user_id}")
