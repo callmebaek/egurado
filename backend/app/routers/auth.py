@@ -358,6 +358,25 @@ async def kakao_login(request: KakaoLoginRequest):
             })
             
             if auth_response.session:
+                # Auth user_id로 프로필 확인 (JWT의 sub와 일치시키기 위해)
+                auth_user_id = auth_response.user.id
+                print(f"[DEBUG] 로그인 성공 - Auth user_id: {auth_user_id}, profiles user_id: {user_id}")
+                
+                if str(auth_user_id) != str(user_id):
+                    # Auth와 profiles의 user_id가 다름 - Auth user_id로 프로필 조회
+                    print(f"[DEBUG] user_id 불일치 감지, Auth user_id로 프로필 재조회")
+                    auth_profile_result = supabase.rpc('get_profile_by_id_bypass_rls', {'p_id': str(auth_user_id)}).execute()
+                    
+                    if auth_profile_result.data and len(auth_profile_result.data) > 0:
+                        # Auth user_id에 해당하는 프로필이 이미 있음
+                        print(f"[DEBUG] Auth user_id에 해당하는 프로필 발견")
+                        user_data = auth_profile_result.data[0]
+                        onboarding_required = not user_data.get("onboarding_completed", False)
+                    else:
+                        # Auth user_id에 해당하는 프로필이 없음 - id를 auth_user_id로 변경
+                        print(f"[DEBUG] Auth user_id에 해당하는 프로필 없음, id를 {auth_user_id}로 변경")
+                        user_data["id"] = auth_user_id
+                
                 # Supabase JWT 반환
                 return AuthResponse(
                     access_token=auth_response.session.access_token,
@@ -580,6 +599,25 @@ async def naver_login(request: NaverLoginRequest):
             })
             
             if auth_response.session:
+                # Auth user_id로 프로필 확인 (JWT의 sub와 일치시키기 위해)
+                auth_user_id = auth_response.user.id
+                print(f"[DEBUG] 로그인 성공 - Auth user_id: {auth_user_id}, profiles user_id: {user_id}")
+                
+                if str(auth_user_id) != str(user_id):
+                    # Auth와 profiles의 user_id가 다름 - Auth user_id로 프로필 조회
+                    print(f"[DEBUG] user_id 불일치 감지, Auth user_id로 프로필 재조회")
+                    auth_profile_result = supabase.rpc('get_profile_by_id_bypass_rls', {'p_id': str(auth_user_id)}).execute()
+                    
+                    if auth_profile_result.data and len(auth_profile_result.data) > 0:
+                        # Auth user_id에 해당하는 프로필이 이미 있음
+                        print(f"[DEBUG] Auth user_id에 해당하는 프로필 발견")
+                        user_data = auth_profile_result.data[0]
+                        onboarding_required = not user_data.get("onboarding_completed", False)
+                    else:
+                        # Auth user_id에 해당하는 프로필이 없음 - id를 auth_user_id로 변경
+                        print(f"[DEBUG] Auth user_id에 해당하는 프로필 없음, id를 {auth_user_id}로 변경")
+                        user_data["id"] = auth_user_id
+                
                 # Supabase JWT 반환
                 return AuthResponse(
                     access_token=auth_response.session.access_token,
