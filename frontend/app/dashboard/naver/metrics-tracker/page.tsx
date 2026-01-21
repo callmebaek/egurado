@@ -483,13 +483,21 @@ export default function MetricsTrackerPage() {
       const token = getToken()
       if (!token) throw new Error("인증 토큰을 찾을 수 없습니다.")
 
+      // 빈 문자열을 null로 변환
+      const payload = {
+        ...settingsForm,
+        notification_type: settingsForm.notification_type || null,
+        notification_phone: settingsForm.notification_phone || null,
+        notification_email: settingsForm.notification_email || null,
+      }
+
       const response = await fetch(`${api.baseUrl}/api/v1/metrics/trackers/${trackerId}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`
         },
-        body: JSON.stringify(settingsForm),
+        body: JSON.stringify(payload),
       })
 
       if (!response.ok) {
