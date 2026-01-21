@@ -251,10 +251,9 @@ class MetricTrackerService:
                 .select("rank") \
                 .eq("tracker_id", tracker_id) \
                 .eq("collection_date", yesterday.isoformat()) \
-                .single() \
                 .execute()
             
-            previous_rank = yesterday_result.data.get("rank") if yesterday_result.data else None
+            previous_rank = yesterday_result.data[0].get("rank") if yesterday_result.data and len(yesterday_result.data) > 0 else None
             rank_change = None
             if rank_result.get("rank") and previous_rank:
                 rank_change = previous_rank - rank_result.get("rank")  # 양수면 순위 상승
