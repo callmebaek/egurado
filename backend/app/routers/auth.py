@@ -372,6 +372,7 @@ async def kakao_login(request: KakaoLoginRequest):
                     user_id,
                     {"password": fixed_password}
                 )
+                print(f"[DEBUG] 비밀번호 업데이트 완료, 재로그인 시도")
                 # 재시도
                 auth_response = supabase.auth.sign_in_with_password({
                     "email": kakao_user["email"],
@@ -383,9 +384,14 @@ async def kakao_login(request: KakaoLoginRequest):
                         user=Profile(**user_data),
                         onboarding_required=onboarding_required,
                     )
+                else:
+                    raise Exception("재로그인 시도 후에도 세션이 없습니다")
             except Exception as update_error:
-                print(f"[DEBUG] 비밀번호 업데이트 실패: {update_error}")
-                pass
+                print(f"[DEBUG] 비밀번호 업데이트 또는 재로그인 실패: {update_error}")
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=f"카카오 로그인 처리 중 오류가 발생했습니다: {str(update_error)}",
+                )
     else:
         # 신규 사용자 등록
         # 소셜 로그인은 Supabase Auth와 profiles에 모두 생성
@@ -523,6 +529,7 @@ async def naver_login(request: NaverLoginRequest):
                     user_id,
                     {"password": fixed_password}
                 )
+                print(f"[DEBUG] 비밀번호 업데이트 완료, 재로그인 시도")
                 # 재시도
                 auth_response = supabase.auth.sign_in_with_password({
                     "email": naver_user["email"],
@@ -534,9 +541,14 @@ async def naver_login(request: NaverLoginRequest):
                         user=Profile(**user_data),
                         onboarding_required=onboarding_required,
                     )
+                else:
+                    raise Exception("재로그인 시도 후에도 세션이 없습니다")
             except Exception as update_error:
-                print(f"[DEBUG] 비밀번호 업데이트 실패: {update_error}")
-                pass
+                print(f"[DEBUG] 비밀번호 업데이트 또는 재로그인 실패: {update_error}")
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=f"네이버 로그인 처리 중 오류가 발생했습니다: {str(update_error)}",
+                )
     else:
         # 신규 사용자 등록
         # 소셜 로그인은 Supabase Auth와 profiles에 모두 생성
