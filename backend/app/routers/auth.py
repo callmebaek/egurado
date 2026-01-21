@@ -426,10 +426,40 @@ async def kakao_login(request: KakaoLoginRequest):
                     user_data = auth_profile_result.data[0]
                     onboarding_required = not user_data.get("onboarding_completed", False)
                 else:
-                    # Auth user_id에 해당하는 프로필이 없으면 기존 profiles 데이터 사용
-                    print(f"[WARN] Auth user_id({auth_user_id})로 프로필 없음, 기존 데이터 사용")
-                    # 기존 user_data의 ID를 Auth ID로 조정
-                    user_data["id"] = str(auth_user_id)
+                    # Auth user_id에 해당하는 프로필이 없으면 데이터 마이그레이션
+                    print(f"[DEBUG] Auth user_id({auth_user_id})로 프로필 없음, 데이터 마이그레이션 시작")
+                    print(f"[DEBUG] 마이그레이션: {user_id} → {auth_user_id}")
+                    
+                    try:
+                        # 기존 profiles ID → 새 Auth ID로 마이그레이션
+                        migrate_result = supabase.rpc('migrate_user_to_new_auth_id', {
+                            'p_old_id': str(user_id),
+                            'p_new_id': str(auth_user_id),
+                            'p_email': user_data["email"],
+                            'p_display_name': user_data.get("display_name", user_data["email"].split("@")[0]),
+                            'p_auth_provider': 'kakao',
+                            'p_subscription_tier': user_data.get("subscription_tier", "free"),
+                            'p_onboarding_completed': user_data.get("onboarding_completed", False),
+                            'p_profile_image_url': user_data.get("profile_image_url"),
+                            'p_phone_number': user_data.get("phone_number"),
+                            'p_user_position': user_data.get("user_position"),
+                            'p_marketing_experience': user_data.get("marketing_experience"),
+                            'p_agency_experience': user_data.get("agency_experience")
+                        }).execute()
+                        
+                        if migrate_result.data and len(migrate_result.data) > 0:
+                            user_data = migrate_result.data[0]
+                            onboarding_required = not user_data.get("onboarding_completed", False)
+                            print(f"[DEBUG] 데이터 마이그레이션 완료: {auth_user_id}")
+                        else:
+                            print(f"[ERROR] 데이터 마이그레이션 실패, 결과 없음")
+                            raise Exception("데이터 마이그레이션 실패")
+                    except Exception as migrate_error:
+                        print(f"[ERROR] 데이터 마이그레이션 실패: {migrate_error}")
+                        raise HTTPException(
+                            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail=f"데이터 마이그레이션 중 오류가 발생했습니다: {str(migrate_error)}",
+                        )
                 
                 # Supabase JWT 반환
                 return AuthResponse(
@@ -721,10 +751,40 @@ async def naver_login(request: NaverLoginRequest):
                     user_data = auth_profile_result.data[0]
                     onboarding_required = not user_data.get("onboarding_completed", False)
                 else:
-                    # Auth user_id에 해당하는 프로필이 없으면 기존 profiles 데이터 사용
-                    print(f"[WARN] Auth user_id({auth_user_id})로 프로필 없음, 기존 데이터 사용")
-                    # 기존 user_data의 ID를 Auth ID로 조정
-                    user_data["id"] = str(auth_user_id)
+                    # Auth user_id에 해당하는 프로필이 없으면 데이터 마이그레이션
+                    print(f"[DEBUG] Auth user_id({auth_user_id})로 프로필 없음, 데이터 마이그레이션 시작")
+                    print(f"[DEBUG] 마이그레이션: {user_id} → {auth_user_id}")
+                    
+                    try:
+                        # 기존 profiles ID → 새 Auth ID로 마이그레이션
+                        migrate_result = supabase.rpc('migrate_user_to_new_auth_id', {
+                            'p_old_id': str(user_id),
+                            'p_new_id': str(auth_user_id),
+                            'p_email': user_data["email"],
+                            'p_display_name': user_data.get("display_name", user_data["email"].split("@")[0]),
+                            'p_auth_provider': 'naver',
+                            'p_subscription_tier': user_data.get("subscription_tier", "free"),
+                            'p_onboarding_completed': user_data.get("onboarding_completed", False),
+                            'p_profile_image_url': user_data.get("profile_image_url"),
+                            'p_phone_number': user_data.get("phone_number"),
+                            'p_user_position': user_data.get("user_position"),
+                            'p_marketing_experience': user_data.get("marketing_experience"),
+                            'p_agency_experience': user_data.get("agency_experience")
+                        }).execute()
+                        
+                        if migrate_result.data and len(migrate_result.data) > 0:
+                            user_data = migrate_result.data[0]
+                            onboarding_required = not user_data.get("onboarding_completed", False)
+                            print(f"[DEBUG] 데이터 마이그레이션 완료: {auth_user_id}")
+                        else:
+                            print(f"[ERROR] 데이터 마이그레이션 실패, 결과 없음")
+                            raise Exception("데이터 마이그레이션 실패")
+                    except Exception as migrate_error:
+                        print(f"[ERROR] 데이터 마이그레이션 실패: {migrate_error}")
+                        raise HTTPException(
+                            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail=f"데이터 마이그레이션 중 오류가 발생했습니다: {str(migrate_error)}",
+                        )
                 
                 # Supabase JWT 반환
                 return AuthResponse(
