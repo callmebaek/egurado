@@ -845,15 +845,19 @@ export default function MetricsTrackerPage() {
                             <span className="text-xl font-bold text-blue-700">
                               {latestMetrics[tracker.id].rank || '-'}
                             </span>
-                            {previousMetrics[tracker.id] && latestMetrics[tracker.id].rank && previousMetrics[tracker.id]!.rank && (
+                            {previousMetrics[tracker.id] && latestMetrics[tracker.id].rank && previousMetrics[tracker.id]!.rank ? (
                               (() => {
                                 const change = latestMetrics[tracker.id].rank! - previousMetrics[tracker.id]!.rank!
                                 return change !== 0 ? (
                                   <span className={`text-[10px] font-medium ${change > 0 ? 'text-red-600' : 'text-blue-600'}`}>
                                     {change > 0 ? '↓' : '↑'}{Math.abs(change)}
                                   </span>
-                                ) : null
+                                ) : (
+                                  <span className="text-[9px] text-gray-400">-</span>
+                                )
                               })()
+                            ) : (
+                              <span className="text-[9px] text-gray-400">신규</span>
                             )}
                           </div>
                         </div>
@@ -868,15 +872,19 @@ export default function MetricsTrackerPage() {
                             <span className="text-base font-bold text-green-700">
                               {latestMetrics[tracker.id].visitor_review_count.toLocaleString()}
                             </span>
-                            {previousMetrics[tracker.id] && (
+                            {previousMetrics[tracker.id] ? (
                               (() => {
                                 const change = latestMetrics[tracker.id].visitor_review_count - previousMetrics[tracker.id]!.visitor_review_count
                                 return change !== 0 ? (
                                   <span className={`text-[10px] font-medium ${change > 0 ? 'text-red-600' : 'text-blue-600'}`}>
                                     {change > 0 ? '↑' : '↓'}{Math.abs(change)}
                                   </span>
-                                ) : null
+                                ) : (
+                                  <span className="text-[9px] text-gray-400">-</span>
+                                )
                               })()
+                            ) : (
+                              <span className="text-[9px] text-gray-400">신규</span>
                             )}
                           </div>
                         </div>
@@ -891,15 +899,19 @@ export default function MetricsTrackerPage() {
                             <span className="text-base font-bold text-amber-700">
                               {latestMetrics[tracker.id].blog_review_count.toLocaleString()}
                             </span>
-                            {previousMetrics[tracker.id] && (
+                            {previousMetrics[tracker.id] ? (
                               (() => {
                                 const change = latestMetrics[tracker.id].blog_review_count - previousMetrics[tracker.id]!.blog_review_count
                                 return change !== 0 ? (
                                   <span className={`text-[10px] font-medium ${change > 0 ? 'text-red-600' : 'text-blue-600'}`}>
                                     {change > 0 ? '↑' : '↓'}{Math.abs(change)}
                                   </span>
-                                ) : null
+                                ) : (
+                                  <span className="text-[9px] text-gray-400">-</span>
+                                )
                               })()
+                            ) : (
+                              <span className="text-[9px] text-gray-400">신규</span>
                             )}
                           </div>
                         </div>
