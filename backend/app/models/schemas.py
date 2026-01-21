@@ -39,6 +39,11 @@ class Profile(ProfileBase):
     onboarding_completed: bool
     phone_number: Optional[str] = None
     profile_image_url: Optional[str] = None
+    total_credits: Optional[int] = 1000
+    used_credits: Optional[int] = 0
+    max_stores: Optional[int] = 1
+    max_keywords: Optional[int] = 10
+    max_trackers: Optional[int] = 3
     created_at: datetime
     updated_at: datetime
     
