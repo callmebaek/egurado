@@ -688,7 +688,7 @@ async def track_keyword(keyword_id: UUID, current_user: dict = Depends(get_curre
         from app.services.metric_tracker_service import MetricTrackerService
         from datetime import datetime, timezone
         
-        tracker_service = MetricTrackerService(supabase)
+        tracker_service = MetricTrackerService()
         
         # 다음 수집 시간 계산 (오후 4시)
         next_collection = datetime.now(timezone.utc).replace(hour=7, minute=0, second=0, microsecond=0)  # KST 16:00 = UTC 07:00
