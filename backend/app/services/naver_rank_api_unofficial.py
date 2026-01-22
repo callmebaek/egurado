@@ -323,33 +323,36 @@ class NaverRankNewAPIService:
                 except (ValueError, AttributeError):
                     return 0
             
+            # Places Search 쿼리 사용 (place ID로 직접 조회)
             graphql_query = """
-            query getPlaceDetail($input: PlaceInput) {
-                place(input: $input) {
-                    id
-                    name
-                    visitorReviewCount
-                    blogCafeReviewCount
-                    bookingReviewCount
-                    saveCount
+            query getPlacesList($input: PlacesInput) {
+                places(input: $input) {
+                    items {
+                        id
+                        name
+                        visitorReviewCount
+                        blogCafeReviewCount
+                        bookingReviewCount
+                    }
                 }
             }
             """
             
             variables = {
                 "input": {
-                    "id": place_id,
-                    "isNmap": False
+                    "query": place_id,
+                    "start": 1,
+                    "display": 1
                 }
             }
             
             payload = {
-                "operationName": "getPlaceDetail",
+                "operationName": "getPlacesList",
                 "variables": variables,
                 "query": graphql_query
             }
             
-            logger.info(f"[신API Rank] GraphQL 요청 payload: {payload}")
+            logger.info(f"[신API Rank] GraphQL 요청 payload (Places Search): {payload}")
             
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.post(
@@ -360,21 +363,30 @@ class NaverRankNewAPIService:
                 )
                 
                 logger.info(f"[신API Rank] GraphQL 응답 status: {response.status_code}")
-                logger.info(f"[신API Rank] GraphQL 응답 본문: {response.text[:500]}")
                 
                 response.raise_for_status()
                 data = response.json()
                 
-                place = data.get("data", {}).get("place", {})
+                places = data.get("data", {}).get("places", {}).get("items", [])
+                
+                if not places:
+                    logger.warning(f"[신API Rank] Places Search에서 매장을 찾지 못함: place_id={place_id}")
+                    return {
+                        "visitor_review_count": 0,
+                        "blog_review_count": 0,
+                        "save_count": 0
+                    }
+                
+                place = places[0]
                 
                 result = {
                     "visitor_review_count": parse_int(place.get("visitorReviewCount")),
                     "blog_review_count": parse_int(place.get("blogCafeReviewCount")),
-                    "save_count": parse_int(place.get("saveCount")),
+                    "save_count": 0,  # Places Search에서는 saveCount 없음
                     "booking_review_count": parse_int(place.get("bookingReviewCount"))
                 }
                 
-                logger.info(f"[신API Rank] 파싱 결과: {result}")
+                logger.info(f"[신API Rank] ✅ 파싱 결과: {result}")
                 return result
                 
         except Exception as e:
