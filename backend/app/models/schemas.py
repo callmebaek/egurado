@@ -296,8 +296,13 @@ class MetricTrackerBase(BaseModel):
     notification_email: Optional[str] = None
 
 
+class MetricTrackerCreateRequest(MetricTrackerBase):
+    """주요지표 추적 생성 요청 (API용 - user_id는 자동 설정)"""
+    pass
+
+
 class MetricTrackerCreate(MetricTrackerBase):
-    """주요지표 추적 생성 요청"""
+    """주요지표 추적 생성 (내부용)"""
     user_id: UUID
 
 

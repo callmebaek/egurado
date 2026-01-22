@@ -10,6 +10,7 @@ import logging
 
 from app.models.schemas import (
     MetricTrackerCreate,
+    MetricTrackerCreateRequest,
     MetricTrackerUpdate,
     MetricTracker,
     MetricTrackerWithDetails,
@@ -27,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 @router.post("/trackers", response_model=MetricTracker, status_code=status.HTTP_201_CREATED)
 async def create_tracker(
-    data: MetricTrackerCreate,
+    data: MetricTrackerCreateRequest,
     current_user: dict = Depends(get_current_user)
 ):
     """
