@@ -18,7 +18,8 @@ from app.services.naver_rank_api_unofficial import rank_service_api_unofficial
 from app.services.naver_keywords_analyzer import keywords_analyzer_service
 from app.services.naver_competitor_analysis_service import competitor_analysis_service
 from app.core.database import get_supabase_client
-from app.core.auth import get_current_user, User
+from app.routers.auth import get_current_user
+from app.models.schemas import User
 from datetime import datetime, date
 
 router = APIRouter()
