@@ -2,7 +2,7 @@
 
 /**
  * 대시보드 메인 페이지
- * 매장별 추적 키워드 그룹화
+ * 매장별 추적 키워드 그룹화 (매장당 최대 4개 표시)
  * 완벽한 반응형 디자인 (모바일/태블릿/PC)
  * 드래그앤드롭 순서 변경 기능 포함
  */
@@ -160,7 +160,7 @@ function SortableStoreTrackerCard({
     zIndex: isDragging ? 1000 : 'auto',
   }
 
-  const visibleTrackers = storeGroup.trackers.slice(0, 5)
+  const visibleTrackers = storeGroup.trackers.slice(0, 4)
 
   return (
     <div ref={setNodeRef} style={style} className="group">
@@ -271,10 +271,10 @@ function SortableStoreTrackerCard({
             </div>
           </div>
 
-          {/* 추적 키워드 목록 (최대 5개, 고정 높이) */}
+          {/* 추적 키워드 목록 (최대 4개, 고정 높이) */}
           <div className="space-y-2">
-            {/* 키워드 슬롯 5개 (빈 슬롯 포함) */}
-            {[...Array(5)].map((_, index) => {
+            {/* 키워드 슬롯 4개 (빈 슬롯 포함) */}
+            {[...Array(4)].map((_, index) => {
               const tracker = visibleTrackers[index]
               
               if (tracker) {
@@ -372,12 +372,12 @@ function SortableStoreTrackerCard({
             })}
             
             {/* 더 많은 키워드가 있을 경우 */}
-            {storeGroup.trackers.length > 5 && (
+            {storeGroup.trackers.length > 4 && (
               <Link
                 href="/dashboard/naver/metrics-tracker"
                 className="block text-center py-2 text-sm text-indigo-600 hover:text-indigo-800 font-semibold"
               >
-                +{storeGroup.trackers.length - 5}개 더보기
+                +{storeGroup.trackers.length - 4}개 더보기
               </Link>
             )}
           </div>
