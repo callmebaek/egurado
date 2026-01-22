@@ -3,14 +3,13 @@
 import { useStores } from "@/lib/hooks/useStores"
 import { useAuth } from "@/lib/auth-context"
 import { EmptyStoreMessage } from "@/components/EmptyStoreMessage"
-import { Loader2, TrendingUp, TrendingDown, Search, Minus, MapPin, Star, X, LineChart as LineChartIcon } from "lucide-react"
+import { Loader2, TrendingUp, TrendingDown, Search, MapPin, Star } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
 import { useToast } from "@/components/ui/use-toast"
 import { useState, useEffect } from "react"
 import { supabase } from "@/lib/supabase"
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { api } from "@/lib/config"
 
 interface Store {
@@ -27,14 +26,12 @@ interface KeywordData {
   previous_rank: number | null
   rank_change: number | null
   last_checked_at: string
+  last_searched_at: string  // ⭐ 추가
+  is_tracked: boolean  // ⭐ 추가
   created_at: string
 }
 
-interface RankHistoryData {
-  date: string
-  rank: number | null
-  checked_at: string
-}
+// ⭐ RankHistoryData 인터페이스 제거 (rank_history 테이블 삭제됨)
 
 interface RankResult {
   rank: number | null
@@ -73,9 +70,7 @@ export default function NaverRankPage() {
   const [rankResult, setRankResult] = useState<RankResult | null>(null)
   const [keywords, setKeywords] = useState<KeywordData[]>([])
   const [loadingKeywords, setLoadingKeywords] = useState(false)
-  const [selectedKeywordForChart, setSelectedKeywordForChart] = useState<KeywordData | null>(null)
-  const [rankHistory, setRankHistory] = useState<RankHistoryData[]>([])
-  const [loadingHistory, setLoadingHistory] = useState(false)
+  // ⭐ 순위 히스토리 차트 관련 상태 제거 (rank_history 테이블 삭제됨)
   
   // 구독 tier 및 키워드 제한 ⭐
   const [subscriptionTier, setSubscriptionTier] = useState<string>("free")
@@ -287,8 +282,8 @@ export default function NaverRankPage() {
           console.log(`📊 전체 키워드 수: ${totalKeywords}/${keywordLimit} (tier: ${subscriptionTier})`)
         }
         
-        // 현재 선택된 매장의 키워드 로드
-        const response = await fetch(api.naver.keywords(selectedStoreId))
+        // 현재 선택된 매장의 조회한 키워드 로드 (is_tracked=false)
+        const response = await fetch(`${api.naver.keywords(selectedStoreId)}?is_tracked=false`)
         
         if (response.ok) {
           const data = await response.json()
@@ -407,7 +402,7 @@ export default function NaverRankPage() {
           }
         }
         
-        const keywordsResponse = await fetch(api.naver.keywords(selectedStoreId))
+        const keywordsResponse = await fetch(`${api.naver.keywords(selectedStoreId)}?is_tracked=false`)
         if (keywordsResponse.ok) {
           const keywordsData = await keywordsResponse.json()
           setKeywords(keywordsData.keywords || [])
@@ -449,33 +444,46 @@ export default function NaverRankPage() {
   // 기존 키워드 클릭 시 해당 키워드로 조회
   const handleKeywordClick = (kw: string) => {
     setKeyword(kw)
-    handleCheckRank()
   }
 
-  // 키워드 순위 히스토리 조회 ⭐
-  const handleViewKeywordHistory = async (keyword: KeywordData) => {
-    setSelectedKeywordForChart(keyword)
-    setLoadingHistory(true)
+  // ⭐ 키워드 추적 전환 (조회 키워드 → 추적 키워드)
+  const handleToggleTracking = async (keywordId: string, currentState: boolean) => {
+    if (currentState) return // 이미 추적중
     
     try {
-      const response = await fetch(api.naver.keywordHistory(keyword.id))
-
-      if (!response.ok) {
-        throw new Error("순위 히스토리 조회에 실패했습니다")
+      const token = getToken()
+      if (!token) return
+      
+      const response = await fetch(api.naver.trackKeyword(keywordId), {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      
+      if (response.ok) {
+        toast({
+          title: "추적 시작",
+          description: "주요지표 추적 페이지에서 확인하세요"
+        })
+        // 키워드 목록 새로고침
+        if (selectedStoreId) {
+          const keywordsResponse = await fetch(`${api.naver.keywords(selectedStoreId)}?is_tracked=false`)
+          if (keywordsResponse.ok) {
+            const keywordsData = await keywordsResponse.json()
+            setKeywords(keywordsData.keywords || [])
+          }
+        }
+      } else {
+        throw new Error("추적 전환에 실패했습니다")
       }
-
-      const data = await response.json()
-      setRankHistory(data.history || [])
     } catch (error: any) {
-      console.error("순위 히스토리 조회 실패:", error)
+      console.error("추적 전환 실패:", error)
       toast({
-        title: "순위 히스토리 조회 실패",
-        description: error.message || "순위 히스토리를 조회하는 중 오류가 발생했습니다",
+        title: "추적 전환 실패",
+        description: error.message || "추적 전환 중 오류가 발생했습니다",
         variant: "destructive",
       })
-      setRankHistory([])
-    } finally {
-      setLoadingHistory(false)
     }
   }
 
@@ -502,11 +510,7 @@ export default function NaverRankPage() {
         throw new Error("키워드 삭제에 실패했습니다")
       }
 
-      // 선택된 키워드였다면 차트 닫기
-      if (selectedKeywordForChart?.id === keywordId) {
-        setSelectedKeywordForChart(null)
-        setRankHistory([])
-      }
+      // ⭐ 순위 히스토리 차트 제거됨
 
       // 키워드 목록 새로고침 및 전체 카운트 업데이트 ⭐
       const token = getToken()
@@ -534,7 +538,7 @@ export default function NaverRankPage() {
         }
       }
       
-      const keywordsResponse = await fetch(api.naver.keywords(selectedStoreId))
+      const keywordsResponse = await fetch(`${api.naver.keywords(selectedStoreId)}?is_tracked=false`)
       if (keywordsResponse.ok) {
         const keywordsData = await keywordsResponse.json()
         setKeywords(keywordsData.keywords || [])
@@ -576,7 +580,7 @@ export default function NaverRankPage() {
       {/* 헤더 */}
       <div>
         <h1 className="text-2xl md:text-3xl font-bold text-primary mb-2">
-          플레이스 순위 조회
+          플레이스 순위조회
         </h1>
         <p className="text-muted-foreground">
           키워드별 네이버 플레이스 검색 순위를 확인하세요
@@ -826,22 +830,13 @@ export default function NaverRankPage() {
         </Card>
       )}
 
-      {/* 등록된 키워드 목록 */}
+      {/* 조회한 키워드 목록 (최근 10개) */}
       {keywords.length > 0 && (
-        <Card className="p-6">
+        <Card className="p-4 sm:p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold">
-              등록된 키워드 ({keywords.length})
+            <h2 className="text-base sm:text-lg font-semibold">
+              조회한 키워드 (최근 10개)
             </h2>
-            <div className={`text-sm font-medium px-3 py-1 rounded-full ${
-              currentKeywordCount >= keywordLimit 
-                ? "bg-red-100 text-red-700" 
-                : currentKeywordCount >= keywordLimit * 0.8
-                ? "bg-yellow-100 text-yellow-700"
-                : "bg-green-100 text-green-700"
-            }`}>
-              전체 {currentKeywordCount}/{keywordLimit}개
-            </div>
           </div>
           
           {loadingKeywords ? (
@@ -849,77 +844,100 @@ export default function NaverRankPage() {
               <Loader2 className="w-6 h-6 animate-spin text-primary mx-auto" />
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {keywords.map((kw) => (
-                <div
-                  key={kw.id}
-                  className={`p-3 border rounded-lg hover:bg-gray-50 transition-colors relative group ${
-                    selectedKeywordForChart?.id === kw.id ? 'ring-2 ring-primary bg-primary/5' : ''
-                  }`}
-                >
-                  <div 
-                    className="cursor-pointer"
-                    onClick={() => {
-                      handleViewKeywordHistory(kw)
-                    }}
-                  >
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium truncate">{kw.keyword}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {new Date(kw.last_checked_at).toLocaleDateString('ko-KR')}
-                        </div>
-                      </div>
-                      
-                      {/* 현재 순위 */}
-                      <div className="text-center flex-shrink-0">
-                        <div className="text-xl font-bold text-primary">
-                          {kw.current_rank ? `${kw.current_rank}위` : "-"}
-                        </div>
+            <>
+              {/* 모바일: 카드 형식 */}
+              <div className="md:hidden space-y-2">
+                {keywords.map((kw) => (
+                  <div key={kw.id} className="p-4 border rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="font-medium text-sm">{kw.keyword}</div>
+                      <div className="text-lg font-bold text-blue-600">
+                        {kw.current_rank ? `${kw.current_rank}위` : "-"}
                       </div>
                     </div>
-
-                    {/* 순위 변동 */}
-                    {kw.rank_change !== null && kw.rank_change !== 0 && (
-                      <div className={`flex items-center gap-1 text-sm ${
-                        kw.rank_change > 0 ? "text-green-600" : "text-red-600"
-                      }`}>
-                        {kw.rank_change > 0 ? (
-                          <TrendingUp className="w-3 h-3" />
-                        ) : kw.rank_change < 0 ? (
-                          <TrendingDown className="w-3 h-3" />
-                        ) : (
-                          <Minus className="w-3 h-3" />
-                        )}
-                        <span className="text-xs font-medium">
-                          {Math.abs(kw.rank_change)} 변동
-                        </span>
-                      </div>
-                    )}
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-gray-600">
+                        {new Date(kw.last_searched_at || kw.last_checked_at).toLocaleDateString('ko-KR')}
+                      </span>
+                      <Button
+                        size="sm"
+                        variant={kw.is_tracked ? "secondary" : "default"}
+                        onClick={() => handleToggleTracking(kw.id, kw.is_tracked)}
+                        disabled={kw.is_tracked}
+                        className="text-xs px-3 py-1 h-auto"
+                      >
+                        {kw.is_tracked ? "추적중" : "추적"}
+                      </Button>
+                    </div>
                   </div>
+                ))}
+              </div>
 
-                  {/* 삭제 버튼 ⭐ */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handleDeleteKeyword(kw.id, kw.keyword)
-                    }}
-                    className="absolute top-2 right-2 p-1 rounded-md bg-red-50 text-red-600 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-100"
-                    title="키워드 삭제"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                    </svg>
-                  </button>
-                </div>
-              ))}
-            </div>
+              {/* 태블릿 이상: 테이블 형식 */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 border-b">
+                    <tr>
+                      <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-medium">키워드</th>
+                      <th className="px-3 sm:px-4 py-2 sm:py-3 text-center text-xs sm:text-sm font-medium">현재 순위</th>
+                      <th className="px-3 sm:px-4 py-2 sm:py-3 text-center text-xs sm:text-sm font-medium">순위 변동</th>
+                      <th className="px-3 sm:px-4 py-2 sm:py-3 text-center text-xs sm:text-sm font-medium">마지막 조회</th>
+                      <th className="px-3 sm:px-4 py-2 sm:py-3 text-center text-xs sm:text-sm font-medium">추적</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {keywords.map((kw) => (
+                      <tr key={kw.id} className="border-b hover:bg-gray-50 transition-colors">
+                        <td className="px-3 sm:px-4 py-2 sm:py-3 font-medium">{kw.keyword}</td>
+                        <td className="px-3 sm:px-4 py-2 sm:py-3 text-center">
+                          <span className="text-lg sm:text-xl font-bold text-blue-600">
+                            {kw.current_rank ? `${kw.current_rank}위` : "-"}
+                          </span>
+                        </td>
+                        <td className="px-3 sm:px-4 py-2 sm:py-3 text-center">
+                          {kw.rank_change !== null && kw.rank_change !== 0 ? (
+                            <div className={`flex items-center justify-center gap-1 ${
+                              kw.rank_change > 0 ? "text-green-600" : "text-red-600"
+                            }`}>
+                              {kw.rank_change > 0 ? (
+                                <TrendingUp className="w-3 h-3" />
+                              ) : (
+                                <TrendingDown className="w-3 h-3" />
+                              )}
+                              <span className="text-xs font-medium">
+                                {Math.abs(kw.rank_change)}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </td>
+                        <td className="px-3 sm:px-4 py-2 sm:py-3 text-center text-xs sm:text-sm text-gray-600">
+                          {new Date(kw.last_searched_at || kw.last_checked_at).toLocaleDateString('ko-KR')}
+                        </td>
+                        <td className="px-3 sm:px-4 py-2 sm:py-3 text-center">
+                          <Button
+                            size="sm"
+                            variant={kw.is_tracked ? "secondary" : "default"}
+                            onClick={() => handleToggleTracking(kw.id, kw.is_tracked)}
+                            disabled={kw.is_tracked}
+                            className="text-xs sm:text-sm"
+                          >
+                            {kw.is_tracked ? "추적중" : "추적"}
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </Card>
       )}
 
-      {/* 순위 히스토리 차트 ⭐ */}
-      {selectedKeywordForChart && (
+      {/* ⭐ 순위 히스토리 차트 제거 (rank_history 테이블 삭제됨) */}
+      {false && (
         <Card className="p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">

@@ -73,7 +73,12 @@ class MetricTrackerService:
         새로운 추적 설정 생성
         
         Args:
-            data: 추적 설정 데이터 (user_id, store_id, keyword_id, update_frequency 등)
+            data: 추적 설정 데이터
+                - user_id: 사용자 ID (필수)
+                - store_id: 매장 ID (필수)
+                - keyword_id: 키워드 ID (선택, keyword와 둘 중 하나 필수)
+                - keyword: 키워드 이름 (선택, keyword_id와 둘 중 하나 필수)
+                - update_frequency: 업데이트 주기 (선택, 기본값: daily_once)
             
         Returns:
             생성된 추적 설정 데이터
@@ -83,8 +88,38 @@ class MetricTrackerService:
             user_id = str(data.get("user_id"))
             data["user_id"] = user_id
             store_id = str(data.get("store_id"))
-            keyword_id = str(data.get("keyword_id"))
             data["store_id"] = store_id
+            
+            # ⭐ keyword_id 대신 keyword 이름으로도 생성 가능
+            keyword_id = data.get("keyword_id")
+            keyword_text = data.get("keyword")  # ⭐ 새 파라미터
+            
+            if not keyword_id and not keyword_text:
+                raise Exception("keyword_id 또는 keyword 중 하나는 필수입니다.")
+            
+            if not keyword_id and keyword_text:
+                # 키워드 이름으로 검색
+                kw_result = self.supabase.table("keywords").select("id").eq(
+                    "store_id", store_id
+                ).eq("keyword", keyword_text).execute()
+                
+                if kw_result.data and len(kw_result.data) > 0:
+                    keyword_id = kw_result.data[0]["id"]
+                    logger.info(f"[Tracker Create] Found existing keyword: {keyword_text} (ID: {keyword_id})")
+                else:
+                    # 키워드가 없으면 생성 (is_tracked = true)
+                    new_kw = self.supabase.table("keywords").insert({
+                        "store_id": store_id,
+                        "keyword": keyword_text,
+                        "is_tracked": True,  # ⭐ 추적 키워드로 생성
+                        "current_rank": None,
+                        "previous_rank": None
+                    }).execute()
+                    keyword_id = new_kw.data[0]["id"]
+                    logger.info(f"[Tracker Create] Created new tracked keyword: {keyword_text} (ID: {keyword_id})")
+            
+            # keyword_id를 문자열로 변환
+            keyword_id = str(keyword_id)
             data["keyword_id"] = keyword_id
             
             # 중복 체크 (같은 매장 x 키워드 조합이 이미 존재하는지)
@@ -121,13 +156,17 @@ class MetricTrackerService:
             )
             data["next_collection_at"] = next_collection_at.isoformat()
             
+            # keyword 필드는 저장하지 않음 (keyword_id만 저장)
+            if "keyword" in data:
+                del data["keyword"]
+            
             # 데이터베이스에 저장
             result = self.supabase.table("metric_trackers").insert(data).execute()
             
             if not result.data:
                 raise Exception("추적 설정 생성에 실패했습니다")
             
-            logger.info(f"[Tracker Created] ID: {result.data[0]['id']}, User: {user_id}")
+            logger.info(f"[Tracker Created] ID: {result.data[0]['id']}, User: {user_id}, Keyword: {keyword_text or keyword_id}")
             return result.data[0]
             
         except Exception as e:

@@ -66,6 +66,7 @@ export const api = {
     keywordHistory: (keywordId: string) => 
       api.url(`/api/v1/naver/keywords/${keywordId}/history`),
     deleteKeyword: (keywordId: string) => api.url(`/api/v1/naver/keywords/${keywordId}`),
+    trackKeyword: (keywordId: string) => api.url(`/api/v1/naver/keywords/${keywordId}/track`),  // ⭐ 추가
     analyzeMainKeywords: () => api.url('/api/v1/naver/analyze-main-keywords'),
     analyzePlaceDetails: (placeId: string, storeName?: string) => {
       const params = storeName ? `?store_name=${encodeURIComponent(storeName)}` : ''

@@ -95,6 +95,7 @@ export default function MetricsTrackerPage() {
   const [selectedStoreId, setSelectedStoreId] = useState<string>("")
   const [selectedKeywordId, setSelectedKeywordId] = useState<string>("")
   const [newKeyword, setNewKeyword] = useState<string>("")
+  const [searchedKeywords, setSearchedKeywords] = useState<Keyword[]>([])  // ⭐ 조회된 키워드 목록
   
   const [isCreating, setIsCreating] = useState(false)
   const [isLoadingTrackers, setIsLoadingTrackers] = useState(false)
@@ -102,7 +103,7 @@ export default function MetricsTrackerPage() {
   const [selectedTracker, setSelectedTracker] = useState<MetricTracker | null>(null)
   
   const [showCreateForm, setShowCreateForm] = useState(false)
-  const [showAddKeyword, setShowAddKeyword] = useState(false)
+  // ⭐ showAddKeyword 제거 (직접 입력 방식으로 변경)
   
   // 모달 관련
   const [showMetricsDialog, setShowMetricsDialog] = useState(false)
@@ -275,60 +276,13 @@ export default function MetricsTrackerPage() {
   }
 
   // 키워드 추가
-  const handleAddKeyword = async () => {
+  // ⭐ handleAddKeyword 제거 (직접 입력 방식으로 변경)
+
+  // 추적 설정 생성 (⭐ 키워드 이름으로 직접 생성)
+  const handleCreateTracker = async () => {
     if (!selectedStoreId || !newKeyword.trim()) {
       toast({
         title: "매장과 키워드를 입력해주세요",
-        variant: "destructive",
-      })
-      return
-    }
-
-    try {
-      const response = await fetch(
-        `${api.baseUrl}/api/v1/naver/rank/check`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            store_id: selectedStoreId,
-            keyword: newKeyword.trim(),
-          }),
-        }
-      )
-
-      if (!response.ok) {
-        throw new Error("키워드 추가 실패")
-      }
-
-      // 키워드 목록 새로고침
-      const keywordsResponse = await fetch(api.naver.keywords(selectedStoreId))
-      if (keywordsResponse.ok) {
-        const data = await keywordsResponse.json()
-        setKeywords(data.keywords || [])
-      }
-
-      setNewKeyword("")
-      setShowAddKeyword(false)
-      
-      toast({
-        title: "키워드가 추가되었습니다",
-      })
-    } catch (error) {
-      toast({
-        title: "키워드 추가 실패",
-        variant: "destructive",
-      })
-    }
-  }
-
-  // 추적 설정 생성
-  const handleCreateTracker = async () => {
-    if (!selectedStoreId || !selectedKeywordId) {
-      toast({
-        title: "매장과 키워드를 선택해주세요",
         variant: "destructive",
       })
       return
@@ -355,7 +309,7 @@ export default function MetricsTrackerPage() {
         body: JSON.stringify({
           user_id: user?.id,
           store_id: selectedStoreId,
-          keyword_id: selectedKeywordId,
+          keyword: newKeyword.trim(),  // ⭐ 키워드 이름으로 전송
           update_frequency: "daily_once",
           update_times: [16],
           notification_enabled: false,
@@ -382,7 +336,8 @@ export default function MetricsTrackerPage() {
 
       setShowCreateForm(false)
       setSelectedStoreId("")
-      setSelectedKeywordId("")
+      setNewKeyword("")  // ⭐ 키워드 입력 초기화
+      setSearchedKeywords([])  // ⭐ 조회된 키워드 초기화
 
       toast({
         title: "추적 설정이 생성되었습니다",
@@ -718,7 +673,26 @@ export default function MetricsTrackerPage() {
               <label className="block text-sm font-medium mb-2">매장 선택</label>
               <select
                 value={selectedStoreId}
-                onChange={(e) => setSelectedStoreId(e.target.value)}
+                onChange={async (e) => {
+                  const storeId = e.target.value
+                  setSelectedStoreId(storeId)
+                  
+                  // ⭐ 선택된 매장의 조회된 키워드 목록 가져오기 (is_tracked=false)
+                  if (storeId) {
+                    try {
+                      const response = await fetch(`${api.naver.keywords(storeId)}?is_tracked=false`)
+                      if (response.ok) {
+                        const data = await response.json()
+                        setSearchedKeywords(data.keywords || [])
+                      }
+                    } catch (error) {
+                      console.error("조회된 키워드 목록 가져오기 실패:", error)
+                      setSearchedKeywords([])
+                    }
+                  } else {
+                    setSearchedKeywords([])
+                  }
+                }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md"
               >
                 <option value="">매장을 선택하세요</option>
@@ -730,47 +704,37 @@ export default function MetricsTrackerPage() {
               </select>
             </div>
 
-            {/* 키워드 선택 */}
+            {/* ⭐ 키워드 직접 입력 */}
             {selectedStoreId && (
               <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="block text-sm font-medium">키워드 선택</label>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowAddKeyword(!showAddKeyword)}
-                  >
-                    <Plus className="w-3 h-3 mr-1" />
-                    키워드 추가
-                  </Button>
-                </div>
+                <label className="block text-sm font-medium mb-2">키워드 입력</label>
+                <Input
+                  type="text"
+                  value={newKeyword}
+                  onChange={(e) => setNewKeyword(e.target.value)}
+                  placeholder="예: 강남 맛집"
+                  className="mb-2"
+                />
                 
-                {showAddKeyword && (
-                  <div className="flex gap-2 mb-2">
-                    <Input
-                      type="text"
-                      value={newKeyword}
-                      onChange={(e) => setNewKeyword(e.target.value)}
-                      placeholder="새 키워드 입력"
-                    />
-                    <Button onClick={handleAddKeyword} size="sm">
-                      추가
-                    </Button>
+                {/* ⭐ 조회된 키워드 목록 (클릭으로 추가) */}
+                {searchedKeywords.length > 0 && (
+                  <div className="mt-3">
+                    <p className="text-xs text-gray-600 mb-2">
+                      해당 매장의 조회한 키워드 (클릭하여 추가)
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {searchedKeywords.map((kw) => (
+                        <button
+                          key={kw.id}
+                          onClick={() => setNewKeyword(kw.keyword)}
+                          className="px-3 py-1 text-sm bg-gray-100 hover:bg-blue-100 rounded-lg transition-colors"
+                        >
+                          {kw.keyword}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
-                
-                <select
-                  value={selectedKeywordId}
-                  onChange={(e) => setSelectedKeywordId(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                >
-                  <option value="">키워드를 선택하세요</option>
-                  {keywords.map((kw) => (
-                    <option key={kw.id} value={kw.id}>
-                      {kw.keyword}
-                    </option>
-                  ))}
-                </select>
               </div>
             )}
 
@@ -778,7 +742,7 @@ export default function MetricsTrackerPage() {
             <div className="flex gap-2">
               <Button
                 onClick={handleCreateTracker}
-                disabled={isCreating || !selectedStoreId || !selectedKeywordId}
+                disabled={isCreating || !selectedStoreId || !newKeyword.trim()}  // ⭐ 키워드 입력 체크
               >
                 {isCreating ? (
                   <>
