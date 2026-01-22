@@ -1,9 +1,8 @@
 "use client"
 
 /**
- * 주요지표 추적 페이지 - 대시보드 스타일
- * 매장별 카드 형식으로 추적 키워드 표시
- * 완벽한 반응형 디자인 (모바일/태블릿/PC)
+ * 주요지표 추적 페이지 - Apple Style Premium Design
+ * Glassmorphism, Dynamic Gradients, Smooth Animations
  */
 import { useStores } from "@/lib/hooks/useStores"
 import { useAuth } from "@/lib/auth-context"
@@ -22,7 +21,13 @@ import {
   Clock,
   BarChart3,
   X,
-  Eye
+  Eye,
+  Bell,
+  BellOff,
+  Mail,
+  Phone,
+  MessageCircle,
+  Sparkles
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -38,18 +43,6 @@ import {
 import { useState, useEffect, useMemo } from "react"
 import { api } from "@/lib/config"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
-
-// 매장 색상 테마 (대시보드와 동일)
-const STORE_COLORS = [
-  { bg: 'from-blue-50 to-blue-100', border: 'border-blue-300', text: 'text-blue-900', badge: 'bg-blue-500' },
-  { bg: 'from-purple-50 to-purple-100', border: 'border-purple-300', text: 'text-purple-900', badge: 'bg-purple-500' },
-  { bg: 'from-green-50 to-green-100', border: 'border-green-300', text: 'text-green-900', badge: 'bg-green-500' },
-  { bg: 'from-orange-50 to-orange-100', border: 'border-orange-300', text: 'text-orange-900', badge: 'bg-orange-500' },
-  { bg: 'from-pink-50 to-pink-100', border: 'border-pink-300', text: 'text-pink-900', badge: 'bg-pink-500' },
-  { bg: 'from-teal-50 to-teal-100', border: 'border-teal-300', text: 'text-teal-900', badge: 'bg-teal-500' },
-  { bg: 'from-indigo-50 to-indigo-100', border: 'border-indigo-300', text: 'text-indigo-900', badge: 'bg-indigo-500' },
-  { bg: 'from-rose-50 to-rose-100', border: 'border-rose-300', text: 'text-rose-900', badge: 'bg-rose-500' },
-]
 
 interface Store {
   id: string
@@ -70,6 +63,8 @@ interface MetricTracker {
   is_active: boolean
   last_collected_at?: string
   created_at: string
+  notification_enabled: boolean
+  notification_type?: 'kakao' | 'sms' | 'email' | null
 }
 
 interface DailyMetric {
@@ -81,10 +76,18 @@ interface DailyMetric {
   rank_change?: number
 }
 
+interface SearchedKeyword {
+  id: string
+  keyword: string
+  store_id: string
+  last_searched_at: string
+  is_tracked: boolean
+}
+
 interface StoreGroup {
   store: Store
   trackers: MetricTracker[]
-  color: typeof STORE_COLORS[0]
+  colorIndex: number
 }
 
 export default function MetricsTrackerPage() {
@@ -103,6 +106,8 @@ export default function MetricsTrackerPage() {
   const [newKeyword, setNewKeyword] = useState("")
   const [updateFrequency, setUpdateFrequency] = useState<'daily_once' | 'daily_twice' | 'daily_thrice'>('daily_once')
   const [isAdding, setIsAdding] = useState(false)
+  const [searchedKeywords, setSearchedKeywords] = useState<SearchedKeyword[]>([])
+  const [loadingKeywords, setLoadingKeywords] = useState(false)
 
   // 지표 보기 모달
   const [showMetricsDialog, setShowMetricsDialog] = useState(false)
@@ -114,6 +119,8 @@ export default function MetricsTrackerPage() {
   const [showSettingsDialog, setShowSettingsDialog] = useState(false)
   const [editingTracker, setEditingTracker] = useState<MetricTracker | null>(null)
   const [editFrequency, setEditFrequency] = useState<'daily_once' | 'daily_twice' | 'daily_thrice'>('daily_once')
+  const [editNotificationEnabled, setEditNotificationEnabled] = useState(false)
+  const [editNotificationType, setEditNotificationType] = useState<'email' | 'sms' | 'kakao' | ''>('')
 
   // 최근 지표 데이터
   const [latestMetrics, setLatestMetrics] = useState<{[trackerId: string]: DailyMetric}>({})
@@ -132,6 +139,13 @@ export default function MetricsTrackerPage() {
       loadTrackers()
     }
   }, [user])
+
+  // 매장 선택 시 조회된 키워드 로드
+  useEffect(() => {
+    if (selectedStoreId && showAddDialog) {
+      loadSearchedKeywords(selectedStoreId)
+    }
+  }, [selectedStoreId, showAddDialog])
 
   const loadStores = async () => {
     try {
@@ -177,6 +191,29 @@ export default function MetricsTrackerPage() {
     }
   }
 
+  const loadSearchedKeywords = async (storeId: string) => {
+    try {
+      setLoadingKeywords(true)
+      const token = getToken()
+      if (!token) return
+
+      const response = await fetch(api.naver.keywords(storeId), {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        // is_tracked=false인 키워드만 필터링
+        const untracked = (data.keywords || []).filter((k: SearchedKeyword) => !k.is_tracked)
+        setSearchedKeywords(untracked)
+      }
+    } catch (error) {
+      console.error("키워드 로드 실패:", error)
+    } finally {
+      setLoadingKeywords(false)
+    }
+  }
+
   const loadAllLatestMetrics = async (trackerList: MetricTracker[]) => {
     const token = getToken()
     if (!token) return
@@ -215,7 +252,7 @@ export default function MetricsTrackerPage() {
         const store = stores.find(s => s.id === tracker.store_id)
         if (!store) return
 
-        const colorIndex = Object.keys(groups).length % STORE_COLORS.length
+        const colorIndex = Object.keys(groups).length % 8
         groups[tracker.store_id] = {
           store: {
             id: store.id,
@@ -224,7 +261,7 @@ export default function MetricsTrackerPage() {
             platform: store.platform
           },
           trackers: [],
-          color: STORE_COLORS[colorIndex]
+          colorIndex
         }
       }
       groups[tracker.store_id].trackers.push(tracker)
@@ -265,13 +302,14 @@ export default function MetricsTrackerPage() {
 
       if (response.ok) {
         toast({
-          title: "추적 시작",
+          title: "✨ 추적 시작",
           description: "키워드 추적이 시작되었습니다. 첫 지표를 수집 중입니다..."
         })
         setShowAddDialog(false)
         setSelectedStoreId("")
         setNewKeyword("")
         setUpdateFrequency('daily_once')
+        setSearchedKeywords([])
         
         // 목록 새로고침
         await loadTrackers()
@@ -304,7 +342,7 @@ export default function MetricsTrackerPage() {
 
       if (response.ok) {
         toast({
-          title: "수집 완료",
+          title: "✅ 수집 완료",
           description: "지표가 수집되었습니다"
         })
         
@@ -355,7 +393,7 @@ export default function MetricsTrackerPage() {
       }
       
       toast({
-        title: "전체 수집 완료",
+        title: "🎉 전체 수집 완료",
         description: "모든 키워드의 지표가 수집되었습니다"
       })
     } finally {
@@ -396,6 +434,8 @@ export default function MetricsTrackerPage() {
   const handleEditSettings = (tracker: MetricTracker) => {
     setEditingTracker(tracker)
     setEditFrequency(tracker.update_frequency)
+    setEditNotificationEnabled(tracker.notification_enabled)
+    setEditNotificationType(tracker.notification_type || '')
     setShowSettingsDialog(true)
   }
 
@@ -413,13 +453,15 @@ export default function MetricsTrackerPage() {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          update_frequency: editFrequency
+          update_frequency: editFrequency,
+          notification_enabled: editNotificationEnabled,
+          notification_type: editNotificationEnabled ? editNotificationType : null
         })
       })
 
       if (response.ok) {
         toast({
-          title: "설정 수정 완료",
+          title: "✅ 설정 수정 완료",
           description: "추적 설정이 수정되었습니다"
         })
         setShowSettingsDialog(false)
@@ -449,7 +491,7 @@ export default function MetricsTrackerPage() {
 
       if (response.ok) {
         toast({
-          title: "삭제 완료",
+          title: "✅ 삭제 완료",
           description: "추적 설정이 삭제되었습니다"
         })
         await loadTrackers()
@@ -479,295 +521,352 @@ export default function MetricsTrackerPage() {
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6">
-      {/* 헤더 */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-primary">주요지표 추적</h1>
-          <p className="text-sm sm:text-base text-muted-foreground mt-1">
-            매장별 키워드의 순위와 리뷰 수를 자동으로 추적합니다
-          </p>
-        </div>
-        <Button
-          onClick={() => setShowAddDialog(true)}
-          className="w-full sm:w-auto"
-          size="lg"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          추적 추가
-        </Button>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50">
+      {/* Animated Background Elements */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 left-0 w-96 h-96 bg-gradient-to-br from-blue-400/20 to-purple-400/20 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-0 right-0 w-96 h-96 bg-gradient-to-br from-pink-400/20 to-orange-400/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
       </div>
 
-      {/* 매장별 추적 키워드 카드 */}
-      {trackers.length === 0 ? (
-        <Card className="p-8 sm:p-12">
-          <div className="text-center">
-            <BarChart3 className="w-12 h-12 sm:w-16 sm:h-16 text-gray-300 mx-auto mb-4" />
-            <p className="text-base sm:text-lg text-muted-foreground mb-2">
-              추적 중인 키워드가 없습니다
-            </p>
-            <p className="text-sm text-muted-foreground">
-              "추적 추가" 버튼을 눌러 키워드 추적을 시작하세요
+      <div className="relative space-y-6 sm:space-y-8 p-4 sm:p-6 lg:p-8">
+        {/* 헤더 */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="space-y-2">
+            <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+              주요지표 추적
+            </h1>
+            <p className="text-sm sm:text-base text-gray-600">
+              매장별 키워드의 순위와 리뷰 수를 자동으로 추적합니다
             </p>
           </div>
-        </Card>
-      ) : (
-        <div className="space-y-4 sm:space-y-6">
-          {storeGroups.map((group) => (
-            <div
-              key={group.store.id}
-              className={`relative p-4 sm:p-6 rounded-xl sm:rounded-2xl border-2 ${group.color.border} hover:shadow-xl transition-all duration-300 bg-gradient-to-br ${group.color.bg}`}
-            >
-              {/* 매장 헤더 */}
-              <div className="flex items-center justify-between mb-4 sm:mb-6">
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  {/* 매장 썸네일 */}
-                  {group.store.thumbnail ? (
-                    <img 
-                      src={group.store.thumbnail} 
-                      alt={group.store.name} 
-                      className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg sm:rounded-xl object-cover border-2 border-white shadow-sm flex-shrink-0"
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none'
-                      }}
-                    />
-                  ) : (
-                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg sm:rounded-xl bg-white/80 flex items-center justify-center border-2 border-white shadow-sm flex-shrink-0">
-                      <StoreIcon className="w-6 h-6 sm:w-7 sm:h-7 text-gray-400" />
-                    </div>
-                  )}
+          <button
+            onClick={() => setShowAddDialog(true)}
+            className="group relative w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-2xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 overflow-hidden"
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-pink-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            <div className="relative flex items-center justify-center gap-2">
+              <Sparkles className="w-5 h-5" />
+              <span>추적 추가</span>
+            </div>
+          </button>
+        </div>
+
+        {/* 매장별 추적 키워드 카드 */}
+        {trackers.length === 0 ? (
+          <div className="backdrop-blur-xl bg-white/40 rounded-3xl border border-white/20 shadow-2xl p-8 sm:p-12">
+            <div className="text-center">
+              <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 mb-6">
+                <BarChart3 className="w-10 h-10 text-white" />
+              </div>
+              <p className="text-lg sm:text-xl text-gray-700 mb-2 font-semibold">
+                추적 중인 키워드가 없습니다
+              </p>
+              <p className="text-sm text-gray-500">
+                "추적 추가" 버튼을 눌러 키워드 추적을 시작하세요
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {storeGroups.map((group) => {
+              const gradients = [
+                'from-blue-500 to-cyan-500',
+                'from-purple-500 to-pink-500',
+                'from-green-500 to-emerald-500',
+                'from-orange-500 to-red-500',
+                'from-pink-500 to-rose-500',
+                'from-teal-500 to-green-500',
+                'from-indigo-500 to-purple-500',
+                'from-yellow-500 to-orange-500',
+              ]
+              const gradient = gradients[group.colorIndex]
+
+              return (
+                <div
+                  key={group.store.id}
+                  className="group backdrop-blur-xl bg-white/60 rounded-3xl border border-white/40 shadow-xl hover:shadow-2xl transition-all duration-500 overflow-hidden"
+                >
+                  {/* Gradient Bar */}
+                  <div className={`h-1.5 bg-gradient-to-r ${gradient}`} />
                   
-                  {/* 매장명 */}
-                  <div className="flex-1 min-w-0">
-                    <h3 className={`font-bold text-base sm:text-lg ${group.color.text} truncate`}>
-                      {group.store.name}
-                    </h3>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
-                        group.store.platform === 'naver' 
-                          ? 'bg-green-500 text-white' 
-                          : 'bg-blue-500 text-white'
-                      }`}>
-                        {group.store.platform === 'naver' ? '네이버' : '구글'}
-                      </span>
-                      <span className="text-xs text-gray-600">
-                        {group.trackers.length}개 추적중
-                      </span>
+                  {/* 매장 헤더 */}
+                  <div className="p-6 sm:p-8">
+                    <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center gap-4 flex-1 min-w-0">
+                        {/* 매장 썸네일 */}
+                        <div className="relative">
+                          {group.store.thumbnail ? (
+                            <div className="relative">
+                              <div className={`absolute inset-0 bg-gradient-to-r ${gradient} rounded-2xl blur-md opacity-50`} />
+                              <img 
+                                src={group.store.thumbnail} 
+                                alt={group.store.name} 
+                                className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover border-4 border-white shadow-lg"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none'
+                                }}
+                              />
+                            </div>
+                          ) : (
+                            <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br ${gradient} flex items-center justify-center border-4 border-white shadow-lg`}>
+                              <StoreIcon className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* 매장명 */}
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-bold text-xl sm:text-2xl text-gray-800 truncate mb-1">
+                            {group.store.name}
+                          </h3>
+                          <div className="flex items-center gap-3">
+                            <span className={`text-xs px-3 py-1 rounded-full font-bold text-white bg-gradient-to-r ${gradient} shadow-sm`}>
+                              {group.store.platform === 'naver' ? '네이버' : '구글'}
+                            </span>
+                            <span className="text-sm text-gray-600 font-medium">
+                              {group.trackers.length}개 추적중
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* 전체 수집 버튼 */}
+                      <button
+                        onClick={() => handleCollectAllStore(group.store.id, group.trackers.map(t => t.id))}
+                        disabled={isRefreshing.has(`store_${group.store.id}`)}
+                        className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm transition-all shadow-md ${
+                          isRefreshing.has(`store_${group.store.id}`)
+                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                            : `bg-gradient-to-r ${gradient} text-white hover:shadow-lg hover:scale-105`
+                        }`}
+                      >
+                        <RefreshCw className={`w-4 h-4 ${isRefreshing.has(`store_${group.store.id}`) ? 'animate-spin' : ''}`} />
+                        <span className="hidden sm:inline">전체 수집</span>
+                      </button>
+                    </div>
+
+                    {/* 추적 키워드 목록 */}
+                    <div className="grid gap-4">
+                      {group.trackers.map((tracker) => (
+                        <div
+                          key={tracker.id}
+                          className="backdrop-blur-sm bg-white/80 rounded-2xl p-4 sm:p-5 hover:bg-white/90 transition-all duration-300 border border-gray-100 hover:border-gray-200 shadow-sm hover:shadow-md"
+                        >
+                          {/* 키워드명과 상태 */}
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-3 flex-wrap flex-1">
+                              <span className="font-bold text-lg text-gray-800">
+                                {tracker.keyword}
+                              </span>
+                              <span className="text-xs px-2.5 py-1 bg-gray-100 text-gray-600 rounded-full font-medium">
+                                {tracker.update_frequency === 'daily_once' ? '1회/일' : 
+                                 tracker.update_frequency === 'daily_twice' ? '2회/일' : '3회/일'}
+                              </span>
+                              {tracker.notification_enabled && (
+                                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 text-blue-600 rounded-full text-xs font-medium">
+                                  <Bell className="w-3 h-3" />
+                                  <span>
+                                    {tracker.notification_type === 'email' ? '이메일' :
+                                     tracker.notification_type === 'sms' ? '문자' :
+                                     tracker.notification_type === 'kakao' ? '카카오톡' : '알림'}
+                                  </span>
+                                </div>
+                              )}
+                              {!tracker.is_active && (
+                                <span className="text-xs px-2.5 py-1 bg-red-50 text-red-600 rounded-full font-medium">
+                                  일시정지
+                                </span>
+                              )}
+                            </div>
+                            {tracker.last_collected_at && (
+                              <div className="hidden lg:flex items-center gap-2 text-xs text-gray-400">
+                                <Clock className="w-3.5 h-3.5" />
+                                <span>
+                                  {new Date(tracker.last_collected_at).toLocaleDateString('ko-KR', {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* 최근 지표 */}
+                          {latestMetrics[tracker.id] ? (
+                            <div className="grid grid-cols-3 gap-3 mb-4">
+                              {/* 순위 */}
+                              <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-3 sm:p-4 border border-blue-200/50">
+                                <div className="text-xs text-blue-600 font-semibold mb-2 flex items-center gap-1.5">
+                                  <TrendingUp className="w-3.5 h-3.5" />
+                                  <span>순위</span>
+                                </div>
+                                <div className="flex flex-col items-center">
+                                  <span className="text-2xl sm:text-3xl font-bold text-blue-700">
+                                    {latestMetrics[tracker.id].rank || '-'}
+                                  </span>
+                                  {previousMetrics[tracker.id] && latestMetrics[tracker.id].rank && previousMetrics[tracker.id]!.rank ? (
+                                    (() => {
+                                      const change = latestMetrics[tracker.id].rank! - previousMetrics[tracker.id]!.rank!
+                                      return change !== 0 ? (
+                                        <span className={`text-xs font-bold flex items-center gap-0.5 mt-1 ${change > 0 ? 'text-red-600' : 'text-blue-600'}`}>
+                                          {change > 0 ? <TrendingDown className="w-3 h-3" /> : <TrendingUp className="w-3 h-3" />}
+                                          {Math.abs(change)}
+                                        </span>
+                                      ) : (
+                                        <span className="text-xs text-gray-400 mt-1">변동없음</span>
+                                      )
+                                    })()
+                                  ) : (
+                                    <span className="text-xs text-gray-400 mt-1">신규</span>
+                                  )}
+                                </div>
+                              </div>
+                              
+                              {/* 방문자 리뷰 */}
+                              <div className="bg-gradient-to-br from-green-50 to-emerald-100 rounded-xl p-3 sm:p-4 border border-green-200/50">
+                                <div className="text-xs text-green-600 font-semibold mb-2 flex items-center gap-1.5">
+                                  <MessageSquare className="w-3.5 h-3.5" />
+                                  <span className="hidden sm:inline">방문자</span>
+                                  <span className="sm:hidden">방문</span>
+                                </div>
+                                <div className="flex flex-col items-center">
+                                  <span className="text-xl sm:text-2xl font-bold text-green-700">
+                                    {latestMetrics[tracker.id].visitor_review_count.toLocaleString()}
+                                  </span>
+                                  {previousMetrics[tracker.id] ? (
+                                    (() => {
+                                      const change = latestMetrics[tracker.id].visitor_review_count - previousMetrics[tracker.id]!.visitor_review_count
+                                      return change !== 0 ? (
+                                        <span className={`text-xs font-bold flex items-center gap-0.5 mt-1 ${change > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                          {change > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                                          {Math.abs(change)}
+                                        </span>
+                                      ) : (
+                                        <span className="text-xs text-gray-400 mt-1">변동없음</span>
+                                      )
+                                    })()
+                                  ) : (
+                                    <span className="text-xs text-gray-400 mt-1">신규</span>
+                                  )}
+                                </div>
+                              </div>
+                              
+                              {/* 블로그 리뷰 */}
+                              <div className="bg-gradient-to-br from-amber-50 to-orange-100 rounded-xl p-3 sm:p-4 border border-amber-200/50">
+                                <div className="text-xs text-amber-600 font-semibold mb-2 flex items-center gap-1.5">
+                                  <FileText className="w-3.5 h-3.5" />
+                                  <span className="hidden sm:inline">블로그</span>
+                                  <span className="sm:hidden">블로그</span>
+                                </div>
+                                <div className="flex flex-col items-center">
+                                  <span className="text-xl sm:text-2xl font-bold text-amber-700">
+                                    {latestMetrics[tracker.id].blog_review_count.toLocaleString()}
+                                  </span>
+                                  {previousMetrics[tracker.id] ? (
+                                    (() => {
+                                      const change = latestMetrics[tracker.id].blog_review_count - previousMetrics[tracker.id]!.blog_review_count
+                                      return change !== 0 ? (
+                                        <span className={`text-xs font-bold flex items-center gap-0.5 mt-1 ${change > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                          {change > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                                          {Math.abs(change)}
+                                        </span>
+                                      ) : (
+                                        <span className="text-xs text-gray-400 mt-1">변동없음</span>
+                                      )
+                                    })()
+                                  ) : (
+                                    <span className="text-xs text-gray-400 mt-1">신규</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="text-center text-sm text-gray-400 bg-gray-50 rounded-xl py-4 mb-4">
+                              <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2" />
+                              데이터 수집 중...
+                            </div>
+                          )}
+
+                          {/* 액션 버튼 */}
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleViewMetrics(tracker)}
+                              className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-xl text-sm font-semibold transition-all hover:scale-105"
+                            >
+                              <Eye className="w-4 h-4" />
+                              <span className="hidden sm:inline">지표 보기</span>
+                              <span className="sm:hidden">지표</span>
+                            </button>
+                            <button
+                              onClick={() => handleCollectNow(tracker.id)}
+                              disabled={isRefreshing.has(tracker.id)}
+                              className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-green-50 text-green-600 hover:bg-green-100 rounded-xl text-sm font-semibold transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                            >
+                              <RefreshCw className={`w-4 h-4 ${isRefreshing.has(tracker.id) ? 'animate-spin' : ''}`} />
+                              <span className="hidden sm:inline">지금 수집</span>
+                              <span className="sm:hidden">수집</span>
+                            </button>
+                            <button
+                              onClick={() => handleEditSettings(tracker)}
+                              className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-gray-50 text-gray-600 hover:bg-gray-100 rounded-xl text-sm font-semibold transition-all hover:scale-105"
+                            >
+                              <Settings className="w-4 h-4" />
+                              <span className="hidden sm:inline">설정</span>
+                              <span className="sm:hidden">설정</span>
+                            </button>
+                            <button
+                              onClick={() => handleDelete(tracker.id, tracker.keyword)}
+                              className="flex items-center justify-center px-3 py-2.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-xl text-sm font-semibold transition-all hover:scale-105"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+
+                          {/* 모바일: 마지막 수집 시간 */}
+                          {tracker.last_collected_at && (
+                            <div className="lg:hidden flex items-center gap-2 text-xs text-gray-400 mt-3 pt-3 border-t">
+                              <Clock className="w-3.5 h-3.5" />
+                              <span>
+                                {new Date(tracker.last_collected_at).toLocaleDateString('ko-KR', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>
-                
-                {/* 전체 수집 버튼 */}
-                <button
-                  onClick={() => handleCollectAllStore(group.store.id, group.trackers.map(t => t.id))}
-                  disabled={isRefreshing.has(`store_${group.store.id}`)}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-lg font-semibold text-xs sm:text-sm transition-all ${
-                    isRefreshing.has(`store_${group.store.id}`)
-                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                      : 'bg-white text-indigo-600 hover:bg-indigo-50 hover:shadow-md'
-                  }`}
-                >
-                  <RefreshCw className={`w-4 h-4 ${isRefreshing.has(`store_${group.store.id}`) ? 'animate-spin' : ''}`} />
-                  <span className="hidden sm:inline">전체 수집</span>
-                  <span className="sm:hidden">수집</span>
-                </button>
-              </div>
-
-              {/* 추적 키워드 목록 */}
-              <div className="space-y-3">
-                {group.trackers.map((tracker) => (
-                  <div
-                    key={tracker.id}
-                    className="bg-white/90 rounded-lg sm:rounded-xl p-3 sm:p-4 hover:shadow-md transition-all"
-                  >
-                    {/* 키워드명과 상태 */}
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2 flex-wrap flex-1 min-w-0">
-                        <span className={`font-bold text-sm sm:text-base ${group.color.text} truncate`}>
-                          {tracker.keyword}
-                        </span>
-                        <span className="text-xs text-gray-500 flex-shrink-0">
-                          {tracker.update_frequency === 'daily_once' ? '1회/일' : 
-                           tracker.update_frequency === 'daily_twice' ? '2회/일' : '3회/일'}
-                        </span>
-                        {!tracker.is_active && (
-                          <span className="text-xs px-2 py-0.5 bg-red-100 text-red-700 rounded-full font-medium flex-shrink-0">
-                            일시정지
-                          </span>
-                        )}
-                      </div>
-                      {tracker.last_collected_at && (
-                        <div className="hidden sm:flex items-center gap-1 text-xs text-gray-400 flex-shrink-0">
-                          <Clock className="w-3 h-3" />
-                          <span>
-                            {new Date(tracker.last_collected_at).toLocaleDateString('ko-KR', {
-                              month: 'short',
-                              day: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* 최근 지표 */}
-                    {latestMetrics[tracker.id] ? (
-                      <div className="grid grid-cols-3 gap-2 mb-3">
-                        {/* 순위 */}
-                        <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-2 sm:p-2.5">
-                          <div className="text-xs text-blue-600 font-medium mb-0.5 sm:mb-1">순위</div>
-                          <div className="flex flex-col items-center justify-center">
-                            <span className="text-lg sm:text-xl font-bold text-blue-700">
-                              {latestMetrics[tracker.id].rank || '-'}
-                            </span>
-                            {previousMetrics[tracker.id] && latestMetrics[tracker.id].rank && previousMetrics[tracker.id]!.rank ? (
-                              (() => {
-                                const change = latestMetrics[tracker.id].rank! - previousMetrics[tracker.id]!.rank!
-                                return change !== 0 ? (
-                                  <span className={`text-xs font-medium flex items-center gap-0.5 ${change > 0 ? 'text-red-600' : 'text-blue-600'}`}>
-                                    {change > 0 ? '↓' : '↑'}{Math.abs(change)}
-                                  </span>
-                                ) : (
-                                  <span className="text-xs text-gray-400">-</span>
-                                )
-                              })()
-                            ) : (
-                              <span className="text-xs text-gray-400">신규</span>
-                            )}
-                          </div>
-                        </div>
-                        
-                        {/* 방문자 리뷰 */}
-                        <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-2 sm:p-2.5">
-                          <div className="text-xs text-green-600 font-medium mb-0.5 sm:mb-1 flex items-center justify-center gap-1">
-                            <MessageSquare className="w-3 h-3" />
-                            <span className="hidden sm:inline">방문자</span>
-                          </div>
-                          <div className="flex flex-col items-center justify-center">
-                            <span className="text-base sm:text-lg font-bold text-green-700">
-                              {latestMetrics[tracker.id].visitor_review_count.toLocaleString()}
-                            </span>
-                            {previousMetrics[tracker.id] ? (
-                              (() => {
-                                const change = latestMetrics[tracker.id].visitor_review_count - previousMetrics[tracker.id]!.visitor_review_count
-                                return change !== 0 ? (
-                                  <span className={`text-xs font-medium flex items-center gap-0.5 ${change > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                    {change > 0 ? '↑' : '↓'}{Math.abs(change)}
-                                  </span>
-                                ) : (
-                                  <span className="text-xs text-gray-400">-</span>
-                                )
-                              })()
-                            ) : (
-                              <span className="text-xs text-gray-400">신규</span>
-                            )}
-                          </div>
-                        </div>
-                        
-                        {/* 블로그 리뷰 */}
-                        <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-lg p-2 sm:p-2.5">
-                          <div className="text-xs text-amber-600 font-medium mb-0.5 sm:mb-1 flex items-center justify-center gap-1">
-                            <FileText className="w-3 h-3" />
-                            <span className="hidden sm:inline">블로그</span>
-                          </div>
-                          <div className="flex flex-col items-center justify-center">
-                            <span className="text-base sm:text-lg font-bold text-amber-700">
-                              {latestMetrics[tracker.id].blog_review_count.toLocaleString()}
-                            </span>
-                            {previousMetrics[tracker.id] ? (
-                              (() => {
-                                const change = latestMetrics[tracker.id].blog_review_count - previousMetrics[tracker.id]!.blog_review_count
-                                return change !== 0 ? (
-                                  <span className={`text-xs font-medium flex items-center gap-0.5 ${change > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                    {change > 0 ? '↑' : '↓'}{Math.abs(change)}
-                                  </span>
-                                ) : (
-                                  <span className="text-xs text-gray-400">-</span>
-                                )
-                              })()
-                            ) : (
-                              <span className="text-xs text-gray-400">신규</span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="text-center text-xs text-gray-400 bg-gray-50 rounded-lg py-3 mb-3">
-                        데이터 수집 중...
-                      </div>
-                    )}
-
-                    {/* 액션 버튼 */}
-                    <div className="flex items-center gap-1.5 sm:gap-2">
-                      <button
-                        onClick={() => handleViewMetrics(tracker)}
-                        className="flex-1 flex items-center justify-center gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg text-xs sm:text-sm font-medium transition-all"
-                      >
-                        <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                        <span className="hidden sm:inline">지표</span>
-                      </button>
-                      <button
-                        onClick={() => handleCollectNow(tracker.id)}
-                        disabled={isRefreshing.has(tracker.id)}
-                        className="flex-1 flex items-center justify-center gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 bg-green-50 text-green-600 hover:bg-green-100 rounded-lg text-xs sm:text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <RefreshCw className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isRefreshing.has(tracker.id) ? 'animate-spin' : ''}`} />
-                        <span className="hidden sm:inline">수집</span>
-                      </button>
-                      <button
-                        onClick={() => handleEditSettings(tracker)}
-                        className="flex-1 flex items-center justify-center gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 bg-gray-50 text-gray-600 hover:bg-gray-100 rounded-lg text-xs sm:text-sm font-medium transition-all"
-                      >
-                        <Settings className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                        <span className="hidden sm:inline">설정</span>
-                      </button>
-                      <button
-                        onClick={() => handleDelete(tracker.id, tracker.keyword)}
-                        className="flex items-center justify-center px-2 sm:px-3 py-1.5 sm:py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg text-xs sm:text-sm font-medium transition-all"
-                      >
-                        <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                      </button>
-                    </div>
-
-                    {/* 모바일: 마지막 수집 시간 */}
-                    {tracker.last_collected_at && (
-                      <div className="sm:hidden flex items-center gap-1 text-xs text-gray-400 mt-2 pt-2 border-t">
-                        <Clock className="w-3 h-3" />
-                        <span>
-                          {new Date(tracker.last_collected_at).toLocaleDateString('ko-KR', {
-                            month: 'short',
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+              )
+            })}
+          </div>
+        )}
+      </div>
 
       {/* 추적 추가 모달 */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg backdrop-blur-xl bg-white/95 border-2 border-white/40 shadow-2xl">
           <DialogHeader>
-            <DialogTitle>추적 추가</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              추적 추가
+            </DialogTitle>
+            <DialogDescription className="text-gray-600">
               새로운 키워드 추적을 시작합니다
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
+          <div className="space-y-5 py-4">
             <div>
-              <label className="text-sm font-medium mb-2 block">매장 선택</label>
+              <label className="text-sm font-semibold mb-2 block text-gray-700">매장 선택</label>
               <select
                 value={selectedStoreId}
                 onChange={(e) => setSelectedStoreId(e.target.value)}
-                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white"
               >
                 <option value="">매장을 선택하세요</option>
                 {stores.map((store) => (
@@ -778,19 +877,46 @@ export default function MetricsTrackerPage() {
               </select>
             </div>
             <div>
-              <label className="text-sm font-medium mb-2 block">키워드</label>
+              <label className="text-sm font-semibold mb-2 block text-gray-700">키워드</label>
               <Input
                 value={newKeyword}
                 onChange={(e) => setNewKeyword(e.target.value)}
                 placeholder="예: 강남 카페"
+                className="border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent h-12"
               />
+              
+              {/* 조회된 키워드 목록 */}
+              {selectedStoreId && (
+                <div className="mt-3">
+                  {loadingKeywords ? (
+                    <div className="text-center py-3">
+                      <Loader2 className="w-4 h-4 animate-spin mx-auto text-gray-400" />
+                    </div>
+                  ) : searchedKeywords.length > 0 ? (
+                    <div>
+                      <p className="text-xs text-gray-500 mb-2">최근 조회한 키워드 (클릭하여 선택)</p>
+                      <div className="flex flex-wrap gap-2">
+                        {searchedKeywords.map((kw) => (
+                          <button
+                            key={kw.id}
+                            onClick={() => setNewKeyword(kw.keyword)}
+                            className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-sm font-medium hover:bg-blue-100 transition-all hover:scale-105"
+                          >
+                            {kw.keyword}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              )}
             </div>
             <div>
-              <label className="text-sm font-medium mb-2 block">수집 주기</label>
+              <label className="text-sm font-semibold mb-2 block text-gray-700">수집 주기</label>
               <select
                 value={updateFrequency}
                 onChange={(e) => setUpdateFrequency(e.target.value as any)}
-                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white"
               >
                 <option value="daily_once">하루 1회</option>
                 <option value="daily_twice">하루 2회</option>
@@ -798,20 +924,23 @@ export default function MetricsTrackerPage() {
               </select>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-3">
             <Button
               variant="outline"
-              onClick={() => setShowAddDialog(false)}
-              className="flex-1"
+              onClick={() => {
+                setShowAddDialog(false)
+                setSearchedKeywords([])
+              }}
+              className="flex-1 h-12 rounded-xl border-2"
             >
               취소
             </Button>
             <Button
               onClick={handleAddTracker}
               disabled={isAdding}
-              className="flex-1"
+              className="flex-1 h-12 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold shadow-lg"
             >
-              {isAdding ? <Loader2 className="w-4 h-4 animate-spin" /> : '추가'}
+              {isAdding ? <Loader2 className="w-5 h-5 animate-spin" /> : '추가'}
             </Button>
           </div>
         </DialogContent>
@@ -819,72 +948,87 @@ export default function MetricsTrackerPage() {
 
       {/* 지표 보기 모달 */}
       <Dialog open={showMetricsDialog} onOpenChange={setShowMetricsDialog}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto backdrop-blur-xl bg-white/95 border-2 border-white/40 shadow-2xl">
           <DialogHeader>
-            <DialogTitle>
+            <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
               {selectedTracker?.keyword} 지표
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-gray-600">
               {selectedTracker?.store_name}
             </DialogDescription>
           </DialogHeader>
           {loadingMetrics ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
             </div>
           ) : metrics.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
+            <div className="text-center py-12 text-gray-500">
               아직 수집된 지표가 없습니다
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-6">
               {/* 차트 */}
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h4 className="font-semibold mb-4">순위 변화</h4>
+              <div className="bg-gradient-to-br from-gray-50 to-blue-50 rounded-2xl p-6 border border-gray-200">
+                <h4 className="font-bold text-lg mb-4 text-gray-800">순위 변화</h4>
                 <ResponsiveContainer width="100%" height={300}>
                   <LineChart data={[...metrics].reverse()}>
-                    <CartesianGrid strokeDasharray="3 3" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                     <XAxis 
                       dataKey="collection_date" 
                       tickFormatter={(date) => new Date(date).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
+                      stroke="#6b7280"
                     />
-                    <YAxis reversed domain={[1, 'dataMax']} />
+                    <YAxis reversed domain={[1, 'dataMax']} stroke="#6b7280" />
                     <Tooltip 
                       labelFormatter={(date) => new Date(date).toLocaleDateString('ko-KR')}
+                      contentStyle={{ 
+                        backgroundColor: 'rgba(255, 255, 255, 0.95)', 
+                        border: '2px solid #e5e7eb',
+                        borderRadius: '12px',
+                        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+                      }}
                     />
                     <Legend />
-                    <Line type="monotone" dataKey="rank" stroke="#3b82f6" name="순위" />
+                    <Line 
+                      type="monotone" 
+                      dataKey="rank" 
+                      stroke="#3b82f6" 
+                      strokeWidth={3}
+                      name="순위" 
+                      dot={{ fill: '#3b82f6', r: 5 }}
+                      activeDot={{ r: 7 }}
+                    />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
 
               {/* 지표 테이블 */}
               <div>
-                <h4 className="font-semibold mb-2">상세 지표</h4>
-                <div className="border rounded-lg overflow-hidden">
+                <h4 className="font-bold text-lg mb-3 text-gray-800">상세 지표</h4>
+                <div className="border-2 border-gray-200 rounded-2xl overflow-hidden">
                   <table className="w-full text-sm">
-                    <thead className="bg-gray-50">
+                    <thead className="bg-gradient-to-r from-gray-50 to-blue-50">
                       <tr>
-                        <th className="px-4 py-2 text-left">날짜</th>
-                        <th className="px-4 py-2 text-center">순위</th>
-                        <th className="px-4 py-2 text-center">방문자리뷰</th>
-                        <th className="px-4 py-2 text-center">블로그리뷰</th>
+                        <th className="px-4 py-3 text-left font-semibold text-gray-700">날짜</th>
+                        <th className="px-4 py-3 text-center font-semibold text-gray-700">순위</th>
+                        <th className="px-4 py-3 text-center font-semibold text-gray-700">방문자리뷰</th>
+                        <th className="px-4 py-3 text-center font-semibold text-gray-700">블로그리뷰</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {metrics.map((metric) => (
-                        <tr key={metric.id} className="border-t">
-                          <td className="px-4 py-2">
+                      {metrics.map((metric, index) => (
+                        <tr key={metric.id} className={`border-t border-gray-200 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
+                          <td className="px-4 py-3 text-gray-700">
                             {new Date(metric.collection_date).toLocaleDateString('ko-KR')}
                           </td>
-                          <td className="px-4 py-2 text-center font-bold">
+                          <td className="px-4 py-3 text-center font-bold text-blue-600">
                             {metric.rank || '-'}
                           </td>
-                          <td className="px-4 py-2 text-center">
-                            {metric.visitor_review_count}
+                          <td className="px-4 py-3 text-center text-gray-700">
+                            {metric.visitor_review_count.toLocaleString()}
                           </td>
-                          <td className="px-4 py-2 text-center">
-                            {metric.blog_review_count}
+                          <td className="px-4 py-3 text-center text-gray-700">
+                            {metric.blog_review_count.toLocaleString()}
                           </td>
                         </tr>
                       ))}
@@ -899,38 +1043,106 @@ export default function MetricsTrackerPage() {
 
       {/* 설정 수정 모달 */}
       <Dialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg backdrop-blur-xl bg-white/95 border-2 border-white/40 shadow-2xl">
           <DialogHeader>
-            <DialogTitle>추적 설정</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              추적 설정
+            </DialogTitle>
+            <DialogDescription className="text-gray-600">
               {editingTracker?.keyword} - {editingTracker?.store_name}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
+          <div className="space-y-5 py-4">
             <div>
-              <label className="text-sm font-medium mb-2 block">수집 주기</label>
+              <label className="text-sm font-semibold mb-2 block text-gray-700">수집 주기</label>
               <select
                 value={editFrequency}
                 onChange={(e) => setEditFrequency(e.target.value as any)}
-                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white"
               >
                 <option value="daily_once">하루 1회</option>
                 <option value="daily_twice">하루 2회</option>
                 <option value="daily_thrice">하루 3회</option>
               </select>
             </div>
+            
+            {/* 알림 설정 */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-semibold text-gray-700">순위 알림받기</label>
+                <button
+                  onClick={() => setEditNotificationEnabled(!editNotificationEnabled)}
+                  className={`relative inline-flex h-7 w-12 items-center rounded-full transition-all ${
+                    editNotificationEnabled ? 'bg-blue-600' : 'bg-gray-300'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
+                      editNotificationEnabled ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+              
+              {editNotificationEnabled && (
+                <div className="space-y-2 pl-4 border-l-2 border-blue-200">
+                  <p className="text-xs text-gray-500 mb-2">알림 방법 선택</p>
+                  <div className="space-y-2">
+                    <button
+                      onClick={() => setEditNotificationType('email')}
+                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all ${
+                        editNotificationType === 'email'
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-200 bg-white hover:border-gray-300'
+                      }`}
+                    >
+                      <Mail className={`w-5 h-5 ${editNotificationType === 'email' ? 'text-blue-600' : 'text-gray-400'}`} />
+                      <span className={`font-medium ${editNotificationType === 'email' ? 'text-blue-600' : 'text-gray-600'}`}>
+                        이메일
+                      </span>
+                    </button>
+                    <button
+                      onClick={() => setEditNotificationType('sms')}
+                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all ${
+                        editNotificationType === 'sms'
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-200 bg-white hover:border-gray-300'
+                      }`}
+                    >
+                      <Phone className={`w-5 h-5 ${editNotificationType === 'sms' ? 'text-blue-600' : 'text-gray-400'}`} />
+                      <span className={`font-medium ${editNotificationType === 'sms' ? 'text-blue-600' : 'text-gray-600'}`}>
+                        문자 (SMS)
+                      </span>
+                    </button>
+                    <button
+                      onClick={() => setEditNotificationType('kakao')}
+                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all ${
+                        editNotificationType === 'kakao'
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-200 bg-white hover:border-gray-300'
+                      }`}
+                    >
+                      <MessageCircle className={`w-5 h-5 ${editNotificationType === 'kakao' ? 'text-blue-600' : 'text-gray-400'}`} />
+                      <span className={`font-medium ${editNotificationType === 'kakao' ? 'text-blue-600' : 'text-gray-600'}`}>
+                        카카오톡
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-3">
             <Button
               variant="outline"
               onClick={() => setShowSettingsDialog(false)}
-              className="flex-1"
+              className="flex-1 h-12 rounded-xl border-2"
             >
               취소
             </Button>
             <Button
               onClick={handleUpdateSettings}
-              className="flex-1"
+              className="flex-1 h-12 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold shadow-lg"
             >
               저장
             </Button>
