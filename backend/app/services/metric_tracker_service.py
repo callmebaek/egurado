@@ -281,15 +281,15 @@ class MetricTrackerService:
             
             logger.info(f"[Collecting Metrics] Tracker: {tracker_id}, Keyword: {keyword}, Place ID: {place_id}")
             
-            # 매장 정보 조회 (name 컬럼)
+            # 매장 정보 조회 (store_name 컬럼)
             store_result = self.supabase.table("stores") \
-                .select("name") \
+                .select("store_name") \
                 .eq("id", store_id) \
                 .execute()
             
             store_name = None
             if store_result.data:
-                store_name = store_result.data[0].get("name")
+                store_name = store_result.data[0].get("store_name")
                 logger.info(f"[Collecting Metrics] Store Info: name={store_name}")
             
             # 순위 및 리뷰수 조회 (비공식 API 사용)
