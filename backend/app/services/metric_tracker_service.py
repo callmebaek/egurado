@@ -281,20 +281,16 @@ class MetricTrackerService:
             
             logger.info(f"[Collecting Metrics] Tracker: {tracker_id}, Keyword: {keyword}, Place ID: {place_id}")
             
-            # 매장 정보 조회 (store_name, x, y 좌표)
+            # 매장 정보 조회 (name 컬럼)
             store_result = self.supabase.table("stores") \
-                .select("store_name, x, y") \
+                .select("name") \
                 .eq("id", store_id) \
                 .execute()
             
             store_name = None
-            coord_x = None
-            coord_y = None
             if store_result.data:
-                store_name = store_result.data[0].get("store_name")
-                coord_x = store_result.data[0].get("x")
-                coord_y = store_result.data[0].get("y")
-                logger.info(f"[Collecting Metrics] Store Info: name={store_name}, x={coord_x}, y={coord_y}")
+                store_name = store_result.data[0].get("name")
+                logger.info(f"[Collecting Metrics] Store Info: name={store_name}")
             
             # 순위 및 리뷰수 조회 (비공식 API 사용)
             rank_result = await rank_service_api_unofficial.check_rank(
@@ -302,8 +298,8 @@ class MetricTrackerService:
                 target_place_id=place_id,
                 max_results=300,
                 store_name=store_name,
-                coord_x=coord_x,
-                coord_y=coord_y
+                coord_x=None,  # 좌표 없이도 작동
+                coord_y=None
             )
             
             # 오늘 날짜 (서울 시간대)
