@@ -155,12 +155,58 @@ class MetricTrackerService:
             
             trackers = []
             for tracker in result.data:
-                # 조인된 데이터 평탄화
+                tracker_id = tracker.get("id")
+                
+                # 최신 일별 지표 2개 조회 (최신 + 이전)
+                metrics_result = self.supabase.table("daily_metrics") \
+                    .select("rank, visitor_review_count, blog_review_count, collection_date") \
+                    .eq("tracker_id", tracker_id) \
+                    .order("collection_date", desc=True) \
+                    .limit(2) \
+                    .execute()
+                
+                # 기본값 설정
+                latest_rank = None
+                rank_change = None
+                visitor_review_count = None
+                blog_review_count = None
+                visitor_review_change = None
+                blog_review_change = None
+                
+                if metrics_result.data and len(metrics_result.data) > 0:
+                    latest_metric = metrics_result.data[0]
+                    latest_rank = latest_metric.get("rank")
+                    visitor_review_count = latest_metric.get("visitor_review_count")
+                    blog_review_count = latest_metric.get("blog_review_count")
+                    
+                    # 변동값 계산 (이전 데이터가 있는 경우)
+                    if len(metrics_result.data) > 1:
+                        previous_metric = metrics_result.data[1]
+                        
+                        # 순위 변동 (이전 순위 - 현재 순위, 양수면 상승)
+                        if latest_rank and previous_metric.get("rank"):
+                            rank_change = previous_metric.get("rank") - latest_rank
+                        
+                        # 방문자 리뷰 변동
+                        if visitor_review_count is not None and previous_metric.get("visitor_review_count") is not None:
+                            visitor_review_change = visitor_review_count - previous_metric.get("visitor_review_count")
+                        
+                        # 블로그 리뷰 변동
+                        if blog_review_count is not None and previous_metric.get("blog_review_count") is not None:
+                            blog_review_change = blog_review_count - previous_metric.get("blog_review_count")
+                
+                # 조인된 데이터 평탄화 + 최신 지표 추가
                 trackers.append({
                     **tracker,
                     "store_name": tracker.get("stores", {}).get("store_name", ""),
                     "platform": tracker.get("stores", {}).get("platform", ""),
                     "keyword": tracker.get("keywords", {}).get("keyword", ""),
+                    "latest_rank": latest_rank,
+                    "rank_change": rank_change,
+                    "visitor_review_count": visitor_review_count,
+                    "blog_review_count": blog_review_count,
+                    "visitor_review_change": visitor_review_change,
+                    "blog_review_change": blog_review_change,
                 })
             
             return trackers

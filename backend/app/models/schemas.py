@@ -331,6 +331,12 @@ class MetricTrackerWithDetails(MetricTracker):
     store_name: str
     keyword: str
     platform: str
+    latest_rank: Optional[int] = None
+    rank_change: Optional[int] = None
+    visitor_review_count: Optional[int] = None
+    blog_review_count: Optional[int] = None
+    visitor_review_change: Optional[int] = None
+    blog_review_change: Optional[int] = None
 
 
 class DailyMetricBase(BaseModel):
