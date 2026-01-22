@@ -48,7 +48,10 @@ class NaverRankNewAPIService:
         self, 
         keyword: str, 
         target_place_id: str,
-        max_results: int = 300
+        max_results: int = 300,
+        store_name: str = None,
+        coord_x: str = None,
+        coord_y: str = None
     ) -> Dict:
         """
         특정 키워드에서 매장의 순위 확인 (신API - 빠름!)
@@ -57,6 +60,9 @@ class NaverRankNewAPIService:
             keyword: 검색 키워드
             target_place_id: 찾을 매장의 Place ID
             max_results: 최대 확인 개수 (기본 300개)
+            store_name: 매장명 (300위 밖일 때 리뷰 수 조회에 사용)
+            coord_x: 경도 (300위 밖일 때 리뷰 수 조회에 사용)
+            coord_y: 위도 (300위 밖일 때 리뷰 수 조회에 사용)
             
         Returns:
             {
@@ -71,7 +77,7 @@ class NaverRankNewAPIService:
                 'save_count': int (저장 수)
             }
         """
-        logger.info(f"[신API Rank] 순위 체크 시작: keyword={keyword}, place_id={target_place_id}")
+        logger.info(f"[신API Rank] 순위 체크 시작: keyword={keyword}, place_id={target_place_id}, store_name={store_name}")
         
         try:
             # 1. GraphQL로 검색 결과 가져오기
@@ -109,30 +115,45 @@ class NaverRankNewAPIService:
                     }
                     break
             
-            # 3. 순위를 못 찾았을 때 place_id로 직접 조회
+            # 3. 순위를 못 찾았을 때 매장명으로 리뷰 수 조회
             if not found:
-                logger.info(f"[신API Rank] ⭐ 순위 없음(300위 밖), place_id로 직접 조회 시도: place_id={target_place_id}")
+                logger.info(f"[신API Rank] ⭐ 순위 없음(300위 밖), 매장명으로 리뷰 수 조회 시도: place_id={target_place_id}, store_name={store_name}")
                 try:
-                    # naver_place_details_service 사용
-                    from .naver_place_details_service import place_details_service
-                    place_details = await place_details_service.get_place_details_by_id(target_place_id)
+                    # naver_review_service 사용 (매장명 검색 방식)
+                    from .naver_review_service import NaverReviewService
+                    review_service = NaverReviewService()
+                    place_info = await review_service.get_place_info(
+                        place_id=target_place_id,
+                        store_name=store_name,
+                        x=coord_x,
+                        y=coord_y
+                    )
                     
-                    target_store_data = {
-                        "place_id": target_place_id,
-                        "visitor_review_count": place_details.get("visitor_review_count", 0),
-                        "blog_review_count": place_details.get("blog_review_count", 0),
-                        "save_count": 0
-                    }
-                    logger.info(f"[신API Rank] ✅ place_id 직접 조회 성공: 방문자={target_store_data['visitor_review_count']}, 블로그={target_store_data['blog_review_count']}")
+                    if place_info:
+                        target_store_data = {
+                            "place_id": target_place_id,
+                            "visitor_review_count": place_info.get("visitor_review_count", 0),
+                            "blog_review_count": place_info.get("blog_review_count", 0),
+                            "save_count": 0
+                        }
+                        logger.info(f"[신API Rank] ✅ 매장명 검색 성공: 방문자={target_store_data['visitor_review_count']}, 블로그={target_store_data['blog_review_count']}")
+                    else:
+                        logger.warning(f"[신API Rank] 매장 정보 없음 → 리뷰수 0으로 설정")
+                        target_store_data = {
+                            "place_id": target_place_id,
+                            "visitor_review_count": 0,
+                            "blog_review_count": 0,
+                            "save_count": 0
+                        }
                 except Exception as e:
-                    logger.error(f"[신API Rank] ❌ place_id 직접 조회 실패: {str(e)}", exc_info=True)
+                    logger.error(f"[신API Rank] ❌ 매장 정보 조회 실패: {str(e)}", exc_info=True)
                     target_store_data = {
                         "place_id": target_place_id,
                         "visitor_review_count": 0,
                         "blog_review_count": 0,
                         "save_count": 0
                     }
-                    logger.warning(f"[신API Rank] place_id 조회 실패 → 리뷰수 0으로 설정")
+                    logger.warning(f"[신API Rank] 매장 정보 조회 실패 → 리뷰수 0으로 설정")
             
             # 4. 결과 구성
             result = {

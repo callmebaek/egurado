@@ -281,37 +281,30 @@ class MetricTrackerService:
             
             logger.info(f"[Collecting Metrics] Tracker: {tracker_id}, Keyword: {keyword}, Place ID: {place_id}")
             
+            # 매장 정보 조회 (store_name, x, y 좌표)
+            store_result = self.supabase.table("stores") \
+                .select("store_name, x, y") \
+                .eq("id", store_id) \
+                .execute()
+            
+            store_name = None
+            coord_x = None
+            coord_y = None
+            if store_result.data:
+                store_name = store_result.data[0].get("store_name")
+                coord_x = store_result.data[0].get("x")
+                coord_y = store_result.data[0].get("y")
+                logger.info(f"[Collecting Metrics] Store Info: name={store_name}, x={coord_x}, y={coord_y}")
+            
             # 순위 및 리뷰수 조회 (비공식 API 사용)
             rank_result = await rank_service_api_unofficial.check_rank(
                 keyword=keyword,
                 target_place_id=place_id,
-                max_results=300
+                max_results=300,
+                store_name=store_name,
+                coord_x=coord_x,
+                coord_y=coord_y
             )
-            
-            # 300위 밖일 경우 또는 리뷰 수가 0인 경우, 기존 리뷰 수 유지
-            if rank_result.get("rank") is None or (rank_result.get("visitor_review_count", 0) == 0 and rank_result.get("blog_review_count", 0) == 0):
-                logger.info(f"[리뷰 수 유지] 순위 없음 또는 리뷰 수 0, 기존 리뷰 수 조회 시도: tracker_id={tracker_id}")
-                try:
-                    # 기존 데이터 중 visitor_review_count > 0 인 가장 최근 데이터 조회
-                    latest_metric = self.supabase.table("daily_metrics") \
-                        .select("visitor_review_count, blog_review_count") \
-                        .eq("tracker_id", tracker_id) \
-                        .gt("visitor_review_count", 0) \
-                        .order("collection_date", desc=True) \
-                        .limit(1) \
-                        .execute()
-                    
-                    if latest_metric.data:
-                        # 기존 리뷰 수로 덮어쓰기
-                        prev_visitor = latest_metric.data[0].get("visitor_review_count", 0)
-                        prev_blog = latest_metric.data[0].get("blog_review_count", 0)
-                        rank_result["visitor_review_count"] = prev_visitor
-                        rank_result["blog_review_count"] = prev_blog
-                        logger.info(f"[리뷰 수 유지] ✅ 기존 리뷰 수 적용 성공: 방문자={prev_visitor}, 블로그={prev_blog}")
-                    else:
-                        logger.warning(f"[리뷰 수 유지] 기존 유효 데이터 없음, API 반환값 사용: 방문자={rank_result.get('visitor_review_count', 0)}, 블로그={rank_result.get('blog_review_count', 0)}")
-                except Exception as e:
-                    logger.error(f"[리뷰 수 유지] 기존 리뷰 수 조회 실패: {str(e)}")
             
             # 오늘 날짜 (서울 시간대)
             today = datetime.now(self.timezone).date()
