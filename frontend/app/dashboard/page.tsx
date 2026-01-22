@@ -313,6 +313,10 @@ function SortableStoreTrackerCard({
                     <div className="flex items-center gap-2">
                       {tracker.latest_rank ? (
                         <div className="flex items-center gap-2">
+                          {/* 1~5위 폭죽 뱃지 */}
+                          {tracker.latest_rank >= 1 && tracker.latest_rank <= 5 && (
+                            <Sparkles className="w-5 h-5 text-yellow-500 animate-pulse flex-shrink-0" />
+                          )}
                           <div className="text-right">
                             <div className="flex items-baseline gap-1">
                               <span className={`text-2xl font-bold ${storeColor.text}`}>
