@@ -288,6 +288,30 @@ class MetricTrackerService:
                 max_results=300
             )
             
+            # 300위 밖일 경우 (rank가 None), 기존 리뷰 수 유지
+            if rank_result.get("rank") is None:
+                logger.info(f"[300위 밖] 순위 없음, 기존 리뷰 수 유지 시도: tracker_id={tracker_id}")
+                try:
+                    # 기존 최신 데이터 조회
+                    latest_metric = self.supabase.table("daily_metrics") \
+                        .select("visitor_review_count, blog_review_count") \
+                        .eq("tracker_id", tracker_id) \
+                        .order("collection_date", desc=True) \
+                        .limit(1) \
+                        .execute()
+                    
+                    if latest_metric.data:
+                        # 기존 리뷰 수로 덮어쓰기
+                        prev_visitor = latest_metric.data[0].get("visitor_review_count", 0)
+                        prev_blog = latest_metric.data[0].get("blog_review_count", 0)
+                        rank_result["visitor_review_count"] = prev_visitor
+                        rank_result["blog_review_count"] = prev_blog
+                        logger.info(f"[300위 밖] ✅ 기존 리뷰 수 유지 성공: 방문자={prev_visitor}, 블로그={prev_blog}")
+                    else:
+                        logger.warning(f"[300위 밖] 기존 데이터 없음, 리뷰 수 0으로 설정")
+                except Exception as e:
+                    logger.error(f"[300위 밖] 기존 리뷰 수 조회 실패: {str(e)}")
+            
             # 오늘 날짜 (서울 시간대)
             today = datetime.now(self.timezone).date()
             
