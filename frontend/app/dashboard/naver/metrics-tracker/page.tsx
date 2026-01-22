@@ -1,8 +1,9 @@
 "use client"
 
 /**
- * 주요지표 추적 페이지
- * 매장 x 키워드 조합의 일별 순위, 방문자리뷰, 블로그리뷰 추적
+ * 주요지표 추적 페이지 - 대시보드 스타일
+ * 매장별 카드 형식으로 추적 키워드 표시
+ * 완벽한 반응형 디자인 (모바일/태블릿/PC)
  */
 import { useStores } from "@/lib/hooks/useStores"
 import { useAuth } from "@/lib/auth-context"
@@ -13,15 +14,15 @@ import {
   TrendingDown, 
   Plus, 
   Settings, 
-  Trash2, 
-  Eye,
-  EyeOff,
-  Bell,
-  LineChart as LineChartIcon,
+  Trash2,
+  RefreshCw,
+  Store as StoreIcon,
+  MessageSquare,
+  FileText,
+  Clock,
   BarChart3,
   X,
-  Users,
-  FileText
+  Eye
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -38,16 +39,24 @@ import { useState, useEffect, useMemo } from "react"
 import { api } from "@/lib/config"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
+// 매장 색상 테마 (대시보드와 동일)
+const STORE_COLORS = [
+  { bg: 'from-blue-50 to-blue-100', border: 'border-blue-300', text: 'text-blue-900', badge: 'bg-blue-500' },
+  { bg: 'from-purple-50 to-purple-100', border: 'border-purple-300', text: 'text-purple-900', badge: 'bg-purple-500' },
+  { bg: 'from-green-50 to-green-100', border: 'border-green-300', text: 'text-green-900', badge: 'bg-green-500' },
+  { bg: 'from-orange-50 to-orange-100', border: 'border-orange-300', text: 'text-orange-900', badge: 'bg-orange-500' },
+  { bg: 'from-pink-50 to-pink-100', border: 'border-pink-300', text: 'text-pink-900', badge: 'bg-pink-500' },
+  { bg: 'from-teal-50 to-teal-100', border: 'border-teal-300', text: 'text-teal-900', badge: 'bg-teal-500' },
+  { bg: 'from-indigo-50 to-indigo-100', border: 'border-indigo-300', text: 'text-indigo-900', badge: 'bg-indigo-500' },
+  { bg: 'from-rose-50 to-rose-100', border: 'border-rose-300', text: 'text-rose-900', badge: 'bg-rose-500' },
+]
+
 interface Store {
   id: string
   name: string
-  place_id: string
+  store_name?: string
+  thumbnail?: string
   platform: string
-}
-
-interface Keyword {
-  id: string
-  keyword: string
 }
 
 interface MetricTracker {
@@ -58,14 +67,8 @@ interface MetricTracker {
   keyword: string
   platform: string
   update_frequency: 'daily_once' | 'daily_twice' | 'daily_thrice'
-  update_times: number[]
-  notification_enabled: boolean
-  notification_type?: 'kakao' | 'sms' | 'email'
-  notification_phone?: string
-  notification_email?: string
   is_active: boolean
   last_collected_at?: string
-  next_collection_at?: string
   created_at: string
 }
 
@@ -76,562 +79,396 @@ interface DailyMetric {
   visitor_review_count: number
   blog_review_count: number
   rank_change?: number
-  previous_rank?: number
-  collected_at: string
+}
+
+interface StoreGroup {
+  store: Store
+  trackers: MetricTracker[]
+  color: typeof STORE_COLORS[0]
 }
 
 export default function MetricsTrackerPage() {
   const { hasStores, isLoading: storesLoading } = useStores()
-  const { toast } = useToast()
   const { user, getToken } = useAuth()
+  const { toast } = useToast()
 
   const [stores, setStores] = useState<Store[]>([])
-  const [keywords, setKeywords] = useState<Keyword[]>([])
   const [trackers, setTrackers] = useState<MetricTracker[]>([])
-  const [dailyMetrics, setDailyMetrics] = useState<DailyMetric[]>([])
-  const [latestMetrics, setLatestMetrics] = useState<Record<string, DailyMetric | null>>({})
-  const [previousMetrics, setPreviousMetrics] = useState<Record<string, DailyMetric | null>>({})
+  const [loading, setLoading] = useState(true)
+  const [isRefreshing, setIsRefreshing] = useState<Set<string>>(new Set())
   
-  const [selectedStoreId, setSelectedStoreId] = useState<string>("")
-  const [selectedKeywordId, setSelectedKeywordId] = useState<string>("")
-  const [newKeyword, setNewKeyword] = useState<string>("")
-  const [searchedKeywords, setSearchedKeywords] = useState<Keyword[]>([])  // ⭐ 조회된 키워드 목록
-  
-  const [isCreating, setIsCreating] = useState(false)
-  const [isLoadingTrackers, setIsLoadingTrackers] = useState(false)
-  const [isLoadingMetrics, setIsLoadingMetrics] = useState(false)
-  const [selectedTracker, setSelectedTracker] = useState<MetricTracker | null>(null)
-  
-  const [showCreateForm, setShowCreateForm] = useState(false)
-  // ⭐ showAddKeyword 제거 (직접 입력 방식으로 변경)
-  
-  // 모달 관련
+  // 추적 설정 추가 모달
+  const [showAddDialog, setShowAddDialog] = useState(false)
+  const [selectedStoreId, setSelectedStoreId] = useState("")
+  const [newKeyword, setNewKeyword] = useState("")
+  const [updateFrequency, setUpdateFrequency] = useState<'daily_once' | 'daily_twice' | 'daily_thrice'>('daily_once')
+  const [isAdding, setIsAdding] = useState(false)
+
+  // 지표 보기 모달
   const [showMetricsDialog, setShowMetricsDialog] = useState(false)
+  const [selectedTracker, setSelectedTracker] = useState<MetricTracker | null>(null)
+  const [metrics, setMetrics] = useState<DailyMetric[]>([])
+  const [loadingMetrics, setLoadingMetrics] = useState(false)
+
+  // 설정 모달
   const [showSettingsDialog, setShowSettingsDialog] = useState(false)
-  const [editingTracker, setEditingTracker] = useState<string | null>(null)
-  const [isSavingSettings, setIsSavingSettings] = useState(false)
-  const [settingsForm, setSettingsForm] = useState({
-    update_frequency: 'daily_once' as 'daily_once' | 'daily_twice' | 'daily_thrice',
-    update_times: [16] as number[],
-    notification_enabled: false,
-    notification_type: '' as 'kakao' | 'sms' | 'email' | '',
-    notification_phone: '',
-    notification_email: '',
-  })
+  const [editingTracker, setEditingTracker] = useState<MetricTracker | null>(null)
+  const [editFrequency, setEditFrequency] = useState<'daily_once' | 'daily_twice' | 'daily_thrice'>('daily_once')
 
-  // 구독 tier 및 제한
-  const [subscriptionTier, setSubscriptionTier] = useState<string>("free")
-  const [trackerLimit, setTrackerLimit] = useState<number>(1)
-  const [currentTrackerCount, setCurrentTrackerCount] = useState<number>(0)
-
-  // ⭐ 매장별 그룹화
-  const storeGroups = useMemo(() => {
-    const groups: Record<string, { store: Store, trackers: MetricTracker[] }> = {}
-    
-    trackers.forEach(tracker => {
-      if (!groups[tracker.store_id]) {
-        const store = stores.find(s => s.id === tracker.store_id)
-        if (store) {
-          groups[tracker.store_id] = {
-            store,
-            trackers: []
-          }
-        }
-      }
-      if (groups[tracker.store_id]) {
-        groups[tracker.store_id].trackers.push(tracker)
-      }
-    })
-    
-    return Object.values(groups)
-  }, [trackers, stores])
-
-  // Tier 로드
-  useEffect(() => {
-    const loadUserTier = async () => {
-      try {
-        if (!user) return
-        
-        // user 객체에서 직접 tier 정보 가져오기
-        const tier = user.subscription_tier?.toLowerCase() || "free"
-        setSubscriptionTier(tier)
-        
-        const limits: Record<string, number> = {
-          free: 1,
-          basic: 3,
-          pro: 10,
-          god: 9999
-        }
-        
-        setTrackerLimit(limits[tier] || 1)
-      } catch (error) {
-        console.error("Tier 로드 예외:", error)
-      }
-    }
-
-    if (user) {
-      loadUserTier()
-    }
-  }, [user])
+  // 최근 지표 데이터
+  const [latestMetrics, setLatestMetrics] = useState<{[trackerId: string]: DailyMetric}>({})
+  const [previousMetrics, setPreviousMetrics] = useState<{[trackerId: string]: DailyMetric | null}>({})
 
   // 매장 목록 로드
   useEffect(() => {
-    const loadStores = async () => {
-      try {
-        const token = getToken()
-        if (!user || !token) return
-
-        const response = await fetch(api.stores.list(), {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        })
-        
-        if (!response.ok) return
-        
-        const data = await response.json()
-        const naverStores = data.stores.filter((s: Store) => s.platform === "naver")
-        setStores(naverStores)
-      } catch (error) {
-        console.error("매장 로드 실패:", error)
-      }
-    }
-
     if (hasStores && user) {
       loadStores()
     }
   }, [hasStores, user])
 
-  // 키워드 목록 로드 (선택된 매장)
+  // 추적 설정 로드
   useEffect(() => {
-    const loadKeywords = async () => {
-      if (!selectedStoreId) {
-        setKeywords([])
-        return
-      }
-
-      try {
-        const response = await fetch(api.naver.keywords(selectedStoreId))
-        
-        if (response.ok) {
-          const data = await response.json()
-          setKeywords(data.keywords || [])
-        }
-      } catch (error) {
-        console.error("키워드 로드 실패:", error)
-      }
+    if (user) {
+      loadTrackers()
     }
+  }, [user])
 
-    loadKeywords()
-  }, [selectedStoreId])
+  const loadStores = async () => {
+    try {
+      const token = getToken()
+      if (!token) return
 
-  // 추적 설정 목록 로드
-  useEffect(() => {
-    const loadTrackers = async () => {
-      if (!user) return
+      const response = await fetch(api.stores.list(), {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
 
-      setIsLoadingTrackers(true)
+      if (response.ok) {
+        const data = await response.json()
+        setStores(data.stores || [])
+      }
+    } catch (error) {
+      console.error("매장 로드 실패:", error)
+    }
+  }
+
+  const loadTrackers = async () => {
+    try {
+      setLoading(true)
+      const token = getToken()
+      if (!token) return
+
+      const response = await fetch(api.metrics.list(), {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setTrackers(data.trackers || [])
+        
+        // 각 tracker의 최근 지표 로드
+        if (data.trackers && data.trackers.length > 0) {
+          loadAllLatestMetrics(data.trackers)
+        }
+      }
+    } catch (error) {
+      console.error("추적 설정 로드 실패:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const loadAllLatestMetrics = async (trackerList: MetricTracker[]) => {
+    const token = getToken()
+    if (!token) return
+
+    const latestData: {[key: string]: DailyMetric} = {}
+    const previousData: {[key: string]: DailyMetric | null} = {}
+
+    for (const tracker of trackerList) {
       try {
-        const token = localStorage.getItem('access_token')
-        const response = await fetch(`${api.baseUrl}/api/v1/metrics/trackers`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
+        const response = await fetch(api.metrics.getMetrics(tracker.id), {
+          headers: { 'Authorization': `Bearer ${token}` }
         })
 
         if (response.ok) {
           const data = await response.json()
-          const loadedTrackers = data.trackers || []
-          setTrackers(loadedTrackers)
-          setCurrentTrackerCount(data.total_count || 0)
-
-          // 각 tracker의 최근 metric 가져오기
-          loadLatestMetrics(loadedTrackers, token)
+          if (data.metrics && data.metrics.length > 0) {
+            latestData[tracker.id] = data.metrics[0]
+            previousData[tracker.id] = data.metrics[1] || null
+          }
         }
       } catch (error) {
-        console.error("추적 설정 로드 실패:", error)
-      } finally {
-        setIsLoadingTrackers(false)
+        console.error(`지표 로드 실패 (${tracker.id}):`, error)
       }
     }
 
-    loadTrackers()
-  }, [user])
-
-  // 최근 metric 로드 (최근 2개 데이터 가져오기)
-  const loadLatestMetrics = async (trackerList: MetricTracker[], token: string | null) => {
-    const latestMap: Record<string, DailyMetric | null> = {}
-    const previousMap: Record<string, DailyMetric | null> = {}
-    
-    await Promise.all(
-      trackerList.map(async (tracker) => {
-        try {
-          const response = await fetch(
-            `${api.baseUrl}/api/v1/metrics/trackers/${tracker.id}/metrics`,
-            {
-              headers: {
-                'Authorization': `Bearer ${token}`
-              }
-            }
-          )
-
-          if (response.ok) {
-            const data = await response.json()
-            // 최근 데이터 (첫 번째)와 전일 데이터 (두 번째)
-            latestMap[tracker.id] = data.metrics && data.metrics.length > 0 
-              ? data.metrics[0] 
-              : null
-            previousMap[tracker.id] = data.metrics && data.metrics.length > 1 
-              ? data.metrics[1] 
-              : null
-          }
-        } catch (error) {
-          console.error(`최근 metric 로드 실패 (tracker: ${tracker.id}):`, error)
-          latestMap[tracker.id] = null
-          previousMap[tracker.id] = null
-        }
-      })
-    )
-
-    setLatestMetrics(latestMap)
-    setPreviousMetrics(previousMap)
+    setLatestMetrics(latestData)
+    setPreviousMetrics(previousData)
   }
 
-  // 키워드 추가
-  // ⭐ handleAddKeyword 제거 (직접 입력 방식으로 변경)
+  // 매장별 그룹화
+  const storeGroups = useMemo<StoreGroup[]>(() => {
+    const groups: {[storeId: string]: StoreGroup} = {}
 
-  // 추적 설정 생성 (⭐ 키워드 이름으로 직접 생성)
-  const handleCreateTracker = async () => {
+    trackers.forEach((tracker) => {
+      if (!groups[tracker.store_id]) {
+        const store = stores.find(s => s.id === tracker.store_id)
+        if (!store) return
+
+        const colorIndex = Object.keys(groups).length % STORE_COLORS.length
+        groups[tracker.store_id] = {
+          store: {
+            id: store.id,
+            name: store.store_name || store.name,
+            thumbnail: store.thumbnail,
+            platform: store.platform
+          },
+          trackers: [],
+          color: STORE_COLORS[colorIndex]
+        }
+      }
+      groups[tracker.store_id].trackers.push(tracker)
+    })
+
+    return Object.values(groups)
+  }, [trackers, stores])
+
+  // 추적 설정 추가
+  const handleAddTracker = async () => {
     if (!selectedStoreId || !newKeyword.trim()) {
       toast({
-        title: "매장과 키워드를 입력해주세요",
-        variant: "destructive",
+        title: "입력 오류",
+        description: "매장과 키워드를 모두 입력해주세요",
+        variant: "destructive"
       })
       return
     }
 
-    if (currentTrackerCount >= trackerLimit) {
-      toast({
-        title: "추적 설정 제한 도달",
-        description: `현재 플랜에서는 최대 ${trackerLimit}개까지 추적할 수 있습니다.`,
-        variant: "destructive",
-      })
-      return
-    }
-
-    setIsCreating(true)
     try {
-      const token = localStorage.getItem('access_token')
-      const response = await fetch(`${api.baseUrl}/api/v1/metrics/trackers`, {
-        method: "POST",
+      setIsAdding(true)
+      const token = getToken()
+      if (!token) return
+
+      const response = await fetch(api.metrics.create(), {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          user_id: user?.id,
           store_id: selectedStoreId,
-          keyword: newKeyword.trim(),  // ⭐ 키워드 이름으로 전송
-          update_frequency: "daily_once",
-          update_times: [16],
-          notification_enabled: false,
-        }),
+          keyword: newKeyword.trim(),
+          update_frequency: updateFrequency,
+          notification_enabled: false
+        })
       })
 
-      if (!response.ok) {
+      if (response.ok) {
+        toast({
+          title: "추적 시작",
+          description: "키워드 추적이 시작되었습니다. 첫 지표를 수집 중입니다..."
+        })
+        setShowAddDialog(false)
+        setSelectedStoreId("")
+        setNewKeyword("")
+        setUpdateFrequency('daily_once')
+        
+        // 목록 새로고침
+        await loadTrackers()
+      } else {
         const error = await response.json()
-        throw new Error(error.detail || "추적 설정 생성 실패")
+        throw new Error(error.detail || "추적 설정 추가 실패")
       }
-
-      // 추적 설정 목록 새로고침
-      const trackersResponse = await fetch(`${api.baseUrl}/api/v1/metrics/trackers`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
-
-      if (trackersResponse.ok) {
-        const data = await trackersResponse.json()
-        setTrackers(data.trackers || [])
-        setCurrentTrackerCount(data.total_count || 0)
-      }
-
-      setShowCreateForm(false)
-      setSelectedStoreId("")
-      setNewKeyword("")  // ⭐ 키워드 입력 초기화
-      setSearchedKeywords([])  // ⭐ 조회된 키워드 초기화
-
-      toast({
-        title: "추적 설정이 생성되었습니다",
-        description: "매일 설정된 시간에 자동으로 지표가 수집됩니다.",
-      })
     } catch (error: any) {
       toast({
-        title: "추적 설정 생성 실패",
+        title: "추적 추가 실패",
         description: error.message,
-        variant: "destructive",
+        variant: "destructive"
       })
     } finally {
-      setIsCreating(false)
+      setIsAdding(false)
     }
   }
 
-  // 추적 설정 삭제
-  const handleDeleteTracker = async (trackerId: string) => {
-    if (!confirm("추적 설정을 삭제하시겠습니까? 관련 데이터도 모두 삭제됩니다.")) {
-      return
-    }
-
+  // 지금 수집
+  const handleCollectNow = async (trackerId: string) => {
     try {
-      const token = localStorage.getItem('access_token')
-      const response = await fetch(`${api.baseUrl}/api/v1/metrics/trackers/${trackerId}`, {
-        method: "DELETE",
-        headers: {
-          "Authorization": `Bearer ${token}`
-        },
+      setIsRefreshing(prev => new Set(prev).add(trackerId))
+      const token = getToken()
+      if (!token) return
+
+      const response = await fetch(api.metrics.collect(trackerId), {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
       })
 
-      if (!response.ok) {
-        throw new Error("삭제 실패")
-      }
-
-      // 추적 설정 목록 새로고침
-      const trackersResponse = await fetch(`${api.baseUrl}/api/v1/metrics/trackers`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
+      if (response.ok) {
+        toast({
+          title: "수집 완료",
+          description: "지표가 수집되었습니다"
+        })
+        
+        // 해당 tracker의 최근 지표 다시 로드
+        const metricsResponse = await fetch(api.metrics.getMetrics(trackerId), {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+        
+        if (metricsResponse.ok) {
+          const data = await metricsResponse.json()
+          if (data.metrics && data.metrics.length > 0) {
+            setLatestMetrics(prev => ({
+              ...prev,
+              [trackerId]: data.metrics[0]
+            }))
+            setPreviousMetrics(prev => ({
+              ...prev,
+              [trackerId]: data.metrics[1] || null
+            }))
+          }
         }
-      })
-
-      if (trackersResponse.ok) {
-        const data = await trackersResponse.json()
-        setTrackers(data.trackers || [])
-        setCurrentTrackerCount(data.total_count || 0)
+      } else {
+        throw new Error("지표 수집 실패")
       }
-
-      if (selectedTracker?.id === trackerId) {
-        setSelectedTracker(null)
-        setDailyMetrics([])
-      }
-
+    } catch (error: any) {
       toast({
-        title: "추적 설정이 삭제되었습니다",
+        title: "수집 실패",
+        description: error.message,
+        variant: "destructive"
       })
-    } catch (error) {
-      toast({
-        title: "삭제 실패",
-        variant: "destructive",
+    } finally {
+      setIsRefreshing(prev => {
+        const next = new Set(prev)
+        next.delete(trackerId)
+        return next
       })
     }
   }
 
-  // 일별 지표 조회
+  // 매장 전체 수집
+  const handleCollectAllStore = async (storeId: string, trackerIds: string[]) => {
+    const storeKey = `store_${storeId}`
+    try {
+      setIsRefreshing(prev => new Set(prev).add(storeKey))
+      
+      for (const trackerId of trackerIds) {
+        await handleCollectNow(trackerId)
+      }
+      
+      toast({
+        title: "전체 수집 완료",
+        description: "모든 키워드의 지표가 수집되었습니다"
+      })
+    } finally {
+      setIsRefreshing(prev => {
+        const next = new Set(prev)
+        next.delete(storeKey)
+        return next
+      })
+    }
+  }
+
+  // 지표 보기
   const handleViewMetrics = async (tracker: MetricTracker) => {
     setSelectedTracker(tracker)
-    setIsLoadingMetrics(true)
     setShowMetricsDialog(true)
+    setLoadingMetrics(true)
 
     try {
       const token = getToken()
-      const response = await fetch(
-        `${api.baseUrl}/api/v1/metrics/trackers/${tracker.id}/metrics`,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        }
-      )
+      if (!token) return
+
+      const response = await fetch(api.metrics.getMetrics(tracker.id), {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
 
       if (response.ok) {
         const data = await response.json()
-        setDailyMetrics(data.metrics || [])
+        setMetrics(data.metrics || [])
       }
     } catch (error) {
-      console.error("지표 조회 실패:", error)
-      toast({
-        title: "지표 조회 실패",
-        variant: "destructive",
-      })
+      console.error("지표 로드 실패:", error)
     } finally {
-      setIsLoadingMetrics(false)
+      setLoadingMetrics(false)
     }
   }
 
-  // 지금 수집 (수동 트리거)
-  const handleCollectNow = async (tracker: MetricTracker) => {
-    try {
-      const token = getToken()
-      const response = await fetch(
-        `${api.baseUrl}/api/v1/metrics/trackers/${tracker.id}/collect`,
-        {
-          method: "POST",
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        }
-      )
-
-      if (!response.ok) {
-        throw new Error("수집 실패")
-      }
-
-      toast({
-        title: "지표 수집 완료",
-        description: "최신 순위 및 리뷰 데이터가 수집되었습니다.",
-      })
-
-      // 추적 목록 새로고침
-      const trackersResponse = await fetch(`${api.baseUrl}/api/v1/metrics/trackers`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
-
-      if (trackersResponse.ok) {
-        const data = await trackersResponse.json()
-        setTrackers(data.trackers || [])
-      }
-
-      // 해당 tracker의 최근 metric 새로고침 (최근 2개)
-      try {
-        const metricResponse = await fetch(
-          `${api.baseUrl}/api/v1/metrics/trackers/${tracker.id}/metrics`,
-          {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          }
-        )
-
-        if (metricResponse.ok) {
-          const metricData = await metricResponse.json()
-          setLatestMetrics(prev => ({
-            ...prev,
-            [tracker.id]: metricData.metrics && metricData.metrics.length > 0 
-              ? metricData.metrics[0] 
-              : null
-          }))
-          setPreviousMetrics(prev => ({
-            ...prev,
-            [tracker.id]: metricData.metrics && metricData.metrics.length > 1 
-              ? metricData.metrics[1] 
-              : null
-          }))
-        }
-      } catch (error) {
-        console.error("최근 metric 로드 실패:", error)
-      }
-
-      // 현재 선택된 추적의 지표를 보고 있다면 자동 새로고침
-      if (selectedTracker && selectedTracker.id === tracker.id) {
-        await handleViewMetrics(tracker)
-      }
-
-    } catch (error: any) {
-      console.error("지표 수집 에러:", error)
-      toast({
-        title: "지표 수집 실패",
-        description: error.message || "잠시 후 다시 시도해주세요.",
-        variant: "destructive",
-      })
-    }
-  }
-
-  // 설정 편집 시작
+  // 설정 수정
   const handleEditSettings = (tracker: MetricTracker) => {
-    setSelectedTracker(tracker)
-    setEditingTracker(tracker.id)
+    setEditingTracker(tracker)
+    setEditFrequency(tracker.update_frequency)
     setShowSettingsDialog(true)
-    setSettingsForm({
-      update_frequency: tracker.update_frequency,
-      update_times: tracker.update_times,
-      notification_enabled: tracker.notification_enabled,
-      notification_type: tracker.notification_type || '',
-      notification_phone: tracker.notification_phone || '',
-      notification_email: tracker.notification_email || '',
-    })
   }
 
-  // 설정 저장
-  const handleSaveSettings = async (trackerId: string) => {
-    setIsSavingSettings(true)
+  const handleUpdateSettings = async () => {
+    if (!editingTracker) return
+
     try {
       const token = getToken()
-      if (!token) throw new Error("인증 토큰을 찾을 수 없습니다.")
+      if (!token) return
 
-      // 빈 문자열을 null로 변환
-      const payload = {
-        ...settingsForm,
-        notification_type: settingsForm.notification_type || null,
-        notification_phone: settingsForm.notification_phone || null,
-        notification_email: settingsForm.notification_email || null,
-      }
-
-      const response = await fetch(`${api.baseUrl}/api/v1/metrics/trackers/${trackerId}`, {
-        method: "PATCH",
+      const response = await fetch(api.metrics.update(editingTracker.id), {
+        method: 'PATCH',
         headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          update_frequency: editFrequency
+        })
       })
 
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.detail || "설정 저장 실패")
+      if (response.ok) {
+        toast({
+          title: "설정 수정 완료",
+          description: "추적 설정이 수정되었습니다"
+        })
+        setShowSettingsDialog(false)
+        await loadTrackers()
       }
-
+    } catch (error) {
       toast({
-        title: "설정이 저장되었습니다",
-        description: "스케줄러가 새 설정에 따라 작동합니다.",
+        title: "설정 수정 실패",
+        description: "설정 수정 중 오류가 발생했습니다",
+        variant: "destructive"
       })
-
-      // 추적 목록 새로고침
-      const trackersResponse = await fetch(`${api.baseUrl}/api/v1/metrics/trackers`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
-
-      if (trackersResponse.ok) {
-        const data = await trackersResponse.json()
-        setTrackers(data.trackers || [])
-      }
-
-      setEditingTracker(null)
-      setShowSettingsDialog(false)
-
-    } catch (error: any) {
-      console.error("설정 저장 실패:", error)
-      toast({
-        title: "설정 저장 실패",
-        description: error.message,
-        variant: "destructive",
-      })
-    } finally {
-      setIsSavingSettings(false)
     }
   }
 
-  // 업데이트 주기 변경 시 시간 자동 설정
-  const handleFrequencyChange = (frequency: 'daily_once' | 'daily_twice' | 'daily_thrice') => {
-    const defaultTimes: Record<string, number[]> = {
-      daily_once: [16],
-      daily_twice: [6, 16],
-      daily_thrice: [6, 12, 18],
+  // 삭제
+  const handleDelete = async (trackerId: string, keyword: string) => {
+    if (!confirm(`"${keyword}" 추적을 삭제하시겠습니까?`)) return
+
+    try {
+      const token = getToken()
+      if (!token) return
+
+      const response = await fetch(api.metrics.delete(trackerId), {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+
+      if (response.ok) {
+        toast({
+          title: "삭제 완료",
+          description: "추적 설정이 삭제되었습니다"
+        })
+        await loadTrackers()
+      }
+    } catch (error) {
+      toast({
+        title: "삭제 실패",
+        description: "삭제 중 오류가 발생했습니다",
+        variant: "destructive"
+      })
     }
-    setSettingsForm({
-      ...settingsForm,
-      update_frequency: frequency,
-      update_times: defaultTimes[frequency],
-    })
   }
 
-  if (storesLoading) {
+  if (storesLoading || loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
           <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
-          <p className="text-muted-foreground">로딩 중...</p>
+          <p className="text-muted-foreground">데이터를 불러오는 중...</p>
         </div>
       </div>
     )
@@ -642,682 +479,461 @@ export default function MetricsTrackerPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* 헤더 */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-primary mb-2">
-            주요지표 추적
-          </h1>
-          <p className="text-muted-foreground">
-            매장과 키워드의 순위, 리뷰수를 매일 자동으로 추적하고 알림을 받아보세요
+          <h1 className="text-2xl sm:text-3xl font-bold text-primary">주요지표 추적</h1>
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">
+            매장별 키워드의 순위와 리뷰 수를 자동으로 추적합니다
           </p>
         </div>
-        
         <Button
-          onClick={() => setShowCreateForm(!showCreateForm)}
-          disabled={currentTrackerCount >= trackerLimit}
+          onClick={() => setShowAddDialog(true)}
+          className="w-full sm:w-auto"
+          size="lg"
         >
           <Plus className="w-4 h-4 mr-2" />
-          추적 설정 추가
+          추적 추가
         </Button>
       </div>
 
-      {/* Tier 정보 */}
-      <Card className="p-4 bg-blue-50 border-blue-200">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <BarChart3 className="w-5 h-5 text-blue-600" />
-            <span className="text-sm font-medium text-blue-900">
-              현재 플랜: <strong className="uppercase">{subscriptionTier}</strong>
-            </span>
+      {/* 매장별 추적 키워드 카드 */}
+      {trackers.length === 0 ? (
+        <Card className="p-8 sm:p-12">
+          <div className="text-center">
+            <BarChart3 className="w-12 h-12 sm:w-16 sm:h-16 text-gray-300 mx-auto mb-4" />
+            <p className="text-base sm:text-lg text-muted-foreground mb-2">
+              추적 중인 키워드가 없습니다
+            </p>
+            <p className="text-sm text-muted-foreground">
+              "추적 추가" 버튼을 눌러 키워드 추적을 시작하세요
+            </p>
           </div>
-          <div className={`text-sm font-medium px-3 py-1 rounded-full ${
-            currentTrackerCount >= trackerLimit 
-              ? "bg-red-100 text-red-700" 
-              : currentTrackerCount >= trackerLimit * 0.8
-              ? "bg-yellow-100 text-yellow-700"
-              : "bg-green-100 text-green-700"
-          }`}>
-            {currentTrackerCount}/{trackerLimit}개 사용 중
-          </div>
-        </div>
-      </Card>
+        </Card>
+      ) : (
+        <div className="space-y-4 sm:space-y-6">
+          {storeGroups.map((group) => (
+            <div
+              key={group.store.id}
+              className={`relative p-4 sm:p-6 rounded-xl sm:rounded-2xl border-2 ${group.color.border} hover:shadow-xl transition-all duration-300 bg-gradient-to-br ${group.color.bg}`}
+            >
+              {/* 매장 헤더 */}
+              <div className="flex items-center justify-between mb-4 sm:mb-6">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  {/* 매장 썸네일 */}
+                  {group.store.thumbnail ? (
+                    <img 
+                      src={group.store.thumbnail} 
+                      alt={group.store.name} 
+                      className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg sm:rounded-xl object-cover border-2 border-white shadow-sm flex-shrink-0"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none'
+                      }}
+                    />
+                  ) : (
+                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg sm:rounded-xl bg-white/80 flex items-center justify-center border-2 border-white shadow-sm flex-shrink-0">
+                      <StoreIcon className="w-6 h-6 sm:w-7 sm:h-7 text-gray-400" />
+                    </div>
+                  )}
+                  
+                  {/* 매장명 */}
+                  <div className="flex-1 min-w-0">
+                    <h3 className={`font-bold text-base sm:text-lg ${group.color.text} truncate`}>
+                      {group.store.name}
+                    </h3>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
+                        group.store.platform === 'naver' 
+                          ? 'bg-green-500 text-white' 
+                          : 'bg-blue-500 text-white'
+                      }`}>
+                        {group.store.platform === 'naver' ? '네이버' : '구글'}
+                      </span>
+                      <span className="text-xs text-gray-600">
+                        {group.trackers.length}개 추적중
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* 전체 수집 버튼 */}
+                <button
+                  onClick={() => handleCollectAllStore(group.store.id, group.trackers.map(t => t.id))}
+                  disabled={isRefreshing.has(`store_${group.store.id}`)}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-lg font-semibold text-xs sm:text-sm transition-all ${
+                    isRefreshing.has(`store_${group.store.id}`)
+                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                      : 'bg-white text-indigo-600 hover:bg-indigo-50 hover:shadow-md'
+                  }`}
+                >
+                  <RefreshCw className={`w-4 h-4 ${isRefreshing.has(`store_${group.store.id}`) ? 'animate-spin' : ''}`} />
+                  <span className="hidden sm:inline">전체 수집</span>
+                  <span className="sm:hidden">수집</span>
+                </button>
+              </div>
 
-      {/* 추적 설정 생성 폼 */}
-      {showCreateForm && (
-        <Card className="p-6">
-          <h2 className="text-lg font-semibold mb-4">새 추적 설정</h2>
-          
-          <div className="space-y-4">
-            {/* 매장 선택 */}
+              {/* 추적 키워드 목록 */}
+              <div className="space-y-3">
+                {group.trackers.map((tracker) => (
+                  <div
+                    key={tracker.id}
+                    className="bg-white/90 rounded-lg sm:rounded-xl p-3 sm:p-4 hover:shadow-md transition-all"
+                  >
+                    {/* 키워드명과 상태 */}
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2 flex-wrap flex-1 min-w-0">
+                        <span className={`font-bold text-sm sm:text-base ${group.color.text} truncate`}>
+                          {tracker.keyword}
+                        </span>
+                        <span className="text-xs text-gray-500 flex-shrink-0">
+                          {tracker.update_frequency === 'daily_once' ? '1회/일' : 
+                           tracker.update_frequency === 'daily_twice' ? '2회/일' : '3회/일'}
+                        </span>
+                        {!tracker.is_active && (
+                          <span className="text-xs px-2 py-0.5 bg-red-100 text-red-700 rounded-full font-medium flex-shrink-0">
+                            일시정지
+                          </span>
+                        )}
+                      </div>
+                      {tracker.last_collected_at && (
+                        <div className="hidden sm:flex items-center gap-1 text-xs text-gray-400 flex-shrink-0">
+                          <Clock className="w-3 h-3" />
+                          <span>
+                            {new Date(tracker.last_collected_at).toLocaleDateString('ko-KR', {
+                              month: 'short',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* 최근 지표 */}
+                    {latestMetrics[tracker.id] ? (
+                      <div className="grid grid-cols-3 gap-2 mb-3">
+                        {/* 순위 */}
+                        <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-2 sm:p-2.5">
+                          <div className="text-xs text-blue-600 font-medium mb-0.5 sm:mb-1">순위</div>
+                          <div className="flex flex-col items-center justify-center">
+                            <span className="text-lg sm:text-xl font-bold text-blue-700">
+                              {latestMetrics[tracker.id].rank || '-'}
+                            </span>
+                            {previousMetrics[tracker.id] && latestMetrics[tracker.id].rank && previousMetrics[tracker.id]!.rank ? (
+                              (() => {
+                                const change = latestMetrics[tracker.id].rank! - previousMetrics[tracker.id]!.rank!
+                                return change !== 0 ? (
+                                  <span className={`text-xs font-medium flex items-center gap-0.5 ${change > 0 ? 'text-red-600' : 'text-blue-600'}`}>
+                                    {change > 0 ? '↓' : '↑'}{Math.abs(change)}
+                                  </span>
+                                ) : (
+                                  <span className="text-xs text-gray-400">-</span>
+                                )
+                              })()
+                            ) : (
+                              <span className="text-xs text-gray-400">신규</span>
+                            )}
+                          </div>
+                        </div>
+                        
+                        {/* 방문자 리뷰 */}
+                        <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-2 sm:p-2.5">
+                          <div className="text-xs text-green-600 font-medium mb-0.5 sm:mb-1 flex items-center justify-center gap-1">
+                            <MessageSquare className="w-3 h-3" />
+                            <span className="hidden sm:inline">방문자</span>
+                          </div>
+                          <div className="flex flex-col items-center justify-center">
+                            <span className="text-base sm:text-lg font-bold text-green-700">
+                              {latestMetrics[tracker.id].visitor_review_count.toLocaleString()}
+                            </span>
+                            {previousMetrics[tracker.id] ? (
+                              (() => {
+                                const change = latestMetrics[tracker.id].visitor_review_count - previousMetrics[tracker.id]!.visitor_review_count
+                                return change !== 0 ? (
+                                  <span className={`text-xs font-medium flex items-center gap-0.5 ${change > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                    {change > 0 ? '↑' : '↓'}{Math.abs(change)}
+                                  </span>
+                                ) : (
+                                  <span className="text-xs text-gray-400">-</span>
+                                )
+                              })()
+                            ) : (
+                              <span className="text-xs text-gray-400">신규</span>
+                            )}
+                          </div>
+                        </div>
+                        
+                        {/* 블로그 리뷰 */}
+                        <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-lg p-2 sm:p-2.5">
+                          <div className="text-xs text-amber-600 font-medium mb-0.5 sm:mb-1 flex items-center justify-center gap-1">
+                            <FileText className="w-3 h-3" />
+                            <span className="hidden sm:inline">블로그</span>
+                          </div>
+                          <div className="flex flex-col items-center justify-center">
+                            <span className="text-base sm:text-lg font-bold text-amber-700">
+                              {latestMetrics[tracker.id].blog_review_count.toLocaleString()}
+                            </span>
+                            {previousMetrics[tracker.id] ? (
+                              (() => {
+                                const change = latestMetrics[tracker.id].blog_review_count - previousMetrics[tracker.id]!.blog_review_count
+                                return change !== 0 ? (
+                                  <span className={`text-xs font-medium flex items-center gap-0.5 ${change > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                    {change > 0 ? '↑' : '↓'}{Math.abs(change)}
+                                  </span>
+                                ) : (
+                                  <span className="text-xs text-gray-400">-</span>
+                                )
+                              })()
+                            ) : (
+                              <span className="text-xs text-gray-400">신규</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center text-xs text-gray-400 bg-gray-50 rounded-lg py-3 mb-3">
+                        데이터 수집 중...
+                      </div>
+                    )}
+
+                    {/* 액션 버튼 */}
+                    <div className="flex items-center gap-1.5 sm:gap-2">
+                      <button
+                        onClick={() => handleViewMetrics(tracker)}
+                        className="flex-1 flex items-center justify-center gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg text-xs sm:text-sm font-medium transition-all"
+                      >
+                        <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                        <span className="hidden sm:inline">지표</span>
+                      </button>
+                      <button
+                        onClick={() => handleCollectNow(tracker.id)}
+                        disabled={isRefreshing.has(tracker.id)}
+                        className="flex-1 flex items-center justify-center gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 bg-green-50 text-green-600 hover:bg-green-100 rounded-lg text-xs sm:text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <RefreshCw className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isRefreshing.has(tracker.id) ? 'animate-spin' : ''}`} />
+                        <span className="hidden sm:inline">수집</span>
+                      </button>
+                      <button
+                        onClick={() => handleEditSettings(tracker)}
+                        className="flex-1 flex items-center justify-center gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 bg-gray-50 text-gray-600 hover:bg-gray-100 rounded-lg text-xs sm:text-sm font-medium transition-all"
+                      >
+                        <Settings className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                        <span className="hidden sm:inline">설정</span>
+                      </button>
+                      <button
+                        onClick={() => handleDelete(tracker.id, tracker.keyword)}
+                        className="flex items-center justify-center px-2 sm:px-3 py-1.5 sm:py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg text-xs sm:text-sm font-medium transition-all"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                      </button>
+                    </div>
+
+                    {/* 모바일: 마지막 수집 시간 */}
+                    {tracker.last_collected_at && (
+                      <div className="sm:hidden flex items-center gap-1 text-xs text-gray-400 mt-2 pt-2 border-t">
+                        <Clock className="w-3 h-3" />
+                        <span>
+                          {new Date(tracker.last_collected_at).toLocaleDateString('ko-KR', {
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* 추적 추가 모달 */}
+      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>추적 추가</DialogTitle>
+            <DialogDescription>
+              새로운 키워드 추적을 시작합니다
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
             <div>
-              <label className="block text-sm font-medium mb-2">매장 선택</label>
+              <label className="text-sm font-medium mb-2 block">매장 선택</label>
               <select
                 value={selectedStoreId}
-                onChange={async (e) => {
-                  const storeId = e.target.value
-                  setSelectedStoreId(storeId)
-                  
-                  // ⭐ 선택된 매장의 조회된 키워드 목록 가져오기 (is_tracked=false)
-                  if (storeId) {
-                    try {
-                      const response = await fetch(`${api.naver.keywords(storeId)}?is_tracked=false`)
-                      if (response.ok) {
-                        const data = await response.json()
-                        setSearchedKeywords(data.keywords || [])
-                      }
-                    } catch (error) {
-                      console.error("조회된 키워드 목록 가져오기 실패:", error)
-                      setSearchedKeywords([])
-                    }
-                  } else {
-                    setSearchedKeywords([])
-                  }
-                }}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                onChange={(e) => setSelectedStoreId(e.target.value)}
+                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 <option value="">매장을 선택하세요</option>
                 {stores.map((store) => (
                   <option key={store.id} value={store.id}>
-                    {store.name}
+                    {store.store_name || store.name}
                   </option>
                 ))}
               </select>
             </div>
-
-            {/* ⭐ 키워드 직접 입력 */}
-            {selectedStoreId && (
-              <div>
-                <label className="block text-sm font-medium mb-2">키워드 입력</label>
-                <Input
-                  type="text"
-                  value={newKeyword}
-                  onChange={(e) => setNewKeyword(e.target.value)}
-                  placeholder="예: 강남 맛집"
-                  className="mb-2"
-                />
-                
-                {/* ⭐ 조회된 키워드 목록 (클릭으로 추가) */}
-                {searchedKeywords.length > 0 && (
-                  <div className="mt-3">
-                    <p className="text-xs text-gray-600 mb-2">
-                      해당 매장의 조회한 키워드 (클릭하여 추가)
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {searchedKeywords.map((kw) => (
-                        <button
-                          key={kw.id}
-                          onClick={() => setNewKeyword(kw.keyword)}
-                          className="px-3 py-1 text-sm bg-gray-100 hover:bg-blue-100 rounded-lg transition-colors"
-                        >
-                          {kw.keyword}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* 버튼 */}
-            <div className="flex gap-2">
-              <Button
-                onClick={handleCreateTracker}
-                disabled={isCreating || !selectedStoreId || !newKeyword.trim()}  // ⭐ 키워드 입력 체크
+            <div>
+              <label className="text-sm font-medium mb-2 block">키워드</label>
+              <Input
+                value={newKeyword}
+                onChange={(e) => setNewKeyword(e.target.value)}
+                placeholder="예: 강남 카페"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-2 block">수집 주기</label>
+              <select
+                value={updateFrequency}
+                onChange={(e) => setUpdateFrequency(e.target.value as any)}
+                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               >
-                {isCreating ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    생성 중...
-                  </>
-                ) : (
-                  "생성하기"
-                )}
-              </Button>
-              <Button variant="outline" onClick={() => setShowCreateForm(false)}>
-                취소
-              </Button>
+                <option value="daily_once">하루 1회</option>
+                <option value="daily_twice">하루 2회</option>
+                <option value="daily_thrice">하루 3회</option>
+              </select>
             </div>
           </div>
-        </Card>
-      )}
-
-      {/* 추적 설정 목록 - 매장별 그룹화 */}
-      <div className="space-y-6">
-        <h2 className="text-lg font-semibold">
-          추적 중인 지표 ({trackers.length})
-        </h2>
-
-        {isLoadingTrackers ? (
-          <Card className="p-6">
-            <div className="text-center py-8">
-              <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto" />
-            </div>
-          </Card>
-        ) : trackers.length === 0 ? (
-          <Card className="p-6">
-            <div className="text-center py-8">
-              <p className="text-muted-foreground">추적 중인 지표가 없습니다</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                위의 "추적 설정 추가" 버튼을 눌러 새 추적을 시작하세요
-              </p>
-            </div>
-          </Card>
-        ) : (
-          <>
-            {/* 매장별 그룹화 */}
-            {storeGroups.map((group) => (
-              <Card key={group.store.id} className="p-6">
-                {/* 매장 헤더 */}
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="flex-1">
-                    <h3 className="text-lg font-bold">{group.store.name}</h3>
-                    <p className="text-sm text-gray-600">
-                      {group.trackers.length}개 키워드 추적 중
-                    </p>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={async () => {
-                      // 매장의 모든 키워드 수집
-                      for (const tracker of group.trackers) {
-                        await handleCollectNow(tracker.id)
-                      }
-                    }}
-                  >
-                    <TrendingUp className="w-4 h-4 mr-2" />
-                    전체 수집
-                  </Button>
-                </div>
-                
-                {/* 키워드 목록 */}
-                <div className="space-y-3">
-                  {group.trackers.map((tracker) => (
-                    <div
-                      key={tracker.id}
-                      className="p-4 bg-white border border-gray-200 rounded-lg hover:shadow-md transition-all"
-                    >
-                      {/* 키워드명과 상태 */}
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-sm font-bold text-gray-800">
-                            {tracker.keyword}
-                          </span>
-                          {!tracker.is_active && (
-                            <span className="text-xs px-2 py-0.5 bg-red-100 text-red-700 rounded-full font-medium">
-                              일시정지
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      
-                      {/* 최근 지표 미리보기 */}
-                      <div className="w-full">
-                        {latestMetrics[tracker.id] ? (
-                          <div className="grid grid-cols-3 gap-2">
-                            {/* 순위 */}
-                            <div className="text-center bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg px-2 py-2.5">
-                              <div className="text-[10px] text-blue-600 font-medium mb-1">순위</div>
-                              <div className="flex flex-col items-center justify-center">
-                                <span className="text-xl font-bold text-blue-700">
-                                  {latestMetrics[tracker.id].rank || '-'}
-                                </span>
-                                {previousMetrics[tracker.id] && latestMetrics[tracker.id].rank && previousMetrics[tracker.id]!.rank ? (
-                                  (() => {
-                                    const change = latestMetrics[tracker.id].rank! - previousMetrics[tracker.id]!.rank!
-                                    return change !== 0 ? (
-                                      <span className={`text-[10px] font-medium ${change > 0 ? 'text-red-600' : 'text-blue-600'}`}>
-                                        {change > 0 ? '↓' : '↑'}{Math.abs(change)}
-                                      </span>
-                                    ) : (
-                                      <span className="text-[9px] text-gray-400">-</span>
-                                    )
-                                  })()
-                                ) : (
-                                  <span className="text-[9px] text-gray-400">신규</span>
-                                )}
-                              </div>
-                            </div>
-                            
-                            {/* 방문자 리뷰 */}
-                            <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg px-2 py-2.5">
-                              <div className="text-[10px] text-green-600 font-medium mb-1 flex items-center justify-center gap-1">
-                                <Users className="w-3 h-3" />
-                                방문자
-                              </div>
-                              <div className="flex flex-col items-center justify-center">
-                                <span className="text-base font-bold text-green-700">
-                                  {latestMetrics[tracker.id].visitor_review_count.toLocaleString()}
-                                </span>
-                                {previousMetrics[tracker.id] ? (
-                                  (() => {
-                                    const change = latestMetrics[tracker.id].visitor_review_count - previousMetrics[tracker.id]!.visitor_review_count
-                                    return change !== 0 ? (
-                                      <span className={`text-[10px] font-medium ${change > 0 ? 'text-red-600' : 'text-blue-600'}`}>
-                                        {change > 0 ? '↑' : '↓'}{Math.abs(change)}
-                                      </span>
-                                    ) : (
-                                      <span className="text-[9px] text-gray-400">-</span>
-                                    )
-                                  })()
-                                ) : (
-                                  <span className="text-[9px] text-gray-400">신규</span>
-                                )}
-                              </div>
-                            </div>
-                            
-                            {/* 블로그 리뷰 */}
-                            <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-lg px-2 py-2.5">
-                              <div className="text-[10px] text-amber-600 font-medium mb-1 flex items-center justify-center gap-1">
-                                <FileText className="w-3 h-3" />
-                                블로그
-                              </div>
-                              <div className="flex flex-col items-center justify-center">
-                                <span className="text-base font-bold text-amber-700">
-                                  {latestMetrics[tracker.id].blog_review_count.toLocaleString()}
-                                </span>
-                                {previousMetrics[tracker.id] ? (
-                                  (() => {
-                                    const change = latestMetrics[tracker.id].blog_review_count - previousMetrics[tracker.id]!.blog_review_count
-                                    return change !== 0 ? (
-                                      <span className={`text-[10px] font-medium ${change > 0 ? 'text-red-600' : 'text-blue-600'}`}>
-                                        {change > 0 ? '↑' : '↓'}{Math.abs(change)}
-                                      </span>
-                                    ) : (
-                                      <span className="text-[9px] text-gray-400">-</span>
-                                    )
-                                  })()
-                                ) : (
-                                  <span className="text-[9px] text-gray-400">신규</span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="text-center text-xs text-gray-400 bg-gray-50 rounded-lg py-3">
-                            데이터 없음
-                          </div>
-                        )}
-                      </div>
-
-                      {/* 버튼 그룹 */}
-                      <div className="flex items-center justify-between pt-2 border-t">
-                        <div className="text-xs text-gray-500">
-                          {tracker.last_collected_at 
-                            ? `수집: ${new Date(tracker.last_collected_at).toLocaleDateString('ko-KR')}`
-                            : '미수집'
-                          }
-                        </div>
-                        <div className="flex gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleViewMetrics(tracker)}
-                            title="지표 보기"
-                            className="h-8 w-8 p-0"
-                          >
-                            <LineChartIcon className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleCollectNow(tracker)}
-                            title="지금 수집"
-                            className="h-8 w-8 p-0"
-                          >
-                            <TrendingUp className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEditSettings(tracker)}
-                            title="설정"
-                            className="h-8 w-8 p-0"
-                          >
-                            <Settings className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeleteTracker(tracker.id)}
-                            title="삭제"
-                            className="h-8 w-8 p-0"
-                          >
-                            <Trash2 className="w-4 h-4 text-red-600" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </Card>
-            ))}
-          </>
-        )}
-      </div>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowAddDialog(false)}
+              className="flex-1"
+            >
+              취소
+            </Button>
+            <Button
+              onClick={handleAddTracker}
+              disabled={isAdding}
+              className="flex-1"
+            >
+              {isAdding ? <Loader2 className="w-4 h-4 animate-spin" /> : '추가'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* 지표 보기 모달 */}
       <Dialog open={showMetricsDialog} onOpenChange={setShowMetricsDialog}>
-        <DialogContent className="max-w-5xl">
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <LineChartIcon className="w-5 h-5" />
-              {selectedTracker?.store_name} - {selectedTracker?.keyword}
+            <DialogTitle>
+              {selectedTracker?.keyword} 지표
             </DialogTitle>
-            <DialogDescription>일별 지표 추이</DialogDescription>
+            <DialogDescription>
+              {selectedTracker?.store_name}
+            </DialogDescription>
           </DialogHeader>
-
-          {isLoadingMetrics ? (
-            <div className="text-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto" />
+          {loadingMetrics ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
-          ) : dailyMetrics.length === 0 ? (
-            <div className="text-center py-12">
-              <BarChart3 className="w-12 h-12 mx-auto text-gray-300 mb-3" />
-              <p className="text-muted-foreground">아직 수집된 데이터가 없습니다</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                매일 설정된 시간에 자동으로 수집됩니다
-              </p>
+          ) : metrics.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              아직 수집된 지표가 없습니다
             </div>
           ) : (
-            <div className="space-y-6">
+            <div className="space-y-4">
               {/* 차트 */}
-              <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart
-                    data={[...dailyMetrics].reverse().map(m => ({
-                      date: new Date(m.collection_date).toLocaleDateString('ko-KR', {
-                        month: 'short',
-                        day: 'numeric'
-                      }),
-                      rank: m.rank,
-                      visitorReviews: m.visitor_review_count,
-                      blogReviews: m.blog_review_count,
-                    }))}
-                    margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                  >
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h4 className="font-semibold mb-4">순위 변화</h4>
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={[...metrics].reverse()}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-                    <YAxis 
-                      yAxisId="left"
-                      reversed={true}
-                      label={{ value: '순위', angle: -90, position: 'insideLeft' }}
-                      tick={{ fontSize: 12 }}
+                    <XAxis 
+                      dataKey="collection_date" 
+                      tickFormatter={(date) => new Date(date).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
                     />
-                    <YAxis 
-                      yAxisId="right"
-                      orientation="right"
-                      label={{ value: '리뷰수', angle: 90, position: 'insideRight' }}
-                      tick={{ fontSize: 12 }}
+                    <YAxis reversed domain={[1, 'dataMax']} />
+                    <Tooltip 
+                      labelFormatter={(date) => new Date(date).toLocaleDateString('ko-KR')}
                     />
-                    <Tooltip />
                     <Legend />
-                    <Line 
-                      yAxisId="left"
-                      type="monotone" 
-                      dataKey="rank" 
-                      stroke="#8884d8" 
-                      name="순위"
-                      strokeWidth={2}
-                    />
-                    <Line 
-                      yAxisId="right"
-                      type="monotone" 
-                      dataKey="visitorReviews" 
-                      stroke="#82ca9d" 
-                      name="방문자리뷰"
-                      strokeWidth={2}
-                    />
-                    <Line 
-                      yAxisId="right"
-                      type="monotone" 
-                      dataKey="blogReviews" 
-                      stroke="#ffc658" 
-                      name="블로그리뷰"
-                      strokeWidth={2}
-                    />
+                    <Line type="monotone" dataKey="rank" stroke="#3b82f6" name="순위" />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
 
-              {/* 테이블 - 리뷰 변동 포함 */}
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b bg-gray-50">
-                      <th className="text-left p-3 font-medium">날짜</th>
-                      <th className="text-center p-3 font-medium">순위</th>
-                      <th className="text-center p-3 font-medium">순위 변동</th>
-                      <th className="text-right p-3 font-medium">방문자리뷰</th>
-                      <th className="text-right p-3 font-medium">리뷰 변동</th>
-                      <th className="text-right p-3 font-medium">블로그리뷰</th>
-                      <th className="text-right p-3 font-medium">리뷰 변동</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {dailyMetrics.map((metric, index) => {
-                      // 리뷰 변동 계산 (이전 날짜 데이터와 비교)
-                      const prevMetric = dailyMetrics[index + 1]
-                      const visitorReviewChange = prevMetric 
-                        ? metric.visitor_review_count - prevMetric.visitor_review_count 
-                        : null
-                      const blogReviewChange = prevMetric 
-                        ? metric.blog_review_count - prevMetric.blog_review_count 
-                        : null
-
-                      return (
-                        <tr key={metric.id} className="border-b hover:bg-gray-50">
-                          <td className="p-3">
+              {/* 지표 테이블 */}
+              <div>
+                <h4 className="font-semibold mb-2">상세 지표</h4>
+                <div className="border rounded-lg overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-2 text-left">날짜</th>
+                        <th className="px-4 py-2 text-center">순위</th>
+                        <th className="px-4 py-2 text-center">방문자리뷰</th>
+                        <th className="px-4 py-2 text-center">블로그리뷰</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {metrics.map((metric) => (
+                        <tr key={metric.id} className="border-t">
+                          <td className="px-4 py-2">
                             {new Date(metric.collection_date).toLocaleDateString('ko-KR')}
                           </td>
-                          <td className="text-center p-3 font-medium">
-                            {metric.rank ? `${metric.rank}위` : '-'}
+                          <td className="px-4 py-2 text-center font-bold">
+                            {metric.rank || '-'}
                           </td>
-                          <td className="text-center p-3">
-                            {metric.rank_change ? (
-                              <span className={`flex items-center justify-center gap-1 ${metric.rank_change > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                {metric.rank_change > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                                {Math.abs(metric.rank_change)}
-                              </span>
-                            ) : (
-                              '-'
-                            )}
+                          <td className="px-4 py-2 text-center">
+                            {metric.visitor_review_count}
                           </td>
-                          <td className="text-right p-3">
-                            <div className="flex items-center justify-end gap-1">
-                              <Users className="w-3 h-3 text-gray-400" />
-                              {metric.visitor_review_count.toLocaleString()}개
-                            </div>
-                          </td>
-                          <td className="text-right p-3">
-                            {visitorReviewChange !== null ? (
-                              <span className={`flex items-center justify-end gap-1 ${visitorReviewChange > 0 ? 'text-green-600' : visitorReviewChange < 0 ? 'text-red-600' : 'text-gray-400'}`}>
-                                {visitorReviewChange > 0 ? <TrendingUp className="w-3 h-3" /> : visitorReviewChange < 0 ? <TrendingDown className="w-3 h-3" /> : null}
-                                {visitorReviewChange !== 0 ? `${visitorReviewChange > 0 ? '+' : ''}${visitorReviewChange}` : '-'}
-                              </span>
-                            ) : (
-                              '-'
-                            )}
-                          </td>
-                          <td className="text-right p-3">
-                            <div className="flex items-center justify-end gap-1">
-                              <FileText className="w-3 h-3 text-gray-400" />
-                              {metric.blog_review_count.toLocaleString()}개
-                            </div>
-                          </td>
-                          <td className="text-right p-3">
-                            {blogReviewChange !== null ? (
-                              <span className={`flex items-center justify-end gap-1 ${blogReviewChange > 0 ? 'text-green-600' : blogReviewChange < 0 ? 'text-red-600' : 'text-gray-400'}`}>
-                                {blogReviewChange > 0 ? <TrendingUp className="w-3 h-3" /> : blogReviewChange < 0 ? <TrendingDown className="w-3 h-3" /> : null}
-                                {blogReviewChange !== 0 ? `${blogReviewChange > 0 ? '+' : ''}${blogReviewChange}` : '-'}
-                              </span>
-                            ) : (
-                              '-'
-                            )}
+                          <td className="px-4 py-2 text-center">
+                            {metric.blog_review_count}
                           </td>
                         </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           )}
         </DialogContent>
       </Dialog>
 
-      {/* 설정 모달 */}
+      {/* 설정 수정 모달 */}
       <Dialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Settings className="w-5 h-5" />
-              스케줄러 및 알림 설정
-            </DialogTitle>
+            <DialogTitle>추적 설정</DialogTitle>
             <DialogDescription>
-              {selectedTracker?.store_name} - {selectedTracker?.keyword}
+              {editingTracker?.keyword} - {editingTracker?.store_name}
             </DialogDescription>
           </DialogHeader>
-
-          <div className="space-y-4">
-            {/* 업데이트 주기 */}
+          <div className="space-y-4 py-4">
             <div>
-              <label className="text-sm font-medium mb-2 block">업데이트 주기</label>
-              <div className="grid grid-cols-3 gap-2">
-                <Button
-                  type="button"
-                  variant={settingsForm.update_frequency === 'daily_once' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => handleFrequencyChange('daily_once')}
-                  className="w-full"
-                >
-                  하루 1회
-                </Button>
-                <Button
-                  type="button"
-                  variant={settingsForm.update_frequency === 'daily_twice' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => handleFrequencyChange('daily_twice')}
-                  className="w-full"
-                >
-                  하루 2회
-                </Button>
-                <Button
-                  type="button"
-                  variant={settingsForm.update_frequency === 'daily_thrice' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => handleFrequencyChange('daily_thrice')}
-                  className="w-full"
-                >
-                  하루 3회
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground mt-2">
-                {settingsForm.update_frequency === 'daily_once' && '📅 매일 오후 4시'}
-                {settingsForm.update_frequency === 'daily_twice' && '📅 매일 오전 6시, 오후 4시'}
-                {settingsForm.update_frequency === 'daily_thrice' && '📅 매일 오전 6시, 낮 12시, 오후 6시'}
-              </p>
-            </div>
-
-            {/* 알림 설정 */}
-            <div>
-              <label className="text-sm font-medium mb-2 block">알림 설정</label>
-              <div className="flex items-center gap-2 mb-3">
-                <input
-                  type="checkbox"
-                  checked={settingsForm.notification_enabled}
-                  onChange={(e) => setSettingsForm({
-                    ...settingsForm,
-                    notification_enabled: e.target.checked
-                  })}
-                  className="w-4 h-4"
-                />
-                <span className="text-sm">순위 변동 알림 받기</span>
-              </div>
-
-              {settingsForm.notification_enabled && (
-                <div className="space-y-3 pl-6">
-                  <div className="grid grid-cols-3 gap-2">
-                    <Button
-                      type="button"
-                      variant={settingsForm.notification_type === 'kakao' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setSettingsForm({...settingsForm, notification_type: 'kakao'})}
-                      className="w-full"
-                    >
-                      카카오톡
-                    </Button>
-                    <Button
-                      type="button"
-                      variant={settingsForm.notification_type === 'sms' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setSettingsForm({...settingsForm, notification_type: 'sms'})}
-                      className="w-full"
-                    >
-                      SMS
-                    </Button>
-                    <Button
-                      type="button"
-                      variant={settingsForm.notification_type === 'email' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setSettingsForm({...settingsForm, notification_type: 'email'})}
-                      className="w-full"
-                    >
-                      이메일
-                    </Button>
-                  </div>
-
-                  {settingsForm.notification_type === 'sms' && (
-                    <Input
-                      placeholder="전화번호 (예: 010-1234-5678)"
-                      value={settingsForm.notification_phone}
-                      onChange={(e) => setSettingsForm({...settingsForm, notification_phone: e.target.value})}
-                    />
-                  )}
-
-                  {settingsForm.notification_type === 'email' && (
-                    <Input
-                      placeholder="이메일 주소"
-                      type="email"
-                      value={settingsForm.notification_email}
-                      onChange={(e) => setSettingsForm({...settingsForm, notification_email: e.target.value})}
-                    />
-                  )}
-
-                  <p className="text-xs text-muted-foreground">
-                    💡 순위가 변동되었을 때 알림을 받습니다.
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* 저장/취소 버튼 */}
-            <div className="flex gap-2 justify-end pt-4">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowSettingsDialog(false)}
+              <label className="text-sm font-medium mb-2 block">수집 주기</label>
+              <select
+                value={editFrequency}
+                onChange={(e) => setEditFrequency(e.target.value as any)}
+                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               >
-                취소
-              </Button>
-              <Button
-                variant="default"
-                size="sm"
-                onClick={() => selectedTracker && handleSaveSettings(selectedTracker.id)}
-                disabled={isSavingSettings}
-              >
-                {isSavingSettings ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    저장 중...
-                  </>
-                ) : (
-                  "저장"
-                )}
-              </Button>
+                <option value="daily_once">하루 1회</option>
+                <option value="daily_twice">하루 2회</option>
+                <option value="daily_thrice">하루 3회</option>
+              </select>
             </div>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowSettingsDialog(false)}
+              className="flex-1"
+            >
+              취소
+            </Button>
+            <Button
+              onClick={handleUpdateSettings}
+              className="flex-1"
+            >
+              저장
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
