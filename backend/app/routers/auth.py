@@ -312,7 +312,7 @@ async def confirm_email_and_create_profile(user_id: str, email: str, display_nam
 @router.post("/kakao", response_model=AuthResponse)
 async def kakao_login(request: KakaoLoginRequest):
     """
-    카카오 로그인
+    카카오 로그인 - Admin API 없이 일반 Auth API만 사용
     """
     # 카카오 토큰 받기
     kakao_access_token = await get_kakao_token(request.code)
@@ -332,269 +332,118 @@ async def kakao_login(request: KakaoLoginRequest):
     
     supabase = get_supabase_client()
     
-    # 소셜 로그인 사용자의 고정 비밀번호 생성 (user_id 기반)
     import hashlib
     import os
     SECRET_SALT = os.getenv("JWT_SECRET_KEY", "fallback-secret")
     
-    # 기존 사용자 확인 (RLS bypass 함수 사용)
-    existing_user = supabase.rpc('get_profile_by_email_bypass_rls', {'p_email': kakao_user["email"]}).execute()
+    # 이메일 기반 고정 비밀번호 (일관성 유지)
+    email = kakao_user["email"]
+    fixed_password = hashlib.sha256(f"{email}{SECRET_SALT}kakao".encode()).hexdigest()
     
-    if existing_user.data and len(existing_user.data) > 0:
-        # 기존 사용자 로그인
-        user_data = existing_user.data[0]
-        user_id = user_data["id"]
+    # 기존 profiles 확인 (RLS bypass)
+    existing_profile = supabase.rpc('get_profile_by_email_bypass_rls', {'p_email': email}).execute()
+    
+    user_data = None
+    old_profile_id = None
+    onboarding_required = True
+    
+    if existing_profile.data and len(existing_profile.data) > 0:
+        # 기존 사용자
+        user_data = existing_profile.data[0]
+        old_profile_id = user_data["id"]
         onboarding_required = not user_data.get("onboarding_completed", False)
-        print(f"[DEBUG] 카카오 로그인 - 기존 사용자 발견: user_id={user_id}, email={kakao_user['email']}")
-        
-        # profiles ID 기준으로 고정 비밀번호 생성
-        fixed_password = hashlib.sha256(f"{user_id}{SECRET_SALT}kakao".encode()).hexdigest()
-        
-        # Auth 계정 확인 및 비밀번호 동기화 (삭제하지 않음)
+        print(f"[DEBUG] 카카오 로그인 - 기존 profiles 발견: id={old_profile_id}, email={email}")
+    
+    # Supabase Auth 로그인 시도
+    auth_response = None
+    try:
+        print(f"[DEBUG] Supabase Auth 로그인 시도: {email}")
+        auth_response = supabase.auth.sign_in_with_password({
+            "email": email,
+            "password": fixed_password
+        })
+        print(f"[DEBUG] Supabase Auth 로그인 성공: {auth_response.user.id}")
+    except Exception as login_error:
+        print(f"[DEBUG] Supabase Auth 로그인 실패: {login_error}")
+        # 로그인 실패 → Auth 계정 생성 (sign_up)
         try:
-            # 이메일로 Auth 사용자 조회
-            list_response = supabase.auth.admin.list_users()
-            auth_user = None
-            for u in list_response:
-                if u.email == kakao_user["email"]:
-                    auth_user = u
-                    break
-            
-            if auth_user:
-                # Auth 계정 존재: 비밀번호만 업데이트
-                print(f"[DEBUG] Auth 계정 존재: {auth_user.id}, 비밀번호 동기화")
-                # 비밀번호를 Auth ID 기준으로 재생성
-                fixed_password = hashlib.sha256(f"{auth_user.id}{SECRET_SALT}kakao".encode()).hexdigest()
-                try:
-                    supabase.auth.admin.update_user_by_id(
-                        auth_user.id,
-                        {"password": fixed_password}
-                    )
-                    print(f"[DEBUG] 비밀번호 업데이트 완료")
-                except Exception as pwd_error:
-                    print(f"[WARN] 비밀번호 업데이트 실패: {pwd_error}, 계속 진행")
-            else:
-                # Auth 계정 없음: 새로 생성
-                print(f"[DEBUG] Auth 계정 없음, 새로 생성")
-                try:
-                    create_response = supabase.auth.admin.create_user({
-                        "email": kakao_user["email"],
-                        "password": fixed_password,
-                        "email_confirm": True,
-                        "user_metadata": {
-                            "display_name": kakao_user.get("display_name", kakao_user["email"].split("@")[0]),
-                            "auth_provider": "kakao"
-                        }
-                    })
-                    if create_response.user:
-                        print(f"[DEBUG] Auth 계정 생성 완료: {create_response.user.id}")
-                        # 비밀번호를 생성된 Auth ID로 재생성
-                        fixed_password = hashlib.sha256(f"{create_response.user.id}{SECRET_SALT}kakao".encode()).hexdigest()
-                        try:
-                            supabase.auth.admin.update_user_by_id(
-                                create_response.user.id,
-                                {"password": fixed_password}
-                            )
-                        except Exception as pwd_error:
-                            print(f"[WARN] 생성 후 비밀번호 업데이트 실패: {pwd_error}")
-                except Exception as create_error:
-                    print(f"[WARN] Auth 계정 생성 실패: {create_error}, 로그인 시도")
-        except Exception as auth_prep_error:
-            print(f"[WARN] Auth 계정 준비 실패: {auth_prep_error}, 계속 진행")
-        
-        try:
-            # Supabase Auth로 로그인 (세션 생성)
-            auth_response = supabase.auth.sign_in_with_password({
-                "email": kakao_user["email"],
-                "password": fixed_password
-            })
-            
-            if auth_response.session:
-                # Auth user_id로 프로필 확인
-                auth_user_id = auth_response.user.id
-                print(f"[DEBUG] 로그인 성공 - Auth user_id: {auth_user_id}")
-                
-                # Auth user_id로 프로필 재조회 (Auth ID와 profiles ID가 불일치할 수 있음)
-                auth_profile_result = supabase.rpc('get_profile_by_id_bypass_rls', {'p_id': str(auth_user_id)}).execute()
-                
-                if auth_profile_result.data and len(auth_profile_result.data) > 0:
-                    # Auth user_id에 해당하는 프로필 사용
-                    print(f"[DEBUG] Auth user_id로 프로필 조회 성공")
-                    user_data = auth_profile_result.data[0]
-                    onboarding_required = not user_data.get("onboarding_completed", False)
-                else:
-                    # Auth user_id에 해당하는 프로필이 없으면 데이터 마이그레이션
-                    print(f"[DEBUG] Auth user_id({auth_user_id})로 프로필 없음, 데이터 마이그레이션 시작")
-                    print(f"[DEBUG] 마이그레이션: {user_id} → {auth_user_id}")
-                    
-                    try:
-                        # 기존 profiles ID → 새 Auth ID로 마이그레이션
-                        migrate_result = supabase.rpc('migrate_user_to_new_auth_id', {
-                            'p_old_id': str(user_id),
-                            'p_new_id': str(auth_user_id),
-                            'p_email': user_data["email"],
-                            'p_display_name': user_data.get("display_name", user_data["email"].split("@")[0]),
-                            'p_auth_provider': 'kakao',
-                            'p_subscription_tier': user_data.get("subscription_tier", "free"),
-                            'p_onboarding_completed': user_data.get("onboarding_completed", False),
-                            'p_profile_image_url': user_data.get("profile_image_url"),
-                            'p_phone_number': user_data.get("phone_number"),
-                            'p_user_position': user_data.get("user_position"),
-                            'p_marketing_experience': user_data.get("marketing_experience"),
-                            'p_agency_experience': user_data.get("agency_experience")
-                        }).execute()
-                        
-                        if migrate_result.data and len(migrate_result.data) > 0:
-                            user_data = migrate_result.data[0]
-                            onboarding_required = not user_data.get("onboarding_completed", False)
-                            print(f"[DEBUG] 데이터 마이그레이션 완료: {auth_user_id}")
-                        else:
-                            print(f"[ERROR] 데이터 마이그레이션 실패, 결과 없음")
-                            raise Exception("데이터 마이그레이션 실패")
-                    except Exception as migrate_error:
-                        print(f"[ERROR] 데이터 마이그레이션 실패: {migrate_error}")
-                        raise HTTPException(
-                            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                            detail=f"데이터 마이그레이션 중 오류가 발생했습니다: {str(migrate_error)}",
-                        )
-                
-                # Supabase JWT 반환
-                return AuthResponse(
-                    access_token=auth_response.session.access_token,
-                    user=Profile(**user_data),
-                    onboarding_required=onboarding_required,
-                )
-        except Exception as login_error:
-            print(f"[DEBUG] 기존 사용자 Supabase 로그인 실패: {login_error}")
-            # 로그인 실패 시 Auth 계정 생성 또는 비밀번호 업데이트 시도
-            try:
-                # 먼저 Auth 계정 생성 시도
-                print(f"[DEBUG] Auth 계정 생성 시도")
-                create_response = supabase.auth.admin.create_user({
-                    "email": kakao_user["email"],
-                    "password": fixed_password,
-                    "email_confirm": True,
-                    "user_metadata": {
-                        "display_name": kakao_user.get("display_name", kakao_user["email"].split("@")[0]),
-                        "auth_provider": "kakao"
-                    }
-                })
-                
-                if create_response.user:
-                    print(f"[DEBUG] Auth 계정 생성 완료, 로그인 시도")
-                    # 새로 생성한 계정으로 로그인
-                    auth_response = supabase.auth.sign_in_with_password({
-                        "email": kakao_user["email"],
-                        "password": fixed_password
-                    })
-                    if auth_response.session:
-                        return AuthResponse(
-                            access_token=auth_response.session.access_token,
-                            user=Profile(**user_data),
-                            onboarding_required=onboarding_required,
-                        )
-                    else:
-                        raise Exception("Auth 계정 생성 후 로그인 시도했지만 세션이 없습니다")
-            except Exception as create_error:
-                # Auth 계정이 이미 존재하는 경우 (다른 user_id로) 또는 권한 문제
-                if "already been registered" in str(create_error) or "User not allowed" in str(create_error):
-                    print(f"[DEBUG] Auth 계정이 이미 존재함, 이메일로 조회 후 비밀번호 업데이트")
-                    try:
-                        # 이메일로 Auth 사용자 조회
-                        list_response = supabase.auth.admin.list_users()
-                        auth_user = None
-                        for u in list_response:
-                            if u.email == kakao_user["email"]:
-                                auth_user = u
-                                break
-                        
-                        if auth_user:
-                            print(f"[DEBUG] Auth 사용자 찾음: auth_user_id={auth_user.id}, 비밀번호 업데이트 시도")
-                            
-                            # Auth user_id로 profiles에서 프로필 조회 (Auth와 profiles의 user_id가 다를 수 있음)
-                            auth_profile_result = supabase.rpc('get_profile_by_id_bypass_rls', {'p_id': str(auth_user.id)}).execute()
-                            
-                            if auth_profile_result.data and len(auth_profile_result.data) > 0:
-                                # Auth user_id에 해당하는 프로필이 이미 있음
-                                print(f"[DEBUG] Auth user_id에 해당하는 프로필 발견: {auth_user.id}")
-                                user_data = auth_profile_result.data[0]
-                                onboarding_required = not user_data.get("onboarding_completed", False)
-                            else:
-                                # Auth user_id에 해당하는 프로필이 없음 - 기존 프로필 데이터의 id를 auth_user.id로 사용
-                                print(f"[DEBUG] Auth user_id에 해당하는 프로필 없음, 기존 프로필 데이터 사용 (id를 {auth_user.id}로 변경)")
-                                user_data["id"] = auth_user.id
-                            
-                            # 비밀번호 업데이트
-                            supabase.auth.admin.update_user_by_id(
-                                auth_user.id,
-                                {"password": fixed_password}
-                            )
-                            print(f"[DEBUG] 비밀번호 업데이트 완료, 재로그인 시도")
-                            # 재로그인
-                            auth_response = supabase.auth.sign_in_with_password({
-                                "email": kakao_user["email"],
-                                "password": fixed_password
-                            })
-                            if auth_response.session:
-                                return AuthResponse(
-                                    access_token=auth_response.session.access_token,
-                                    user=Profile(**user_data),
-                                    onboarding_required=onboarding_required,
-                                )
-                            else:
-                                raise Exception("비밀번호 업데이트 후 재로그인 시도했지만 세션이 없습니다")
-                        else:
-                            raise Exception("Auth 사용자를 찾을 수 없습니다")
-                    except Exception as update_error:
-                        print(f"[DEBUG] 비밀번호 업데이트 실패: {update_error}")
-                        raise HTTPException(
-                            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                            detail=f"카카오 로그인 처리 중 오류가 발생했습니다: {str(update_error)}",
-                        )
-                else:
-                    print(f"[DEBUG] Auth 계정 생성 실패: {create_error}")
-                    raise HTTPException(
-                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                        detail=f"카카오 로그인 처리 중 오류가 발생했습니다: {str(create_error)}",
-                    )
-    else:
-        # 신규 사용자 등록
-        # 소셜 로그인은 Supabase Auth와 profiles에 모두 생성
-        user_id_for_password = str(uuid.uuid4())  # 비밀번호 생성용 임시 ID
-        fixed_password = hashlib.sha256(f"{user_id_for_password}{SECRET_SALT}kakao".encode()).hexdigest()
-        
-        try:
-            # 1. Supabase Auth에 사용자 생성 (고정 비밀번호 사용)
-            auth_response = supabase.auth.sign_up({
-                "email": kakao_user["email"],
+            print(f"[DEBUG] Supabase Auth 계정 생성 (sign_up)")
+            signup_response = supabase.auth.sign_up({
+                "email": email,
                 "password": fixed_password,
                 "options": {
-                    "email_confirm": True,  # 이메일 인증 없이 바로 생성
+                    "data": {
+                        "display_name": kakao_user.get("display_name", email.split("@")[0]),
+                        "auth_provider": "kakao"
+                    }
                 }
             })
-            
-            if not auth_response.user:
-                raise Exception("Auth user creation failed")
-            
-            user_id = auth_response.user.id
-            print(f"[DEBUG] 신규 카카오 사용자 Supabase Auth 생성: user_id={user_id}")
-            
-        except Exception as auth_error:
-            print(f"카카오 로그인 Auth 생성 실패: {auth_error}")
+            if signup_response.user:
+                print(f"[DEBUG] Supabase Auth 계정 생성 완료: {signup_response.user.id}")
+                # 생성 후 바로 로그인
+                auth_response = supabase.auth.sign_in_with_password({
+                    "email": email,
+                    "password": fixed_password
+                })
+                print(f"[DEBUG] 생성 후 로그인 성공: {auth_response.user.id}")
+        except Exception as signup_error:
+            print(f"[ERROR] Supabase Auth 계정 생성 실패: {signup_error}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"계정 생성에 실패했습니다: {str(auth_error)}",
+                detail=f"카카오 로그인 처리 중 오류가 발생했습니다: {str(signup_error)}"
             )
-        
-        from datetime import datetime, timezone
-        now = datetime.now(timezone.utc).isoformat()
-        
+    
+    if not auth_response or not auth_response.session:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="로그인 세션 생성에 실패했습니다"
+        )
+    
+    auth_user_id = auth_response.user.id
+    print(f"[DEBUG] 최종 Auth user_id: {auth_user_id}")
+    
+    # Auth user_id로 profiles 조회
+    auth_profile = supabase.rpc('get_profile_by_id_bypass_rls', {'p_id': str(auth_user_id)}).execute()
+    
+    if auth_profile.data and len(auth_profile.data) > 0:
+        # Auth ID로 profiles가 이미 존재
+        print(f"[DEBUG] Auth user_id로 profiles 조회 성공")
+        user_data = auth_profile.data[0]
+        onboarding_required = not user_data.get("onboarding_completed", False)
+    elif old_profile_id and str(old_profile_id) != str(auth_user_id):
+        # profiles ID와 Auth ID가 다름 → 마이그레이션
+        print(f"[DEBUG] ID 불일치 감지, 마이그레이션 시작: {old_profile_id} → {auth_user_id}")
         try:
-            # RLS 우회 함수를 사용하여 프로필 생성
-            result = supabase.rpc('insert_profile_bypass_rls', {
-                'p_id': user_id,
-                'p_email': kakao_user["email"],
-                'p_display_name': kakao_user.get("display_name", kakao_user["email"].split("@")[0]),
+            migrate_result = supabase.rpc('migrate_user_to_new_auth_id', {
+                'p_old_profile_id': str(old_profile_id),
+                'p_new_auth_id': str(auth_user_id),
+                'p_email': email,
+                'p_display_name': user_data.get("display_name", email.split("@")[0]),
+                'p_auth_provider': 'kakao',
+                'p_profile_image_url': user_data.get("profile_image_url"),
+                'p_phone_number': user_data.get("phone_number")
+            }).execute()
+            
+            if migrate_result.data and len(migrate_result.data) > 0:
+                user_data = migrate_result.data[0]
+                onboarding_required = not user_data.get("onboarding_completed", False)
+                print(f"[DEBUG] 데이터 마이그레이션 완료: {auth_user_id}")
+            else:
+                raise Exception("마이그레이션 결과 없음")
+        except Exception as migrate_error:
+            print(f"[ERROR] 데이터 마이그레이션 실패: {migrate_error}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"데이터 마이그레이션 중 오류가 발생했습니다: {str(migrate_error)}"
+            )
+    else:
+        # 완전 신규 사용자 → profiles 생성
+        print(f"[DEBUG] 신규 사용자, profiles 생성")
+        try:
+            profile_result = supabase.rpc('insert_profile_bypass_rls', {
+                'p_id': str(auth_user_id),
+                'p_email': email,
+                'p_display_name': kakao_user.get("display_name", email.split("@")[0]),
                 'p_auth_provider': 'kakao',
                 'p_subscription_tier': 'free',
                 'p_onboarding_completed': False,
@@ -602,39 +451,31 @@ async def kakao_login(request: KakaoLoginRequest):
                 'p_phone_number': None
             }).execute()
             
-            if not result.data or len(result.data) == 0:
-                raise Exception("프로필 생성 결과가 없습니다")
-            
-            user_data = result.data[0]
-            print(f"[DEBUG] 신규 카카오 사용자 프로필 생성 완료")
+            if profile_result.data and len(profile_result.data) > 0:
+                user_data = profile_result.data[0]
+                onboarding_required = True
+                print(f"[DEBUG] profiles 생성 완료: {auth_user_id}")
+            else:
+                raise Exception("profiles 생성 결과 없음")
         except Exception as profile_error:
-            print(f"프로필 생성 실패: {profile_error}")
+            print(f"[ERROR] profiles 생성 실패: {profile_error}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"카카오 로그인 처리 중 오류가 발생했습니다: {str(profile_error)}",
+                detail=f"프로필 생성 중 오류가 발생했습니다: {str(profile_error)}"
             )
-        onboarding_required = True
-        
-        # 신규 사용자: Supabase JWT 반환
-        if auth_response.session and auth_response.session.access_token:
-            print(f"[DEBUG] 신규 사용자 Supabase JWT 반환")
-            return AuthResponse(
-                access_token=auth_response.session.access_token,
-                user=Profile(**user_data),
-                onboarding_required=onboarding_required,
-            )
-        else:
-            # 세션이 없으면 에러
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="인증 세션 생성에 실패했습니다",
-            )
+    
+    # 최종 응답
+    return AuthResponse(
+        access_token=auth_response.session.access_token,
+        user=Profile(**user_data),
+        onboarding_required=onboarding_required
+    )
 
 
 @router.post("/naver", response_model=AuthResponse)
 async def naver_login(request: NaverLoginRequest):
     """
-    네이버 로그인
+    네이버 로그인 - Admin API 없이 일반 Auth API만 사용
     """
     # 네이버 토큰 받기
     naver_access_token = await get_naver_token(request.code, request.state)
@@ -654,231 +495,144 @@ async def naver_login(request: NaverLoginRequest):
     
     supabase = get_supabase_client()
     
-    # 기존 사용자 확인 (RLS bypass 함수 사용)
-    existing_user = supabase.rpc('get_profile_by_email_bypass_rls', {'p_email': naver_user["email"]}).execute()
-    
-    # 소셜 로그인 사용자의 고정 비밀번호 생성 (user_id 기반)
     import hashlib
     import os
     SECRET_SALT = os.getenv("JWT_SECRET_KEY", "fallback-secret")
     
-    if existing_user.data and len(existing_user.data) > 0:
-        # 기존 사용자 로그인
-        user_data = existing_user.data[0]
-        user_id = user_data["id"]
+    # 이메일 기반 고정 비밀번호 (일관성 유지)
+    email = naver_user["email"]
+    fixed_password = hashlib.sha256(f"{email}{SECRET_SALT}naver".encode()).hexdigest()
+    
+    # 기존 profiles 확인 (RLS bypass)
+    existing_profile = supabase.rpc('get_profile_by_email_bypass_rls', {'p_email': email}).execute()
+    
+    user_data = None
+    old_profile_id = None
+    onboarding_required = True
+    
+    if existing_profile.data and len(existing_profile.data) > 0:
+        # 기존 사용자
+        user_data = existing_profile.data[0]
+        old_profile_id = user_data["id"]
         onboarding_required = not user_data.get("onboarding_completed", False)
-        print(f"[DEBUG] 네이버 로그인 - 기존 사용자 발견: user_id={user_id}, email={naver_user['email']}")
-        
-        # profiles ID 기준으로 고정 비밀번호 생성
-        fixed_password = hashlib.sha256(f"{user_id}{SECRET_SALT}naver".encode()).hexdigest()
-        
-        # Auth 계정 확인 및 비밀번호 동기화 (삭제하지 않음)
+        print(f"[DEBUG] 네이버 로그인 - 기존 profiles 발견: id={old_profile_id}, email={email}")
+    
+    # Supabase Auth 로그인 시도
+    auth_response = None
+    try:
+        print(f"[DEBUG] Supabase Auth 로그인 시도: {email}")
+        auth_response = supabase.auth.sign_in_with_password({
+            "email": email,
+            "password": fixed_password
+        })
+        print(f"[DEBUG] Supabase Auth 로그인 성공: {auth_response.user.id}")
+    except Exception as login_error:
+        print(f"[DEBUG] Supabase Auth 로그인 실패: {login_error}")
+        # 로그인 실패 → Auth 계정 생성 (sign_up)
         try:
-            # 이메일로 Auth 사용자 조회
-            list_response = supabase.auth.admin.list_users()
-            auth_user = None
-            for u in list_response:
-                if u.email == naver_user["email"]:
-                    auth_user = u
-                    break
-            
-            if auth_user:
-                # Auth 계정 존재: 비밀번호만 업데이트
-                print(f"[DEBUG] Auth 계정 존재: {auth_user.id}, 비밀번호 동기화")
-                # 비밀번호를 Auth ID 기준으로 재생성
-                fixed_password = hashlib.sha256(f"{auth_user.id}{SECRET_SALT}naver".encode()).hexdigest()
-                try:
-                    supabase.auth.admin.update_user_by_id(
-                        auth_user.id,
-                        {"password": fixed_password}
-                    )
-                    print(f"[DEBUG] 비밀번호 업데이트 완료")
-                except Exception as pwd_error:
-                    print(f"[WARN] 비밀번호 업데이트 실패: {pwd_error}, 계속 진행")
-            else:
-                # Auth 계정 없음: 새로 생성
-                print(f"[DEBUG] Auth 계정 없음, 새로 생성")
-                try:
-                    create_response = supabase.auth.admin.create_user({
-                        "email": naver_user["email"],
-                        "password": fixed_password,
-                        "email_confirm": True,
-                        "user_metadata": {
-                            "display_name": naver_user.get("display_name", naver_user["email"].split("@")[0]),
-                            "auth_provider": "naver"
-                        }
-                    })
-                    if create_response.user:
-                        print(f"[DEBUG] Auth 계정 생성 완료: {create_response.user.id}")
-                        # 비밀번호를 생성된 Auth ID로 재생성
-                        fixed_password = hashlib.sha256(f"{create_response.user.id}{SECRET_SALT}naver".encode()).hexdigest()
-                        try:
-                            supabase.auth.admin.update_user_by_id(
-                                create_response.user.id,
-                                {"password": fixed_password}
-                            )
-                        except Exception as pwd_error:
-                            print(f"[WARN] 생성 후 비밀번호 업데이트 실패: {pwd_error}")
-                except Exception as create_error:
-                    print(f"[WARN] Auth 계정 생성 실패: {create_error}, 로그인 시도")
-        except Exception as auth_prep_error:
-            print(f"[WARN] Auth 계정 준비 실패: {auth_prep_error}, 계속 진행")
-        
-        try:
-            # Supabase Auth로 로그인 (세션 생성)
-            auth_response = supabase.auth.sign_in_with_password({
-                "email": naver_user["email"],
-                "password": fixed_password
-            })
-            
-            if auth_response.session:
-                # Auth user_id로 프로필 확인
-                auth_user_id = auth_response.user.id
-                print(f"[DEBUG] 로그인 성공 - Auth user_id: {auth_user_id}")
-                
-                # Auth user_id로 프로필 재조회 (Auth ID와 profiles ID가 불일치할 수 있음)
-                auth_profile_result = supabase.rpc('get_profile_by_id_bypass_rls', {'p_id': str(auth_user_id)}).execute()
-                
-                if auth_profile_result.data and len(auth_profile_result.data) > 0:
-                    # Auth user_id에 해당하는 프로필 사용
-                    print(f"[DEBUG] Auth user_id로 프로필 조회 성공")
-                    user_data = auth_profile_result.data[0]
-                    onboarding_required = not user_data.get("onboarding_completed", False)
-                else:
-                    # Auth user_id에 해당하는 프로필이 없으면 데이터 마이그레이션
-                    print(f"[DEBUG] Auth user_id({auth_user_id})로 프로필 없음, 데이터 마이그레이션 시작")
-                    print(f"[DEBUG] 마이그레이션: {user_id} → {auth_user_id}")
-                    
-                    try:
-                        # 기존 profiles ID → 새 Auth ID로 마이그레이션
-                        migrate_result = supabase.rpc('migrate_user_to_new_auth_id', {
-                            'p_old_id': str(user_id),
-                            'p_new_id': str(auth_user_id),
-                            'p_email': user_data["email"],
-                            'p_display_name': user_data.get("display_name", user_data["email"].split("@")[0]),
-                            'p_auth_provider': 'naver',
-                            'p_subscription_tier': user_data.get("subscription_tier", "free"),
-                            'p_onboarding_completed': user_data.get("onboarding_completed", False),
-                            'p_profile_image_url': user_data.get("profile_image_url"),
-                            'p_phone_number': user_data.get("phone_number"),
-                            'p_user_position': user_data.get("user_position"),
-                            'p_marketing_experience': user_data.get("marketing_experience"),
-                            'p_agency_experience': user_data.get("agency_experience")
-                        }).execute()
-                        
-                        if migrate_result.data and len(migrate_result.data) > 0:
-                            user_data = migrate_result.data[0]
-                            onboarding_required = not user_data.get("onboarding_completed", False)
-                            print(f"[DEBUG] 데이터 마이그레이션 완료: {auth_user_id}")
-                        else:
-                            print(f"[ERROR] 데이터 마이그레이션 실패, 결과 없음")
-                            raise Exception("데이터 마이그레이션 실패")
-                    except Exception as migrate_error:
-                        print(f"[ERROR] 데이터 마이그레이션 실패: {migrate_error}")
-                        raise HTTPException(
-                            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                            detail=f"데이터 마이그레이션 중 오류가 발생했습니다: {str(migrate_error)}",
-                        )
-                
-                # Supabase JWT 반환
-                return AuthResponse(
-                    access_token=auth_response.session.access_token,
-                    user=Profile(**user_data),
-                    onboarding_required=onboarding_required,
-                )
-        except Exception as login_error:
-            print(f"[DEBUG] 기존 사용자 Supabase 로그인 실패: {login_error}")
-            # 로그인 실패 시 Auth 계정 생성 또는 비밀번호 업데이트 시도
-            try:
-                # 먼저 Auth 계정 생성 시도
-                print(f"[DEBUG] Auth 계정 생성 시도")
-                create_response = supabase.auth.admin.create_user({
-                    "email": naver_user["email"],
-                    "password": fixed_password,
-                    "email_confirm": True,
-                    "user_metadata": {
-                        "display_name": naver_user.get("display_name", naver_user["email"].split("@")[0]),
+            print(f"[DEBUG] Supabase Auth 계정 생성 (sign_up)")
+            signup_response = supabase.auth.sign_up({
+                "email": email,
+                "password": fixed_password,
+                "options": {
+                    "data": {
+                        "display_name": naver_user.get("display_name", email.split("@")[0]),
                         "auth_provider": "naver"
                     }
+                }
+            })
+            if signup_response.user:
+                print(f"[DEBUG] Supabase Auth 계정 생성 완료: {signup_response.user.id}")
+                # 생성 후 바로 로그인
+                auth_response = supabase.auth.sign_in_with_password({
+                    "email": email,
+                    "password": fixed_password
                 })
-                
-                if create_response.user:
-                    print(f"[DEBUG] Auth 계정 생성 완료, 로그인 시도")
-                    # 새로 생성한 계정으로 로그인
-                    auth_response = supabase.auth.sign_in_with_password({
-                        "email": naver_user["email"],
-                        "password": fixed_password
-                    })
-                    if auth_response.session:
-                        return AuthResponse(
-                            access_token=auth_response.session.access_token,
-                            user=Profile(**user_data),
-                            onboarding_required=onboarding_required,
-                        )
-                    else:
-                        raise Exception("Auth 계정 생성 후 로그인 시도했지만 세션이 없습니다")
-            except Exception as create_error:
-                # Auth 계정이 이미 존재하는 경우 (다른 user_id로) 또는 권한 문제
-                if "already been registered" in str(create_error) or "User not allowed" in str(create_error):
-                    print(f"[DEBUG] Auth 계정이 이미 존재함, 이메일로 조회 후 비밀번호 업데이트")
-                    try:
-                        # 이메일로 Auth 사용자 조회
-                        list_response = supabase.auth.admin.list_users()
-                        auth_user = None
-                        for u in list_response:
-                            if u.email == naver_user["email"]:
-                                auth_user = u
-                                break
-                        
-                        if auth_user:
-                            print(f"[DEBUG] Auth 사용자 찾음: auth_user_id={auth_user.id}, 비밀번호 업데이트 시도")
-                            
-                            # Auth user_id로 profiles에서 프로필 조회 (Auth와 profiles의 user_id가 다를 수 있음)
-                            auth_profile_result = supabase.rpc('get_profile_by_id_bypass_rls', {'p_id': str(auth_user.id)}).execute()
-                            
-                            if auth_profile_result.data and len(auth_profile_result.data) > 0:
-                                # Auth user_id에 해당하는 프로필이 이미 있음
-                                print(f"[DEBUG] Auth user_id에 해당하는 프로필 발견: {auth_user.id}")
-                                user_data = auth_profile_result.data[0]
-                                onboarding_required = not user_data.get("onboarding_completed", False)
-                            else:
-                                # Auth user_id에 해당하는 프로필이 없음 - 기존 프로필 데이터의 id를 auth_user.id로 사용
-                                print(f"[DEBUG] Auth user_id에 해당하는 프로필 없음, 기존 프로필 데이터 사용 (id를 {auth_user.id}로 변경)")
-                                user_data["id"] = auth_user.id
-                            
-                            # 비밀번호 업데이트
-                            supabase.auth.admin.update_user_by_id(
-                                auth_user.id,
-                                {"password": fixed_password}
-                            )
-                            print(f"[DEBUG] 비밀번호 업데이트 완료, 재로그인 시도")
-                            # 재로그인
-                            auth_response = supabase.auth.sign_in_with_password({
-                                "email": naver_user["email"],
-                                "password": fixed_password
-                            })
-                            if auth_response.session:
-                                return AuthResponse(
-                                    access_token=auth_response.session.access_token,
-                                    user=Profile(**user_data),
-                                    onboarding_required=onboarding_required,
-                                )
-                            else:
-                                raise Exception("비밀번호 업데이트 후 재로그인 시도했지만 세션이 없습니다")
-                        else:
-                            raise Exception("Auth 사용자를 찾을 수 없습니다")
-                    except Exception as update_error:
-                        print(f"[DEBUG] 비밀번호 업데이트 실패: {update_error}")
-                        raise HTTPException(
-                            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                            detail=f"네이버 로그인 처리 중 오류가 발생했습니다: {str(update_error)}",
-                        )
-                else:
-                    print(f"[DEBUG] Auth 계정 생성 실패: {create_error}")
-                    raise HTTPException(
-                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                        detail=f"네이버 로그인 처리 중 오류가 발생했습니다: {str(create_error)}",
-                    )
+                print(f"[DEBUG] 생성 후 로그인 성공: {auth_response.user.id}")
+        except Exception as signup_error:
+            print(f"[ERROR] Supabase Auth 계정 생성 실패: {signup_error}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"네이버 로그인 처리 중 오류가 발생했습니다: {str(signup_error)}"
+            )
+    
+    if not auth_response or not auth_response.session:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="로그인 세션 생성에 실패했습니다"
+        )
+    
+    auth_user_id = auth_response.user.id
+    print(f"[DEBUG] 최종 Auth user_id: {auth_user_id}")
+    
+    # Auth user_id로 profiles 조회
+    auth_profile = supabase.rpc('get_profile_by_id_bypass_rls', {'p_id': str(auth_user_id)}).execute()
+    
+    if auth_profile.data and len(auth_profile.data) > 0:
+        # Auth ID로 profiles가 이미 존재
+        print(f"[DEBUG] Auth user_id로 profiles 조회 성공")
+        user_data = auth_profile.data[0]
+        onboarding_required = not user_data.get("onboarding_completed", False)
+    elif old_profile_id and str(old_profile_id) != str(auth_user_id):
+        # profiles ID와 Auth ID가 다름 → 마이그레이션
+        print(f"[DEBUG] ID 불일치 감지, 마이그레이션 시작: {old_profile_id} → {auth_user_id}")
+        try:
+            migrate_result = supabase.rpc('migrate_user_to_new_auth_id', {
+                'p_old_profile_id': str(old_profile_id),
+                'p_new_auth_id': str(auth_user_id),
+                'p_email': email,
+                'p_display_name': user_data.get("display_name", email.split("@")[0]),
+                'p_auth_provider': 'naver',
+                'p_profile_image_url': user_data.get("profile_image_url"),
+                'p_phone_number': user_data.get("phone_number")
+            }).execute()
+            
+            if migrate_result.data and len(migrate_result.data) > 0:
+                user_data = migrate_result.data[0]
+                onboarding_required = not user_data.get("onboarding_completed", False)
+                print(f"[DEBUG] 데이터 마이그레이션 완료: {auth_user_id}")
+            else:
+                raise Exception("마이그레이션 결과 없음")
+        except Exception as migrate_error:
+            print(f"[ERROR] 데이터 마이그레이션 실패: {migrate_error}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"데이터 마이그레이션 중 오류가 발생했습니다: {str(migrate_error)}"
+            )
+    else:
+        # 완전 신규 사용자 → profiles 생성
+        print(f"[DEBUG] 신규 사용자, profiles 생성")
+        try:
+            profile_result = supabase.rpc('insert_profile_bypass_rls', {
+                'p_id': str(auth_user_id),
+                'p_email': email,
+                'p_display_name': naver_user.get("display_name", email.split("@")[0]),
+                'p_auth_provider': 'naver',
+                'p_subscription_tier': 'free',
+                'p_onboarding_completed': False,
+                'p_profile_image_url': naver_user.get("profile_image_url"),
+                'p_phone_number': naver_user.get("phone_number")
+            }).execute()
+            
+            if profile_result.data and len(profile_result.data) > 0:
+                user_data = profile_result.data[0]
+                onboarding_required = True
+                print(f"[DEBUG] profiles 생성 완료: {auth_user_id}")
+            else:
+                raise Exception("profiles 생성 결과 없음")
+        except Exception as profile_error:
+            print(f"[ERROR] profiles 생성 실패: {profile_error}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"프로필 생성 중 오류가 발생했습니다: {str(profile_error)}"
+            )
+    
+    # 최종 응답
+    return AuthResponse(
+        access_token=auth_response.session.access_token,
+        user=Profile(**user_data),
+        onboarding_required=onboarding_required
+    )
     else:
         # 신규 사용자 등록
         # 소셜 로그인은 Supabase Auth와 profiles에 모두 생성
