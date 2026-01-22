@@ -155,29 +155,33 @@ async def signup(request: UserSignupRequest):
         if email_confirmed:
             print(f"[회원가입] 이메일 인증이 비활성화되어 있음 - 바로 프로필 생성")
             
-            # profiles 테이블에 사용자 정보 저장
-            profile_data = {
-                "id": user_id,
-                "email": request.email,
-                "display_name": request.display_name or request.email.split("@")[0],
-                "auth_provider": "email",
-                "subscription_tier": "free",
-                "onboarding_completed": False,
-                "created_at": datetime.now(timezone.utc).isoformat(),
-                "updated_at": datetime.now(timezone.utc).isoformat(),
-            }
-            
-            supabase.table("profiles").insert(profile_data).execute()
+            # profiles 테이블에 사용자 정보 저장 (RPC 사용 - 소셜 로그인과 동일한 방식)
+            try:
+                profile_result = supabase.rpc('insert_profile_bypass_rls', {
+                    'p_id': str(user_id),
+                    'p_email': request.email,
+                    'p_display_name': request.display_name or request.email.split("@")[0],
+                    'p_auth_provider': 'email',
+                    'p_subscription_tier': 'free',
+                    'p_onboarding_completed': False,
+                    'p_profile_image_url': None,
+                    'p_phone_number': None
+                }).execute()
+                
+                if not profile_result.data or len(profile_result.data) == 0:
+                    raise Exception("프로필 생성 실패")
+                    
+                user_data = profile_result.data[0]
+            except Exception as profile_error:
+                print(f"[ERROR] 프로필 생성 실패: {profile_error}")
+                raise Exception(f"프로필 생성 중 오류: {str(profile_error)}")
             
             # JWT 토큰 생성
             access_token = create_access_token({"user_id": user_id, "email": request.email})
             
-            # 프로필 조회
-            profile = supabase.table("profiles").select("*").eq("id", user_id).execute()
-            
             return AuthResponse(
                 access_token=access_token,
-                user=Profile(**profile.data[0]),
+                user=Profile(**user_data),
                 onboarding_required=True,
             )
         
