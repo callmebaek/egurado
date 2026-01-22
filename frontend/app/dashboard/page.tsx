@@ -72,7 +72,8 @@ interface UserProfile {
 
 interface Store {
   id: string
-  store_name: string
+  name: string
+  store_name?: string  // 백엔드 호환성
   platform: string
   status: string
   address?: string
@@ -874,8 +875,8 @@ export default function DashboardPage() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
                             <StoreIcon className="w-4 h-4 text-gray-600 flex-shrink-0" />
-                            <h4 className={`font-bold text-sm sm:text-base group-hover:opacity-80 transition-opacity truncate ${storeColor.text}`} title={store.store_name}>
-                              {store.store_name}
+                            <h4 className={`font-bold text-sm sm:text-base group-hover:opacity-80 transition-opacity truncate ${storeColor.text}`} title={store.name || store.store_name || '매장명 없음'}>
+                              {store.name || store.store_name || '매장명 없음'}
                             </h4>
                           </div>
                           {store.address && (
