@@ -73,6 +73,7 @@ interface Store {
   status: string
   address?: string
   thumbnail?: string
+  display_order?: number
   created_at: string
 }
 
@@ -419,8 +420,15 @@ export default function DashboardPage() {
 
   // 추적 키워드를 매장별로 그룹화
   const groupTrackersByStore = (trackers: MetricTracker[], stores: Store[]) => {
+    // stores를 display_order로 정렬
+    const sortedStores = [...stores].sort((a, b) => {
+      const orderA = a.display_order ?? 999
+      const orderB = b.display_order ?? 999
+      return orderA - orderB
+    })
+    
     const storeMap = new Map<string, Store>()
-    stores.forEach(store => storeMap.set(store.id, store))
+    sortedStores.forEach(store => storeMap.set(store.id, store))
 
     const groupMap = new Map<string, StoreTrackerGroup>()
     
@@ -454,7 +462,10 @@ export default function DashboardPage() {
       }
     })
 
-    return Array.from(groupMap.values())
+    // sortedStores 순서대로 그룹 반환
+    return sortedStores
+      .map(store => groupMap.get(store.id))
+      .filter((group): group is StoreTrackerGroup => group !== undefined)
   }
 
   // 개별 키워드 새로고침
@@ -521,7 +532,7 @@ export default function DashboardPage() {
   }
 
   // 드래그 종료 핸들러
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event
 
     if (over && active.id !== over.id) {
@@ -531,15 +542,40 @@ export default function DashboardPage() {
         
         const newOrder = arrayMove(items, oldIndex, newIndex)
         
-        // 순서를 로컬 스토리지에 저장
-        const orderMap = newOrder.reduce((acc, item, index) => {
-          acc[item.store_id] = index
-          return acc
-        }, {} as Record<string, number>)
-        localStorage.setItem('store-group-order', JSON.stringify(orderMap))
+        // 순서를 데이터베이스에 저장 (비동기)
+        saveStoreOrder(newOrder)
         
         return newOrder
       })
+    }
+  }
+  
+  // 매장 순서 저장 함수
+  const saveStoreOrder = async (orderedGroups: StoreTrackerGroup[]) => {
+    try {
+      const token = await getToken()
+      if (!token) return
+      
+      // 각 매장의 순서를 배열로 생성
+      const orders = orderedGroups.map((group, index) => ({
+        store_id: group.store_id,
+        display_order: index
+      }))
+      
+      const response = await fetch(api.stores.reorder(), {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ orders })
+      })
+      
+      if (!response.ok) {
+        console.error('매장 순서 저장 실패:', response.status)
+      }
+    } catch (error) {
+      console.error('매장 순서 저장 중 오류:', error)
     }
   }
 
@@ -575,24 +611,8 @@ export default function DashboardPage() {
       let trackersList = trackersData.trackers || []
       setTrackers(trackersList)
       
-      // 매장별 그룹화
+      // 매장별 그룹화 (이미 display_order로 정렬됨)
       const groups = groupTrackersByStore(trackersList, stores)
-      
-      // 저장된 순서 적용
-      const savedOrder = localStorage.getItem('store-group-order')
-      if (savedOrder) {
-        try {
-          const orderMap = JSON.parse(savedOrder) as Record<string, number>
-          groups.sort((a, b) => {
-            const orderA = orderMap[a.store_id] ?? 999
-            const orderB = orderMap[b.store_id] ?? 999
-            return orderA - orderB
-          })
-        } catch (e) {
-          console.error("Failed to parse saved store group order:", e)
-        }
-      }
-      
       setStoreGroups(groups)
     }
   }
@@ -666,23 +686,8 @@ export default function DashboardPage() {
   // stores가 로드되면 그룹화 다시 수행
   useEffect(() => {
     if (stores.length > 0 && trackers.length > 0) {
+      // 매장별 그룹화 (이미 display_order로 정렬됨)
       const groups = groupTrackersByStore(trackers, stores)
-      
-      // 저장된 순서 적용
-      const savedOrder = localStorage.getItem('store-group-order')
-      if (savedOrder) {
-        try {
-          const orderMap = JSON.parse(savedOrder) as Record<string, number>
-          groups.sort((a, b) => {
-            const orderA = orderMap[a.store_id] ?? 999
-            const orderB = orderMap[b.store_id] ?? 999
-            return orderA - orderB
-          })
-        } catch (e) {
-          console.error("Failed to parse saved store group order:", e)
-        }
-      }
-      
       setStoreGroups(groups)
     }
   }, [stores, trackers])

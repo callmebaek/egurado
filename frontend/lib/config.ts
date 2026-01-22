@@ -52,6 +52,7 @@ export const api = {
     list: () => api.url('/api/v1/stores/'),
     create: () => api.url('/api/v1/stores/'),
     delete: (storeId: string) => api.url(`/api/v1/stores/${storeId}`),
+    reorder: () => api.url('/api/v1/stores/reorder'),
   },
   
   /**

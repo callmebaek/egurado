@@ -97,6 +97,7 @@ class StoreResponse(BaseModel):
     thumbnail: Optional[str]
     platform: str
     status: str
+    display_order: Optional[int] = 0
     created_at: datetime
     last_synced_at: Optional[datetime]
 
@@ -209,6 +210,7 @@ async def create_store(
             thumbnail=store_data.get("thumbnail"),
             platform=store_data["platform"],
             status=store_data["status"],
+            display_order=store_data.get("display_order", 0),
             created_at=datetime.fromisoformat(store_data["created_at"].replace("Z", "+00:00")),
             last_synced_at=datetime.fromisoformat(store_data["last_synced_at"].replace("Z", "+00:00")) if store_data.get("last_synced_at") else None
         )
@@ -239,9 +241,10 @@ async def list_stores(current_user: dict = Depends(get_current_user)):
         logger.info(f"[DEBUG] list_stores called with authenticated user_id: {user_id}")
         
         # 직접 테이블 쿼리 (RLS 비활성화 상태)
+        # display_order로 정렬 (오름차순), 같은 순서면 created_at (내림차순)
         result = supabase.table("stores").select("*").eq(
             "user_id", str(user_id)
-        ).order("created_at", desc=True).execute()
+        ).order("display_order", desc=False).order("created_at", desc=True).execute()
         
         # 디버깅: 조회 결과 로깅
         logger.info(f"[DEBUG] list_stores found {len(result.data) if result.data else 0} stores for user_id: {user_id}")
@@ -260,6 +263,7 @@ async def list_stores(current_user: dict = Depends(get_current_user)):
                     thumbnail=store.get("thumbnail"),
                     platform=store["platform"],
                     status=store["status"],
+                    display_order=store.get("display_order", 0),
                     created_at=datetime.fromisoformat(store["created_at"].replace("Z", "+00:00")),
                     last_synced_at=datetime.fromisoformat(store["last_synced_at"].replace("Z", "+00:00")) if store.get("last_synced_at") else None
                 ))
@@ -315,6 +319,7 @@ async def get_store(store_id: UUID):
             thumbnail=store.get("thumbnail"),
             platform=store["platform"],
             status=store["status"],
+            display_order=store.get("display_order", 0),
             created_at=datetime.fromisoformat(store["created_at"].replace("Z", "+00:00")),
             last_synced_at=datetime.fromisoformat(store["last_synced_at"].replace("Z", "+00:00")) if store.get("last_synced_at") else None
         )
@@ -370,6 +375,70 @@ async def delete_store(store_id: UUID, current_user: dict = Depends(get_current_
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"매장 삭제 중 오류가 발생했습니다: {str(e)}"
+        )
+
+
+class StoreOrderUpdate(BaseModel):
+    """매장 순서 업데이트 요청"""
+    store_id: str
+    display_order: int
+
+
+class StoreOrderBatchRequest(BaseModel):
+    """매장 순서 일괄 업데이트 요청"""
+    orders: List[StoreOrderUpdate]
+
+
+@router.patch("/reorder", status_code=status.HTTP_200_OK)
+async def update_store_order(
+    request: StoreOrderBatchRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    매장 표시 순서 일괄 업데이트 (인증 필요)
+    
+    Args:
+        request: 매장 ID와 순서 목록
+        current_user: 인증된 사용자 정보
+        
+    Returns:
+        업데이트된 매장 개수
+    """
+    try:
+        supabase = get_supabase_client()
+        user_id = current_user["id"]
+        
+        # 각 매장의 순서 업데이트
+        updated_count = 0
+        for order_item in request.orders:
+            # 권한 확인 (해당 매장이 현재 사용자의 것인지)
+            store = supabase.table("stores").select("user_id").eq(
+                "id", order_item.store_id
+            ).single().execute()
+            
+            if store.data and store.data["user_id"] == str(user_id):
+                # 순서 업데이트
+                supabase.table("stores").update({
+                    "display_order": order_item.display_order
+                }).eq("id", order_item.store_id).execute()
+                
+                updated_count += 1
+        
+        logger.info(f"Store order updated for user {user_id}: {updated_count} stores")
+        
+        return {
+            "status": "success",
+            "updated_count": updated_count,
+            "message": f"{updated_count}개 매장의 순서가 업데이트되었습니다."
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating store order: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"매장 순서 업데이트 중 오류가 발생했습니다: {str(e)}"
         )
 
 # #region agent log
