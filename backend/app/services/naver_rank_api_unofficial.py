@@ -114,8 +114,8 @@ class NaverRankNewAPIService:
                 logger.info(f"[신API Rank] ⭐ 순위 없음(300위 밖), place_id로 직접 조회 시도: place_id={target_place_id}")
                 try:
                     # naver_place_details_service 사용
-                    from .naver_place_details_service import naver_place_service
-                    place_details = await naver_place_service.get_place_details_by_id(target_place_id)
+                    from .naver_place_details_service import place_details_service
+                    place_details = await place_details_service.get_place_details_by_id(target_place_id)
                     
                     target_store_data = {
                         "place_id": target_place_id,
