@@ -34,7 +34,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { api } from "@/lib/config"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
@@ -123,6 +123,28 @@ export default function MetricsTrackerPage() {
   const [subscriptionTier, setSubscriptionTier] = useState<string>("free")
   const [trackerLimit, setTrackerLimit] = useState<number>(1)
   const [currentTrackerCount, setCurrentTrackerCount] = useState<number>(0)
+
+  // ⭐ 매장별 그룹화
+  const storeGroups = useMemo(() => {
+    const groups: Record<string, { store: Store, trackers: MetricTracker[] }> = {}
+    
+    trackers.forEach(tracker => {
+      if (!groups[tracker.store_id]) {
+        const store = stores.find(s => s.id === tracker.store_id)
+        if (store) {
+          groups[tracker.store_id] = {
+            store,
+            trackers: []
+          }
+        }
+      }
+      if (groups[tracker.store_id]) {
+        groups[tracker.store_id].trackers.push(tracker)
+      }
+    })
+    
+    return Object.values(groups)
+  }, [trackers, stores])
 
   // Tier 로드
   useEffect(() => {
@@ -761,30 +783,62 @@ export default function MetricsTrackerPage() {
         </Card>
       )}
 
-      {/* 추적 설정 목록 */}
-      <Card className="p-6">
-        <h2 className="text-lg font-semibold mb-4">
+      {/* 추적 설정 목록 - 매장별 그룹화 */}
+      <div className="space-y-6">
+        <h2 className="text-lg font-semibold">
           추적 중인 지표 ({trackers.length})
         </h2>
 
         {isLoadingTrackers ? (
-          <div className="text-center py-8">
-            <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto" />
-          </div>
+          <Card className="p-6">
+            <div className="text-center py-8">
+              <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto" />
+            </div>
+          </Card>
         ) : trackers.length === 0 ? (
-          <div className="text-center py-8">
-            <p className="text-muted-foreground">추적 중인 지표가 없습니다</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              위의 "추적 설정 추가" 버튼을 눌러 새 추적을 시작하세요
-            </p>
-          </div>
+          <Card className="p-6">
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">추적 중인 지표가 없습니다</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                위의 "추적 설정 추가" 버튼을 눌러 새 추적을 시작하세요
+              </p>
+            </div>
+          </Card>
         ) : (
-          <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-2">
-            {trackers.map((tracker) => (
-              <Card
-                key={tracker.id}
-                className="p-5 hover:shadow-md transition-shadow"
-              >
+          <>
+            {/* 매장별 그룹화 */}
+            {storeGroups.map((group) => (
+              <Card key={group.store.id} className="p-6">
+                {/* 매장 헤더 */}
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="flex-1">
+                    <h3 className="text-lg font-bold">{group.store.name}</h3>
+                    <p className="text-sm text-gray-600">
+                      {group.trackers.length}개 키워드 추적 중
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={async () => {
+                      // 매장의 모든 키워드 수집
+                      for (const tracker of group.trackers) {
+                        await handleCollectNow(tracker.id)
+                      }
+                    }}
+                  >
+                    <TrendingUp className="w-4 h-4 mr-2" />
+                    전체 수집
+                  </Button>
+                </div>
+                
+                {/* 키워드 목록 */}
+                <div className="space-y-3">
+                  {group.trackers.map((tracker) => (
+                    <div
+                      key={tracker.id}
+                      className="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                    >
                 {/* 헤더 */}
                 <div className="mb-4">
                   <div className="flex items-start justify-between gap-4 mb-3">
@@ -960,11 +1014,14 @@ export default function MetricsTrackerPage() {
                     <Trash2 className="w-4 h-4 text-red-600" />
                   </Button>
                 </div>
+                    </div>
+                  ))}
+                </div>
               </Card>
             ))}
-          </div>
+          </>
         )}
-      </Card>
+      </div>
 
       {/* 지표 보기 모달 */}
       <Dialog open={showMetricsDialog} onOpenChange={setShowMetricsDialog}>

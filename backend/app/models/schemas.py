@@ -285,7 +285,8 @@ class HealthCheckResponse(BaseModel):
 class MetricTrackerBase(BaseModel):
     """주요지표 추적 기본 스키마"""
     store_id: UUID
-    keyword_id: UUID
+    keyword_id: Optional[UUID] = None  # ⭐ Optional로 변경 (keyword와 둘 중 하나 필수)
+    keyword: Optional[str] = None  # ⭐ 키워드 이름으로 직접 생성 가능
     update_frequency: Literal['daily_once', 'daily_twice', 'daily_thrice'] = 'daily_once'
     update_times: list[int] = Field(default=[16])  # 기본값: 오후 4시
     notification_enabled: bool = False
