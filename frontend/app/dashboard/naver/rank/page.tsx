@@ -1,15 +1,15 @@
 "use client"
 
 import { useStores } from "@/lib/hooks/useStores"
-import { useAuth } from "@/lib/auth-context"
 import { EmptyStoreMessage } from "@/components/EmptyStoreMessage"
-import { Loader2, TrendingUp, TrendingDown, Search, MapPin, Star } from "lucide-react"
+import { Loader2, TrendingUp, TrendingDown, Search, Minus, MapPin, Star, X, LineChart as LineChartIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
 import { useToast } from "@/components/ui/use-toast"
 import { useState, useEffect } from "react"
 import { supabase } from "@/lib/supabase"
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { api } from "@/lib/config"
 
 interface Store {
@@ -26,12 +26,14 @@ interface KeywordData {
   previous_rank: number | null
   rank_change: number | null
   last_checked_at: string
-  last_searched_at: string  // ⭐ 추가
-  is_tracked: boolean  // ⭐ 추가
   created_at: string
 }
 
-// ⭐ RankHistoryData 인터페이스 제거 (rank_history 테이블 삭제됨)
+interface RankHistoryData {
+  date: string
+  rank: number | null
+  checked_at: string
+}
 
 interface RankResult {
   rank: number | null
@@ -61,7 +63,6 @@ interface SearchResult {
 export default function NaverRankPage() {
   const { hasStores, isLoading: storesLoading } = useStores()
   const { toast } = useToast()
-  const { user, getToken } = useAuth()
 
   const [stores, setStores] = useState<Store[]>([])
   const [selectedStoreId, setSelectedStoreId] = useState<string>("")
@@ -70,7 +71,9 @@ export default function NaverRankPage() {
   const [rankResult, setRankResult] = useState<RankResult | null>(null)
   const [keywords, setKeywords] = useState<KeywordData[]>([])
   const [loadingKeywords, setLoadingKeywords] = useState(false)
-  // ⭐ 순위 히스토리 차트 관련 상태 제거 (rank_history 테이블 삭제됨)
+  const [selectedKeywordForChart, setSelectedKeywordForChart] = useState<KeywordData | null>(null)
+  const [rankHistory, setRankHistory] = useState<RankHistoryData[]>([])
+  const [loadingHistory, setLoadingHistory] = useState(false)
   
   // 구독 tier 및 키워드 제한 ⭐
   const [subscriptionTier, setSubscriptionTier] = useState<string>("free")
@@ -82,6 +85,7 @@ export default function NaverRankPage() {
   useEffect(() => {
     const loadUserTier = async () => {
       try {
+        const { data: { user } } = await supabase.auth.getUser()
         if (!user) {
           console.log("⚠️ 사용자 인증 정보가 없습니다")
           setKeywordLimit(1)
@@ -106,12 +110,13 @@ export default function NaverRankPage() {
           console.log("⚠️ Users 테이블에 레코드가 없습니다. 자동 생성 시도...")
           
           try {
-            if (user) {
+            const { data: authUser } = await supabase.auth.getUser()
+            if (authUser && authUser.user) {
               const { data: insertedUser, error: insertError } = await supabase
                 .from("users")
                 .insert({
-                  id: user.id,
-                  email: user.email,
+                  id: authUser.user.id,
+                  email: authUser.user.email,
                   subscription_tier: "pro", // 기본값: pro
                   subscription_status: "active"
                 })
@@ -155,8 +160,7 @@ export default function NaverRankPage() {
           const limits: Record<string, number> = {
             free: 1,
             basic: 10,
-            pro: 50,
-            god: 9999  // God tier: 무제한 (커스터마이징 가능)
+            pro: 50
           }
           
           const limit = limits[tier]
@@ -184,10 +188,8 @@ export default function NaverRankPage() {
       }
     }
 
-    if (user) {
-      loadUserTier()
-    }
-  }, [user])
+    loadUserTier()
+  }, [supabase.auth])
 
   // 매장 목록 로드 ⭐
   useEffect(() => {
@@ -198,19 +200,15 @@ export default function NaverRankPage() {
       }
       
       try {
-        const token = getToken()
-        if (!user || !token) {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) {
           console.log("사용자 인증 정보가 없습니다")
           return
         }
 
         console.log("📦 매장 목록 로드 중..., user_id:", user.id)
         
-        const response = await fetch(api.stores.list(), {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        })
+        const response = await fetch(api.stores.list(user.id))
         
         if (!response.ok) {
           console.error("매장 목록 조회 실패:", response.status)
@@ -226,7 +224,7 @@ export default function NaverRankPage() {
         setStores(naverStores)
         
         if (naverStores.length > 0) {
-          setSelectedStoreId("")  // 기본값: 매장 선택 안 함
+          setSelectedStoreId(naverStores[0].id)
         } else {
           console.log("네이버 플레이스 매장이 없습니다")
         }
@@ -240,10 +238,10 @@ export default function NaverRankPage() {
       }
     }
 
-    if (hasStores && tierLoaded && user) {
+    if (hasStores && tierLoaded) {
       loadStores()
     }
-  }, [hasStores, tierLoaded, user]) // toast는 함수이므로 의존성에서 제거
+  }, [hasStores, tierLoaded, supabase.auth, toast])
 
   // 선택된 매장의 키워드 목록 로드
   useEffect(() => {
@@ -255,15 +253,11 @@ export default function NaverRankPage() {
 
       setLoadingKeywords(true)
       try {
-        const token = getToken()
-        if (!user || !token) return
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
         
         // 모든 매장의 키워드 개수 계산 (전체 quota) ⭐
-        const allStoresResponse = await fetch(api.stores.list(), {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        })
+        const allStoresResponse = await fetch(api.stores.list(user.id))
         
         if (allStoresResponse.ok) {
           const allStoresData = await allStoresResponse.json()
@@ -282,20 +276,12 @@ export default function NaverRankPage() {
           console.log(`📊 전체 키워드 수: ${totalKeywords}/${keywordLimit} (tier: ${subscriptionTier})`)
         }
         
-        // 현재 선택된 매장의 조회한 키워드 로드 (최근 10개, is_tracked 상태 포함)
+        // 현재 선택된 매장의 키워드 로드
         const response = await fetch(api.naver.keywords(selectedStoreId))
         
         if (response.ok) {
           const data = await response.json()
-          // last_searched_at 기준으로 정렬하고 최근 10개만 표시
-          const sortedKeywords = (data.keywords || [])
-            .sort((a: KeywordData, b: KeywordData) => {
-              const dateA = new Date(a.last_searched_at || a.last_checked_at).getTime()
-              const dateB = new Date(b.last_searched_at || b.last_checked_at).getTime()
-              return dateB - dateA  // 최신순
-            })
-            .slice(0, 10)
-          setKeywords(sortedKeywords)
+          setKeywords(data.keywords || [])
         }
       } catch (error) {
         console.error("키워드 로드 실패:", error)
@@ -305,7 +291,7 @@ export default function NaverRankPage() {
     }
 
     loadKeywords()
-  }, [selectedStoreId, keywordLimit, tierLoaded]) // supabase.auth는 객체이므로 의존성에서 제거
+  }, [selectedStoreId, keywordLimit, tierLoaded, supabase.auth])
 
   // 순위 조회
   const handleCheckRank = async () => {
@@ -330,121 +316,87 @@ export default function NaverRankPage() {
 
     try {
       // 비공식 API 방식 (5-10배 빠르고 리뷰수 포함) ⭐
-      // 300개 조회를 위해 타임아웃을 60초로 설정
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 60000) // 60초
-      
-      try {
-        const response = await fetch(
-          api.naver.checkRank(),
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              store_id: selectedStoreId,
-              keyword: keyword.trim(),
-            }),
-            signal: controller.signal,
-          }
-        )
-        
-        clearTimeout(timeoutId)
-
-        if (!response.ok) {
-          const error = await response.json()
-          
-          // 키워드 제한 에러 특별 처리 ⭐
-          if (response.status === 403 && error.detail?.includes("키워드 등록 제한")) {
-            toast({
-              title: "키워드 등록 제한 도달",
-              description: error.detail,
-              variant: "destructive",
-            })
-            return
-          }
-          
-          throw new Error(error.detail || "순위 조회에 실패했습니다")
+      const response = await fetch(
+        api.naver.checkRank(),
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            store_id: selectedStoreId,
+            keyword: keyword.trim(),
+          }),
         }
+      )
 
-        const data = await response.json()
+      if (!response.ok) {
+        const error = await response.json()
         
-        setRankResult({
-          rank: data.rank,
-          found: data.found,
-          total_results: data.total_results,
-          total_count: data.total_count,  // 전체 업체 수
-          previous_rank: data.previous_rank,
-          rank_change: data.rank_change,
-          search_results: data.search_results || [],
-          // 리뷰수 정보 추가 ⭐
-          visitor_review_count: data.visitor_review_count,
-          blog_review_count: data.blog_review_count,
-          save_count: data.save_count,
-        })
-
-        // 키워드 목록 새로고침 및 전체 카운트 업데이트 ⭐
-        const token = getToken()
-        if (user && token) {
-          // 전체 키워드 수 재계산
-          const allStoresResponse = await fetch(api.stores.list(), {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          })
-          
-          if (allStoresResponse.ok) {
-            const allStoresData = await allStoresResponse.json()
-            const naverStores = allStoresData.stores.filter((s: Store) => s.platform === "naver")
-            
-            let totalKeywords = 0
-            for (const store of naverStores) {
-              const keywordResponse = await fetch(api.naver.keywords(store.id))
-              if (keywordResponse.ok) {
-                const keywordData = await keywordResponse.json()
-                totalKeywords += (keywordData.keywords || []).length
-              }
-            }
-            setCurrentKeywordCount(totalKeywords)
-          }
-        }
-        
-        const keywordsResponse = await fetch(api.naver.keywords(selectedStoreId))
-        if (keywordsResponse.ok) {
-          const keywordsData = await keywordsResponse.json()
-          // last_searched_at 기준으로 정렬하고 최근 10개만 표시
-          const sortedKeywords = (keywordsData.keywords || [])
-            .sort((a: KeywordData, b: KeywordData) => {
-              const dateA = new Date(a.last_searched_at || a.last_checked_at).getTime()
-              const dateB = new Date(b.last_searched_at || b.last_checked_at).getTime()
-              return dateB - dateA  // 최신순
-            })
-            .slice(0, 10)
-          setKeywords(sortedKeywords)
-        }
-
-        toast({
-          title: data.found ? "순위 조회 완료" : "300위 밖",
-          description: data.found 
-            ? `현재 순위: ${data.rank}위${data.total_count ? ` (전체 ${data.total_count}개 중)` : ''}`
-            : `상위 300개 내에서 매장을 찾을 수 없습니다`,
-          variant: data.found ? "default" : "destructive",
-        })
-      } catch (fetchError: any) {
-        clearTimeout(timeoutId)
-        
-        // 타임아웃 에러 처리
-        if (fetchError.name === 'AbortError') {
+        // 키워드 제한 에러 특별 처리 ⭐
+        if (response.status === 403 && error.detail?.includes("키워드 등록 제한")) {
           toast({
-            title: "조회 시간 초과",
-            description: "순위 조회 시간이 너무 오래 걸립니다. 더 구체적인 키워드로 다시 시도해주세요.",
+            title: "키워드 등록 제한 도달",
+            description: error.detail,
             variant: "destructive",
           })
-        } else {
-          throw fetchError
+          return
+        }
+        
+        throw new Error(error.detail || "순위 조회에 실패했습니다")
+      }
+
+      const data = await response.json()
+      
+      setRankResult({
+        rank: data.rank,
+        found: data.found,
+        total_results: data.total_results,
+        total_count: data.total_count,  // 전체 업체 수
+        previous_rank: data.previous_rank,
+        rank_change: data.rank_change,
+        search_results: data.search_results || [],
+        // 리뷰수 정보 추가 ⭐
+        visitor_review_count: data.visitor_review_count,
+        blog_review_count: data.blog_review_count,
+        save_count: data.save_count,
+      })
+
+      // 키워드 목록 새로고침 및 전체 카운트 업데이트 ⭐
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        // 전체 키워드 수 재계산
+        const allStoresResponse = await fetch(api.stores.list(user.id))
+        
+        if (allStoresResponse.ok) {
+          const allStoresData = await allStoresResponse.json()
+          const naverStores = allStoresData.stores.filter((s: Store) => s.platform === "naver")
+          
+          let totalKeywords = 0
+          for (const store of naverStores) {
+            const keywordResponse = await fetch(api.naver.keywords(store.id))
+            if (keywordResponse.ok) {
+              const keywordData = await keywordResponse.json()
+              totalKeywords += (keywordData.keywords || []).length
+            }
+          }
+          setCurrentKeywordCount(totalKeywords)
         }
       }
+      
+      const keywordsResponse = await fetch(api.naver.keywords(selectedStoreId))
+      if (keywordsResponse.ok) {
+        const keywordsData = await keywordsResponse.json()
+        setKeywords(keywordsData.keywords || [])
+      }
+
+      toast({
+        title: data.found ? "순위 조회 완료" : "200위 밖",
+        description: data.found 
+          ? `현재 순위: ${data.rank}위${data.total_count ? ` (전체 ${data.total_count}개 중)` : ''}`
+          : `상위 200개 내에서 매장을 찾을 수 없습니다`,
+        variant: data.found ? "default" : "destructive",
+      })
     } catch (error: any) {
       console.error("순위 조회 실패:", error)
       toast({
@@ -460,64 +412,33 @@ export default function NaverRankPage() {
   // 기존 키워드 클릭 시 해당 키워드로 조회
   const handleKeywordClick = (kw: string) => {
     setKeyword(kw)
+    handleCheckRank()
   }
 
-  // ⭐ 키워드 추적 전환 (조회 키워드 → 추적 키워드)
-  const handleToggleTracking = async (keywordId: string, currentState: boolean) => {
-    if (currentState) return // 이미 추적중
+  // 키워드 순위 히스토리 조회 ⭐
+  const handleViewKeywordHistory = async (keyword: KeywordData) => {
+    setSelectedKeywordForChart(keyword)
+    setLoadingHistory(true)
     
     try {
-      const token = getToken()
-      if (!token) {
-        toast({
-          title: "인증 필요",
-          description: "로그인이 필요합니다",
-          variant: "destructive",
-        })
-        return
+      const response = await fetch(api.naver.keywordHistory(keyword.id))
+
+      if (!response.ok) {
+        throw new Error("순위 히스토리 조회에 실패했습니다")
       }
-      
-      console.log(`[추적] API 호출 시작: ${api.naver.trackKeyword(keywordId)}`)
-      
-      const response = await fetch(api.naver.trackKeyword(keywordId), {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      })
-      
-      console.log(`[추적] API 응답 상태: ${response.status}`)
-      
-      if (response.ok) {
-        const data = await response.json()
-        console.log(`[추적] 성공:`, data)
-        
-        toast({
-          title: "추적 시작",
-          description: "주요지표 추적 페이지에서 확인하세요"
-        })
-        
-        // ⭐ 로컬 상태만 업데이트 (리스트에서 사라지지 않도록)
-        setKeywords(prevKeywords => 
-          prevKeywords.map(kw => 
-            kw.id === keywordId 
-              ? { ...kw, is_tracked: true }
-              : kw
-          )
-        )
-      } else {
-        const errorData = await response.json().catch(() => ({ detail: "알 수 없는 오류" }))
-        console.error(`[추적] 실패:`, errorData)
-        throw new Error(errorData.detail || "추적 전환에 실패했습니다")
-      }
+
+      const data = await response.json()
+      setRankHistory(data.history || [])
     } catch (error: any) {
-      console.error("추적 전환 실패:", error)
+      console.error("순위 히스토리 조회 실패:", error)
       toast({
-        title: "추적 실패",
-        description: error.message || "추적 전환 중 오류가 발생했습니다",
+        title: "순위 히스토리 조회 실패",
+        description: error.message || "순위 히스토리를 조회하는 중 오류가 발생했습니다",
         variant: "destructive",
       })
+      setRankHistory([])
+    } finally {
+      setLoadingHistory(false)
     }
   }
 
@@ -544,17 +465,17 @@ export default function NaverRankPage() {
         throw new Error("키워드 삭제에 실패했습니다")
       }
 
-      // ⭐ 순위 히스토리 차트 제거됨
+      // 선택된 키워드였다면 차트 닫기
+      if (selectedKeywordForChart?.id === keywordId) {
+        setSelectedKeywordForChart(null)
+        setRankHistory([])
+      }
 
       // 키워드 목록 새로고침 및 전체 카운트 업데이트 ⭐
-      const token = getToken()
-      if (user && token) {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
         // 전체 키워드 수 재계산
-        const allStoresResponse = await fetch(api.stores.list(), {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        })
+        const allStoresResponse = await fetch(api.stores.list(user.id))
         
         if (allStoresResponse.ok) {
           const allStoresData = await allStoresResponse.json()
@@ -575,15 +496,7 @@ export default function NaverRankPage() {
       const keywordsResponse = await fetch(api.naver.keywords(selectedStoreId))
       if (keywordsResponse.ok) {
         const keywordsData = await keywordsResponse.json()
-        // last_searched_at 기준으로 정렬하고 최근 10개만 표시
-        const sortedKeywords = (keywordsData.keywords || [])
-          .sort((a: KeywordData, b: KeywordData) => {
-            const dateA = new Date(a.last_searched_at || a.last_checked_at).getTime()
-            const dateB = new Date(b.last_searched_at || b.last_checked_at).getTime()
-            return dateB - dateA  // 최신순
-          })
-          .slice(0, 10)
-        setKeywords(sortedKeywords)
+        setKeywords(keywordsData.keywords || [])
       }
 
       toast({
@@ -622,7 +535,7 @@ export default function NaverRankPage() {
       {/* 헤더 */}
       <div>
         <h1 className="text-2xl md:text-3xl font-bold text-primary mb-2">
-          플레이스 순위조회
+          플레이스 순위 조회
         </h1>
         <p className="text-muted-foreground">
           키워드별 네이버 플레이스 검색 순위를 확인하세요
@@ -650,7 +563,6 @@ export default function NaverRankPage() {
                 onChange={(e) => setSelectedStoreId(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
               >
-                <option value="">매장을 선택하세요</option>
                 {stores.map((store) => (
                   <option key={store.id} value={store.id}>
                     {store.name}
@@ -695,7 +607,7 @@ export default function NaverRankPage() {
               </Button>
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              네이버 지도에서 검색할 키워드를 입력하세요 (최대 300개까지 확인)
+              네이버 지도에서 검색할 키워드를 입력하세요 (최대 200개까지 확인)
             </p>
           </div>
         </div>
@@ -830,7 +742,7 @@ export default function NaverRankPage() {
                         <div className="text-sm flex items-center gap-1 flex-shrink-0">
                           <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
                           {/* 평점이 있으면 표시 */}
-                          {result.rating && typeof result.rating === 'number' && result.rating > 0 && (
+                          {result.rating && result.rating !== "None" && typeof result.rating === 'number' && result.rating > 0 && (
                             <span className="font-medium">{result.rating.toFixed(1)}</span>
                           )}
                           {/* 리뷰수는 항상 표시 */}
@@ -854,14 +766,14 @@ export default function NaverRankPage() {
           ) : (
             <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-center">
               <div className="text-3xl font-bold text-yellow-600 mb-2">
-                300위 밖
+                200위 밖
               </div>
               <p className="text-yellow-700 font-medium">
-                상위 300개 내에서 매장을 찾을 수 없습니다
+                상위 200개 내에서 매장을 찾을 수 없습니다
               </p>
               <p className="text-sm text-yellow-600 mt-1">
                 {rankResult.total_count 
-                  ? `전체 ${rankResult.total_count}개 중 300개 확인됨` 
+                  ? `전체 ${rankResult.total_count}개 중 200개 확인됨` 
                   : `총 ${rankResult.total_results}개 확인됨`}
               </p>
               <p className="text-sm text-yellow-600 mt-2">
@@ -872,13 +784,22 @@ export default function NaverRankPage() {
         </Card>
       )}
 
-      {/* 조회한 키워드 목록 (최근 10개) */}
+      {/* 등록된 키워드 목록 */}
       {keywords.length > 0 && (
-        <Card className="p-4 sm:p-6">
+        <Card className="p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base sm:text-lg font-semibold">
-              조회한 키워드 (최근 10개)
+            <h2 className="text-lg font-semibold">
+              등록된 키워드 ({keywords.length})
             </h2>
+            <div className={`text-sm font-medium px-3 py-1 rounded-full ${
+              currentKeywordCount >= keywordLimit 
+                ? "bg-red-100 text-red-700" 
+                : currentKeywordCount >= keywordLimit * 0.8
+                ? "bg-yellow-100 text-yellow-700"
+                : "bg-green-100 text-green-700"
+            }`}>
+              전체 {currentKeywordCount}/{keywordLimit}개
+            </div>
           </div>
           
           {loadingKeywords ? (
@@ -886,100 +807,77 @@ export default function NaverRankPage() {
               <Loader2 className="w-6 h-6 animate-spin text-primary mx-auto" />
             </div>
           ) : (
-            <>
-              {/* 모바일: 카드 형식 */}
-              <div className="md:hidden space-y-2">
-                {keywords.map((kw) => (
-                  <div key={kw.id} className="p-4 border rounded-lg">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="font-medium text-sm">{kw.keyword}</div>
-                      <div className="text-lg font-bold text-blue-600">
-                        {kw.current_rank ? `${kw.current_rank}위` : "-"}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {keywords.map((kw) => (
+                <div
+                  key={kw.id}
+                  className={`p-3 border rounded-lg hover:bg-gray-50 transition-colors relative group ${
+                    selectedKeywordForChart?.id === kw.id ? 'ring-2 ring-primary bg-primary/5' : ''
+                  }`}
+                >
+                  <div 
+                    className="cursor-pointer"
+                    onClick={() => {
+                      handleViewKeywordHistory(kw)
+                    }}
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium truncate">{kw.keyword}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {new Date(kw.last_checked_at).toLocaleDateString('ko-KR')}
+                        </div>
+                      </div>
+                      
+                      {/* 현재 순위 */}
+                      <div className="text-center flex-shrink-0">
+                        <div className="text-xl font-bold text-primary">
+                          {kw.current_rank ? `${kw.current_rank}위` : "-"}
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-gray-600">
-                        {new Date(kw.last_searched_at || kw.last_checked_at).toLocaleDateString('ko-KR')}
-                      </span>
-                      <Button
-                        size="sm"
-                        variant={kw.is_tracked ? "secondary" : "default"}
-                        onClick={() => handleToggleTracking(kw.id, kw.is_tracked)}
-                        disabled={kw.is_tracked}
-                        className="text-xs px-3 py-1 h-auto"
-                      >
-                        {kw.is_tracked ? "추적중" : "추적"}
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
 
-              {/* 태블릿 이상: 테이블 형식 */}
-              <div className="hidden md:block overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-50 border-b">
-                    <tr>
-                      <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-medium">키워드</th>
-                      <th className="px-3 sm:px-4 py-2 sm:py-3 text-center text-xs sm:text-sm font-medium">현재 순위</th>
-                      <th className="px-3 sm:px-4 py-2 sm:py-3 text-center text-xs sm:text-sm font-medium">순위 변동</th>
-                      <th className="px-3 sm:px-4 py-2 sm:py-3 text-center text-xs sm:text-sm font-medium">마지막 조회</th>
-                      <th className="px-3 sm:px-4 py-2 sm:py-3 text-center text-xs sm:text-sm font-medium">추적</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {keywords.map((kw) => (
-                      <tr key={kw.id} className="border-b hover:bg-gray-50 transition-colors">
-                        <td className="px-3 sm:px-4 py-2 sm:py-3 font-medium">{kw.keyword}</td>
-                        <td className="px-3 sm:px-4 py-2 sm:py-3 text-center">
-                          <span className="text-lg sm:text-xl font-bold text-blue-600">
-                            {kw.current_rank ? `${kw.current_rank}위` : "-"}
-                          </span>
-                        </td>
-                        <td className="px-3 sm:px-4 py-2 sm:py-3 text-center">
-                          {kw.rank_change !== null && kw.rank_change !== 0 ? (
-                            <div className={`flex items-center justify-center gap-1 ${
-                              kw.rank_change > 0 ? "text-green-600" : "text-red-600"
-                            }`}>
-                              {kw.rank_change > 0 ? (
-                                <TrendingUp className="w-3 h-3" />
-                              ) : (
-                                <TrendingDown className="w-3 h-3" />
-                              )}
-                              <span className="text-xs font-medium">
-                                {Math.abs(kw.rank_change)}
-                              </span>
-                            </div>
-                          ) : (
-                            <span className="text-gray-400">-</span>
-                          )}
-                        </td>
-                        <td className="px-3 sm:px-4 py-2 sm:py-3 text-center text-xs sm:text-sm text-gray-600">
-                          {new Date(kw.last_searched_at || kw.last_checked_at).toLocaleDateString('ko-KR')}
-                        </td>
-                        <td className="px-3 sm:px-4 py-2 sm:py-3 text-center">
-                          <Button
-                            size="sm"
-                            variant={kw.is_tracked ? "secondary" : "default"}
-                            onClick={() => handleToggleTracking(kw.id, kw.is_tracked)}
-                            disabled={kw.is_tracked}
-                            className="text-xs sm:text-sm"
-                          >
-                            {kw.is_tracked ? "추적중" : "추적"}
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
+                    {/* 순위 변동 */}
+                    {kw.rank_change !== null && kw.rank_change !== 0 && (
+                      <div className={`flex items-center gap-1 text-sm ${
+                        kw.rank_change > 0 ? "text-green-600" : "text-red-600"
+                      }`}>
+                        {kw.rank_change > 0 ? (
+                          <TrendingUp className="w-3 h-3" />
+                        ) : kw.rank_change < 0 ? (
+                          <TrendingDown className="w-3 h-3" />
+                        ) : (
+                          <Minus className="w-3 h-3" />
+                        )}
+                        <span className="text-xs font-medium">
+                          {Math.abs(kw.rank_change)} 변동
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 삭제 버튼 ⭐ */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleDeleteKeyword(kw.id, kw.keyword)
+                    }}
+                    className="absolute top-2 right-2 p-1 rounded-md bg-red-50 text-red-600 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-100"
+                    title="키워드 삭제"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                  </button>
+                </div>
+              ))}
+            </div>
           )}
         </Card>
       )}
 
-      {/* ⭐ 순위 히스토리 차트 제거 (rank_history 테이블 삭제됨) */}
-      {false && (
+      {/* 순위 히스토리 차트 ⭐ */}
+      {selectedKeywordForChart && (
         <Card className="p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
@@ -1032,8 +930,8 @@ export default function NaverRankPage() {
                         new Date(item.checked_at) >= thirtyDaysAgo
                       ).length
                     })()}회
-        </p>
-      </div>
+                  </p>
+                </div>
               </div>
 
               {/* 차트 */}
@@ -1133,13 +1031,12 @@ export default function NaverRankPage() {
                       stroke="#8884d8" 
                       strokeWidth={2}
                       dot={(props: any) => {
-                          if (!props) return <circle r={0} />
                         const { cx, cy, payload } = props
-                        if (!payload.rank || !payload.rawDate) return <circle r={0} />
+                        if (!payload.rank || !payload.rawDate) return null
                         
                         // 최신 데이터인지 확인
                         const allData = rankHistory.filter(h => h.rank !== null)
-                        if (allData.length === 0) return <circle r={0} />
+                        if (allData.length === 0) return null
                         
                         const latestDate = new Date(Math.max(...allData.map(h => new Date(h.checked_at).getTime())))
                         const currentDate = new Date(payload.rawDate)

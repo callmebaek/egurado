@@ -49,10 +49,9 @@ export const api = {
    * 매장 관련 API
    */
   stores: {
-    list: () => api.url('/api/v1/stores/'),
+    list: (userId: string) => api.url(`/api/v1/stores/?user_id=${userId}`),
     create: () => api.url('/api/v1/stores/'),
     delete: (storeId: string) => api.url(`/api/v1/stores/${storeId}`),
-    reorder: () => api.url('/api/v1/stores/reorder'),
   },
   
   /**
@@ -66,7 +65,6 @@ export const api = {
     keywordHistory: (keywordId: string) => 
       api.url(`/api/v1/naver/keywords/${keywordId}/history`),
     deleteKeyword: (keywordId: string) => api.url(`/api/v1/naver/keywords/${keywordId}`),
-    trackKeyword: (keywordId: string) => api.url(`/api/v1/naver/keywords/${keywordId}/track`),  // ⭐ 추가
     analyzeMainKeywords: () => api.url('/api/v1/naver/analyze-main-keywords'),
     analyzePlaceDetails: (placeId: string, storeName?: string) => {
       const params = storeName ? `?store_name=${encodeURIComponent(storeName)}` : ''
@@ -101,36 +99,6 @@ export const api = {
       return api.url(`/api/v1/reviews/list/${storeId}${queryString ? `?${queryString}` : ''}`)
     },
     placeInfo: (storeId: string) => api.url(`/api/v1/reviews/place-info/${storeId}`),
-  },
-  
-  /**
-   * 주요지표 추적 API
-   */
-  metrics: {
-    list: () => api.url('/api/v1/metrics/trackers'),
-    create: () => api.url('/api/v1/metrics/trackers'),
-    update: (trackerId: string) => api.url(`/api/v1/metrics/trackers/${trackerId}`),
-    delete: (trackerId: string) => api.url(`/api/v1/metrics/trackers/${trackerId}`),
-    getMetrics: (trackerId: string, startDate?: string, endDate?: string) => {
-      const params = new URLSearchParams()
-      if (startDate) params.append('start_date', startDate)
-      if (endDate) params.append('end_date', endDate)
-      const queryString = params.toString()
-      return api.url(`/api/v1/metrics/trackers/${trackerId}/metrics${queryString ? `?${queryString}` : ''}`)
-    },
-    collect: (trackerId: string) => api.url(`/api/v1/metrics/trackers/${trackerId}/collect`),
-    
-    // 하위 호환성을 위한 별칭
-    trackers: () => api.url('/api/v1/metrics/trackers'),
-    tracker: (trackerId: string) => api.url(`/api/v1/metrics/trackers/${trackerId}`),
-    metrics: (trackerId: string, startDate?: string, endDate?: string) => {
-      const params = new URLSearchParams()
-      if (startDate) params.append('start_date', startDate)
-      if (endDate) params.append('end_date', endDate)
-      const queryString = params.toString()
-      return api.url(`/api/v1/metrics/trackers/${trackerId}/metrics${queryString ? `?${queryString}` : ''}`)
-    },
-    collectNow: (trackerId: string) => api.url(`/api/v1/metrics/trackers/${trackerId}/collect`),
   },
 } as const
 

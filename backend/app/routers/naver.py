@@ -2,7 +2,7 @@
 네이버 플레이스 관련 API 라우터
 (경쟁매장 분석 포함)
 """
-from fastapi import APIRouter, HTTPException, status, Query, Depends
+from fastapi import APIRouter, HTTPException, status, Query
 from pydantic import BaseModel
 from typing import List, Dict, Optional, Any
 from uuid import UUID
@@ -18,7 +18,6 @@ from app.services.naver_rank_api_unofficial import rank_service_api_unofficial
 from app.services.naver_keywords_analyzer import keywords_analyzer_service
 from app.services.naver_competitor_analysis_service import competitor_analysis_service
 from app.core.database import get_supabase_client
-from app.routers.auth import get_current_user
 from datetime import datetime, date
 
 router = APIRouter()
@@ -470,8 +469,7 @@ async def check_place_rank(request: RankCheckRequest):
             supabase.table("keywords").update({
                 "previous_rank": previous_rank,
                 "current_rank": rank_result["rank"],
-                "last_checked_at": now.isoformat(),
-                "last_searched_at": now.isoformat()  # ⭐ 조회 시간 업데이트
+                "last_checked_at": now.isoformat()
             }).eq("id", keyword_id).execute()
             
             logger.info(
@@ -480,41 +478,57 @@ async def check_place_rank(request: RankCheckRequest):
             )
             
         else:
-            # 새 키워드 등록 (is_tracked = false, 조회만 함)
+            # 새 키워드 등록 전에 제한 확인
+            # store를 통해 user_id 가져오기
+            user_id = store_data.get("user_id")
+            if not user_id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="매장에 연결된 사용자를 찾을 수 없습니다."
+                )
+            
+            is_limit_exceeded, current_count, max_count = check_keyword_limit(supabase, user_id)
+            
+            if is_limit_exceeded:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"키워드 등록 제한에 도달했습니다. (현재: {current_count}/{max_count}개) 구독 플랜을 업그레이드해주세요."
+                )
+            
+            # 새 키워드 등록
             keyword_insert = supabase.table("keywords").insert({
                 "store_id": str(request.store_id),
                 "keyword": request.keyword,
                 "current_rank": rank_result["rank"],
                 "previous_rank": None,
-                "last_checked_at": now.isoformat(),
-                "is_tracked": False,  # ⭐ 조회만 함 (추적 아님)
-                "last_searched_at": now.isoformat()  # ⭐ 조회 시간
+                "last_checked_at": now.isoformat()
             }).execute()
             
             keyword_id = keyword_insert.data[0]["id"]
             
             logger.info(
-                f"[Rank Check] Created new search keyword (ID: {keyword_id}), "
-                f"Rank: {rank_result['rank']}, is_tracked=False"
+                f"[Rank Check] Created new keyword (ID: {keyword_id}), "
+                f"Rank: {rank_result['rank']}, User keywords: {current_count + 1}/{max_count}"
             )
         
-        # ⭐ 매장별 조회 키워드 10개 제한 (FIFO 방식)
-        # is_tracked=false인 키워드만 대상 (추적 키워드는 제외)
-        all_search_keywords = supabase.table("keywords").select("id").eq(
-            "store_id", str(request.store_id)
-        ).eq("is_tracked", False).order(
-            "last_searched_at", desc=True
+        # rank_history 처리 (오늘 날짜 데이터만 유지)
+        # 1. 오늘 날짜의 기존 기록 삭제
+        supabase.table("rank_history").delete().eq(
+            "keyword_id", keyword_id
+        ).gte(
+            "checked_at", today.isoformat()
+        ).lt(
+            "checked_at", (today.replace(day=today.day + 1)).isoformat() if today.day < 28 else today.isoformat()
         ).execute()
         
-        if all_search_keywords.data and len(all_search_keywords.data) > 10:
-            # 10개 초과 시 오래된 것 삭제
-            to_delete = all_search_keywords.data[10:]
-            for kw in to_delete:
-                supabase.table("keywords").delete().eq("id", kw["id"]).execute()
-            
-            logger.info(f"[Rank Check] Deleted {len(to_delete)} old search keywords (keeping 10)")
+        # 2. 새로운 기록 추가
+        supabase.table("rank_history").insert({
+            "keyword_id": keyword_id,
+            "rank": rank_result["rank"],
+            "checked_at": now.isoformat()
+        }).execute()
         
-        # ⭐ rank_history는 제거됨 (daily_metrics만 사용)
+        logger.info(f"[Rank Check] Saved rank history for today")
         
         # 순위 변동 계산
         rank_change = None
@@ -550,17 +564,11 @@ async def check_place_rank(request: RankCheckRequest):
 
 
 @router.get("/stores/{store_id}/keywords", response_model=KeywordListResponse)
-async def get_store_keywords(
-    store_id: UUID,
-    is_tracked: Optional[bool] = None  # ⭐ 필터 파라미터 추가
-):
+async def get_store_keywords(store_id: UUID):
     """
     매장의 키워드 목록 조회
     
     등록된 키워드와 현재 순위, 이전 순위를 반환합니다.
-    
-    Query Parameters:
-    - is_tracked: 추적 여부 필터 (true=추적중, false=조회만 함, None=전체)
     """
     try:
         supabase = get_supabase_client()
@@ -576,17 +584,12 @@ async def get_store_keywords(
                 detail="매장을 찾을 수 없습니다."
             )
         
-        # 키워드 조회 (is_tracked 필터 적용)
-        query = supabase.table("keywords").select(
-            "id, keyword, current_rank, previous_rank, last_checked_at, last_searched_at, created_at, is_tracked"
-        ).eq("store_id", str(store_id))
-        
-        # ⭐ is_tracked 필터 적용
-        if is_tracked is not None:
-            query = query.eq("is_tracked", is_tracked)
-        
-        # last_searched_at 기준으로 정렬 (최신순)
-        keywords_result = query.order("last_searched_at", desc=True).execute()
+        # 키워드 조회
+        keywords_result = supabase.table("keywords").select(
+            "id, keyword, current_rank, previous_rank, last_checked_at, created_at"
+        ).eq("store_id", str(store_id)).order(
+            "last_checked_at", desc=True
+        ).execute()
         
         keywords = []
         for kw in keywords_result.data:
@@ -601,8 +604,6 @@ async def get_store_keywords(
                 "previous_rank": kw["previous_rank"],
                 "rank_change": rank_change,
                 "last_checked_at": kw["last_checked_at"],
-                "last_searched_at": kw.get("last_searched_at"),  # ⭐ 추가
-                "is_tracked": kw.get("is_tracked", False),  # ⭐ 추가
                 "created_at": kw["created_at"]
             })
         
@@ -620,129 +621,6 @@ async def get_store_keywords(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"키워드 조회 중 오류가 발생했습니다: {str(e)}"
-        )
-
-
-@router.post("/keywords/{keyword_id}/track")
-async def track_keyword(keyword_id: UUID, current_user: dict = Depends(get_current_user)):
-    """
-    키워드를 추적 상태로 변경하고 주요지표 추적을 자동 생성
-    
-    조회만 했던 키워드를 추적 키워드로 전환하고, metric_tracker를 자동으로 생성합니다.
-    """
-    try:
-        supabase = get_supabase_client()
-        
-        # 키워드 정보 조회 (store_id 포함)
-        keyword_check = supabase.table("keywords").select(
-            "id, is_tracked, store_id, keyword"
-        ).eq("id", str(keyword_id)).single().execute()
-        
-        if not keyword_check.data:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="키워드를 찾을 수 없습니다."
-            )
-        
-        keyword_data = keyword_check.data
-        store_id = keyword_data["store_id"]
-        
-        # 매장 정보 조회 (소유권 확인)
-        store_check = supabase.table("stores").select(
-            "id, user_id"
-        ).eq("id", store_id).eq("user_id", str(current_user["id"])).single().execute()
-        
-        if not store_check.data:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="매장을 찾을 수 없거나 접근 권한이 없습니다."
-            )
-        
-        user_id = current_user["id"]  # ⭐ 인증된 사용자의 ID 사용
-        
-        # ⭐ metric_tracker 서비스 준비
-        from app.services.metric_tracker_service import MetricTrackerService
-        tracker_service = MetricTrackerService()
-        
-        # 이미 metric_tracker가 있는지 확인
-        existing_tracker = supabase.table("metric_trackers").select(
-            "id"
-        ).eq("user_id", user_id).eq(
-            "store_id", store_id
-        ).eq("keyword_id", str(keyword_id)).execute()
-        
-        if existing_tracker.data and len(existing_tracker.data) > 0:
-            # 이미 추적 설정이 있으면 is_tracked만 업데이트
-            supabase.table("keywords").update({
-                "is_tracked": True
-            }).eq("id", str(keyword_id)).execute()
-            
-            tracker_id = existing_tracker.data[0]["id"]
-            
-            # ⭐ 이미 추적 중이어도 즉시 지표 수집
-            try:
-                logger.info(f"[Track Keyword] 기존 tracker 지표 수집 시작: {tracker_id}")
-                await tracker_service.collect_metrics(tracker_id)
-                logger.info(f"[Track Keyword] 기존 tracker 지표 수집 완료: {tracker_id}")
-            except Exception as collect_error:
-                logger.error(f"[Track Keyword] 기존 tracker 지표 수집 실패: {str(collect_error)}")
-            
-            return {
-                "status": "success",
-                "message": "이미 추적 중인 키워드입니다.",
-                "tracker_id": tracker_id
-            }
-        
-        # is_tracked를 true로 변경
-        supabase.table("keywords").update({
-            "is_tracked": True
-        }).eq("id", str(keyword_id)).execute()
-        
-        # ⭐ metric_tracker 자동 생성
-        from datetime import datetime, timezone
-        
-        # 다음 수집 시간 계산 (오후 4시)
-        next_collection = datetime.now(timezone.utc).replace(hour=7, minute=0, second=0, microsecond=0)  # KST 16:00 = UTC 07:00
-        if datetime.now(timezone.utc) >= next_collection:
-            # 이미 지났으면 다음날
-            next_collection = next_collection.replace(day=next_collection.day + 1)
-        
-        tracker_data = {
-            "user_id": user_id,
-            "store_id": store_id,
-            "keyword_id": str(keyword_id),
-            "update_frequency": "daily_once",
-            "update_times": [16],
-            "notification_enabled": False,
-            "next_collection_at": next_collection.isoformat()
-        }
-        
-        created_tracker = tracker_service.create_tracker(tracker_data)
-        
-        logger.info(f"[Track Keyword] Keyword {keyword_id} is now tracked with metric_tracker {created_tracker['id']}")
-        
-        # ⭐ 추적 설정 생성 후 즉시 첫 번째 지표 수집
-        try:
-            logger.info(f"[Track Keyword] 첫 번째 지표 수집 시작: {created_tracker['id']}")
-            await tracker_service.collect_metrics(created_tracker["id"])
-            logger.info(f"[Track Keyword] 첫 번째 지표 수집 완료: {created_tracker['id']}")
-        except Exception as collect_error:
-            # 지표 수집 실패해도 tracker는 생성됨
-            logger.error(f"[Track Keyword] 첫 번째 지표 수집 실패: {str(collect_error)}")
-        
-        return {
-            "status": "success",
-            "message": "키워드 추적이 시작되었습니다.",
-            "tracker_id": created_tracker["id"]
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error tracking keyword: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"키워드 추적 전환 중 오류가 발생했습니다: {str(e)}"
         )
 
 
@@ -1046,8 +924,7 @@ async def check_place_rank_unofficial(request: RankCheckRequest):
             supabase.table("keywords").update({
                 "previous_rank": previous_rank,
                 "current_rank": rank_result["rank"],
-                "last_checked_at": now.isoformat(),
-                "last_searched_at": now.isoformat()  # ⭐ 조회 시간 업데이트
+                "last_checked_at": now.isoformat()
             }).eq("id", keyword_id).execute()
             
             logger.info(
@@ -1056,41 +933,57 @@ async def check_place_rank_unofficial(request: RankCheckRequest):
             )
             
         else:
-            # 새 키워드 등록 (is_tracked = false, 조회만 함)
+            # 새 키워드 등록 전에 제한 확인
+            # store를 통해 user_id 가져오기
+            user_id = store_data.get("user_id")
+            if not user_id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="매장에 연결된 사용자를 찾을 수 없습니다."
+                )
+            
+            is_limit_exceeded, current_count, max_count = check_keyword_limit(supabase, user_id)
+            
+            if is_limit_exceeded:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"키워드 등록 제한에 도달했습니다. (현재: {current_count}/{max_count}개) 구독 플랜을 업그레이드해주세요."
+                )
+            
+            # 새 키워드 등록
             keyword_insert = supabase.table("keywords").insert({
                 "store_id": str(request.store_id),
                 "keyword": request.keyword,
                 "current_rank": rank_result["rank"],
                 "previous_rank": None,
-                "last_checked_at": now.isoformat(),
-                "is_tracked": False,  # ⭐ 조회만 함 (추적 아님)
-                "last_searched_at": now.isoformat()  # ⭐ 조회 시간
+                "last_checked_at": now.isoformat()
             }).execute()
             
             keyword_id = keyword_insert.data[0]["id"]
             
             logger.info(
-                f"[Unofficial API Rank] Created new search keyword (ID: {keyword_id}), "
-                f"Rank: {rank_result['rank']}, is_tracked=False"
+                f"[Unofficial API Rank] Created new keyword (ID: {keyword_id}), "
+                f"Rank: {rank_result['rank']}, User keywords: {current_count + 1}/{max_count}"
             )
         
-        # ⭐ 매장별 조회 키워드 10개 제한 (FIFO 방식)
-        # is_tracked=false인 키워드만 대상 (추적 키워드는 제외)
-        all_search_keywords = supabase.table("keywords").select("id").eq(
-            "store_id", str(request.store_id)
-        ).eq("is_tracked", False).order(
-            "last_searched_at", desc=True
+        # rank_history 처리 (오늘 날짜 데이터만 유지)
+        # 1. 오늘 날짜의 기존 기록 삭제
+        supabase.table("rank_history").delete().eq(
+            "keyword_id", keyword_id
+        ).gte(
+            "checked_at", today.isoformat()
+        ).lt(
+            "checked_at", (today.replace(day=today.day + 1)).isoformat() if today.day < 28 else today.isoformat()
         ).execute()
         
-        if all_search_keywords.data and len(all_search_keywords.data) > 10:
-            # 10개 초과 시 오래된 것 삭제
-            to_delete = all_search_keywords.data[10:]
-            for kw in to_delete:
-                supabase.table("keywords").delete().eq("id", kw["id"]).execute()
-            
-            logger.info(f"[Unofficial API Rank] Deleted {len(to_delete)} old search keywords (keeping 10)")
+        # 2. 새로운 기록 추가
+        supabase.table("rank_history").insert({
+            "keyword_id": keyword_id,
+            "rank": rank_result["rank"],
+            "checked_at": now.isoformat()
+        }).execute()
         
-        # ⭐ rank_history는 제거됨 (daily_metrics만 사용)
+        logger.info(f"[Unofficial API Rank] Saved rank history for today")
         
         # 순위 변동 계산
         rank_change = None
