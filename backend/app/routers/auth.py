@@ -415,8 +415,8 @@ async def kakao_login(request: KakaoLoginRequest):
         print(f"[DEBUG] ID 불일치 감지, 마이그레이션 시작: {old_profile_id} → {auth_user_id}")
         try:
             migrate_result = supabase.rpc('migrate_user_to_new_auth_id', {
-                'p_old_profile_id': str(old_profile_id),
-                'p_new_auth_id': str(auth_user_id),
+                'p_old_id': str(old_profile_id),
+                'p_new_id': str(auth_user_id),
                 'p_email': email,
                 'p_display_name': user_data.get("display_name", email.split("@")[0]),
                 'p_auth_provider': 'kakao',
@@ -578,8 +578,8 @@ async def naver_login(request: NaverLoginRequest):
         print(f"[DEBUG] ID 불일치 감지, 마이그레이션 시작: {old_profile_id} → {auth_user_id}")
         try:
             migrate_result = supabase.rpc('migrate_user_to_new_auth_id', {
-                'p_old_profile_id': str(old_profile_id),
-                'p_new_auth_id': str(auth_user_id),
+                'p_old_id': str(old_profile_id),
+                'p_new_id': str(auth_user_id),
                 'p_email': email,
                 'p_display_name': user_data.get("display_name", email.split("@")[0]),
                 'p_auth_provider': 'naver',
