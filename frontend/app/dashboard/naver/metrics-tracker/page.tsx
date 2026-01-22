@@ -943,61 +943,61 @@ export default function MetricsTrackerPage() {
                   </div>
                 </div>
 
-                      {/* 버튼 그룹 */}
-                      <div className="flex items-center justify-between pt-2 border-t">
-                        <div className="text-xs text-gray-500">
-                          {tracker.last_collected_at 
-                            ? `수집: ${new Date(tracker.last_collected_at).toLocaleDateString('ko-KR')}`
-                            : '미수집'
-                          }
-                        </div>
-                        <div className="flex gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleViewMetrics(tracker)}
-                            title="지표 보기"
-                            className="h-8 w-8 p-0"
-                          >
-                            <LineChartIcon className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleCollectNow(tracker)}
-                            title="지금 수집"
-                            className="h-8 w-8 p-0"
-                          >
-                            <TrendingUp className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEditSettings(tracker)}
-                            title="설정"
-                            className="h-8 w-8 p-0"
-                          >
-                            <Settings className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeleteTracker(tracker.id)}
-                            title="삭제"
-                            className="h-8 w-8 p-0"
-                          >
-                            <Trash2 className="w-4 h-4 text-red-600" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                {/* 버튼 그룹 */}
+                <div className="flex items-center justify-between pt-2 border-t">
+                  <div className="text-xs text-gray-500">
+                    {tracker.last_collected_at 
+                      ? `수집: ${new Date(tracker.last_collected_at).toLocaleDateString('ko-KR')}`
+                      : '미수집'
+                    }
+                  </div>
+                  <div className="flex gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleViewMetrics(tracker)}
+                      title="지표 보기"
+                      className="h-8 w-8 p-0"
+                    >
+                      <LineChartIcon className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleCollectNow(tracker)}
+                      title="지금 수집"
+                      className="h-8 w-8 p-0"
+                    >
+                      <TrendingUp className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleEditSettings(tracker)}
+                      title="설정"
+                      className="h-8 w-8 p-0"
+                    >
+                      <Settings className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDeleteTracker(tracker.id)}
+                      title="삭제"
+                      className="h-8 w-8 p-0"
+                    >
+                      <Trash2 className="w-4 h-4 text-red-600" />
+                    </Button>
+                  </div>
                 </div>
-              </Card>
+              </div>
             ))}
-          </>
-        )}
-      </div>
+          </div>
+        </Card>
+      ))}
+    </>
+  )}
+</div>
 
       {/* 지표 보기 모달 */}
       <Dialog open={showMetricsDialog} onOpenChange={setShowMetricsDialog}>
