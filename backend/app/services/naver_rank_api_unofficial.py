@@ -109,16 +109,34 @@ class NaverRankNewAPIService:
                     }
                     break
             
-            # 3. 매장을 찾았으면 상세 정보 조회 시도 (저장수 포함)
-            if found:
-                try:
-                    detail_info = await self._get_place_detail(target_place_id)
-                    # 저장수는 상세 조회에서만 가져올 수 있음
+            # 3. 매장 상세 정보 조회 (순위를 못 찾아도 리뷰수는 수집)
+            try:
+                detail_info = await self._get_place_detail(target_place_id)
+                
+                # 순위를 찾았으면 기존 데이터 업데이트
+                if found:
                     if detail_info.get("save_count", 0) > 0:
                         target_store_data["save_count"] = detail_info["save_count"]
-                except Exception as e:
-                    # 상세 조회 실패해도 검색 결과의 데이터는 사용
-                    logger.warning(f"[신API Rank] 상세 조회 실패, 검색 결과 데이터 사용: {str(e)}")
+                # 순위를 못 찾았으면 상세 정보에서 리뷰수 가져오기
+                else:
+                    target_store_data = {
+                        "place_id": target_place_id,
+                        "visitor_review_count": detail_info.get("visitor_review_count", 0),
+                        "blog_review_count": detail_info.get("blog_review_count", 0),
+                        "save_count": detail_info.get("save_count", 0)
+                    }
+                    logger.info(f"[신API Rank] 순위 없음, 상세 정보에서 리뷰수 수집: 방문자={target_store_data['visitor_review_count']}, 블로그={target_store_data['blog_review_count']}")
+            except Exception as e:
+                # 상세 조회 실패 시
+                logger.warning(f"[신API Rank] 상세 조회 실패: {str(e)}")
+                # 순위를 못 찾았고 상세 조회도 실패하면 0으로 설정
+                if not found:
+                    target_store_data = {
+                        "place_id": target_place_id,
+                        "visitor_review_count": 0,
+                        "blog_review_count": 0,
+                        "save_count": 0
+                    }
             
             # 4. 결과 구성
             result = {
