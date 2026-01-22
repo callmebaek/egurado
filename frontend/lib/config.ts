@@ -115,6 +115,7 @@ export const api = {
       return api.url(`/api/v1/metrics/trackers/${trackerId}/metrics${queryString ? `?${queryString}` : ''}`)
     },
     collect: (trackerId: string) => api.url(`/api/v1/metrics/trackers/${trackerId}/collect`),
+    collectNow: (trackerId: string) => api.url(`/api/v1/metrics/trackers/${trackerId}/collect`),
   },
 } as const
 

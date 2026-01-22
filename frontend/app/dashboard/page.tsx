@@ -2,7 +2,7 @@
 
 /**
  * 대시보드 메인 페이지
- * 계정 정보, 등록 매장, 키워드, 추적 현황 표시
+ * 매장별 추적 키워드 그룹화
  * 완벽한 반응형 디자인 (모바일/태블릿/PC)
  * 드래그앤드롭 순서 변경 기능 포함
  */
@@ -12,37 +12,32 @@ import { api } from "@/lib/config"
 import { 
   Loader2, 
   User, 
-  Mail, 
   CreditCard, 
   Store as StoreIcon,
   Key,
-  TrendingUp,
-  TrendingDown,
   Crown,
-  CheckCircle2,
-  XCircle,
   BarChart3,
   Sparkles,
   ArrowUpRight,
-  ArrowDownRight,
   Activity,
   Clock,
   MapPin,
-  Zap,
   Star,
   Gem,
   Shield,
   GripVertical,
   MessageSquare,
   FileText,
-  Edit3
+  Edit3,
+  RefreshCw,
+  TrendingUp,
+  TrendingDown
 } from "lucide-react"
 import Link from "next/link"
 import {
   DndContext,
   closestCenter,
   KeyboardSensor,
-  PointerSensor,
   useSensor,
   useSensors,
   DragEndEvent,
@@ -73,7 +68,7 @@ interface UserProfile {
 interface Store {
   id: string
   name: string
-  store_name?: string  // 백엔드 호환성
+  store_name?: string
   platform: string
   status: string
   address?: string
@@ -109,7 +104,19 @@ interface MetricTracker {
   display_order?: number
 }
 
-// 매장별 색상 팔레트 (밝고 구분 가능한 색상)
+interface StoreTrackerGroup {
+  store_id: string
+  store_name: string
+  store_thumbnail?: string
+  platform: string
+  trackers: MetricTracker[]
+  visitor_review_count?: number
+  blog_review_count?: number
+  visitor_review_change?: number
+  blog_review_change?: number
+}
+
+// 매장별 색상 팔레트
 const STORE_COLORS = [
   { bg: 'from-blue-50 to-blue-100', border: 'border-blue-300', text: 'text-blue-900', badge: 'bg-blue-500' },
   { bg: 'from-purple-50 to-purple-100', border: 'border-purple-300', text: 'text-purple-900', badge: 'bg-purple-500' },
@@ -121,11 +128,21 @@ const STORE_COLORS = [
   { bg: 'from-rose-50 to-rose-100', border: 'border-rose-300', text: 'text-rose-900', badge: 'bg-rose-500' },
 ]
 
-// 드래그 가능한 추적 키워드 카드 컴포넌트
-function SortableTrackerCard({ tracker, storeColor, isReordering }: { 
-  tracker: MetricTracker, 
-  storeColor: typeof STORE_COLORS[0],
+// 드래그 가능한 매장별 추적 키워드 카드
+function SortableStoreTrackerCard({ 
+  storeGroup, 
+  storeColor, 
+  isReordering,
+  onRefreshTracker,
+  onRefreshAllTrackers,
+  isRefreshing
+}: { 
+  storeGroup: StoreTrackerGroup
+  storeColor: typeof STORE_COLORS[0]
   isReordering: boolean
+  onRefreshTracker: (trackerId: string) => Promise<void>
+  onRefreshAllTrackers: (storeId: string) => Promise<void>
+  isRefreshing: Set<string>
 }) {
   const {
     attributes,
@@ -134,7 +151,7 @@ function SortableTrackerCard({ tracker, storeColor, isReordering }: {
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: tracker.id, disabled: !isReordering })
+  } = useSortable({ id: storeGroup.store_id, disabled: !isReordering })
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -143,152 +160,209 @@ function SortableTrackerCard({ tracker, storeColor, isReordering }: {
     zIndex: isDragging ? 1000 : 'auto',
   }
 
-  const CardContent = (
-    <div 
-      className={`relative p-4 sm:p-5 rounded-xl border-2 ${storeColor.border} hover:shadow-xl transition-all duration-300 bg-gradient-to-br ${storeColor.bg} ${isReordering ? 'cursor-move' : ''}`}
-      {...(isReordering ? { ...attributes, ...listeners } : {})}
-    >
-      {/* 드래그 핸들 */}
-      {isReordering && (
-        <div className="absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none">
-          <GripVertical className="w-5 h-5 text-gray-400" />
-        </div>
-      )}
-      
-      <div className={`${isReordering ? 'ml-6' : ''}`}>
-            {/* 상단: 키워드 & 상태 */}
-            <div className="flex items-start justify-between mb-3">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <h4 className={`font-bold text-base ${storeColor.text} group-hover:text-opacity-80 transition-colors truncate`}>
-                    {tracker.keyword}
-                  </h4>
-                  {tracker.is_active ? (
-                    <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />
-                  ) : (
-                    <XCircle className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                  )}
-                </div>
-                <p className="text-xs text-gray-600 truncate flex items-center gap-1">
-                  <StoreIcon className="w-3 h-3" />
-                  {tracker.store_name}
-                </p>
-              </div>
-            </div>
-
-            {/* 순위 (가장 크게) */}
-            {tracker.latest_rank && (
-              <div className="mb-3">
-                <div className="flex items-baseline gap-2">
-                  <span className={`text-4xl font-bold ${storeColor.text}`}>
-                    {tracker.latest_rank}
-                  </span>
-                  <span className="text-lg text-gray-600">위</span>
-                  {tracker.rank_change !== undefined && tracker.rank_change !== null && tracker.rank_change !== 0 && (
-                    <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold ${
-                      tracker.rank_change > 0 
-                        ? 'bg-red-100 text-red-700' 
-                        : 'bg-green-100 text-green-700'
-                    }`}>
-                      {tracker.rank_change > 0 ? (
-                        <>
-                          <ArrowDownRight className="w-3 h-3" />
-                          <span>↓{tracker.rank_change}</span>
-                        </>
-                      ) : (
-                        <>
-                          <ArrowUpRight className="w-3 h-3" />
-                          <span>↑{Math.abs(tracker.rank_change)}</span>
-                        </>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* 리뷰 지표 (작게) */}
-            <div className="grid grid-cols-2 gap-2 mb-3">
-              {/* 방문자 리뷰 */}
-              <div className="bg-white/60 rounded-lg p-2">
-                <div className="flex items-center gap-1 mb-1">
-                  <MessageSquare className="w-3 h-3 text-gray-500" />
-                  <span className="text-xs text-gray-600">방문자</span>
-                </div>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-lg font-bold text-gray-800">
-                    {tracker.visitor_review_count ?? 0}
-                  </span>
-                  {tracker.visitor_review_change !== undefined && tracker.visitor_review_change !== null && tracker.visitor_review_change !== 0 && (
-                    <span className={`text-xs font-semibold ${
-                      tracker.visitor_review_change > 0 ? 'text-green-600' : 'text-red-600'
-                    }`}>
-                      {tracker.visitor_review_change > 0 ? '+' : ''}{tracker.visitor_review_change}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* 블로그 리뷰 */}
-              <div className="bg-white/60 rounded-lg p-2">
-                <div className="flex items-center gap-1 mb-1">
-                  <FileText className="w-3 h-3 text-gray-500" />
-                  <span className="text-xs text-gray-600">블로그</span>
-                </div>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-lg font-bold text-gray-800">
-                    {tracker.blog_review_count ?? 0}
-                  </span>
-                  {tracker.blog_review_change !== undefined && tracker.blog_review_change !== null && tracker.blog_review_change !== 0 && (
-                    <span className={`text-xs font-semibold ${
-                      tracker.blog_review_change > 0 ? 'text-green-600' : 'text-red-600'
-                    }`}>
-                      {tracker.blog_review_change > 0 ? '+' : ''}{tracker.blog_review_change}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* 하단: 업데이트 정보 */}
-            <div className="flex items-center justify-between text-xs text-gray-500">
-              <div className="flex items-center gap-1">
-                <Activity className="w-3 h-3" />
-                <span>
-                  {tracker.update_frequency === 'daily_once' ? '1회/일' : 
-                   tracker.update_frequency === 'daily_twice' ? '2회/일' : '3회/일'}
-                </span>
-              </div>
-              {tracker.last_collected_at && (
-                <div className="flex items-center gap-1">
-                  <Clock className="w-3 h-3" />
-                  <span>
-                    {new Date(tracker.last_collected_at).toLocaleString('ko-KR', {
-                      month: 'short',
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-  )
+  const visibleTrackers = storeGroup.trackers.slice(0, 5)
 
   return (
     <div ref={setNodeRef} style={style} className="group">
-      {isReordering ? (
-        CardContent
-      ) : (
-        <Link 
-          href={`/dashboard/naver/metrics-tracker?trackerId=${tracker.id}`}
-          className="block"
-        >
-          {CardContent}
-        </Link>
-      )}
+      <div 
+        className={`relative p-4 sm:p-5 rounded-xl border-2 ${storeColor.border} hover:shadow-xl transition-all duration-300 bg-gradient-to-br ${storeColor.bg} ${isReordering ? 'cursor-move' : ''}`}
+        {...(isReordering ? { ...attributes, ...listeners } : {})}
+      >
+        {/* 드래그 핸들 */}
+        {isReordering && (
+          <div className="absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none">
+            <GripVertical className="w-5 h-5 text-gray-400" />
+          </div>
+        )}
+        
+        <div className={`${isReordering ? 'ml-6' : ''}`}>
+          {/* 헤더: 매장명 + 썸네일 + 전체 새로고침 */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              {/* 매장 썸네일 */}
+              {storeGroup.store_thumbnail ? (
+                <img 
+                  src={storeGroup.store_thumbnail} 
+                  alt={storeGroup.store_name} 
+                  className="w-12 h-12 rounded-lg object-cover border-2 border-white shadow-sm flex-shrink-0"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none'
+                  }}
+                />
+              ) : (
+                <div className="w-12 h-12 rounded-lg bg-white/80 flex items-center justify-center border-2 border-white shadow-sm flex-shrink-0">
+                  <StoreIcon className="w-6 h-6 text-gray-400" />
+                </div>
+              )}
+              
+              {/* 매장명 */}
+              <div className="flex-1 min-w-0">
+                <h3 className={`font-bold text-lg ${storeColor.text} truncate`}>
+                  {storeGroup.store_name}
+                </h3>
+                <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
+                  storeGroup.platform === 'naver' 
+                    ? 'bg-green-500 text-white' 
+                    : 'bg-blue-500 text-white'
+                }`}>
+                  {storeGroup.platform === 'naver' ? '네이버' : '구글'}
+                </span>
+              </div>
+            </div>
+            
+            {/* 전체 새로고침 버튼 */}
+            <button
+              onClick={() => onRefreshAllTrackers(storeGroup.store_id)}
+              disabled={isRefreshing.has(`store_${storeGroup.store_id}`)}
+              className={`flex items-center gap-1 px-3 py-2 rounded-lg font-semibold text-xs transition-all ${
+                isRefreshing.has(`store_${storeGroup.store_id}`)
+                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  : 'bg-white text-indigo-600 hover:bg-indigo-50 hover:shadow-md'
+              }`}
+              title="이 매장의 모든 추적키워드 순위를 지금 수집합니다!"
+            >
+              <RefreshCw className={`w-4 h-4 ${isRefreshing.has(`store_${storeGroup.store_id}`) ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">전체 수집</span>
+            </button>
+          </div>
+
+          {/* 매장 리뷰 지표 */}
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            {/* 방문자 리뷰 */}
+            <div className="bg-white/70 rounded-lg p-3">
+              <div className="flex items-center gap-1 mb-1">
+                <MessageSquare className="w-4 h-4 text-gray-500" />
+                <span className="text-xs text-gray-600 font-medium">방문자 리뷰</span>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl font-bold text-gray-800">
+                  {storeGroup.visitor_review_count ?? 0}
+                </span>
+                {storeGroup.visitor_review_change !== undefined && storeGroup.visitor_review_change !== null && storeGroup.visitor_review_change !== 0 && (
+                  <span className={`text-sm font-semibold flex items-center gap-0.5 ${
+                    storeGroup.visitor_review_change > 0 ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                    {storeGroup.visitor_review_change > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                    {storeGroup.visitor_review_change > 0 ? '+' : ''}{storeGroup.visitor_review_change}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* 블로그 리뷰 */}
+            <div className="bg-white/70 rounded-lg p-3">
+              <div className="flex items-center gap-1 mb-1">
+                <FileText className="w-4 h-4 text-gray-500" />
+                <span className="text-xs text-gray-600 font-medium">블로그 리뷰</span>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl font-bold text-gray-800">
+                  {storeGroup.blog_review_count ?? 0}
+                </span>
+                {storeGroup.blog_review_change !== undefined && storeGroup.blog_review_change !== null && storeGroup.blog_review_change !== 0 && (
+                  <span className={`text-sm font-semibold flex items-center gap-0.5 ${
+                    storeGroup.blog_review_change > 0 ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                    {storeGroup.blog_review_change > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                    {storeGroup.blog_review_change > 0 ? '+' : ''}{storeGroup.blog_review_change}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* 추적 키워드 목록 (최대 5개) */}
+          <div className="space-y-2">
+            {visibleTrackers.length === 0 ? (
+              <div className="text-center py-4 text-gray-500 text-sm">
+                추적 중인 키워드가 없습니다
+              </div>
+            ) : (
+              visibleTrackers.map((tracker) => (
+                <div
+                  key={tracker.id}
+                  className="bg-white/80 rounded-lg p-3 flex items-center justify-between gap-3"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className={`font-bold text-sm ${storeColor.text} truncate`}>
+                        {tracker.keyword}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        {tracker.update_frequency === 'daily_once' ? '1회/일' : 
+                         tracker.update_frequency === 'daily_twice' ? '2회/일' : '3회/일'}
+                      </span>
+                    </div>
+                    {tracker.last_collected_at && (
+                      <div className="flex items-center gap-1 text-xs text-gray-400">
+                        <Clock className="w-3 h-3" />
+                        <span>
+                          {new Date(tracker.last_collected_at).toLocaleString('ko-KR', {
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* 순위 */}
+                  <div className="flex items-center gap-2">
+                    {tracker.latest_rank ? (
+                      <div className="flex items-center gap-2">
+                        <div className="text-right">
+                          <div className="flex items-baseline gap-1">
+                            <span className={`text-3xl font-bold ${storeColor.text}`}>
+                              {tracker.latest_rank}
+                            </span>
+                            <span className="text-sm text-gray-600">위</span>
+                          </div>
+                          {tracker.rank_change !== undefined && tracker.rank_change !== null && tracker.rank_change !== 0 && (
+                            <div className={`text-xs font-semibold flex items-center justify-end gap-0.5 ${
+                              tracker.rank_change > 0 ? 'text-green-600' : 'text-red-600'
+                            }`}>
+                              {tracker.rank_change > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                              {tracker.rank_change > 0 ? '↑' : '↓'}{Math.abs(tracker.rank_change)}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="text-sm text-gray-400">순위 없음</span>
+                    )}
+                    
+                    {/* 키워드별 새로고침 버튼 */}
+                    <button
+                      onClick={() => onRefreshTracker(tracker.id)}
+                      disabled={isRefreshing.has(tracker.id)}
+                      className={`p-2 rounded-lg transition-all ${
+                        isRefreshing.has(tracker.id)
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          : 'bg-white text-indigo-600 hover:bg-indigo-50 hover:shadow-md'
+                      }`}
+                      title="이 키워드 순위를 지금 수집합니다"
+                    >
+                      <RefreshCw className={`w-4 h-4 ${isRefreshing.has(tracker.id) ? 'animate-spin' : ''}`} />
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+            
+            {/* 더 많은 키워드가 있을 경우 */}
+            {storeGroup.trackers.length > 5 && (
+              <Link
+                href="/dashboard/naver/metrics-tracker"
+                className="block text-center py-2 text-sm text-indigo-600 hover:text-indigo-800 font-semibold"
+              >
+                +{storeGroup.trackers.length - 5}개 더보기
+              </Link>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
@@ -300,8 +374,10 @@ export default function DashboardPage() {
   const [stores, setStores] = useState<Store[]>([])
   const [keywords, setKeywords] = useState<Keyword[]>([])
   const [trackers, setTrackers] = useState<MetricTracker[]>([])
+  const [storeGroups, setStoreGroups] = useState<StoreTrackerGroup[]>([])
   const [isLoadingData, setIsLoadingData] = useState(true)
   const [isReordering, setIsReordering] = useState(false)
+  const [isRefreshing, setIsRefreshing] = useState<Set<string>>(new Set())
   
   // 드래그앤드롭 센서 설정
   const sensors = useSensors(
@@ -321,23 +397,126 @@ export default function DashboardPage() {
     })
   )
 
+  // 추적 키워드를 매장별로 그룹화
+  const groupTrackersByStore = (trackers: MetricTracker[], stores: Store[]) => {
+    const storeMap = new Map<string, Store>()
+    stores.forEach(store => storeMap.set(store.id, store))
+
+    const groupMap = new Map<string, StoreTrackerGroup>()
+    
+    trackers.forEach(tracker => {
+      const store = storeMap.get(tracker.store_id)
+      if (!store) return
+
+      if (!groupMap.has(tracker.store_id)) {
+        groupMap.set(tracker.store_id, {
+          store_id: tracker.store_id,
+          store_name: store.name || store.store_name || '매장명 없음',
+          store_thumbnail: store.thumbnail,
+          platform: tracker.platform || store.platform,
+          trackers: [],
+          visitor_review_count: tracker.visitor_review_count,
+          blog_review_count: tracker.blog_review_count,
+          visitor_review_change: tracker.visitor_review_change,
+          blog_review_change: tracker.blog_review_change,
+        })
+      }
+
+      const group = groupMap.get(tracker.store_id)!
+      group.trackers.push(tracker)
+      
+      // 매장 레벨 리뷰 지표는 첫 번째 tracker의 값 사용
+      if (group.trackers.length === 1) {
+        group.visitor_review_count = tracker.visitor_review_count
+        group.blog_review_count = tracker.blog_review_count
+        group.visitor_review_change = tracker.visitor_review_change
+        group.blog_review_change = tracker.blog_review_change
+      }
+    })
+
+    return Array.from(groupMap.values())
+  }
+
+  // 개별 키워드 새로고침
+  const handleRefreshTracker = async (trackerId: string) => {
+    const token = getToken()
+    if (!token) return
+
+    setIsRefreshing(prev => new Set(prev).add(trackerId))
+
+    try {
+      await fetch(api.metrics.collectNow(trackerId), {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      // 데이터 다시 로드
+      await loadTrackers()
+    } catch (error) {
+      console.error('Failed to refresh tracker:', error)
+    } finally {
+      setIsRefreshing(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(trackerId)
+        return newSet
+      })
+    }
+  }
+
+  // 매장 전체 키워드 새로고침
+  const handleRefreshAllTrackers = async (storeId: string) => {
+    const token = getToken()
+    if (!token) return
+
+    const storeTrackers = trackers.filter(t => t.store_id === storeId)
+    const refreshKey = `store_${storeId}`
+    
+    setIsRefreshing(prev => new Set(prev).add(refreshKey))
+
+    try {
+      await Promise.all(
+        storeTrackers.map(tracker => 
+          fetch(api.metrics.collectNow(tracker.id), {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          })
+        )
+      )
+
+      // 데이터 다시 로드
+      await loadTrackers()
+    } catch (error) {
+      console.error('Failed to refresh all trackers:', error)
+    } finally {
+      setIsRefreshing(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(refreshKey)
+        return newSet
+      })
+    }
+  }
+
   // 드래그 종료 핸들러
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
 
     if (over && active.id !== over.id) {
-      setTrackers((items) => {
-        const oldIndex = items.findIndex((item) => item.id === active.id)
-        const newIndex = items.findIndex((item) => item.id === over.id)
+      setStoreGroups((items) => {
+        const oldIndex = items.findIndex((item) => item.store_id === active.id)
+        const newIndex = items.findIndex((item) => item.store_id === over.id)
         
         const newOrder = arrayMove(items, oldIndex, newIndex)
         
         // 순서를 로컬 스토리지에 저장
         const orderMap = newOrder.reduce((acc, item, index) => {
-          acc[item.id] = index
+          acc[item.store_id] = index
           return acc
         }, {} as Record<string, number>)
-        localStorage.setItem('tracker-order', JSON.stringify(orderMap))
+        localStorage.setItem('store-group-order', JSON.stringify(orderMap))
         
         return newOrder
       })
@@ -350,27 +529,61 @@ export default function DashboardPage() {
   }
 
   // 매장별 색상 매핑 생성
-  const getStoreColorMap = (stores: Store[]) => {
+  const getStoreColorMap = (groups: StoreTrackerGroup[]) => {
     const colorMap: Record<string, typeof STORE_COLORS[0]> = {}
-    stores.forEach((store, index) => {
-      colorMap[store.id] = STORE_COLORS[index % STORE_COLORS.length]
+    groups.forEach((group, index) => {
+      colorMap[group.store_id] = STORE_COLORS[index % STORE_COLORS.length]
     })
     return colorMap
   }
 
-  const storeColorMap = getStoreColorMap(stores)
+  const storeColorMap = getStoreColorMap(storeGroups)
+
+  // 추적 키워드 로드
+  const loadTrackers = async () => {
+    const token = getToken()
+    if (!token) return
+
+    const trackersRes = await fetch(api.metrics.trackers(), {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    })
+
+    if (trackersRes.ok) {
+      const trackersData = await trackersRes.json()
+      let trackersList = trackersData.trackers || []
+      setTrackers(trackersList)
+      
+      // 매장별 그룹화
+      const groups = groupTrackersByStore(trackersList, stores)
+      
+      // 저장된 순서 적용
+      const savedOrder = localStorage.getItem('store-group-order')
+      if (savedOrder) {
+        try {
+          const orderMap = JSON.parse(savedOrder) as Record<string, number>
+          groups.sort((a, b) => {
+            const orderA = orderMap[a.store_id] ?? 999
+            const orderB = orderMap[b.store_id] ?? 999
+            return orderA - orderB
+          })
+        } catch (e) {
+          console.error("Failed to parse saved store group order:", e)
+        }
+      }
+      
+      setStoreGroups(groups)
+    }
+  }
 
   // 데이터 로드
   useEffect(() => {
     const loadDashboardData = async () => {
       console.log("[DEBUG] loadDashboardData called")
-      console.log("[DEBUG] user:", user)
       
       const token = getToken()
-      console.log("[DEBUG] token:", token ? "exists" : "null")
-      
       if (!user || !token) {
-        console.log("[DEBUG] No user or token, waiting...")
         setIsLoadingData(false)
         return
       }
@@ -379,38 +592,29 @@ export default function DashboardPage() {
         setIsLoadingData(true)
 
         // 1. 사용자 프로필 조회
-        console.log("[DEBUG] Fetching profile from:", `${api.baseUrl}/api/v1/auth/me`)
         const profileRes = await fetch(`${api.baseUrl}/api/v1/auth/me`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
         })
-        console.log("[DEBUG] Profile response status:", profileRes.status)
         
         if (profileRes.ok) {
           const profileData = await profileRes.json()
-          console.log("[DEBUG] Profile data:", profileData)
           setProfile(profileData)
-        } else {
-          const errorText = await profileRes.text()
-          console.error("[DEBUG] Profile fetch failed:", profileRes.status, errorText)
         }
 
         // 2. 매장 목록 조회
-        console.log("[DEBUG] Fetching stores with auth token")
         const storesRes = await fetch(api.stores.list(), {
           headers: {
             'Authorization': `Bearer ${token}`
           }
         })
-        console.log("[DEBUG] Stores response status:", storesRes.status)
         
         if (storesRes.ok) {
           const storesData = await storesRes.json()
-          console.log("[DEBUG] Stores data:", storesData)
           setStores(storesData.stores || [])
 
-          // 3. 키워드 목록 조회 (모든 매장의 키워드)
+          // 3. 키워드 목록 조회
           const allKeywords: Keyword[] = []
           for (const store of (storesData.stores || [])) {
             try {
@@ -423,57 +627,45 @@ export default function DashboardPage() {
               console.error(`Failed to fetch keywords for store ${store.id}:`, error)
             }
           }
-          console.log("[DEBUG] All keywords:", allKeywords)
           setKeywords(allKeywords)
-        } else {
-          console.error("[DEBUG] Stores fetch failed:", storesRes.status)
         }
 
         // 4. 추적 키워드 목록 조회
-        console.log("[DEBUG] Fetching trackers")
-        const trackersRes = await fetch(api.metrics.trackers(), {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        })
-        console.log("[DEBUG] Trackers response status:", trackersRes.status)
-        
-        if (trackersRes.ok) {
-          const trackersData = await trackersRes.json()
-          console.log("[DEBUG] Trackers data:", trackersData)
-          
-          let trackersList = trackersData.trackers || []
-          
-          // 저장된 순서 적용
-          const savedOrder = localStorage.getItem('tracker-order')
-          if (savedOrder) {
-            try {
-              const orderMap = JSON.parse(savedOrder) as Record<string, number>
-              trackersList = trackersList.sort((a: MetricTracker, b: MetricTracker) => {
-                const orderA = orderMap[a.id] ?? 999
-                const orderB = orderMap[b.id] ?? 999
-                return orderA - orderB
-              })
-            } catch (e) {
-              console.error("Failed to parse saved tracker order:", e)
-            }
-          }
-          
-          setTrackers(trackersList)
-        } else {
-          console.error("[DEBUG] Trackers fetch failed:", trackersRes.status)
-        }
+        await loadTrackers()
 
       } catch (error) {
         console.error("[DEBUG] Error loading dashboard data:", error)
       } finally {
-        console.log("[DEBUG] Loading complete")
         setIsLoadingData(false)
       }
     }
 
     loadDashboardData()
-  }, [user]) // getToken은 함수이므로 의존성에서 제거
+  }, [user])
+
+  // stores가 로드되면 그룹화 다시 수행
+  useEffect(() => {
+    if (stores.length > 0 && trackers.length > 0) {
+      const groups = groupTrackersByStore(trackers, stores)
+      
+      // 저장된 순서 적용
+      const savedOrder = localStorage.getItem('store-group-order')
+      if (savedOrder) {
+        try {
+          const orderMap = JSON.parse(savedOrder) as Record<string, number>
+          groups.sort((a, b) => {
+            const orderA = orderMap[a.store_id] ?? 999
+            const orderB = orderMap[b.store_id] ?? 999
+            return orderA - orderB
+          })
+        } catch (e) {
+          console.error("Failed to parse saved store group order:", e)
+        }
+      }
+      
+      setStoreGroups(groups)
+    }
+  }, [stores, trackers])
 
   // 로딩 중
   if (authLoading || isLoadingData) {
@@ -515,7 +707,7 @@ export default function DashboardPage() {
     )
   }
 
-  // Tier 정보 (lucide-react 아이콘 사용)
+  // Tier 정보
   const tierInfo = {
     free: { 
       label: '무료', 
@@ -573,15 +765,9 @@ export default function DashboardPage() {
   const maxKeywords = profile?.max_keywords ?? 10
   const maxTrackers = profile?.max_trackers ?? 3
 
-  // 순위 변동 계산
-  const getRankChange = (keyword: Keyword) => {
-    if (keyword.previous_rank === null || keyword.current_rank === null) return null
-    return keyword.previous_rank - keyword.current_rank
-  }
-
   return (
     <div className="space-y-4 sm:space-y-6 lg:space-y-8 pb-6 sm:pb-8">
-      {/* 환영 헤더 - 반응형 */}
+      {/* 환영 헤더 */}
       <div className={`relative overflow-hidden bg-gradient-to-br ${tier.bgColor} rounded-2xl sm:rounded-3xl border-2 border-white shadow-xl`}>
         <div className="absolute top-0 right-0 w-32 h-32 sm:w-64 sm:h-64 bg-white/30 rounded-full -mr-16 sm:-mr-32 -mt-16 sm:-mt-32" />
         <div className="absolute bottom-0 left-0 w-24 h-24 sm:w-48 sm:h-48 bg-white/20 rounded-full -ml-12 sm:-ml-24 -mb-12 sm:-mb-24" />
@@ -615,7 +801,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* 통계 카드 그리드 - 완벽한 반응형 */}
+      {/* 통계 카드 그리드 */}
       <div className="grid gap-4 sm:gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {/* 크레딧 카드 */}
         <div className="group bg-white rounded-xl sm:rounded-2xl border border-gray-200 p-4 sm:p-5 lg:p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
@@ -749,19 +935,19 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* 추적 키워드 리스트 */}
+      {/* 매장별 추적 키워드 리스트 */}
       <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-200 shadow-lg overflow-hidden">
         <div className="bg-gradient-to-r from-indigo-500 to-purple-600 p-4 sm:p-6">
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div className="flex items-center gap-2 sm:gap-3">
               <BarChart3 className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-              <h3 className="text-xl sm:text-2xl font-bold text-white">추적 키워드</h3>
+              <h3 className="text-xl sm:text-2xl font-bold text-white">매장별 추적 키워드</h3>
               <span className="px-2 sm:px-3 py-1 bg-white/20 backdrop-blur-sm text-white text-xs sm:text-sm font-semibold rounded-full">
-                {trackers.length}개
+                {storeGroups.length}개 매장
               </span>
             </div>
             <div className="flex items-center gap-2">
-              {trackers.length > 0 && (
+              {storeGroups.length > 0 && (
                 <button
                   onClick={toggleReordering}
                   className={`px-3 sm:px-4 py-2 font-semibold rounded-lg sm:rounded-xl hover:shadow-lg transition-all duration-300 text-xs sm:text-sm flex items-center gap-2 ${
@@ -785,7 +971,7 @@ export default function DashboardPage() {
         </div>
         
         <div className="p-4 sm:p-6">
-          {trackers.length === 0 ? (
+          {storeGroups.length === 0 ? (
             <div className="text-center py-8 sm:py-12">
               <div className="bg-gray-100 rounded-full w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center mx-auto mb-3 sm:mb-4">
                 <BarChart3 className="w-8 h-8 sm:w-10 sm:h-10 text-gray-400" />
@@ -807,16 +993,19 @@ export default function DashboardPage() {
               onDragEnd={handleDragEnd}
             >
               <SortableContext
-                items={trackers.map(t => t.id)}
+                items={storeGroups.map(g => g.store_id)}
                 strategy={rectSortingStrategy}
               >
-                <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  {trackers.map((tracker) => (
-                    <SortableTrackerCard
-                      key={tracker.id}
-                      tracker={tracker}
-                      storeColor={storeColorMap[tracker.store_id] || STORE_COLORS[0]}
+                <div className="grid gap-4 sm:gap-5 grid-cols-1 lg:grid-cols-2">
+                  {storeGroups.map((storeGroup) => (
+                    <SortableStoreTrackerCard
+                      key={storeGroup.store_id}
+                      storeGroup={storeGroup}
+                      storeColor={storeColorMap[storeGroup.store_id] || STORE_COLORS[0]}
                       isReordering={isReordering}
+                      onRefreshTracker={handleRefreshTracker}
+                      onRefreshAllTrackers={handleRefreshAllTrackers}
+                      isRefreshing={isRefreshing}
                     />
                   ))}
                 </div>
@@ -881,7 +1070,6 @@ export default function DashboardPage() {
                               alt={store.name || store.store_name || '매장'} 
                               className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg object-cover border-2 border-white shadow-sm"
                               onError={(e) => {
-                                // 이미지 로드 실패 시 기본 아이콘으로 대체
                                 e.currentTarget.style.display = 'none'
                                 const parent = e.currentTarget.parentElement
                                 if (parent) {
