@@ -46,13 +46,15 @@ import {
   useSensor,
   useSensors,
   DragEndEvent,
+  MouseSensor,
+  TouchSensor,
 } from '@dnd-kit/core'
 import {
   arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
   useSortable,
-  verticalListSortingStrategy,
+  rectSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 
@@ -136,27 +138,22 @@ function SortableTrackerCard({ tracker, storeColor, isReordering }: {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 1000 : 'auto',
   }
 
-  return (
-    <div ref={setNodeRef} style={style} className="group">
-      <Link 
-        href={isReordering ? '#' : `/dashboard/naver/metrics-tracker?trackerId=${tracker.id}`}
-        className={`block ${isReordering ? 'pointer-events-none' : ''}`}
-      >
-        <div className={`relative p-4 sm:p-5 rounded-xl border-2 ${storeColor.border} hover:shadow-xl transition-all duration-300 bg-gradient-to-br ${storeColor.bg} ${isReordering ? 'cursor-move' : ''}`}>
-          {/* 드래그 핸들 */}
-          {isReordering && (
-            <div 
-              {...attributes} 
-              {...listeners}
-              className="absolute left-2 top-1/2 -translate-y-1/2 cursor-move touch-none"
-            >
-              <GripVertical className="w-5 h-5 text-gray-400" />
-            </div>
-          )}
-          
-          <div className={`${isReordering ? 'ml-6' : ''}`}>
+  const CardContent = (
+    <div 
+      className={`relative p-4 sm:p-5 rounded-xl border-2 ${storeColor.border} hover:shadow-xl transition-all duration-300 bg-gradient-to-br ${storeColor.bg} ${isReordering ? 'cursor-move' : ''}`}
+      {...(isReordering ? { ...attributes, ...listeners } : {})}
+    >
+      {/* 드래그 핸들 */}
+      {isReordering && (
+        <div className="absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none">
+          <GripVertical className="w-5 h-5 text-gray-400" />
+        </div>
+      )}
+      
+      <div className={`${isReordering ? 'ml-6' : ''}`}>
             {/* 상단: 키워드 & 상태 */}
             <div className="flex items-start justify-between mb-3">
               <div className="flex-1 min-w-0">
@@ -276,7 +273,20 @@ function SortableTrackerCard({ tracker, storeColor, isReordering }: {
             </div>
           </div>
         </div>
-      </Link>
+  )
+
+  return (
+    <div ref={setNodeRef} style={style} className="group">
+      {isReordering ? (
+        CardContent
+      ) : (
+        <Link 
+          href={`/dashboard/naver/metrics-tracker?trackerId=${tracker.id}`}
+          className="block"
+        >
+          {CardContent}
+        </Link>
+      )}
     </div>
   )
 }
@@ -293,7 +303,17 @@ export default function DashboardPage() {
   
   // 드래그앤드롭 센서 설정
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(MouseSensor, {
+      activationConstraint: {
+        distance: 10,
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 250,
+        tolerance: 5,
+      },
+    }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
@@ -786,7 +806,7 @@ export default function DashboardPage() {
             >
               <SortableContext
                 items={trackers.map(t => t.id)}
-                strategy={verticalListSortingStrategy}
+                strategy={rectSortingStrategy}
               >
                 <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                   {trackers.map((tracker) => (
