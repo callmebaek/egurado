@@ -282,12 +282,20 @@ export default function NaverRankPage() {
           console.log(`📊 전체 키워드 수: ${totalKeywords}/${keywordLimit} (tier: ${subscriptionTier})`)
         }
         
-        // 현재 선택된 매장의 조회한 키워드 로드 (is_tracked=false)
-        const response = await fetch(`${api.naver.keywords(selectedStoreId)}?is_tracked=false`)
+        // 현재 선택된 매장의 조회한 키워드 로드 (최근 10개, is_tracked 상태 포함)
+        const response = await fetch(api.naver.keywords(selectedStoreId))
         
         if (response.ok) {
           const data = await response.json()
-          setKeywords(data.keywords || [])
+          // last_searched_at 기준으로 정렬하고 최근 10개만 표시
+          const sortedKeywords = (data.keywords || [])
+            .sort((a: KeywordData, b: KeywordData) => {
+              const dateA = new Date(a.last_searched_at || a.last_checked_at).getTime()
+              const dateB = new Date(b.last_searched_at || b.last_checked_at).getTime()
+              return dateB - dateA  // 최신순
+            })
+            .slice(0, 10)
+          setKeywords(sortedKeywords)
         }
       } catch (error) {
         console.error("키워드 로드 실패:", error)
@@ -402,10 +410,18 @@ export default function NaverRankPage() {
           }
         }
         
-        const keywordsResponse = await fetch(`${api.naver.keywords(selectedStoreId)}?is_tracked=false`)
+        const keywordsResponse = await fetch(api.naver.keywords(selectedStoreId))
         if (keywordsResponse.ok) {
           const keywordsData = await keywordsResponse.json()
-          setKeywords(keywordsData.keywords || [])
+          // last_searched_at 기준으로 정렬하고 최근 10개만 표시
+          const sortedKeywords = (keywordsData.keywords || [])
+            .sort((a: KeywordData, b: KeywordData) => {
+              const dateA = new Date(a.last_searched_at || a.last_checked_at).getTime()
+              const dateB = new Date(b.last_searched_at || b.last_checked_at).getTime()
+              return dateB - dateA  // 최신순
+            })
+            .slice(0, 10)
+          setKeywords(sortedKeywords)
         }
 
         toast({
@@ -556,10 +572,18 @@ export default function NaverRankPage() {
         }
       }
       
-      const keywordsResponse = await fetch(`${api.naver.keywords(selectedStoreId)}?is_tracked=false`)
+      const keywordsResponse = await fetch(api.naver.keywords(selectedStoreId))
       if (keywordsResponse.ok) {
         const keywordsData = await keywordsResponse.json()
-        setKeywords(keywordsData.keywords || [])
+        // last_searched_at 기준으로 정렬하고 최근 10개만 표시
+        const sortedKeywords = (keywordsData.keywords || [])
+          .sort((a: KeywordData, b: KeywordData) => {
+            const dateA = new Date(a.last_searched_at || a.last_checked_at).getTime()
+            const dateB = new Date(b.last_searched_at || b.last_checked_at).getTime()
+            return dateB - dateA  // 최신순
+          })
+          .slice(0, 10)
+        setKeywords(sortedKeywords)
       }
 
       toast({

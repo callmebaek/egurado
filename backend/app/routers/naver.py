@@ -2,7 +2,7 @@
 네이버 플레이스 관련 API 라우터
 (경쟁매장 분석 포함)
 """
-from fastapi import APIRouter, HTTPException, status, Query
+from fastapi import APIRouter, HTTPException, status, Query, Depends
 from pydantic import BaseModel
 from typing import List, Dict, Optional, Any
 from uuid import UUID
@@ -18,6 +18,7 @@ from app.services.naver_rank_api_unofficial import rank_service_api_unofficial
 from app.services.naver_keywords_analyzer import keywords_analyzer_service
 from app.services.naver_competitor_analysis_service import competitor_analysis_service
 from app.core.database import get_supabase_client
+from app.core.auth import get_current_user, User
 from datetime import datetime, date
 
 router = APIRouter()
@@ -623,7 +624,7 @@ async def get_store_keywords(
 
 
 @router.post("/keywords/{keyword_id}/track")
-async def track_keyword(keyword_id: UUID):
+async def track_keyword(keyword_id: UUID, user: User = Depends(get_current_user)):
     """
     키워드를 추적 상태로 변경하고 주요지표 추적을 자동 생성
     
@@ -646,18 +647,18 @@ async def track_keyword(keyword_id: UUID):
         keyword_data = keyword_check.data
         store_id = keyword_data["store_id"]
         
-        # 매장 정보 조회 (user_id 필요)
+        # 매장 정보 조회 (소유권 확인)
         store_check = supabase.table("stores").select(
             "id, user_id"
-        ).eq("id", store_id).single().execute()
+        ).eq("id", store_id).eq("user_id", str(user.id)).single().execute()
         
         if not store_check.data:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="매장을 찾을 수 없습니다."
+                detail="매장을 찾을 수 없거나 접근 권한이 없습니다."
             )
         
-        user_id = store_check.data["user_id"]
+        user_id = user.id  # ⭐ 인증된 사용자의 ID 사용
         
         # 이미 metric_tracker가 있는지 확인
         existing_tracker = supabase.table("metric_trackers").select(
