@@ -660,6 +660,10 @@ async def track_keyword(keyword_id: UUID, current_user: dict = Depends(get_curre
         
         user_id = current_user["id"]  # ⭐ 인증된 사용자의 ID 사용
         
+        # ⭐ metric_tracker 서비스 준비
+        from app.services.metric_tracker_service import MetricTrackerService
+        tracker_service = MetricTrackerService()
+        
         # 이미 metric_tracker가 있는지 확인
         existing_tracker = supabase.table("metric_trackers").select(
             "id"
@@ -673,10 +677,20 @@ async def track_keyword(keyword_id: UUID, current_user: dict = Depends(get_curre
                 "is_tracked": True
             }).eq("id", str(keyword_id)).execute()
             
+            tracker_id = existing_tracker.data[0]["id"]
+            
+            # ⭐ 이미 추적 중이어도 즉시 지표 수집
+            try:
+                logger.info(f"[Track Keyword] 기존 tracker 지표 수집 시작: {tracker_id}")
+                await tracker_service.collect_metrics(tracker_id)
+                logger.info(f"[Track Keyword] 기존 tracker 지표 수집 완료: {tracker_id}")
+            except Exception as collect_error:
+                logger.error(f"[Track Keyword] 기존 tracker 지표 수집 실패: {str(collect_error)}")
+            
             return {
                 "status": "success",
                 "message": "이미 추적 중인 키워드입니다.",
-                "tracker_id": existing_tracker.data[0]["id"]
+                "tracker_id": tracker_id
             }
         
         # is_tracked를 true로 변경
@@ -685,10 +699,7 @@ async def track_keyword(keyword_id: UUID, current_user: dict = Depends(get_curre
         }).eq("id", str(keyword_id)).execute()
         
         # ⭐ metric_tracker 자동 생성
-        from app.services.metric_tracker_service import MetricTrackerService
         from datetime import datetime, timezone
-        
-        tracker_service = MetricTrackerService()
         
         # 다음 수집 시간 계산 (오후 4시)
         next_collection = datetime.now(timezone.utc).replace(hour=7, minute=0, second=0, microsecond=0)  # KST 16:00 = UTC 07:00
@@ -709,6 +720,15 @@ async def track_keyword(keyword_id: UUID, current_user: dict = Depends(get_curre
         created_tracker = tracker_service.create_tracker(tracker_data)
         
         logger.info(f"[Track Keyword] Keyword {keyword_id} is now tracked with metric_tracker {created_tracker['id']}")
+        
+        # ⭐ 추적 설정 생성 후 즉시 첫 번째 지표 수집
+        try:
+            logger.info(f"[Track Keyword] 첫 번째 지표 수집 시작: {created_tracker['id']}")
+            await tracker_service.collect_metrics(created_tracker["id"])
+            logger.info(f"[Track Keyword] 첫 번째 지표 수집 완료: {created_tracker['id']}")
+        except Exception as collect_error:
+            # 지표 수집 실패해도 tracker는 생성됨
+            logger.error(f"[Track Keyword] 첫 번째 지표 수집 실패: {str(collect_error)}")
         
         return {
             "status": "success",
