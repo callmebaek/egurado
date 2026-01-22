@@ -4,6 +4,7 @@
  * 대시보드 메인 페이지
  * 계정 정보, 등록 매장, 키워드, 추적 현황 표시
  * 완벽한 반응형 디자인 (모바일/태블릿/PC)
+ * 드래그앤드롭 순서 변경 기능 포함
  */
 import { useEffect, useState } from "react"
 import { useAuth } from "@/lib/auth-context"
@@ -30,9 +31,30 @@ import {
   Zap,
   Star,
   Gem,
-  Shield
+  Shield,
+  GripVertical,
+  MessageSquare,
+  FileText,
+  Edit3
 } from "lucide-react"
 import Link from "next/link"
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
 interface UserProfile {
   id: string
@@ -68,12 +90,195 @@ interface MetricTracker {
   id: string
   keyword: string
   store_name: string
+  store_id: string
   is_active: boolean
   last_collected_at: string | null
   update_frequency: string
   created_at: string
   latest_rank?: number | null
+  rank_change?: number | null
+  visitor_review_count?: number
+  blog_review_count?: number
+  visitor_review_change?: number
+  blog_review_change?: number
   platform?: string
+  display_order?: number
+}
+
+// 매장별 색상 팔레트 (밝고 구분 가능한 색상)
+const STORE_COLORS = [
+  { bg: 'from-blue-50 to-blue-100', border: 'border-blue-300', text: 'text-blue-900', badge: 'bg-blue-500' },
+  { bg: 'from-purple-50 to-purple-100', border: 'border-purple-300', text: 'text-purple-900', badge: 'bg-purple-500' },
+  { bg: 'from-green-50 to-green-100', border: 'border-green-300', text: 'text-green-900', badge: 'bg-green-500' },
+  { bg: 'from-orange-50 to-orange-100', border: 'border-orange-300', text: 'text-orange-900', badge: 'bg-orange-500' },
+  { bg: 'from-pink-50 to-pink-100', border: 'border-pink-300', text: 'text-pink-900', badge: 'bg-pink-500' },
+  { bg: 'from-teal-50 to-teal-100', border: 'border-teal-300', text: 'text-teal-900', badge: 'bg-teal-500' },
+  { bg: 'from-indigo-50 to-indigo-100', border: 'border-indigo-300', text: 'text-indigo-900', badge: 'bg-indigo-500' },
+  { bg: 'from-rose-50 to-rose-100', border: 'border-rose-300', text: 'text-rose-900', badge: 'bg-rose-500' },
+]
+
+// 드래그 가능한 추적 키워드 카드 컴포넌트
+function SortableTrackerCard({ tracker, storeColor, isReordering }: { 
+  tracker: MetricTracker, 
+  storeColor: typeof STORE_COLORS[0],
+  isReordering: boolean
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: tracker.id, disabled: !isReordering })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  }
+
+  return (
+    <div ref={setNodeRef} style={style} className="group">
+      <Link 
+        href={isReordering ? '#' : `/dashboard/naver/metrics-tracker?trackerId=${tracker.id}`}
+        className={`block ${isReordering ? 'pointer-events-none' : ''}`}
+      >
+        <div className={`relative p-4 sm:p-5 rounded-xl border-2 ${storeColor.border} hover:shadow-xl transition-all duration-300 bg-gradient-to-br ${storeColor.bg} ${isReordering ? 'cursor-move' : ''}`}>
+          {/* 드래그 핸들 */}
+          {isReordering && (
+            <div 
+              {...attributes} 
+              {...listeners}
+              className="absolute left-2 top-1/2 -translate-y-1/2 cursor-move touch-none"
+            >
+              <GripVertical className="w-5 h-5 text-gray-400" />
+            </div>
+          )}
+          
+          <div className={`${isReordering ? 'ml-6' : ''}`}>
+            {/* 상단: 키워드 & 상태 */}
+            <div className="flex items-start justify-between mb-3">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <h4 className={`font-bold text-base ${storeColor.text} group-hover:text-opacity-80 transition-colors truncate`}>
+                    {tracker.keyword}
+                  </h4>
+                  {tracker.is_active ? (
+                    <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />
+                  ) : (
+                    <XCircle className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                  )}
+                </div>
+                <p className="text-xs text-gray-600 truncate flex items-center gap-1">
+                  <StoreIcon className="w-3 h-3" />
+                  {tracker.store_name}
+                </p>
+              </div>
+            </div>
+
+            {/* 순위 (가장 크게) */}
+            {tracker.latest_rank && (
+              <div className="mb-3">
+                <div className="flex items-baseline gap-2">
+                  <span className={`text-4xl font-bold ${storeColor.text}`}>
+                    {tracker.latest_rank}
+                  </span>
+                  <span className="text-lg text-gray-600">위</span>
+                  {tracker.rank_change !== undefined && tracker.rank_change !== null && tracker.rank_change !== 0 && (
+                    <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold ${
+                      tracker.rank_change > 0 
+                        ? 'bg-red-100 text-red-700' 
+                        : 'bg-green-100 text-green-700'
+                    }`}>
+                      {tracker.rank_change > 0 ? (
+                        <>
+                          <ArrowDownRight className="w-3 h-3" />
+                          <span>↓{tracker.rank_change}</span>
+                        </>
+                      ) : (
+                        <>
+                          <ArrowUpRight className="w-3 h-3" />
+                          <span>↑{Math.abs(tracker.rank_change)}</span>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* 리뷰 지표 (작게) */}
+            <div className="grid grid-cols-2 gap-2 mb-3">
+              {/* 방문자 리뷰 */}
+              <div className="bg-white/60 rounded-lg p-2">
+                <div className="flex items-center gap-1 mb-1">
+                  <MessageSquare className="w-3 h-3 text-gray-500" />
+                  <span className="text-xs text-gray-600">방문자</span>
+                </div>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-lg font-bold text-gray-800">
+                    {tracker.visitor_review_count ?? 0}
+                  </span>
+                  {tracker.visitor_review_change !== undefined && tracker.visitor_review_change !== null && tracker.visitor_review_change !== 0 && (
+                    <span className={`text-xs font-semibold ${
+                      tracker.visitor_review_change > 0 ? 'text-green-600' : 'text-red-600'
+                    }`}>
+                      {tracker.visitor_review_change > 0 ? '+' : ''}{tracker.visitor_review_change}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* 블로그 리뷰 */}
+              <div className="bg-white/60 rounded-lg p-2">
+                <div className="flex items-center gap-1 mb-1">
+                  <FileText className="w-3 h-3 text-gray-500" />
+                  <span className="text-xs text-gray-600">블로그</span>
+                </div>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-lg font-bold text-gray-800">
+                    {tracker.blog_review_count ?? 0}
+                  </span>
+                  {tracker.blog_review_change !== undefined && tracker.blog_review_change !== null && tracker.blog_review_change !== 0 && (
+                    <span className={`text-xs font-semibold ${
+                      tracker.blog_review_change > 0 ? 'text-green-600' : 'text-red-600'
+                    }`}>
+                      {tracker.blog_review_change > 0 ? '+' : ''}{tracker.blog_review_change}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* 하단: 업데이트 정보 */}
+            <div className="flex items-center justify-between text-xs text-gray-500">
+              <div className="flex items-center gap-1">
+                <Activity className="w-3 h-3" />
+                <span>
+                  {tracker.update_frequency === 'daily_once' ? '1회/일' : 
+                   tracker.update_frequency === 'daily_twice' ? '2회/일' : '3회/일'}
+                </span>
+              </div>
+              {tracker.last_collected_at && (
+                <div className="flex items-center gap-1">
+                  <Clock className="w-3 h-3" />
+                  <span>
+                    {new Date(tracker.last_collected_at).toLocaleString('ko-KR', {
+                      month: 'short',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </Link>
+    </div>
+  )
 }
 
 export default function DashboardPage() {
@@ -84,6 +289,54 @@ export default function DashboardPage() {
   const [keywords, setKeywords] = useState<Keyword[]>([])
   const [trackers, setTrackers] = useState<MetricTracker[]>([])
   const [isLoadingData, setIsLoadingData] = useState(true)
+  const [isReordering, setIsReordering] = useState(false)
+  
+  // 드래그앤드롭 센서 설정
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  )
+
+  // 드래그 종료 핸들러
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+
+    if (over && active.id !== over.id) {
+      setTrackers((items) => {
+        const oldIndex = items.findIndex((item) => item.id === active.id)
+        const newIndex = items.findIndex((item) => item.id === over.id)
+        
+        const newOrder = arrayMove(items, oldIndex, newIndex)
+        
+        // 순서를 로컬 스토리지에 저장
+        const orderMap = newOrder.reduce((acc, item, index) => {
+          acc[item.id] = index
+          return acc
+        }, {} as Record<string, number>)
+        localStorage.setItem('tracker-order', JSON.stringify(orderMap))
+        
+        return newOrder
+      })
+    }
+  }
+
+  // 순서 변경 토글
+  const toggleReordering = () => {
+    setIsReordering(!isReordering)
+  }
+
+  // 매장별 색상 매핑 생성
+  const getStoreColorMap = (stores: Store[]) => {
+    const colorMap: Record<string, typeof STORE_COLORS[0]> = {}
+    stores.forEach((store, index) => {
+      colorMap[store.id] = STORE_COLORS[index % STORE_COLORS.length]
+    })
+    return colorMap
+  }
+
+  const storeColorMap = getStoreColorMap(stores)
 
   // 데이터 로드
   useEffect(() => {
@@ -166,7 +419,25 @@ export default function DashboardPage() {
         if (trackersRes.ok) {
           const trackersData = await trackersRes.json()
           console.log("[DEBUG] Trackers data:", trackersData)
-          setTrackers(trackersData.trackers || [])
+          
+          let trackersList = trackersData.trackers || []
+          
+          // 저장된 순서 적용
+          const savedOrder = localStorage.getItem('tracker-order')
+          if (savedOrder) {
+            try {
+              const orderMap = JSON.parse(savedOrder) as Record<string, number>
+              trackersList = trackersList.sort((a: MetricTracker, b: MetricTracker) => {
+                const orderA = orderMap[a.id] ?? 999
+                const orderB = orderMap[b.id] ?? 999
+                return orderA - orderB
+              })
+            } catch (e) {
+              console.error("Failed to parse saved tracker order:", e)
+            }
+          }
+          
+          setTrackers(trackersList)
         } else {
           console.error("[DEBUG] Trackers fetch failed:", trackersRes.status)
         }
@@ -467,12 +738,27 @@ export default function DashboardPage() {
                 {trackers.length}개
               </span>
             </div>
-            <Link 
-              href="/dashboard/naver/metrics-tracker"
-              className="px-3 sm:px-4 py-2 bg-white text-indigo-600 font-semibold rounded-lg sm:rounded-xl hover:shadow-lg transition-all duration-300 text-xs sm:text-sm"
-            >
-              + 추적 관리
-            </Link>
+            <div className="flex items-center gap-2">
+              {trackers.length > 0 && (
+                <button
+                  onClick={toggleReordering}
+                  className={`px-3 sm:px-4 py-2 font-semibold rounded-lg sm:rounded-xl hover:shadow-lg transition-all duration-300 text-xs sm:text-sm flex items-center gap-2 ${
+                    isReordering 
+                      ? 'bg-green-500 text-white' 
+                      : 'bg-white text-indigo-600'
+                  }`}
+                >
+                  <Edit3 className="w-4 h-4" />
+                  {isReordering ? '완료' : '순서변경'}
+                </button>
+              )}
+              <Link 
+                href="/dashboard/naver/metrics-tracker"
+                className="px-3 sm:px-4 py-2 bg-white text-indigo-600 font-semibold rounded-lg sm:rounded-xl hover:shadow-lg transition-all duration-300 text-xs sm:text-sm"
+              >
+                + 추적관리
+              </Link>
+            </div>
           </div>
         </div>
         
@@ -493,67 +779,27 @@ export default function DashboardPage() {
               </Link>
             </div>
           ) : (
-            <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
-              {trackers.map((tracker) => (
-                <Link 
-                  href={`/dashboard/naver/metrics-tracker?trackerId=${tracker.id}`}
-                  key={tracker.id}
-                  className="group"
-                >
-                  <div className="p-4 sm:p-5 rounded-lg sm:rounded-xl border-2 border-purple-100 hover:border-purple-400 hover:shadow-xl transition-all duration-300 bg-gradient-to-br from-purple-50 to-indigo-50">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-2">
-                          <h4 className="font-bold text-purple-900 text-sm sm:text-base group-hover:text-purple-600 transition-colors truncate">
-                            {tracker.keyword}
-                          </h4>
-                          {tracker.is_active ? (
-                            <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 flex-shrink-0" />
-                          ) : (
-                            <XCircle className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 flex-shrink-0" />
-                          )}
-                        </div>
-                        <p className="text-xs sm:text-sm text-purple-700 mb-1 truncate">{tracker.store_name}</p>
-                        <div className="flex items-center gap-2 text-xs text-purple-600">
-                          <Activity className="w-3 h-3 flex-shrink-0" />
-                          <span>{tracker.update_frequency === 'daily_once' ? '매일 1회' : tracker.update_frequency === 'daily_twice' ? '매일 2회' : '매일 3회'}</span>
-                        </div>
-                      </div>
-                      
-                      {tracker.latest_rank && (
-                        <div className="px-2 sm:px-3 py-1 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg font-bold text-xs sm:text-sm shadow-md ml-2 flex-shrink-0">
-                          {tracker.latest_rank}위
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="space-y-2">
-                      {tracker.last_collected_at && (
-                        <div className="flex items-center gap-1 text-xs text-purple-600 bg-purple-100 rounded-lg px-2 sm:px-3 py-1.5 sm:py-2">
-                          <Clock className="w-3 h-3 flex-shrink-0" />
-                          <span className="truncate">마지막: {new Date(tracker.last_collected_at).toLocaleString('ko-KR', {
-                            month: 'short',
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}</span>
-                        </div>
-                      )}
-                      
-                      {tracker.platform && (
-                        <span className={`inline-block px-2 py-1 rounded-md text-xs font-bold ${
-                          tracker.platform === 'naver' 
-                            ? 'bg-green-500 text-white' 
-                            : 'bg-blue-500 text-white'
-                        }`}>
-                          {tracker.platform === 'naver' ? '네이버' : '구글'}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={trackers.map(t => t.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {trackers.map((tracker) => (
+                    <SortableTrackerCard
+                      key={tracker.id}
+                      tracker={tracker}
+                      storeColor={storeColorMap[tracker.store_id] || STORE_COLORS[0]}
+                      isReordering={isReordering}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
           )}
         </div>
       </div>
@@ -595,62 +841,68 @@ export default function DashboardPage() {
             </div>
           ) : (
             <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {stores.map((store) => (
-                <Link 
-                  href={`/dashboard/naver/reviews?storeId=${store.id}`}
-                  key={store.id}
-                  className="group"
-                >
-                  <div className="p-3 sm:p-4 rounded-lg sm:rounded-xl border-2 border-gray-200 hover:border-purple-400 hover:shadow-xl transition-all duration-300 bg-gradient-to-br from-white to-gray-50">
-                    <div className="flex items-start justify-between mb-2 sm:mb-3">
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-bold text-gray-800 text-sm sm:text-base mb-1 group-hover:text-purple-600 transition-colors truncate" title={store.store_name}>
-                          {store.store_name}
-                        </h4>
-                        {store.address && (
-                          <div className="flex items-center gap-1 text-xs text-gray-500 mb-1 sm:mb-2">
-                            <MapPin className="w-3 h-3 flex-shrink-0" />
-                            <span className="truncate line-clamp-1">{store.address}</span>
+              {stores.map((store, index) => {
+                const storeColor = STORE_COLORS[index % STORE_COLORS.length]
+                return (
+                  <Link 
+                    href={`/dashboard/naver/reviews?storeId=${store.id}`}
+                    key={store.id}
+                    className="group"
+                  >
+                    <div className={`p-3 sm:p-4 rounded-lg sm:rounded-xl border-2 ${storeColor.border} hover:shadow-xl transition-all duration-300 bg-gradient-to-br ${storeColor.bg}`}>
+                      <div className="flex items-start justify-between mb-2 sm:mb-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <StoreIcon className="w-4 h-4 text-gray-600 flex-shrink-0" />
+                            <h4 className={`font-bold text-sm sm:text-base group-hover:opacity-80 transition-opacity truncate ${storeColor.text}`} title={store.store_name}>
+                              {store.store_name}
+                            </h4>
                           </div>
-                        )}
+                          {store.address && (
+                            <div className="flex items-center gap-1 text-xs text-gray-600 mb-1 sm:mb-2">
+                              <MapPin className="w-3 h-3 flex-shrink-0" />
+                              <span className="truncate line-clamp-1">{store.address}</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className={`px-2 py-1 rounded-md text-xs font-bold ml-2 flex-shrink-0 ${
+                          store.status === 'active' 
+                            ? 'bg-green-100 text-green-700' 
+                            : 'bg-gray-100 text-gray-600'
+                        }`}>
+                          {store.status === 'active' ? '✓' : '○'}
+                        </div>
                       </div>
-                      <div className={`px-2 py-1 rounded-md text-xs font-bold ml-2 flex-shrink-0 ${
-                        store.status === 'active' 
-                          ? 'bg-green-100 text-green-700' 
-                          : 'bg-gray-100 text-gray-600'
-                      }`}>
-                        {store.status === 'active' ? '✓' : '○'}
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center justify-between gap-2">
-                      <span className={`px-2 sm:px-3 py-1 rounded-md text-xs font-bold ${
-                        store.platform === 'naver' 
-                          ? 'bg-green-500 text-white' 
-                          : 'bg-blue-500 text-white'
-                      }`}>
-                        {store.platform === 'naver' ? '네이버' : '구글'}
-                      </span>
                       
-                      <div className="flex items-center gap-1 text-xs text-gray-400">
-                        <Clock className="w-3 h-3" />
-                        <span className="hidden sm:inline">
-                          {new Date(store.created_at).toLocaleDateString('ko-KR', { 
-                            month: 'short', 
-                            day: 'numeric' 
-                          })}
+                      <div className="flex items-center justify-between gap-2">
+                        <span className={`px-2 sm:px-3 py-1 rounded-md text-xs font-bold ${
+                          store.platform === 'naver' 
+                            ? 'bg-green-500 text-white' 
+                            : 'bg-blue-500 text-white'
+                        }`}>
+                          {store.platform === 'naver' ? '네이버' : '구글'}
                         </span>
-                        <span className="sm:hidden">
-                          {new Date(store.created_at).toLocaleDateString('ko-KR', { 
-                            month: 'numeric', 
-                            day: 'numeric' 
-                          })}
-                        </span>
+                        
+                        <div className="flex items-center gap-1 text-xs text-gray-500">
+                          <Clock className="w-3 h-3" />
+                          <span className="hidden sm:inline">
+                            {new Date(store.created_at).toLocaleDateString('ko-KR', { 
+                              month: 'short', 
+                              day: 'numeric' 
+                            })}
+                          </span>
+                          <span className="sm:hidden">
+                            {new Date(store.created_at).toLocaleDateString('ko-KR', { 
+                              month: 'numeric', 
+                              day: 'numeric' 
+                            })}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </Link>
-              ))}
+                  </Link>
+                )
+              })}
             </div>
           )}
         </div>
