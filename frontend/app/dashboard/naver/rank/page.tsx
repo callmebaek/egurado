@@ -452,16 +452,31 @@ export default function NaverRankPage() {
     
     try {
       const token = getToken()
-      if (!token) return
+      if (!token) {
+        toast({
+          title: "인증 필요",
+          description: "로그인이 필요합니다",
+          variant: "destructive",
+        })
+        return
+      }
+      
+      console.log(`[추적] API 호출 시작: ${api.naver.trackKeyword(keywordId)}`)
       
       const response = await fetch(api.naver.trackKeyword(keywordId), {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
       })
       
+      console.log(`[추적] API 응답 상태: ${response.status}`)
+      
       if (response.ok) {
+        const data = await response.json()
+        console.log(`[추적] 성공:`, data)
+        
         toast({
           title: "추적 시작",
           description: "주요지표 추적 페이지에서 확인하세요"
@@ -476,12 +491,14 @@ export default function NaverRankPage() {
           )
         )
       } else {
-        throw new Error("추적 전환에 실패했습니다")
+        const errorData = await response.json().catch(() => ({ detail: "알 수 없는 오류" }))
+        console.error(`[추적] 실패:`, errorData)
+        throw new Error(errorData.detail || "추적 전환에 실패했습니다")
       }
     } catch (error: any) {
       console.error("추적 전환 실패:", error)
       toast({
-        title: "추적 전환 실패",
+        title: "추적 실패",
         description: error.message || "추적 전환 중 오류가 발생했습니다",
         variant: "destructive",
       })
