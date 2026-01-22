@@ -852,152 +852,151 @@ export default function MetricsTrackerPage() {
                           )}
                         </div>
                       </div>
-                  
-                  {/* 최근 지표 미리보기 */}
-                  <div className="w-full">
-                    {latestMetrics[tracker.id] ? (
-                      <div className="grid grid-cols-3 gap-2">
-                        {/* 순위 */}
-                        <div className="text-center bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg px-2 py-2.5">
-                          <div className="text-[10px] text-blue-600 font-medium mb-1">순위</div>
-                          <div className="flex flex-col items-center justify-center">
-                            <span className="text-xl font-bold text-blue-700">
-                              {latestMetrics[tracker.id].rank || '-'}
-                            </span>
-                            {previousMetrics[tracker.id] && latestMetrics[tracker.id].rank && previousMetrics[tracker.id]!.rank ? (
-                              (() => {
-                                const change = latestMetrics[tracker.id].rank! - previousMetrics[tracker.id]!.rank!
-                                return change !== 0 ? (
-                                  <span className={`text-[10px] font-medium ${change > 0 ? 'text-red-600' : 'text-blue-600'}`}>
-                                    {change > 0 ? '↓' : '↑'}{Math.abs(change)}
-                                  </span>
+                      
+                      {/* 최근 지표 미리보기 */}
+                      <div className="w-full">
+                        {latestMetrics[tracker.id] ? (
+                          <div className="grid grid-cols-3 gap-2">
+                            {/* 순위 */}
+                            <div className="text-center bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg px-2 py-2.5">
+                              <div className="text-[10px] text-blue-600 font-medium mb-1">순위</div>
+                              <div className="flex flex-col items-center justify-center">
+                                <span className="text-xl font-bold text-blue-700">
+                                  {latestMetrics[tracker.id].rank || '-'}
+                                </span>
+                                {previousMetrics[tracker.id] && latestMetrics[tracker.id].rank && previousMetrics[tracker.id]!.rank ? (
+                                  (() => {
+                                    const change = latestMetrics[tracker.id].rank! - previousMetrics[tracker.id]!.rank!
+                                    return change !== 0 ? (
+                                      <span className={`text-[10px] font-medium ${change > 0 ? 'text-red-600' : 'text-blue-600'}`}>
+                                        {change > 0 ? '↓' : '↑'}{Math.abs(change)}
+                                      </span>
+                                    ) : (
+                                      <span className="text-[9px] text-gray-400">-</span>
+                                    )
+                                  })()
                                 ) : (
-                                  <span className="text-[9px] text-gray-400">-</span>
-                                )
-                              })()
-                            ) : (
-                              <span className="text-[9px] text-gray-400">신규</span>
-                            )}
-                          </div>
-                        </div>
-                        
-                        {/* 방문자 리뷰 */}
-                        <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg px-2 py-2.5">
-                          <div className="text-[10px] text-green-600 font-medium mb-1 flex items-center justify-center gap-1">
-                            <Users className="w-3 h-3" />
-                            방문자
-                          </div>
-                          <div className="flex flex-col items-center justify-center">
-                            <span className="text-base font-bold text-green-700">
-                              {latestMetrics[tracker.id].visitor_review_count.toLocaleString()}
-                            </span>
-                            {previousMetrics[tracker.id] ? (
-                              (() => {
-                                const change = latestMetrics[tracker.id].visitor_review_count - previousMetrics[tracker.id]!.visitor_review_count
-                                return change !== 0 ? (
-                                  <span className={`text-[10px] font-medium ${change > 0 ? 'text-red-600' : 'text-blue-600'}`}>
-                                    {change > 0 ? '↑' : '↓'}{Math.abs(change)}
-                                  </span>
+                                  <span className="text-[9px] text-gray-400">신규</span>
+                                )}
+                              </div>
+                            </div>
+                            
+                            {/* 방문자 리뷰 */}
+                            <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg px-2 py-2.5">
+                              <div className="text-[10px] text-green-600 font-medium mb-1 flex items-center justify-center gap-1">
+                                <Users className="w-3 h-3" />
+                                방문자
+                              </div>
+                              <div className="flex flex-col items-center justify-center">
+                                <span className="text-base font-bold text-green-700">
+                                  {latestMetrics[tracker.id].visitor_review_count.toLocaleString()}
+                                </span>
+                                {previousMetrics[tracker.id] ? (
+                                  (() => {
+                                    const change = latestMetrics[tracker.id].visitor_review_count - previousMetrics[tracker.id]!.visitor_review_count
+                                    return change !== 0 ? (
+                                      <span className={`text-[10px] font-medium ${change > 0 ? 'text-red-600' : 'text-blue-600'}`}>
+                                        {change > 0 ? '↑' : '↓'}{Math.abs(change)}
+                                      </span>
+                                    ) : (
+                                      <span className="text-[9px] text-gray-400">-</span>
+                                    )
+                                  })()
                                 ) : (
-                                  <span className="text-[9px] text-gray-400">-</span>
-                                )
-                              })()
-                            ) : (
-                              <span className="text-[9px] text-gray-400">신규</span>
-                            )}
-                          </div>
-                        </div>
-                        
-                        {/* 블로그 리뷰 */}
-                        <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-lg px-2 py-2.5">
-                          <div className="text-[10px] text-amber-600 font-medium mb-1 flex items-center justify-center gap-1">
-                            <FileText className="w-3 h-3" />
-                            블로그
-                          </div>
-                          <div className="flex flex-col items-center justify-center">
-                            <span className="text-base font-bold text-amber-700">
-                              {latestMetrics[tracker.id].blog_review_count.toLocaleString()}
-                            </span>
-                            {previousMetrics[tracker.id] ? (
-                              (() => {
-                                const change = latestMetrics[tracker.id].blog_review_count - previousMetrics[tracker.id]!.blog_review_count
-                                return change !== 0 ? (
-                                  <span className={`text-[10px] font-medium ${change > 0 ? 'text-red-600' : 'text-blue-600'}`}>
-                                    {change > 0 ? '↑' : '↓'}{Math.abs(change)}
-                                  </span>
+                                  <span className="text-[9px] text-gray-400">신규</span>
+                                )}
+                              </div>
+                            </div>
+                            
+                            {/* 블로그 리뷰 */}
+                            <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-lg px-2 py-2.5">
+                              <div className="text-[10px] text-amber-600 font-medium mb-1 flex items-center justify-center gap-1">
+                                <FileText className="w-3 h-3" />
+                                블로그
+                              </div>
+                              <div className="flex flex-col items-center justify-center">
+                                <span className="text-base font-bold text-amber-700">
+                                  {latestMetrics[tracker.id].blog_review_count.toLocaleString()}
+                                </span>
+                                {previousMetrics[tracker.id] ? (
+                                  (() => {
+                                    const change = latestMetrics[tracker.id].blog_review_count - previousMetrics[tracker.id]!.blog_review_count
+                                    return change !== 0 ? (
+                                      <span className={`text-[10px] font-medium ${change > 0 ? 'text-red-600' : 'text-blue-600'}`}>
+                                        {change > 0 ? '↑' : '↓'}{Math.abs(change)}
+                                      </span>
+                                    ) : (
+                                      <span className="text-[9px] text-gray-400">-</span>
+                                    )
+                                  })()
                                 ) : (
-                                  <span className="text-[9px] text-gray-400">-</span>
-                                )
-                              })()
-                            ) : (
-                              <span className="text-[9px] text-gray-400">신규</span>
-                            )}
+                                  <span className="text-[9px] text-gray-400">신규</span>
+                                )}
+                              </div>
+                            </div>
                           </div>
-                        </div>
+                        ) : (
+                          <div className="text-center text-xs text-gray-400 bg-gray-50 rounded-lg py-3">
+                            데이터 없음
+                          </div>
+                        )}
                       </div>
-                    ) : (
-                      <div className="text-center text-xs text-gray-400 bg-gray-50 rounded-lg py-3">
-                        데이터 없음
-                      </div>
-                    )}
-                  </div>
 
-                  {/* 버튼 그룹 */}
-                  <div className="flex items-center justify-between pt-2 border-t">
-                    <div className="text-xs text-gray-500">
-                      {tracker.last_collected_at 
-                        ? `수집: ${new Date(tracker.last_collected_at).toLocaleDateString('ko-KR')}`
-                        : '미수집'
-                      }
+                      {/* 버튼 그룹 */}
+                      <div className="flex items-center justify-between pt-2 border-t">
+                        <div className="text-xs text-gray-500">
+                          {tracker.last_collected_at 
+                            ? `수집: ${new Date(tracker.last_collected_at).toLocaleDateString('ko-KR')}`
+                            : '미수집'
+                          }
+                        </div>
+                        <div className="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleViewMetrics(tracker)}
+                            title="지표 보기"
+                            className="h-8 w-8 p-0"
+                          >
+                            <LineChartIcon className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleCollectNow(tracker)}
+                            title="지금 수집"
+                            className="h-8 w-8 p-0"
+                          >
+                            <TrendingUp className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditSettings(tracker)}
+                            title="설정"
+                            className="h-8 w-8 p-0"
+                          >
+                            <Settings className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteTracker(tracker.id)}
+                            title="삭제"
+                            className="h-8 w-8 p-0"
+                          >
+                            <Trash2 className="w-4 h-4 text-red-600" />
+                          </Button>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleViewMetrics(tracker)}
-                        title="지표 보기"
-                        className="h-8 w-8 p-0"
-                      >
-                        <LineChartIcon className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleCollectNow(tracker)}
-                        title="지금 수집"
-                        className="h-8 w-8 p-0"
-                      >
-                        <TrendingUp className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleEditSettings(tracker)}
-                        title="설정"
-                        className="h-8 w-8 p-0"
-                      >
-                        <Settings className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDeleteTracker(tracker.id)}
-                        title="삭제"
-                        className="h-8 w-8 p-0"
-                      >
-                        <Trash2 className="w-4 h-4 text-red-600" />
-                      </Button>
-                    </div>
-                  </div>
+                  ))}
                 </div>
-              </div>
+              </Card>
             ))}
-          </div>
-        </Card>
-      ))}
-    </>
-  )}
-</div>
+          </>
+        )}
+      </div>
 
       {/* 지표 보기 모달 */}
       <Dialog open={showMetricsDialog} onOpenChange={setShowMetricsDialog}>
