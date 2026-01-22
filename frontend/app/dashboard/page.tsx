@@ -77,6 +77,7 @@ interface Store {
   platform: string
   status: string
   address?: string
+  thumbnail?: string
   created_at: string
 }
 
@@ -871,27 +872,51 @@ export default function DashboardPage() {
                     className="group"
                   >
                     <div className={`p-3 sm:p-4 rounded-lg sm:rounded-xl border-2 ${storeColor.border} hover:shadow-xl transition-all duration-300 bg-gradient-to-br ${storeColor.bg}`}>
-                      <div className="flex items-start justify-between mb-2 sm:mb-3">
+                      <div className="flex items-start gap-3 mb-2 sm:mb-3">
+                        {/* 매장 썸네일 */}
+                        {store.thumbnail ? (
+                          <div className="flex-shrink-0">
+                            <img 
+                              src={store.thumbnail} 
+                              alt={store.name || store.store_name || '매장'} 
+                              className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg object-cover border-2 border-white shadow-sm"
+                              onError={(e) => {
+                                // 이미지 로드 실패 시 기본 아이콘으로 대체
+                                e.currentTarget.style.display = 'none'
+                                const parent = e.currentTarget.parentElement
+                                if (parent) {
+                                  parent.innerHTML = '<div class="w-12 h-12 sm:w-14 sm:h-14 rounded-lg bg-white/80 flex items-center justify-center border-2 border-white shadow-sm"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6 text-gray-400"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>'
+                                }
+                              }}
+                            />
+                          </div>
+                        ) : (
+                          <div className="flex-shrink-0">
+                            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg bg-white/80 flex items-center justify-center border-2 border-white shadow-sm">
+                              <StoreIcon className="w-6 h-6 text-gray-400" />
+                            </div>
+                          </div>
+                        )}
+                        
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <StoreIcon className="w-4 h-4 text-gray-600 flex-shrink-0" />
+                          <div className="flex items-center justify-between mb-1">
                             <h4 className={`font-bold text-sm sm:text-base group-hover:opacity-80 transition-opacity truncate ${storeColor.text}`} title={store.name || store.store_name || '매장명 없음'}>
                               {store.name || store.store_name || '매장명 없음'}
                             </h4>
+                            <div className={`px-2 py-1 rounded-md text-xs font-bold ml-2 flex-shrink-0 ${
+                              store.status === 'active' 
+                                ? 'bg-green-100 text-green-700' 
+                                : 'bg-gray-100 text-gray-600'
+                            }`}>
+                              {store.status === 'active' ? '✓' : '○'}
+                            </div>
                           </div>
                           {store.address && (
-                            <div className="flex items-center gap-1 text-xs text-gray-600 mb-1 sm:mb-2">
+                            <div className="flex items-center gap-1 text-xs text-gray-600">
                               <MapPin className="w-3 h-3 flex-shrink-0" />
                               <span className="truncate line-clamp-1">{store.address}</span>
                             </div>
                           )}
-                        </div>
-                        <div className={`px-2 py-1 rounded-md text-xs font-bold ml-2 flex-shrink-0 ${
-                          store.status === 'active' 
-                            ? 'bg-green-100 text-green-700' 
-                            : 'bg-gray-100 text-gray-600'
-                        }`}>
-                          {store.status === 'active' ? '✓' : '○'}
                         </div>
                       </div>
                       
