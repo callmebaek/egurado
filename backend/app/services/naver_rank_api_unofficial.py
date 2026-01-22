@@ -109,28 +109,30 @@ class NaverRankNewAPIService:
                     }
                     break
             
-            # 3. 순위를 못 찾았을 때만 웹 스크래핑으로 리뷰수 수집
+            # 3. 순위를 못 찾았을 때 place_id로 직접 조회
             if not found:
-                logger.info(f"[신API Rank] ⭐ 순위 없음(300위 밖), 웹 스크래핑으로 리뷰수 수집 시도: place_id={target_place_id}")
+                logger.info(f"[신API Rank] ⭐ 순위 없음(300위 밖), place_id로 직접 조회 시도: place_id={target_place_id}")
                 try:
-                    # 웹 스크래핑으로 매장 정보 가져오기
-                    place_info = await self._get_place_info_by_crawling(target_place_id)
+                    # naver_place_details_service 사용
+                    from .naver_place_details_service import naver_place_service
+                    place_details = await naver_place_service.get_place_details_by_id(target_place_id)
+                    
                     target_store_data = {
                         "place_id": target_place_id,
-                        "visitor_review_count": place_info.get("visitor_review_count", 0),
-                        "blog_review_count": place_info.get("blog_review_count", 0),
-                        "save_count": place_info.get("save_count", 0)
+                        "visitor_review_count": place_details.get("visitor_review_count", 0),
+                        "blog_review_count": place_details.get("blog_review_count", 0),
+                        "save_count": 0
                     }
-                    logger.info(f"[신API Rank] ✅ 웹 스크래핑 성공: 방문자={target_store_data['visitor_review_count']}, 블로그={target_store_data['blog_review_count']}")
+                    logger.info(f"[신API Rank] ✅ place_id 직접 조회 성공: 방문자={target_store_data['visitor_review_count']}, 블로그={target_store_data['blog_review_count']}")
                 except Exception as e:
-                    logger.error(f"[신API Rank] ❌ 웹 스크래핑 실패: {str(e)}", exc_info=True)
+                    logger.error(f"[신API Rank] ❌ place_id 직접 조회 실패: {str(e)}", exc_info=True)
                     target_store_data = {
                         "place_id": target_place_id,
                         "visitor_review_count": 0,
                         "blog_review_count": 0,
                         "save_count": 0
                     }
-                    logger.warning(f"[신API Rank] 웹 스크래핑 실패 → 리뷰수 0으로 설정")
+                    logger.warning(f"[신API Rank] place_id 조회 실패 → 리뷰수 0으로 설정")
             
             # 4. 결과 구성
             result = {
