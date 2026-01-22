@@ -476,12 +476,20 @@ export default function DashboardPage() {
     setIsRefreshing(prev => new Set(prev).add(trackerId))
 
     try {
-      await fetch(api.metrics.collectNow(trackerId), {
+      // 수집 요청 및 응답 대기
+      const response = await fetch(api.metrics.collectNow(trackerId), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
         }
       })
+
+      if (response.ok) {
+        await response.json()
+        
+        // 데이터베이스 반영 시간을 위해 잠시 대기
+        await new Promise(resolve => setTimeout(resolve, 500))
+      }
 
       // 데이터 다시 로드
       await loadTrackers()
@@ -507,16 +515,20 @@ export default function DashboardPage() {
     setIsRefreshing(prev => new Set(prev).add(refreshKey))
 
     try {
-      await Promise.all(
+      // 모든 수집 요청을 병렬로 실행하고 응답을 기다림
+      const responses = await Promise.all(
         storeTrackers.map(tracker => 
           fetch(api.metrics.collectNow(tracker.id), {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${token}`
             }
-          })
+          }).then(res => res.ok ? res.json() : null)
         )
       )
+
+      // 모든 수집이 완료된 후 잠시 대기 (데이터베이스 반영 시간)
+      await new Promise(resolve => setTimeout(resolve, 1000))
 
       // 데이터 다시 로드
       await loadTrackers()
