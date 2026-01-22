@@ -837,25 +837,21 @@ export default function MetricsTrackerPage() {
                   {group.trackers.map((tracker) => (
                     <div
                       key={tracker.id}
-                      className="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                      className="p-4 bg-white border border-gray-200 rounded-lg hover:shadow-md transition-all"
                     >
-                {/* 헤더 */}
-                <div className="mb-4">
-                  <div className="flex items-start justify-between gap-4 mb-3">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-lg mb-1 truncate">{tracker.store_name}</h3>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs px-2.5 py-1 bg-purple-100 text-purple-700 rounded-full font-medium">
-                          {tracker.keyword}
-                        </span>
-                        {!tracker.is_active && (
-                          <span className="text-xs px-2.5 py-1 bg-red-100 text-red-700 rounded-full font-medium">
-                            일시정지
+                      {/* 키워드명과 상태 */}
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-bold text-gray-800">
+                            {tracker.keyword}
                           </span>
-                        )}
+                          {!tracker.is_active && (
+                            <span className="text-xs px-2 py-0.5 bg-red-100 text-red-700 rounded-full font-medium">
+                              일시정지
+                            </span>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  </div>
                   
                   {/* 최근 지표 미리보기 */}
                   <div className="w-full">
@@ -947,73 +943,53 @@ export default function MetricsTrackerPage() {
                   </div>
                 </div>
 
-                {/* 정보 */}
-                <div className="space-y-2 mb-4 pb-4 border-b">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <BarChart3 className="w-4 h-4" />
-                    <span>
-                      업데이트: 
-                      {tracker.update_frequency === 'daily_once' && ' 매일 1회 (오후 4시)'}
-                      {tracker.update_frequency === 'daily_twice' && ' 매일 2회 (오전 6시, 오후 4시)'}
-                      {tracker.update_frequency === 'daily_thrice' && ' 매일 3회 (오전 6시, 낮 12시, 오후 6시)'}
-                    </span>
-                  </div>
-                  {tracker.notification_enabled && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Bell className="w-4 h-4" />
-                      <span>
-                        알림: 
-                        {tracker.notification_type === 'kakao' && ' 카카오톡'}
-                        {tracker.notification_type === 'sms' && ' SMS'}
-                        {tracker.notification_type === 'email' && ' 이메일'}
-                      </span>
-                    </div>
-                  )}
-                  {tracker.last_collected_at && (
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      마지막 수집: {new Date(tracker.last_collected_at).toLocaleString('ko-KR')}
-                    </div>
-                  )}
-                </div>
-
-                {/* 버튼 그룹 */}
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleViewMetrics(tracker)}
-                    className="flex-1 min-w-[100px]"
-                  >
-                    <LineChartIcon className="w-4 h-4 mr-1.5" />
-                    지표 보기
-                  </Button>
-                  <Button
-                    variant="default"
-                    size="sm"
-                    onClick={() => handleCollectNow(tracker)}
-                    title="지금 순위와 리뷰 데이터를 수집합니다"
-                    className="flex-1 min-w-[100px]"
-                  >
-                    <TrendingUp className="w-4 h-4 mr-1.5" />
-                    지금 수집
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleEditSettings(tracker)}
-                    title="스케줄러 및 알림 설정"
-                  >
-                    <Settings className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDeleteTracker(tracker.id)}
-                    title="추적 삭제"
-                  >
-                    <Trash2 className="w-4 h-4 text-red-600" />
-                  </Button>
-                </div>
+                      {/* 버튼 그룹 */}
+                      <div className="flex items-center justify-between pt-2 border-t">
+                        <div className="text-xs text-gray-500">
+                          {tracker.last_collected_at 
+                            ? `수집: ${new Date(tracker.last_collected_at).toLocaleDateString('ko-KR')}`
+                            : '미수집'
+                          }
+                        </div>
+                        <div className="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleViewMetrics(tracker)}
+                            title="지표 보기"
+                            className="h-8 w-8 p-0"
+                          >
+                            <LineChartIcon className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleCollectNow(tracker)}
+                            title="지금 수집"
+                            className="h-8 w-8 p-0"
+                          >
+                            <TrendingUp className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditSettings(tracker)}
+                            title="설정"
+                            className="h-8 w-8 p-0"
+                          >
+                            <Settings className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteTracker(tracker.id)}
+                            title="삭제"
+                            className="h-8 w-8 p-0"
+                          >
+                            <Trash2 className="w-4 h-4 text-red-600" />
+                          </Button>
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>

@@ -466,14 +466,15 @@ export default function NaverRankPage() {
           title: "추적 시작",
           description: "주요지표 추적 페이지에서 확인하세요"
         })
-        // 키워드 목록 새로고침
-        if (selectedStoreId) {
-          const keywordsResponse = await fetch(`${api.naver.keywords(selectedStoreId)}?is_tracked=false`)
-          if (keywordsResponse.ok) {
-            const keywordsData = await keywordsResponse.json()
-            setKeywords(keywordsData.keywords || [])
-          }
-        }
+        
+        // ⭐ 로컬 상태만 업데이트 (리스트에서 사라지지 않도록)
+        setKeywords(prevKeywords => 
+          prevKeywords.map(kw => 
+            kw.id === keywordId 
+              ? { ...kw, is_tracked: true }
+              : kw
+          )
+        )
       } else {
         throw new Error("추적 전환에 실패했습니다")
       }

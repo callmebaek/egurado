@@ -53,7 +53,7 @@ const navigation: NavItem[] = [
     icon: <span className="w-5 h-5 flex items-center justify-center font-bold text-green-600">N</span>,
     children: [
       {
-        title: '플레이스 순위',
+        title: '플레이스 순위조회',
         href: '/dashboard/naver/rank',
         icon: <TrendingUp className="w-4 h-4" />,
       },

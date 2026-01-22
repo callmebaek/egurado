@@ -625,16 +625,16 @@ async def get_store_keywords(
 @router.post("/keywords/{keyword_id}/track")
 async def track_keyword(keyword_id: UUID):
     """
-    키워드를 추적 상태로 변경
+    키워드를 추적 상태로 변경하고 주요지표 추적을 자동 생성
     
-    조회만 했던 키워드를 추적 키워드로 전환합니다.
+    조회만 했던 키워드를 추적 키워드로 전환하고, metric_tracker를 자동으로 생성합니다.
     """
     try:
         supabase = get_supabase_client()
         
-        # 키워드 존재 확인
+        # 키워드 정보 조회 (store_id 포함)
         keyword_check = supabase.table("keywords").select(
-            "id, is_tracked"
+            "id, is_tracked, store_id, keyword"
         ).eq("id", str(keyword_id)).single().execute()
         
         if not keyword_check.data:
@@ -643,11 +643,39 @@ async def track_keyword(keyword_id: UUID):
                 detail="키워드를 찾을 수 없습니다."
             )
         
-        # 이미 추적중인지 확인
-        if keyword_check.data.get("is_tracked", False):
+        keyword_data = keyword_check.data
+        store_id = keyword_data["store_id"]
+        
+        # 매장 정보 조회 (user_id 필요)
+        store_check = supabase.table("stores").select(
+            "id, user_id"
+        ).eq("id", store_id).single().execute()
+        
+        if not store_check.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="매장을 찾을 수 없습니다."
+            )
+        
+        user_id = store_check.data["user_id"]
+        
+        # 이미 metric_tracker가 있는지 확인
+        existing_tracker = supabase.table("metric_trackers").select(
+            "id"
+        ).eq("user_id", user_id).eq(
+            "store_id", store_id
+        ).eq("keyword_id", str(keyword_id)).execute()
+        
+        if existing_tracker.data and len(existing_tracker.data) > 0:
+            # 이미 추적 설정이 있으면 is_tracked만 업데이트
+            supabase.table("keywords").update({
+                "is_tracked": True
+            }).eq("id", str(keyword_id)).execute()
+            
             return {
                 "status": "success",
-                "message": "이미 추적 중인 키워드입니다."
+                "message": "이미 추적 중인 키워드입니다.",
+                "tracker_id": existing_tracker.data[0]["id"]
             }
         
         # is_tracked를 true로 변경
@@ -655,11 +683,36 @@ async def track_keyword(keyword_id: UUID):
             "is_tracked": True
         }).eq("id", str(keyword_id)).execute()
         
-        logger.info(f"[Track Keyword] Keyword {keyword_id} is now tracked")
+        # ⭐ metric_tracker 자동 생성
+        from app.services.metric_tracker_service import MetricTrackerService
+        from datetime import datetime, timezone
+        
+        tracker_service = MetricTrackerService(supabase)
+        
+        # 다음 수집 시간 계산 (오후 4시)
+        next_collection = datetime.now(timezone.utc).replace(hour=7, minute=0, second=0, microsecond=0)  # KST 16:00 = UTC 07:00
+        if datetime.now(timezone.utc) >= next_collection:
+            # 이미 지났으면 다음날
+            next_collection = next_collection.replace(day=next_collection.day + 1)
+        
+        tracker_data = {
+            "user_id": user_id,
+            "store_id": store_id,
+            "keyword_id": str(keyword_id),
+            "update_frequency": "daily_once",
+            "update_times": [16],
+            "notification_enabled": False,
+            "next_collection_at": next_collection.isoformat()
+        }
+        
+        created_tracker = tracker_service.create_tracker(tracker_data)
+        
+        logger.info(f"[Track Keyword] Keyword {keyword_id} is now tracked with metric_tracker {created_tracker['id']}")
         
         return {
             "status": "success",
-            "message": "키워드가 추적 상태로 변경되었습니다."
+            "message": "키워드 추적이 시작되었습니다.",
+            "tracker_id": created_tracker["id"]
         }
         
     except HTTPException:
