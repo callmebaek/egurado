@@ -336,7 +336,9 @@ function SortableStoreTrackerCard({
                           </div>
                         </div>
                       ) : (
-                        <span className="text-sm text-gray-400">순위 없음</span>
+                        <div className="text-right">
+                          <span className="text-xs text-gray-500 font-medium">300위 권 밖</span>
+                        </div>
                       )}
                       
                     {/* 키워드별 새로고침 버튼 */}
