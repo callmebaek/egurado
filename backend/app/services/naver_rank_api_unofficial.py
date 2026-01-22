@@ -109,38 +109,28 @@ class NaverRankNewAPIService:
                     }
                     break
             
-            # 3. 매장 상세 정보 조회 (순위를 못 찾아도 리뷰수는 수집)
-            logger.info(f"[신API Rank] 상세 정보 조회 시작: place_id={target_place_id}, found={found}")
-            try:
-                detail_info = await self._get_place_detail(target_place_id)
-                logger.info(f"[신API Rank] 상세 정보 조회 성공: {detail_info}")
-                
-                # 순위를 찾았으면 기존 데이터 업데이트
-                if found:
-                    if detail_info.get("save_count", 0) > 0:
-                        target_store_data["save_count"] = detail_info["save_count"]
-                    logger.info(f"[신API Rank] 순위 있음, 기존 데이터 유지: 방문자={target_store_data.get('visitor_review_count')}, 블로그={target_store_data.get('blog_review_count')}")
-                # 순위를 못 찾았으면 상세 정보에서 리뷰수 가져오기
-                else:
+            # 3. 순위를 못 찾았을 때만 웹 스크래핑으로 리뷰수 수집
+            if not found:
+                logger.info(f"[신API Rank] ⭐ 순위 없음(300위 밖), 웹 스크래핑으로 리뷰수 수집 시도: place_id={target_place_id}")
+                try:
+                    # 웹 스크래핑으로 매장 정보 가져오기
+                    place_info = await self._get_place_info_by_crawling(target_place_id)
                     target_store_data = {
                         "place_id": target_place_id,
-                        "visitor_review_count": detail_info.get("visitor_review_count", 0),
-                        "blog_review_count": detail_info.get("blog_review_count", 0),
-                        "save_count": detail_info.get("save_count", 0)
+                        "visitor_review_count": place_info.get("visitor_review_count", 0),
+                        "blog_review_count": place_info.get("blog_review_count", 0),
+                        "save_count": place_info.get("save_count", 0)
                     }
-                    logger.info(f"[신API Rank] ⭐ 순위 없음(300위 밖), 상세 정보에서 리뷰수 수집: 방문자={target_store_data['visitor_review_count']}, 블로그={target_store_data['blog_review_count']}")
-            except Exception as e:
-                # 상세 조회 실패 시
-                logger.error(f"[신API Rank] ❌ 상세 조회 실패: {str(e)}", exc_info=True)
-                # 순위를 못 찾았고 상세 조회도 실패하면 0으로 설정
-                if not found:
+                    logger.info(f"[신API Rank] ✅ 웹 스크래핑 성공: 방문자={target_store_data['visitor_review_count']}, 블로그={target_store_data['blog_review_count']}")
+                except Exception as e:
+                    logger.error(f"[신API Rank] ❌ 웹 스크래핑 실패: {str(e)}", exc_info=True)
                     target_store_data = {
                         "place_id": target_place_id,
                         "visitor_review_count": 0,
                         "blog_review_count": 0,
                         "save_count": 0
                     }
-                    logger.warning(f"[신API Rank] 순위 없고 상세 조회 실패 → 리뷰수 0으로 설정")
+                    logger.warning(f"[신API Rank] 웹 스크래핑 실패 → 리뷰수 0으로 설정")
             
             # 4. 결과 구성
             result = {
