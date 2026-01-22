@@ -38,12 +38,24 @@ async def create_tracker(
     - **update_frequency**: 업데이트 주기 (daily_once, daily_twice, daily_thrice)
     - **notification_enabled**: 알림 활성화 여부
     - **notification_type**: 알림 타입 (kakao, sms, email)
+    
+    ⭐ 생성 즉시 첫 번째 지표를 수집합니다.
     """
     try:
         tracker_data = data.model_dump()
         tracker_data["user_id"] = current_user["id"]
         
         result = metric_tracker_service.create_tracker(tracker_data)
+        
+        # ⭐ 생성 즉시 첫 번째 지표 수집
+        try:
+            logger.info(f"[Tracker Create] 첫 번째 지표 수집 시작: {result['id']}")
+            await metric_tracker_service.collect_metrics(result["id"])
+            logger.info(f"[Tracker Create] 첫 번째 지표 수집 완료: {result['id']}")
+        except Exception as collect_error:
+            # 지표 수집 실패해도 tracker는 생성됨
+            logger.error(f"[Tracker Create] 첫 번째 지표 수집 실패: {str(collect_error)}")
+        
         return result
     except Exception as e:
         logger.error(f"Error creating tracker: {str(e)}")
