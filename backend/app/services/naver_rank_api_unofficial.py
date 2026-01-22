@@ -309,6 +309,8 @@ class NaverRankNewAPIService:
     async def _get_place_detail(self, place_id: str) -> Dict:
         """특정 매장의 상세 정보 가져오기 (리뷰수, 저장수 등)"""
         try:
+            logger.info(f"[신API Rank] _get_place_detail 호출: place_id={place_id}")
+            
             # 숫자 파싱 헬퍼 함수
             def parse_int(value):
                 """쉼표가 포함된 문자열을 정수로 변환"""
@@ -322,20 +324,23 @@ class NaverRankNewAPIService:
                     return 0
             
             graphql_query = """
-            query getPlaceDetail($placeId: String) {
-                place(id: $placeId) {
+            query getPlaceDetail($input: PlaceInput) {
+                place(input: $input) {
                     id
                     name
                     visitorReviewCount
                     blogCafeReviewCount
                     bookingReviewCount
-                    keepCount
+                    saveCount
                 }
             }
             """
             
             variables = {
-                "placeId": place_id
+                "input": {
+                    "id": place_id,
+                    "isNmap": False
+                }
             }
             
             payload = {
@@ -344,6 +349,8 @@ class NaverRankNewAPIService:
                 "query": graphql_query
             }
             
+            logger.info(f"[신API Rank] GraphQL 요청 payload: {payload}")
+            
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.post(
                     self.api_url,
@@ -351,20 +358,27 @@ class NaverRankNewAPIService:
                     headers=self.base_headers,
                     follow_redirects=True
                 )
+                
+                logger.info(f"[신API Rank] GraphQL 응답 status: {response.status_code}")
+                logger.info(f"[신API Rank] GraphQL 응답 본문: {response.text[:500]}")
+                
                 response.raise_for_status()
                 data = response.json()
                 
                 place = data.get("data", {}).get("place", {})
                 
-                return {
+                result = {
                     "visitor_review_count": parse_int(place.get("visitorReviewCount")),
                     "blog_review_count": parse_int(place.get("blogCafeReviewCount")),
-                    "save_count": parse_int(place.get("keepCount")),
+                    "save_count": parse_int(place.get("saveCount")),
                     "booking_review_count": parse_int(place.get("bookingReviewCount"))
                 }
                 
+                logger.info(f"[신API Rank] 파싱 결과: {result}")
+                return result
+                
         except Exception as e:
-            logger.error(f"[신API Rank] 상세 정보 조회 오류: {str(e)}")
+            logger.error(f"[신API Rank] ❌ 상세 정보 조회 오류: {str(e)}", exc_info=True)
             return {
                 "visitor_review_count": 0,
                 "blog_review_count": 0,
