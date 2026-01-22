@@ -288,14 +288,15 @@ class MetricTrackerService:
                 max_results=300
             )
             
-            # 300위 밖일 경우 (rank가 None), 기존 리뷰 수 유지
-            if rank_result.get("rank") is None:
-                logger.info(f"[300위 밖] 순위 없음, 기존 리뷰 수 유지 시도: tracker_id={tracker_id}")
+            # 300위 밖일 경우 또는 리뷰 수가 0인 경우, 기존 리뷰 수 유지
+            if rank_result.get("rank") is None or (rank_result.get("visitor_review_count", 0) == 0 and rank_result.get("blog_review_count", 0) == 0):
+                logger.info(f"[리뷰 수 유지] 순위 없음 또는 리뷰 수 0, 기존 리뷰 수 조회 시도: tracker_id={tracker_id}")
                 try:
-                    # 기존 최신 데이터 조회
+                    # 기존 데이터 중 visitor_review_count > 0 인 가장 최근 데이터 조회
                     latest_metric = self.supabase.table("daily_metrics") \
                         .select("visitor_review_count, blog_review_count") \
                         .eq("tracker_id", tracker_id) \
+                        .gt("visitor_review_count", 0) \
                         .order("collection_date", desc=True) \
                         .limit(1) \
                         .execute()
@@ -306,11 +307,11 @@ class MetricTrackerService:
                         prev_blog = latest_metric.data[0].get("blog_review_count", 0)
                         rank_result["visitor_review_count"] = prev_visitor
                         rank_result["blog_review_count"] = prev_blog
-                        logger.info(f"[300위 밖] ✅ 기존 리뷰 수 유지 성공: 방문자={prev_visitor}, 블로그={prev_blog}")
+                        logger.info(f"[리뷰 수 유지] ✅ 기존 리뷰 수 적용 성공: 방문자={prev_visitor}, 블로그={prev_blog}")
                     else:
-                        logger.warning(f"[300위 밖] 기존 데이터 없음, 리뷰 수 0으로 설정")
+                        logger.warning(f"[리뷰 수 유지] 기존 유효 데이터 없음, API 반환값 사용: 방문자={rank_result.get('visitor_review_count', 0)}, 블로그={rank_result.get('blog_review_count', 0)}")
                 except Exception as e:
-                    logger.error(f"[300위 밖] 기존 리뷰 수 조회 실패: {str(e)}")
+                    logger.error(f"[리뷰 수 유지] 기존 리뷰 수 조회 실패: {str(e)}")
             
             # 오늘 날짜 (서울 시간대)
             today = datetime.now(self.timezone).date()
