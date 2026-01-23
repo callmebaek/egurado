@@ -6,6 +6,7 @@
  * 반응형 디자인: 모바일에서는 햄버거 메뉴로 변환
  */
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import {
@@ -22,6 +23,7 @@ import {
   ChevronDown,
   ChevronRight,
   X,
+  Target,
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 
@@ -57,6 +59,11 @@ const navigation: NavItem[] = [
         title: '주요지표 추적',
         href: '/dashboard/naver/metrics-tracker',
         icon: <BarChart3 className="w-4 h-4" />,
+      },
+      {
+        title: '타겟키워드 추출',
+        href: '/dashboard/naver/target-keywords',
+        icon: <Target className="w-4 h-4" />,
       },
       {
         title: '리뷰 관리',
@@ -245,10 +252,14 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         {/* 로고 및 닫기 버튼 */}
         <div className="p-4 border-b flex items-center justify-between">
           <Link href="/dashboard" className="flex items-center gap-2" onClick={onClose}>
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <span className="text-white font-bold text-lg">E</span>
-            </div>
-            <span className="text-xl font-bold text-olive-800">이거라도</span>
+            <Image
+              src="/whiplace-logo.svg"
+              alt="WhiPlace"
+              width={120}
+              height={40}
+              priority
+              className="h-8 w-auto"
+            />
           </Link>
           
           {/* 모바일 닫기 버튼 */}
