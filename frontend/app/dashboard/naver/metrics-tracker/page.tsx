@@ -148,12 +148,13 @@ export default function MetricsTrackerPage() {
     setUpdateTimes(getDefaultUpdateTimes(updateFrequency))
   }, [updateFrequency])
 
-  // 주기 변경 시 기본 시간 설정 (설정 모달)
+  // 주기 변경 시 기본 시간 설정 (추가 모달에서만)
+  // 설정 모달에서는 handleEditSettings에서 이미 기존 시간을 설정하므로 여기서 덮어쓰지 않음
   useEffect(() => {
-    if (showSettingsDialog) {
-      setEditUpdateTimes(getDefaultUpdateTimes(editFrequency))
+    if (showAddDialog && !showSettingsDialog) {
+      setUpdateTimes(getDefaultUpdateTimes(updateFrequency))
     }
-  }, [editFrequency, showSettingsDialog])
+  }, [updateFrequency, showAddDialog, showSettingsDialog])
 
   // 매장 목록 로드
   useEffect(() => {
@@ -1049,7 +1050,12 @@ export default function MetricsTrackerPage() {
               <label className="text-sm font-semibold mb-2 block text-gray-700">수집 주기</label>
               <select
                 value={updateFrequency}
-                onChange={(e) => setUpdateFrequency(e.target.value as any)}
+                onChange={(e) => {
+                  const newFrequency = e.target.value as 'daily_once' | 'daily_twice' | 'daily_thrice'
+                  setUpdateFrequency(newFrequency)
+                  // 수집 주기 변경 시 기본 시간으로 자동 설정
+                  setUpdateTimes(getDefaultUpdateTimes(newFrequency))
+                }}
                 className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white"
               >
                 <option value="daily_once">하루 1회</option>
@@ -1243,7 +1249,12 @@ export default function MetricsTrackerPage() {
               <label className="text-sm font-semibold mb-2 block text-gray-700">수집 주기</label>
               <select
                 value={editFrequency}
-                onChange={(e) => setEditFrequency(e.target.value as any)}
+                onChange={(e) => {
+                  const newFrequency = e.target.value as 'daily_once' | 'daily_twice' | 'daily_thrice'
+                  setEditFrequency(newFrequency)
+                  // 수집 주기 변경 시 기본 시간으로 자동 설정
+                  setEditUpdateTimes(getDefaultUpdateTimes(newFrequency))
+                }}
                 className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white"
               >
                 <option value="daily_once">하루 1회</option>
