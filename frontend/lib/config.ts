@@ -86,8 +86,12 @@ export const api = {
    * 주요지표 추적 관련 API
    */
   metrics: {
+    // 문자열 속성 (metrics-tracker 페이지용)
     list: apiUrl('/api/v1/metrics/trackers'),
     create: apiUrl('/api/v1/metrics/trackers'),
+    // 함수 (dashboard 페이지용)
+    trackers: () => apiUrl('/api/v1/metrics/trackers'),
+    collectNow: (trackerId: string) => apiUrl(`/api/v1/metrics/trackers/${trackerId}/collect`),
     update: (trackerId: string) => apiUrl(`/api/v1/metrics/trackers/${trackerId}`),
     delete: (trackerId: string) => apiUrl(`/api/v1/metrics/trackers/${trackerId}`),
     getMetrics: (trackerId: string) => apiUrl(`/api/v1/metrics/trackers/${trackerId}/metrics`),
