@@ -218,10 +218,8 @@ export default function MetricsTrackerPage() {
     const token = getToken()
     if (!token) return
 
-    const latestData: {[key: string]: DailyMetric} = {}
-    const previousData: {[key: string]: DailyMetric | null} = {}
-
-    for (const tracker of trackerList) {
+    // 🚀 성능 최적화: 모든 API 호출을 병렬로 처리
+    const promises = trackerList.map(async (tracker) => {
       try {
         const response = await fetch(api.metrics.getMetrics(tracker.id), {
           headers: { 'Authorization': `Bearer ${token}` }
@@ -230,14 +228,32 @@ export default function MetricsTrackerPage() {
         if (response.ok) {
           const data = await response.json()
           if (data.metrics && data.metrics.length > 0) {
-            latestData[tracker.id] = data.metrics[0]
-            previousData[tracker.id] = data.metrics[1] || null
+            return {
+              trackerId: tracker.id,
+              latest: data.metrics[0],
+              previous: data.metrics[1] || null
+            }
           }
         }
       } catch (error) {
         console.error(`지표 로드 실패 (${tracker.id}):`, error)
       }
-    }
+      return null
+    })
+
+    // 모든 API 호출이 완료될 때까지 대기
+    const results = await Promise.all(promises)
+    
+    // 결과를 state에 저장
+    const latestData: {[key: string]: DailyMetric} = {}
+    const previousData: {[key: string]: DailyMetric | null} = {}
+    
+    results.forEach(result => {
+      if (result) {
+        latestData[result.trackerId] = result.latest
+        previousData[result.trackerId] = result.previous
+      }
+    })
 
     setLatestMetrics(latestData)
     setPreviousMetrics(previousData)
@@ -335,12 +351,15 @@ export default function MetricsTrackerPage() {
       const token = getToken()
       if (!token) return
 
-      const response = await fetch(api.metrics.collect(trackerId), {
+      const response = await fetch(api.metrics.collectNow(trackerId), {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       })
 
       if (response.ok) {
+        // API 응답으로 받은 최신 지표 사용
+        const collectedMetric = await response.json()
+        
         toast({
           title: "✅ 수집 완료",
           description: "지표가 수집되었습니다"
@@ -365,9 +384,11 @@ export default function MetricsTrackerPage() {
           }
         }
       } else {
-        throw new Error("지표 수집 실패")
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.detail || "지표 수집 실패")
       }
     } catch (error: any) {
+      console.error("수집 실패:", error)
       toast({
         title: "수집 실패",
         description: error.message,
@@ -388,13 +409,24 @@ export default function MetricsTrackerPage() {
     try {
       setIsRefreshing(prev => new Set(prev).add(storeKey))
       
+      // 모든 키워드 수집
       for (const trackerId of trackerIds) {
         await handleCollectNow(trackerId)
       }
       
+      // 모든 수집 완료 후 전체 데이터 새로고침
+      await loadTrackers()
+      
       toast({
         title: "🎉 전체 수집 완료",
         description: "모든 키워드의 지표가 수집되었습니다"
+      })
+    } catch (error) {
+      console.error("전체 수집 실패:", error)
+      toast({
+        title: "수집 실패",
+        description: "일부 키워드 수집에 실패했습니다",
+        variant: "destructive"
       })
     } finally {
       setIsRefreshing(prev => {
