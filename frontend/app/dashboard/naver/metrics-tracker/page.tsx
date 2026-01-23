@@ -60,6 +60,7 @@ interface MetricTracker {
   keyword: string
   platform: string
   update_frequency: 'daily_once' | 'daily_twice' | 'daily_thrice'
+  update_times: number[] // 수집 시간 배열 (0-23시)
   is_active: boolean
   last_collected_at?: string
   created_at: string
@@ -105,6 +106,7 @@ export default function MetricsTrackerPage() {
   const [selectedStoreId, setSelectedStoreId] = useState("")
   const [newKeyword, setNewKeyword] = useState("")
   const [updateFrequency, setUpdateFrequency] = useState<'daily_once' | 'daily_twice' | 'daily_thrice'>('daily_once')
+  const [updateTimes, setUpdateTimes] = useState<number[]>([16]) // 기본: 16시 (오후 4시)
   const [isAdding, setIsAdding] = useState(false)
   const [searchedKeywords, setSearchedKeywords] = useState<SearchedKeyword[]>([])
   const [loadingKeywords, setLoadingKeywords] = useState(false)
@@ -119,12 +121,39 @@ export default function MetricsTrackerPage() {
   const [showSettingsDialog, setShowSettingsDialog] = useState(false)
   const [editingTracker, setEditingTracker] = useState<MetricTracker | null>(null)
   const [editFrequency, setEditFrequency] = useState<'daily_once' | 'daily_twice' | 'daily_thrice'>('daily_once')
+  const [editUpdateTimes, setEditUpdateTimes] = useState<number[]>([16]) // 수집 시간 배열
   const [editNotificationEnabled, setEditNotificationEnabled] = useState(false)
   const [editNotificationType, setEditNotificationType] = useState<'email' | 'sms' | 'kakao' | ''>('')
+
+  // 주기별 기본 수집 시간 설정
+  const getDefaultUpdateTimes = (frequency: 'daily_once' | 'daily_twice' | 'daily_thrice'): number[] => {
+    switch(frequency) {
+      case 'daily_once':
+        return [16] // 16시 (오후 4시)
+      case 'daily_twice':
+        return [6, 16] // 6시, 16시 (오전 6시, 오후 4시)
+      case 'daily_thrice':
+        return [6, 12, 18] // 6시, 12시, 18시 (오전 6시, 낮 12시, 오후 6시)
+      default:
+        return [16]
+    }
+  }
 
   // 최근 지표 데이터
   const [latestMetrics, setLatestMetrics] = useState<{[trackerId: string]: DailyMetric}>({})
   const [previousMetrics, setPreviousMetrics] = useState<{[trackerId: string]: DailyMetric | null}>({})
+
+  // 주기 변경 시 기본 시간 설정 (추가 모달)
+  useEffect(() => {
+    setUpdateTimes(getDefaultUpdateTimes(updateFrequency))
+  }, [updateFrequency])
+
+  // 주기 변경 시 기본 시간 설정 (설정 모달)
+  useEffect(() => {
+    if (showSettingsDialog) {
+      setEditUpdateTimes(getDefaultUpdateTimes(editFrequency))
+    }
+  }, [editFrequency, showSettingsDialog])
 
   // 매장 목록 로드
   useEffect(() => {
@@ -312,6 +341,7 @@ export default function MetricsTrackerPage() {
           store_id: selectedStoreId,
           keyword: newKeyword.trim(),
           update_frequency: updateFrequency,
+          update_times: updateTimes,
           notification_enabled: false
         })
       })
@@ -520,6 +550,10 @@ export default function MetricsTrackerPage() {
   const handleEditSettings = (tracker: MetricTracker) => {
     setEditingTracker(tracker)
     setEditFrequency(tracker.update_frequency)
+    // 기존 시간이 있으면 사용, 없으면 기본값 사용
+    setEditUpdateTimes(tracker.update_times && tracker.update_times.length > 0 
+      ? tracker.update_times 
+      : getDefaultUpdateTimes(tracker.update_frequency))
     setEditNotificationEnabled(tracker.notification_enabled)
     setEditNotificationType(tracker.notification_type || '')
     setShowSettingsDialog(true)
@@ -540,6 +574,7 @@ export default function MetricsTrackerPage() {
         },
         body: JSON.stringify({
           update_frequency: editFrequency,
+          update_times: editUpdateTimes,
           notification_enabled: editNotificationEnabled,
           notification_type: editNotificationEnabled ? editNotificationType : null
         })
@@ -1215,6 +1250,39 @@ export default function MetricsTrackerPage() {
                 <option value="daily_twice">하루 2회</option>
                 <option value="daily_thrice">하루 3회</option>
               </select>
+            </div>
+
+            {/* 수집 시간 설정 */}
+            <div className="space-y-3">
+              <label className="text-sm font-semibold block text-gray-700">수집 시간</label>
+              <div className="space-y-2">
+                {editUpdateTimes.map((time, index) => (
+                  <div key={index} className="flex items-center gap-3">
+                    <span className="text-sm text-gray-600 w-12">
+                      {index + 1}회차
+                    </span>
+                    <select
+                      value={time}
+                      onChange={(e) => {
+                        const newTimes = [...editUpdateTimes]
+                        newTimes[index] = parseInt(e.target.value)
+                        setEditUpdateTimes(newTimes)
+                      }}
+                      className="flex-1 px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white"
+                    >
+                      {Array.from({ length: 24 }, (_, i) => (
+                        <option key={i} value={i}>
+                          {i < 10 ? `0${i}:00` : `${i}:00`} 
+                          {i === 0 ? ' (자정)' : i < 12 ? ' (오전)' : i === 12 ? ' (정오)' : ' (오후)'}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-gray-500 mt-2">
+                ℹ️ 설정한 시간에 자동으로 지표를 수집합니다 (한국시간 기준)
+              </p>
             </div>
             
             {/* 알림 설정 */}
