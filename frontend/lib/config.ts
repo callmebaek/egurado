@@ -34,25 +34,27 @@ export const API_BASE_URL = config.apiUrl
 /**
  * API 엔드포인트 빌더
  */
+const baseUrl = config.apiUrl;
+const apiUrl = (path: string) => `${baseUrl}${path}`;
+
 export const api = {
   /**
    * 백엔드 기본 URL
    */
-  baseUrl: config.apiUrl,
+  baseUrl: baseUrl,
   
   /**
    * 전체 URL 생성
    */
-  url: (path: string) => `${config.apiUrl}${path}`,
+  url: apiUrl,
   
   /**
    * 매장 관련 API
    */
   stores: {
-    list: () => api.url('/api/v1/stores/'),
-    create: () => api.url('/api/v1/stores/'),
-    delete: (storeId: string) => api.url(`/api/v1/stores/${storeId}`),
-    reorder: () => api.url('/api/v1/stores/reorder'),
+    list: (userId: string) => apiUrl(`/api/v1/stores/?user_id=${userId}`),
+    create: () => apiUrl('/api/v1/stores/'),
+    delete: (storeId: string) => apiUrl(`/api/v1/stores/${storeId}`),
   },
   
   /**
@@ -60,31 +62,52 @@ export const api = {
    */
   naver: {
     searchStores: (query: string) => 
-      api.url(`/api/v1/naver/search-stores-unofficial?query=${encodeURIComponent(query)}`),
-    checkRank: () => api.url('/api/v1/naver/check-rank-unofficial'),
-    keywords: (storeId: string) => api.url(`/api/v1/naver/stores/${storeId}/keywords`),
-    keywordHistory: (keywordId: string) => 
-      api.url(`/api/v1/naver/keywords/${keywordId}/history`),
-    deleteKeyword: (keywordId: string) => api.url(`/api/v1/naver/keywords/${keywordId}`),
-    trackKeyword: (keywordId: string) => api.url(`/api/v1/naver/keywords/${keywordId}/track`),
-    analyzeMainKeywords: () => api.url('/api/v1/naver/analyze-main-keywords'),
+      apiUrl(`/api/v1/naver/search-stores-unofficial?query=${encodeURIComponent(query)}`),
+    checkRank: () => apiUrl('/api/v1/naver/check-rank-unofficial'),
+    stores: {
+      list: apiUrl('/api/v1/naver/stores'),
+      create: apiUrl('/api/v1/naver/stores'),
+      delete: (storeId: string) => apiUrl(`/api/v1/naver/stores/${storeId}`),
+    },
+    keywords: {
+      list: apiUrl('/api/v1/naver/keywords'),
+      history: (keywordId: string) => apiUrl(`/api/v1/naver/keywords/${keywordId}/history`),
+      delete: (keywordId: string) => apiUrl(`/api/v1/naver/keywords/${keywordId}`),
+    },
+    trackKeyword: (keywordId: string) => apiUrl(`/api/v1/naver/keywords/${keywordId}/track`),
+    analyzeMainKeywords: () => apiUrl('/api/v1/naver/analyze-main-keywords'),
     analyzePlaceDetails: (placeId: string, storeName?: string) => {
       const params = storeName ? `?store_name=${encodeURIComponent(storeName)}` : ''
-      return api.url(`/api/v1/naver/place-details/${placeId}${params}`)
+      return apiUrl(`/api/v1/naver/place-details/${placeId}${params}`)
     },
+  },
+  
+  /**
+   * 주요지표 추적 관련 API
+   */
+  metrics: {
+    // 문자열 속성 (metrics-tracker 페이지용)
+    list: apiUrl('/api/v1/metrics/trackers'),
+    create: apiUrl('/api/v1/metrics/trackers'),
+    // 함수 (dashboard 페이지용)
+    trackers: () => apiUrl('/api/v1/metrics/trackers'),
+    collectNow: (trackerId: string) => apiUrl(`/api/v1/metrics/trackers/${trackerId}/collect`),
+    update: (trackerId: string) => apiUrl(`/api/v1/metrics/trackers/${trackerId}`),
+    delete: (trackerId: string) => apiUrl(`/api/v1/metrics/trackers/${trackerId}`),
+    getMetrics: (trackerId: string) => apiUrl(`/api/v1/metrics/trackers/${trackerId}/metrics`),
   },
   
   /**
    * 리뷰 관련 API
    */
   reviews: {
-    analyze: () => api.url('/api/v1/reviews/analyze'),
-    extract: () => api.url('/api/v1/reviews/extract'),
+    analyze: () => apiUrl('/api/v1/reviews/analyze'),
+    extract: () => apiUrl('/api/v1/reviews/extract'),
     analyzeStream: (storeId: string, startDate: string, endDate: string) => 
-      api.url(`/api/v1/reviews/analyze-stream?store_id=${storeId}&start_date=${startDate}&end_date=${endDate}`),
+      apiUrl(`/api/v1/reviews/analyze-stream?store_id=${storeId}&start_date=${startDate}&end_date=${endDate}`),
     stats: (storeId: string, date?: string) => {
       const params = date ? `?date=${date}` : ''
-      return api.url(`/api/v1/reviews/stats/${storeId}${params}`)
+      return apiUrl(`/api/v1/reviews/stats/${storeId}${params}`)
     },
     list: (storeId: string, filters?: {
       date?: string
@@ -98,39 +121,9 @@ export const api = {
       if (filters?.is_receipt !== undefined) params.append('is_receipt', String(filters.is_receipt))
       if (filters?.is_reservation !== undefined) params.append('is_reservation', String(filters.is_reservation))
       const queryString = params.toString()
-      return api.url(`/api/v1/reviews/list/${storeId}${queryString ? `?${queryString}` : ''}`)
+      return apiUrl(`/api/v1/reviews/list/${storeId}${queryString ? `?${queryString}` : ''}`)
     },
-    placeInfo: (storeId: string) => api.url(`/api/v1/reviews/place-info/${storeId}`),
-  },
-  
-  /**
-   * 주요지표 추적 API
-   */
-  metrics: {
-    list: () => api.url('/api/v1/metrics/trackers'),
-    create: () => api.url('/api/v1/metrics/trackers'),
-    update: (trackerId: string) => api.url(`/api/v1/metrics/trackers/${trackerId}`),
-    delete: (trackerId: string) => api.url(`/api/v1/metrics/trackers/${trackerId}`),
-    getMetrics: (trackerId: string, startDate?: string, endDate?: string) => {
-      const params = new URLSearchParams()
-      if (startDate) params.append('start_date', startDate)
-      if (endDate) params.append('end_date', endDate)
-      const queryString = params.toString()
-      return api.url(`/api/v1/metrics/trackers/${trackerId}/metrics${queryString ? `?${queryString}` : ''}`)
-    },
-    collect: (trackerId: string) => api.url(`/api/v1/metrics/trackers/${trackerId}/collect`),
-    
-    // 하위 호환성을 위한 별칭
-    trackers: () => api.url('/api/v1/metrics/trackers'),
-    tracker: (trackerId: string) => api.url(`/api/v1/metrics/trackers/${trackerId}`),
-    metrics: (trackerId: string, startDate?: string, endDate?: string) => {
-      const params = new URLSearchParams()
-      if (startDate) params.append('start_date', startDate)
-      if (endDate) params.append('end_date', endDate)
-      const queryString = params.toString()
-      return api.url(`/api/v1/metrics/trackers/${trackerId}/metrics${queryString ? `?${queryString}` : ''}`)
-    },
-    collectNow: (trackerId: string) => api.url(`/api/v1/metrics/trackers/${trackerId}/collect`),
+    placeInfo: (storeId: string) => apiUrl(`/api/v1/reviews/place-info/${storeId}`),
   },
 } as const
 
