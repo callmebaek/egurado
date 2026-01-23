@@ -114,6 +114,7 @@ class MetricTrackerService:
                 
                 # 최신 지표 조회 (오늘 데이터)
                 try:
+                    # 오늘 데이터 조회
                     metrics_result = self.supabase.table('daily_metrics')\
                         .select('*')\
                         .eq('tracker_id', item['id'])\
@@ -126,8 +127,24 @@ class MetricTrackerService:
                         tracker['rank_change'] = latest_metric.get('rank_change')
                         tracker['visitor_review_count'] = latest_metric.get('visitor_review_count')
                         tracker['blog_review_count'] = latest_metric.get('blog_review_count')
-                        tracker['visitor_review_change'] = latest_metric.get('visitor_review_count', 0) - latest_metric.get('previous_rank', 0) if latest_metric.get('previous_rank') else None
-                        tracker['blog_review_change'] = None  # 블로그 리뷰 변동은 별도 계산 필요
+                        
+                        # 어제 데이터 조회하여 변동값 계산
+                        yesterday = today - timedelta(days=1)
+                        previous_result = self.supabase.table('daily_metrics')\
+                            .select('*')\
+                            .eq('tracker_id', item['id'])\
+                            .eq('collection_date', yesterday.isoformat())\
+                            .execute()
+                        
+                        if previous_result.data and len(previous_result.data) > 0:
+                            previous_metric = previous_result.data[0]
+                            # 변동값 = 오늘 - 어제
+                            tracker['visitor_review_change'] = latest_metric.get('visitor_review_count', 0) - previous_metric.get('visitor_review_count', 0)
+                            tracker['blog_review_change'] = latest_metric.get('blog_review_count', 0) - previous_metric.get('blog_review_count', 0)
+                        else:
+                            # 어제 데이터가 없으면 변동값 없음
+                            tracker['visitor_review_change'] = None
+                            tracker['blog_review_change'] = None
                     else:
                         # 오늘 데이터가 없으면 null
                         tracker['latest_rank'] = None

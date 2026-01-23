@@ -154,8 +154,14 @@ interface SidebarProps {
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname()
-  // 네이버 플레이스와 구글 비즈니스를 기본으로 펼쳐진 상태로 설정
-  const [openItems, setOpenItems] = useState<string[]>(['네이버 플레이스', '구글 비즈니스'])
+  // 모든 메뉴를 기본으로 펼쳐진 상태로 설정
+  const [openItems, setOpenItems] = useState<string[]>([
+    '네이버 플레이스', 
+    '리뷰 관리', 
+    '플레이스 지수관리', 
+    '검색광고 분석',
+    '구글 비즈니스'
+  ])
 
   // 모바일에서 라우트 변경 시 사이드바 닫기
   useEffect(() => {
