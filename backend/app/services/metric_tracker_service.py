@@ -303,14 +303,12 @@ class MetricTrackerService:
                     .update(metric_data)\
                     .eq('tracker_id', tracker_id)\
                     .eq('collection_date', today.isoformat())\
-                    .select('*')\
                     .execute()
                 logger.info(f"[Metrics Collect] 업데이트 완료: {tracker_id}")
             else:
                 # 삽입
                 result = self.supabase.table('daily_metrics')\
                     .insert(metric_data)\
-                    .select('*')\
                     .execute()
                 logger.info(f"[Metrics Collect] 삽입 완료: {tracker_id}")
             
@@ -320,7 +318,17 @@ class MetricTrackerService:
                 .eq('id', tracker_id)\
                 .execute()
             
-            return result.data[0] if result.data else metric_data
+            # 방금 삽입/업데이트한 데이터 조회 (id 포함)
+            final_result = self.supabase.table('daily_metrics')\
+                .select('*')\
+                .eq('tracker_id', tracker_id)\
+                .eq('collection_date', today.isoformat())\
+                .execute()
+            
+            if final_result.data and len(final_result.data) > 0:
+                return final_result.data[0]
+            else:
+                return result.data[0] if result.data else metric_data
             
         except Exception as e:
             logger.error(f"[Metrics Collect] 오류: {str(e)}")
