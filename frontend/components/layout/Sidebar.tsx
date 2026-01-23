@@ -60,7 +60,8 @@ const navigation: NavItem[] = [
         title: '플레이스 순위',
         icon: <TrendingUp className="w-4 h-4" />,
         children: [
-          { title: '순위 조회', href: '/dashboard/naver/rank', icon: null },
+          { title: '플레이스 순위조회', href: '/dashboard/naver/rank', icon: null },
+          { title: '주요지표 추적', href: '/dashboard/naver/metrics-tracker', icon: null },
           { title: '순위 알림 설정', href: '/dashboard/naver/rank/alert', icon: null },
         ],
       },
@@ -166,26 +167,26 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     return (
       <div key={item.title}>
         {item.href ? (
-          <Link
-            href={item.href}
-            className={cn(
+            <Link
+              href={item.href}
+              className={cn(
               'flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors',
               level > 0 && 'pl-10',
               level > 1 && 'pl-14',
               level === 0 && 'font-semibold',
-              isActive
+                isActive
                 ? 'bg-primary text-primary-foreground font-semibold'
                 : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-            )}
-          >
-            {item.icon}
-            <span className="flex-1">{item.title}</span>
-            {item.badge && (
+              )}
+            >
+              {item.icon}
+              <span className="flex-1">{item.title}</span>
+              {item.badge && (
               <span className="px-1.5 py-0.5 text-xs font-semibold bg-amber-500 text-white rounded">
-                {item.badge}
-              </span>
-            )}
-          </Link>
+                  {item.badge}
+                </span>
+              )}
+            </Link>
         ) : (
           <button
             onClick={() => hasChildren && toggleItem(item.title)}

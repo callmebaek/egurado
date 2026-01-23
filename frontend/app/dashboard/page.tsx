@@ -622,7 +622,13 @@ export default function DashboardPage() {
 
     if (trackersRes.ok) {
       const trackersData = await trackersRes.json()
-      let trackersList = trackersData.trackers || []
+      console.log("[DEBUG] Trackers Response:", trackersData)
+      
+      // API 응답이 배열인 경우와 { trackers: [] } 형식인 경우 모두 처리
+      let trackersList = Array.isArray(trackersData) 
+        ? trackersData 
+        : (trackersData?.trackers || [])
+      
       setTrackers(trackersList)
       
       // 매장별 그룹화 (이미 display_order로 정렬됨)
