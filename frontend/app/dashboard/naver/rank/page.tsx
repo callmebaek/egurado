@@ -1,6 +1,7 @@
 "use client"
 
 import { useStores } from "@/lib/hooks/useStores"
+import { useAuth } from "@/lib/auth-context"
 import { EmptyStoreMessage } from "@/components/EmptyStoreMessage"
 import { Loader2, TrendingUp, TrendingDown, Search, Minus, MapPin, Star, X, LineChart as LineChartIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -62,6 +63,7 @@ interface SearchResult {
 
 export default function NaverRankPage() {
   const { hasStores, isLoading: storesLoading } = useStores()
+  const { getToken } = useAuth()
   const { toast } = useToast()
 
   const [stores, setStores] = useState<Store[]>([])
@@ -200,8 +202,8 @@ export default function NaverRankPage() {
       }
       
       try {
-        const { data: { session } } = await supabase.auth.getSession()
-        if (!session) {
+        const token = getToken()
+        if (!token) {
           console.log("사용자 인증 정보가 없습니다")
           return
         }
@@ -210,7 +212,7 @@ export default function NaverRankPage() {
         
         const response = await fetch(api.stores.list(), {
           headers: {
-            'Authorization': `Bearer ${session.access_token}`
+            'Authorization': `Bearer ${token}`
           }
         })
         
@@ -245,7 +247,7 @@ export default function NaverRankPage() {
     if (hasStores && tierLoaded) {
       loadStores()
     }
-  }, [hasStores, tierLoaded, supabase.auth, toast])
+  }, [hasStores, tierLoaded, getToken, toast])
 
   // 선택된 매장의 키워드 목록 로드
   useEffect(() => {
@@ -257,11 +259,15 @@ export default function NaverRankPage() {
 
       setLoadingKeywords(true)
       try {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
+        const token = getToken()
+        if (!token) return
         
         // 모든 매장의 키워드 개수 계산 (전체 quota) ⭐
-        const allStoresResponse = await fetch(api.stores.list(user.id))
+        const allStoresResponse = await fetch(api.stores.list(), {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
         
         if (allStoresResponse.ok) {
           const allStoresData = await allStoresResponse.json()
@@ -295,7 +301,7 @@ export default function NaverRankPage() {
     }
 
     loadKeywords()
-  }, [selectedStoreId, keywordLimit, tierLoaded, supabase.auth])
+  }, [selectedStoreId, keywordLimit, tierLoaded, getToken])
 
   // 순위 조회
   const handleCheckRank = async () => {
