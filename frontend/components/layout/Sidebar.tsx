@@ -60,7 +60,8 @@ const navigation: NavItem[] = [
         title: '플레이스 순위',
         icon: <TrendingUp className="w-4 h-4" />,
         children: [
-          { title: '순위 조회', href: '/dashboard/naver/rank', icon: null },
+          { title: '플레이스 순위조회', href: '/dashboard/naver/rank', icon: null },
+          { title: '주요지표 추적', href: '/dashboard/naver/metrics-tracker', icon: null },
           { title: '순위 알림 설정', href: '/dashboard/naver/rank/alert', icon: null },
         ],
       },
