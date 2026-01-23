@@ -115,6 +115,13 @@ class MetricTrackerService:
             logger.error(f"[Trackers Get All] 오류: {str(e)}")
             return []
     
+    def get_trackers_by_user(self, user_id: str) -> List[dict]:
+        """
+        사용자의 모든 tracker 조회 (API 라우터용 별칭)
+        get_all_trackers와 동일한 기능
+        """
+        return self.get_all_trackers(user_id)
+    
     def get_all_active_trackers(self) -> List[dict]:
         """
         현재 시간에 수집해야 할 활성 tracker 조회
