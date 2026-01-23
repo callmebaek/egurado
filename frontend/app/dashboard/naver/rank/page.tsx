@@ -200,15 +200,19 @@ export default function NaverRankPage() {
       }
       
       try {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session) {
           console.log("사용자 인증 정보가 없습니다")
           return
         }
 
-        console.log("📦 매장 목록 로드 중..., user_id:", user.id)
+        console.log("📦 매장 목록 로드 중...")
         
-        const response = await fetch(api.stores.list(user.id))
+        const response = await fetch(api.stores.list(), {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`
+          }
+        })
         
         if (!response.ok) {
           console.error("매장 목록 조회 실패:", response.status)
