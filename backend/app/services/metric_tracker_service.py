@@ -43,7 +43,9 @@ class MetricTrackerService:
                 else:
                     data['update_times'] = [16]
             
-            logger.info(f"[Tracker Create] 데이터: {data}")
+            # UUID 객체를 문자열로 변환하여 로깅
+            log_data = {k: str(v) if isinstance(v, UUID) else v for k, v in data.items()}
+            logger.info(f"[Tracker Create] 데이터: {log_data}")
             
             # Supabase에 삽입
             result = self.supabase.table('metric_trackers').insert(data).execute()

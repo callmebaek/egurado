@@ -43,7 +43,8 @@ async def create_tracker(
     ⭐ 생성 즉시 첫 번째 지표를 수집합니다.
     """
     try:
-        tracker_data = data.model_dump()
+        # mode='json'으로 UUID를 문자열로 자동 변환
+        tracker_data = data.model_dump(mode='json')
         tracker_data["user_id"] = current_user["id"]
         
         result = metric_tracker_service.create_tracker(tracker_data)
