@@ -365,6 +365,13 @@ export default function MetricsTrackerPage() {
           description: "지표가 수집되었습니다"
         })
         
+        // ✅ tracker의 last_collected_at 업데이트 (날짜 바로 반영)
+        setTrackers(prev => prev.map(t => 
+          t.id === trackerId 
+            ? { ...t, last_collected_at: new Date().toISOString() }
+            : t
+        ))
+        
         // 해당 tracker의 최근 지표 다시 로드
         const metricsResponse = await fetch(api.metrics.getMetrics(trackerId), {
           headers: { 'Authorization': `Bearer ${token}` }
@@ -409,13 +416,60 @@ export default function MetricsTrackerPage() {
     try {
       setIsRefreshing(prev => new Set(prev).add(storeKey))
       
-      // 모든 키워드 수집
-      for (const trackerId of trackerIds) {
-        await handleCollectNow(trackerId)
-      }
+      // 🚀 각 tracker에 개별 로딩 상태 표시
+      trackerIds.forEach(trackerId => {
+        setIsRefreshing(prev => new Set(prev).add(trackerId))
+      })
       
-      // 모든 수집 완료 후 전체 데이터 새로고침
-      await loadTrackers()
+      // 모든 키워드 수집 (순차적으로, 각각 UI 업데이트)
+      for (const trackerId of trackerIds) {
+        try {
+          const token = getToken()
+          if (!token) continue
+
+          const response = await fetch(api.metrics.collectNow(trackerId), {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` }
+          })
+
+          if (response.ok) {
+            // ✅ tracker의 last_collected_at 업데이트
+            setTrackers(prev => prev.map(t => 
+              t.id === trackerId 
+                ? { ...t, last_collected_at: new Date().toISOString() }
+                : t
+            ))
+            
+            // 최근 지표 로드
+            const metricsResponse = await fetch(api.metrics.getMetrics(trackerId), {
+              headers: { 'Authorization': `Bearer ${token}` }
+            })
+            
+            if (metricsResponse.ok) {
+              const data = await metricsResponse.json()
+              if (data.metrics && data.metrics.length > 0) {
+                setLatestMetrics(prev => ({
+                  ...prev,
+                  [trackerId]: data.metrics[0]
+                }))
+                setPreviousMetrics(prev => ({
+                  ...prev,
+                  [trackerId]: data.metrics[1] || null
+                }))
+              }
+            }
+          }
+        } catch (error) {
+          console.error(`Tracker ${trackerId} 수집 실패:`, error)
+        } finally {
+          // 개별 tracker 로딩 상태 제거
+          setIsRefreshing(prev => {
+            const next = new Set(prev)
+            next.delete(trackerId)
+            return next
+          })
+        }
+      }
       
       toast({
         title: "🎉 전체 수집 완료",
@@ -710,9 +764,14 @@ export default function MetricsTrackerPage() {
                                 </span>
                               )}
                             </div>
-                            {tracker.last_collected_at && (
-                              <div className="hidden lg:flex items-center gap-2 text-xs text-gray-400">
-                                <Clock className="w-3.5 h-3.5" />
+                            <div className="hidden lg:flex items-center gap-2 text-xs text-gray-400">
+                              <Clock className="w-3.5 h-3.5" />
+                              {isRefreshing.has(tracker.id) ? (
+                                <span className="flex items-center gap-1.5 text-blue-500 font-medium">
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                  수집 중...
+                                </span>
+                              ) : tracker.last_collected_at ? (
                                 <span>
                                   {new Date(tracker.last_collected_at).toLocaleDateString('ko-KR', {
                                     month: 'short',
@@ -721,12 +780,20 @@ export default function MetricsTrackerPage() {
                                     minute: '2-digit'
                                   })}
                                 </span>
-                              </div>
-                            )}
+                              ) : (
+                                <span>수집 대기중</span>
+                              )}
+                            </div>
                           </div>
 
                           {/* 최근 지표 */}
-                          {latestMetrics[tracker.id] ? (
+                          {isRefreshing.has(tracker.id) ? (
+                            <div className="text-center text-sm text-gray-400 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl py-8 mb-4 border border-gray-200">
+                              <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-blue-500" />
+                              <p className="font-semibold text-gray-600">지표 수집 중...</p>
+                              <p className="text-xs text-gray-400 mt-1">잠시만 기다려주세요</p>
+                            </div>
+                          ) : latestMetrics[tracker.id] ? (
                             <div className="grid grid-cols-3 gap-3 mb-4">
                               {/* 순위 */}
                               <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-3 sm:p-4 border border-blue-200/50">
