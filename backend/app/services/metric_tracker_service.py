@@ -88,7 +88,7 @@ class MetricTrackerService:
             return None
     
     def get_all_trackers(self, user_id: str) -> List[dict]:
-        """사용자의 모든 tracker 조회"""
+        """사용자의 모든 tracker 조회 (최신 지표 포함)"""
         try:
             result = self.supabase.table('metric_trackers')\
                 .select('*, stores(store_name, platform), keywords(keyword)')\
@@ -97,6 +97,8 @@ class MetricTrackerService:
                 .execute()
             
             trackers = []
+            today = date.today()
+            
             for item in result.data:
                 tracker = {**item}
                 
@@ -107,6 +109,39 @@ class MetricTrackerService:
                 
                 if 'keywords' in item and item['keywords']:
                     tracker['keyword'] = item['keywords'].get('keyword', '')
+                
+                # 최신 지표 조회 (오늘 데이터)
+                try:
+                    metrics_result = self.supabase.table('daily_metrics')\
+                        .select('*')\
+                        .eq('tracker_id', item['id'])\
+                        .eq('collection_date', today.isoformat())\
+                        .execute()
+                    
+                    if metrics_result.data and len(metrics_result.data) > 0:
+                        latest_metric = metrics_result.data[0]
+                        tracker['latest_rank'] = latest_metric.get('rank')
+                        tracker['rank_change'] = latest_metric.get('rank_change')
+                        tracker['visitor_review_count'] = latest_metric.get('visitor_review_count')
+                        tracker['blog_review_count'] = latest_metric.get('blog_review_count')
+                        tracker['visitor_review_change'] = latest_metric.get('visitor_review_count', 0) - latest_metric.get('previous_rank', 0) if latest_metric.get('previous_rank') else None
+                        tracker['blog_review_change'] = None  # 블로그 리뷰 변동은 별도 계산 필요
+                    else:
+                        # 오늘 데이터가 없으면 null
+                        tracker['latest_rank'] = None
+                        tracker['rank_change'] = None
+                        tracker['visitor_review_count'] = None
+                        tracker['blog_review_count'] = None
+                        tracker['visitor_review_change'] = None
+                        tracker['blog_review_change'] = None
+                except Exception as metric_error:
+                    logger.warning(f"[Trackers Get All] 지표 조회 실패 (tracker_id={item['id']}): {str(metric_error)}")
+                    tracker['latest_rank'] = None
+                    tracker['rank_change'] = None
+                    tracker['visitor_review_count'] = None
+                    tracker['blog_review_count'] = None
+                    tracker['visitor_review_change'] = None
+                    tracker['blog_review_change'] = None
                 
                 trackers.append(tracker)
             
