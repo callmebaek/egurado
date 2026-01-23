@@ -61,33 +61,15 @@ export const api = {
     searchStores: (query: string) => 
       api.url(`/api/v1/naver/search-stores-unofficial?query=${encodeURIComponent(query)}`),
     checkRank: () => api.url('/api/v1/naver/check-rank-unofficial'),
-    stores: {
-      list: api.url('/api/v1/naver/stores'),
-      create: api.url('/api/v1/naver/stores'),
-      delete: (storeId: string) => api.url(`/api/v1/naver/stores/${storeId}`),
-    },
-    keywords: {
-      list: api.url('/api/v1/naver/keywords'),
-      history: (keywordId: string) => api.url(`/api/v1/naver/keywords/${keywordId}/history`),
-      delete: (keywordId: string) => api.url(`/api/v1/naver/keywords/${keywordId}`),
-    },
-    trackKeyword: (keywordId: string) => api.url(`/api/v1/naver/keywords/${keywordId}/track`),
+    keywords: (storeId: string) => api.url(`/api/v1/naver/stores/${storeId}/keywords`),
+    keywordHistory: (keywordId: string) => 
+      api.url(`/api/v1/naver/keywords/${keywordId}/history`),
+    deleteKeyword: (keywordId: string) => api.url(`/api/v1/naver/keywords/${keywordId}`),
     analyzeMainKeywords: () => api.url('/api/v1/naver/analyze-main-keywords'),
     analyzePlaceDetails: (placeId: string, storeName?: string) => {
       const params = storeName ? `?store_name=${encodeURIComponent(storeName)}` : ''
       return api.url(`/api/v1/naver/place-details/${placeId}${params}`)
     },
-  },
-  
-  /**
-   * 주요지표 추적 관련 API
-   */
-  metrics: {
-    list: api.url('/api/v1/metrics/trackers'),
-    create: api.url('/api/v1/metrics/trackers'),
-    update: (trackerId: string) => api.url(`/api/v1/metrics/trackers/${trackerId}`),
-    delete: (trackerId: string) => api.url(`/api/v1/metrics/trackers/${trackerId}`),
-    getMetrics: (trackerId: string) => api.url(`/api/v1/metrics/trackers/${trackerId}/metrics`),
   },
   
   /**
