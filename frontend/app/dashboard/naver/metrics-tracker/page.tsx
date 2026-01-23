@@ -1108,29 +1108,81 @@ export default function MetricsTrackerPage() {
                   <table className="w-full text-sm">
                     <thead className="bg-gradient-to-r from-gray-50 to-blue-50">
                       <tr>
-                        <th className="px-4 py-3 text-left font-semibold text-gray-700">날짜</th>
-                        <th className="px-4 py-3 text-center font-semibold text-gray-700">순위</th>
-                        <th className="px-4 py-3 text-center font-semibold text-gray-700">방문자리뷰</th>
-                        <th className="px-4 py-3 text-center font-semibold text-gray-700">블로그리뷰</th>
+                        <th className="px-3 py-3 text-left font-semibold text-gray-700">날짜</th>
+                        <th className="px-3 py-3 text-center font-semibold text-gray-700">순위</th>
+                        <th className="px-3 py-3 text-center font-semibold text-gray-700">순위변동</th>
+                        <th className="px-3 py-3 text-center font-semibold text-gray-700">방문자리뷰</th>
+                        <th className="px-3 py-3 text-center font-semibold text-gray-700">방문자변동</th>
+                        <th className="px-3 py-3 text-center font-semibold text-gray-700">블로그리뷰</th>
+                        <th className="px-3 py-3 text-center font-semibold text-gray-700">블로그변동</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {metrics.map((metric, index) => (
-                        <tr key={metric.id} className={`border-t border-gray-200 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
-                          <td className="px-4 py-3 text-gray-700">
-                            {new Date(metric.collection_date).toLocaleDateString('ko-KR')}
-                          </td>
-                          <td className="px-4 py-3 text-center font-bold text-blue-600">
-                            {metric.rank || '-'}
-                          </td>
-                          <td className="px-4 py-3 text-center text-gray-700">
-                            {metric.visitor_review_count.toLocaleString()}
-                          </td>
-                          <td className="px-4 py-3 text-center text-gray-700">
-                            {metric.blog_review_count.toLocaleString()}
-                          </td>
-                        </tr>
-                      ))}
+                      {metrics.map((metric, index) => {
+                        // 이전 데이터와 비교 (역순이므로 다음 index)
+                        const prevMetric = metrics[index + 1]
+                        
+                        // 변동값 계산
+                        const rankChange = prevMetric && metric.rank && prevMetric.rank 
+                          ? metric.rank - prevMetric.rank 
+                          : null
+                        const visitorChange = prevMetric 
+                          ? metric.visitor_review_count - prevMetric.visitor_review_count 
+                          : null
+                        const blogChange = prevMetric 
+                          ? metric.blog_review_count - prevMetric.blog_review_count 
+                          : null
+                        
+                        return (
+                          <tr key={metric.id} className={`border-t border-gray-200 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
+                            <td className="px-3 py-3 text-gray-700 whitespace-nowrap">
+                              {new Date(metric.collection_date).toLocaleDateString('ko-KR')}
+                            </td>
+                            <td className="px-3 py-3 text-center font-bold text-blue-600">
+                              {metric.rank || '-'}
+                            </td>
+                            <td className="px-3 py-3 text-center font-semibold">
+                              {rankChange === null ? (
+                                <span className="text-gray-400">-</span>
+                              ) : rankChange === 0 ? (
+                                <span className="text-gray-500">-</span>
+                              ) : (
+                                <span className={rankChange > 0 ? 'text-red-600' : 'text-blue-600'}>
+                                  {rankChange > 0 ? '+' : ''}{rankChange}
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-3 py-3 text-center text-gray-700">
+                              {metric.visitor_review_count.toLocaleString()}
+                            </td>
+                            <td className="px-3 py-3 text-center font-semibold">
+                              {visitorChange === null ? (
+                                <span className="text-gray-400">-</span>
+                              ) : visitorChange === 0 ? (
+                                <span className="text-gray-500">-</span>
+                              ) : (
+                                <span className={visitorChange > 0 ? 'text-red-600' : 'text-blue-600'}>
+                                  {visitorChange > 0 ? '+' : ''}{visitorChange.toLocaleString()}
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-3 py-3 text-center text-gray-700">
+                              {metric.blog_review_count.toLocaleString()}
+                            </td>
+                            <td className="px-3 py-3 text-center font-semibold">
+                              {blogChange === null ? (
+                                <span className="text-gray-400">-</span>
+                              ) : blogChange === 0 ? (
+                                <span className="text-gray-500">-</span>
+                              ) : (
+                                <span className={blogChange > 0 ? 'text-red-600' : 'text-blue-600'}>
+                                  {blogChange > 0 ? '+' : ''}{blogChange.toLocaleString()}
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        )
+                      })}
                     </tbody>
                   </table>
                 </div>
