@@ -1188,8 +1188,8 @@ export default function MetricsTrackerPage() {
                               ) : rankChange === 0 ? (
                                 <span className="text-gray-500">-</span>
                               ) : (
-                                <span className={rankChange > 0 ? 'text-red-600' : 'text-blue-600'}>
-                                  {rankChange > 0 ? '+' : ''}{rankChange}
+                                <span className={rankChange < 0 ? 'text-red-600' : 'text-blue-600'}>
+                                  {rankChange < 0 ? '+' : '-'}{Math.abs(rankChange)}
                                 </span>
                               )}
                             </td>
