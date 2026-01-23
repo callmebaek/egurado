@@ -132,7 +132,7 @@ export default function MetricsTrackerPage() {
       }
 
       // 매장 목록 로드
-      const storesResponse = await fetch(api.stores.list(), {
+      const storesResponse = await fetch(api.naver.stores.list, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -232,7 +232,7 @@ export default function MetricsTrackerPage() {
       if (!token) return;
 
       const response = await fetch(
-        api.naver.keywords(storeId),
+        `${api.naver.keywords.list}?store_id=${storeId}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,

@@ -65,10 +65,16 @@ export const api = {
     searchStores: (query: string) => 
       apiUrl(`/api/v1/naver/search-stores-unofficial?query=${encodeURIComponent(query)}`),
     checkRank: () => apiUrl('/api/v1/naver/check-rank-unofficial'),
-    keywords: (storeId: string) => apiUrl(`/api/v1/naver/stores/${storeId}/keywords`),
-    keywordHistory: (keywordId: string) => 
-      apiUrl(`/api/v1/naver/keywords/${keywordId}/history`),
-    deleteKeyword: (keywordId: string) => apiUrl(`/api/v1/naver/keywords/${keywordId}`),
+    stores: {
+      list: apiUrl('/api/v1/naver/stores'),
+      create: apiUrl('/api/v1/naver/stores'),
+      delete: (storeId: string) => apiUrl(`/api/v1/naver/stores/${storeId}`),
+    },
+    keywords: {
+      list: apiUrl('/api/v1/naver/keywords'),
+      history: (keywordId: string) => apiUrl(`/api/v1/naver/keywords/${keywordId}/history`),
+      delete: (keywordId: string) => apiUrl(`/api/v1/naver/keywords/${keywordId}`),
+    },
     trackKeyword: (keywordId: string) => apiUrl(`/api/v1/naver/keywords/${keywordId}/track`),
     analyzeMainKeywords: () => apiUrl('/api/v1/naver/analyze-main-keywords'),
     analyzePlaceDetails: (placeId: string, storeName?: string) => {
