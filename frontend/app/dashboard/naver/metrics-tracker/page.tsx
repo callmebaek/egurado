@@ -9,7 +9,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
-import { useAuth } from "@/lib/auth-context";
 import { api } from "@/lib/config";
 import {
   LineChart,
@@ -94,7 +93,6 @@ const storeGradients = [
 
 export default function MetricsTrackerPage() {
   const { toast } = useToast();
-  const { user, getToken } = useAuth();
   const [stores, setStores] = useState<Store[]>([]);
   const [trackers, setTrackers] = useState<MetricTracker[]>([]);
   const [metrics, setMetrics] = useState<Map<string, Metric[]>>(new Map());
@@ -121,7 +119,7 @@ export default function MetricsTrackerPage() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const token = getToken();
+      const token = localStorage.getItem("token");
       if (!token) {
         toast({
           title: "인증 오류",
@@ -228,7 +226,7 @@ export default function MetricsTrackerPage() {
 
   const loadKeywordsForStore = async (storeId: string) => {
     try {
-      const token = getToken();
+      const token = localStorage.getItem("token");
       if (!token) return;
 
       const response = await fetch(
@@ -260,7 +258,7 @@ export default function MetricsTrackerPage() {
     }
 
     try {
-      const token = getToken();
+      const token = localStorage.getItem("token");
       if (!token) {
         toast({
           title: "인증 오류",
@@ -323,7 +321,7 @@ export default function MetricsTrackerPage() {
 
   const collectMetrics = async (trackerId: string) => {
     try {
-      const token = getToken();
+      const token = localStorage.getItem("token");
       if (!token) return;
 
       const response = await fetch(
@@ -374,7 +372,7 @@ export default function MetricsTrackerPage() {
     if (!editingTracker) return;
 
     try {
-      const token = getToken();
+      const token = localStorage.getItem("token");
       if (!token) {
         toast({
           title: "인증 오류",
@@ -428,7 +426,7 @@ export default function MetricsTrackerPage() {
     }
 
     try {
-      const token = getToken();
+      const token = localStorage.getItem("token");
       if (!token) {
         toast({
           title: "인증 오류",
