@@ -115,6 +115,63 @@ class MetricTrackerService:
             logger.error(f"[Trackers Get All] 오류: {str(e)}")
             return []
     
+    def get_all_active_trackers(self) -> List[dict]:
+        """
+        현재 시간에 수집해야 할 활성 tracker 조회
+        
+        스케줄러에서 매 시간마다 호출됨
+        현재 시간이 update_times 배열에 포함된 tracker들을 반환
+        
+        Returns:
+            현재 시간에 수집할 tracker 목록 (stores, keywords 정보 포함)
+        """
+        try:
+            current_hour = datetime.now().hour
+            logger.info(f"[Get Active Trackers] 현재 시간: {current_hour}시")
+            
+            # 모든 활성 tracker 조회
+            result = self.supabase.table('metric_trackers')\
+                .select('*, stores(store_name, place_id, platform), keywords(keyword)')\
+                .eq('is_active', True)\
+                .execute()
+            
+            if not result.data:
+                logger.info("[Get Active Trackers] 활성 tracker 없음")
+                return []
+            
+            # 현재 시간에 수집해야 할 tracker 필터링
+            scheduled_trackers = []
+            for tracker in result.data:
+                update_times = tracker.get('update_times', [])
+                
+                # update_times가 None이거나 비어있으면 기본값 사용
+                if not update_times:
+                    update_frequency = tracker.get('update_frequency', 'daily_once')
+                    if update_frequency == 'daily_once':
+                        update_times = [16]
+                    elif update_frequency == 'daily_twice':
+                        update_times = [6, 16]
+                    elif update_frequency == 'daily_thrice':
+                        update_times = [6, 12, 18]
+                    else:
+                        update_times = [16]
+                
+                # 현재 시간이 수집 시간에 포함되는지 확인
+                if current_hour in update_times:
+                    scheduled_trackers.append(tracker)
+                    keyword_text = tracker.get('keywords', {}).get('keyword', 'Unknown') if tracker.get('keywords') else 'Unknown'
+                    store_name = tracker.get('stores', {}).get('store_name', 'Unknown') if tracker.get('stores') else 'Unknown'
+                    logger.info(
+                        f"[Schedule] {current_hour}시 수집 예정: '{keyword_text}' (매장: {store_name})"
+                    )
+            
+            logger.info(f"[Get Active Trackers] 총 {len(scheduled_trackers)}개 tracker 수집 예정")
+            return scheduled_trackers
+            
+        except Exception as e:
+            logger.error(f"[Get Active Trackers] 오류: {str(e)}")
+            return []
+    
     def update_tracker(self, tracker_id: str, user_id: str, data: dict) -> dict:
         """tracker 설정 수정"""
         try:
