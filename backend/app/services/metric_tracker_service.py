@@ -303,12 +303,14 @@ class MetricTrackerService:
                     .update(metric_data)\
                     .eq('tracker_id', tracker_id)\
                     .eq('collection_date', today.isoformat())\
+                    .select('*')\
                     .execute()
                 logger.info(f"[Metrics Collect] 업데이트 완료: {tracker_id}")
             else:
                 # 삽입
                 result = self.supabase.table('daily_metrics')\
                     .insert(metric_data)\
+                    .select('*')\
                     .execute()
                 logger.info(f"[Metrics Collect] 삽입 완료: {tracker_id}")
             
