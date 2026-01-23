@@ -47,6 +47,37 @@ async def create_tracker(
         tracker_data = data.model_dump(mode='json')
         tracker_data["user_id"] = current_user["id"]
         
+        # keyword 텍스트가 있으면 keyword_id로 변환 (없으면 생성)
+        if 'keyword' in tracker_data and tracker_data['keyword']:
+            from app.core.database import get_supabase_client
+            supabase = get_supabase_client()
+            
+            keyword_text = tracker_data.pop('keyword')  # keyword 필드 제거
+            store_id = tracker_data['store_id']
+            
+            # keyword_id가 없으면 키워드 생성 또는 조회
+            if not tracker_data.get('keyword_id'):
+                # 기존 키워드 조회
+                existing = supabase.table('keywords')\
+                    .select('*')\
+                    .eq('store_id', store_id)\
+                    .eq('keyword', keyword_text)\
+                    .execute()
+                
+                if existing.data and len(existing.data) > 0:
+                    tracker_data['keyword_id'] = existing.data[0]['id']
+                else:
+                    # 새 키워드 생성
+                    new_keyword = supabase.table('keywords').insert({
+                        'store_id': store_id,
+                        'keyword': keyword_text
+                    }).execute()
+                    
+                    if new_keyword.data and len(new_keyword.data) > 0:
+                        tracker_data['keyword_id'] = new_keyword.data[0]['id']
+                    else:
+                        raise Exception("키워드 생성 실패")
+        
         result = metric_tracker_service.create_tracker(tracker_data)
         
         # ⭐ 생성 즉시 첫 번째 지표 수집
