@@ -34,27 +34,24 @@ export const API_BASE_URL = config.apiUrl
 /**
  * API 엔드포인트 빌더
  */
-const baseUrl = config.apiUrl;
-const apiUrl = (path: string) => `${baseUrl}${path}`;
-
 export const api = {
   /**
    * 백엔드 기본 URL
    */
-  baseUrl: baseUrl,
+  baseUrl: config.apiUrl,
   
   /**
    * 전체 URL 생성
    */
-  url: apiUrl,
+  url: (path: string) => `${config.apiUrl}${path}`,
   
   /**
    * 매장 관련 API
    */
   stores: {
-    list: (userId: string) => apiUrl(`/api/v1/stores/?user_id=${userId}`),
-    create: () => apiUrl('/api/v1/stores/'),
-    delete: (storeId: string) => apiUrl(`/api/v1/stores/${storeId}`),
+    list: (userId: string) => api.url(`/api/v1/stores/?user_id=${userId}`),
+    create: () => api.url('/api/v1/stores/'),
+    delete: (storeId: string) => api.url(`/api/v1/stores/${storeId}`),
   },
   
   /**
@@ -62,23 +59,23 @@ export const api = {
    */
   naver: {
     searchStores: (query: string) => 
-      apiUrl(`/api/v1/naver/search-stores-unofficial?query=${encodeURIComponent(query)}`),
-    checkRank: () => apiUrl('/api/v1/naver/check-rank-unofficial'),
+      api.url(`/api/v1/naver/search-stores-unofficial?query=${encodeURIComponent(query)}`),
+    checkRank: () => api.url('/api/v1/naver/check-rank-unofficial'),
     stores: {
-      list: apiUrl('/api/v1/naver/stores'),
-      create: apiUrl('/api/v1/naver/stores'),
-      delete: (storeId: string) => apiUrl(`/api/v1/naver/stores/${storeId}`),
+      list: api.url('/api/v1/naver/stores'),
+      create: api.url('/api/v1/naver/stores'),
+      delete: (storeId: string) => api.url(`/api/v1/naver/stores/${storeId}`),
     },
     keywords: {
-      list: apiUrl('/api/v1/naver/keywords'),
-      history: (keywordId: string) => apiUrl(`/api/v1/naver/keywords/${keywordId}/history`),
-      delete: (keywordId: string) => apiUrl(`/api/v1/naver/keywords/${keywordId}`),
+      list: api.url('/api/v1/naver/keywords'),
+      history: (keywordId: string) => api.url(`/api/v1/naver/keywords/${keywordId}/history`),
+      delete: (keywordId: string) => api.url(`/api/v1/naver/keywords/${keywordId}`),
     },
-    trackKeyword: (keywordId: string) => apiUrl(`/api/v1/naver/keywords/${keywordId}/track`),
-    analyzeMainKeywords: () => apiUrl('/api/v1/naver/analyze-main-keywords'),
+    trackKeyword: (keywordId: string) => api.url(`/api/v1/naver/keywords/${keywordId}/track`),
+    analyzeMainKeywords: () => api.url('/api/v1/naver/analyze-main-keywords'),
     analyzePlaceDetails: (placeId: string, storeName?: string) => {
       const params = storeName ? `?store_name=${encodeURIComponent(storeName)}` : ''
-      return apiUrl(`/api/v1/naver/place-details/${placeId}${params}`)
+      return api.url(`/api/v1/naver/place-details/${placeId}${params}`)
     },
   },
   
@@ -86,24 +83,24 @@ export const api = {
    * 주요지표 추적 관련 API
    */
   metrics: {
-    list: apiUrl('/api/v1/metrics/trackers'),
-    create: apiUrl('/api/v1/metrics/trackers'),
-    update: (trackerId: string) => apiUrl(`/api/v1/metrics/trackers/${trackerId}`),
-    delete: (trackerId: string) => apiUrl(`/api/v1/metrics/trackers/${trackerId}`),
-    getMetrics: (trackerId: string) => apiUrl(`/api/v1/metrics/trackers/${trackerId}/metrics`),
+    list: api.url('/api/v1/metrics/trackers'),
+    create: api.url('/api/v1/metrics/trackers'),
+    update: (trackerId: string) => api.url(`/api/v1/metrics/trackers/${trackerId}`),
+    delete: (trackerId: string) => api.url(`/api/v1/metrics/trackers/${trackerId}`),
+    getMetrics: (trackerId: string) => api.url(`/api/v1/metrics/trackers/${trackerId}/metrics`),
   },
   
   /**
    * 리뷰 관련 API
    */
   reviews: {
-    analyze: () => apiUrl('/api/v1/reviews/analyze'),
-    extract: () => apiUrl('/api/v1/reviews/extract'),
+    analyze: () => api.url('/api/v1/reviews/analyze'),
+    extract: () => api.url('/api/v1/reviews/extract'),
     analyzeStream: (storeId: string, startDate: string, endDate: string) => 
-      apiUrl(`/api/v1/reviews/analyze-stream?store_id=${storeId}&start_date=${startDate}&end_date=${endDate}`),
+      api.url(`/api/v1/reviews/analyze-stream?store_id=${storeId}&start_date=${startDate}&end_date=${endDate}`),
     stats: (storeId: string, date?: string) => {
       const params = date ? `?date=${date}` : ''
-      return apiUrl(`/api/v1/reviews/stats/${storeId}${params}`)
+      return api.url(`/api/v1/reviews/stats/${storeId}${params}`)
     },
     list: (storeId: string, filters?: {
       date?: string
@@ -117,9 +114,9 @@ export const api = {
       if (filters?.is_receipt !== undefined) params.append('is_receipt', String(filters.is_receipt))
       if (filters?.is_reservation !== undefined) params.append('is_reservation', String(filters.is_reservation))
       const queryString = params.toString()
-      return apiUrl(`/api/v1/reviews/list/${storeId}${queryString ? `?${queryString}` : ''}`)
+      return api.url(`/api/v1/reviews/list/${storeId}${queryString ? `?${queryString}` : ''}`)
     },
-    placeInfo: (storeId: string) => apiUrl(`/api/v1/reviews/place-info/${storeId}`),
+    placeInfo: (storeId: string) => api.url(`/api/v1/reviews/place-info/${storeId}`),
   },
 } as const
 
