@@ -107,7 +107,7 @@ export const api = {
    * 주요지표 추적 관련 API
    */
   metrics: {
-    list: api.url('/api/v1/metrics/trackers'),
+    list: () => api.url('/api/v1/metrics/trackers'),
     create: () => api.url('/api/v1/metrics/trackers'),
     trackers: () => api.url('/api/v1/metrics/trackers'),
     collectNow: (trackerId: string) => api.url(`/api/v1/metrics/trackers/${trackerId}/collect`),
