@@ -2,7 +2,7 @@
 네이버 플레이스 관련 API 라우터
 (경쟁매장 분석 포함)
 """
-from fastapi import APIRouter, HTTPException, status, Query
+from fastapi import APIRouter, HTTPException, status, Query, Depends
 from pydantic import BaseModel
 from typing import List, Dict, Optional, Any
 from uuid import UUID
@@ -18,6 +18,7 @@ from app.services.naver_rank_api_unofficial import rank_service_api_unofficial
 from app.services.naver_keywords_analyzer import keywords_analyzer_service
 from app.services.naver_competitor_analysis_service import competitor_analysis_service
 from app.core.database import get_supabase_client
+from app.routers.auth import get_current_user
 from datetime import datetime, date
 
 router = APIRouter()
@@ -729,7 +730,7 @@ async def get_keyword_rank_history(keyword_id: UUID):
 
 
 @router.delete("/keywords/{keyword_id}")
-async def delete_keyword(keyword_id: UUID):
+async def delete_keyword(keyword_id: UUID, current_user: dict = Depends(get_current_user)):
     """
     키워드 삭제
     

@@ -391,14 +391,18 @@ export default function NaverRankPage() {
         save_count: data.save_count,
       })
 
-      // 키워드 목록 즉시 업데이트
+      // 키워드 목록 새로고침
       await loadKeywords(selectedStoreId)
       
-      // 방금 조회한 키워드의 total_count를 total_results로 업데이트
+      // 방금 조회한 키워드의 total_count를 total_results로 즉시 업데이트
       if (data.total_count && keyword) {
+        console.log("[순위조회] total_count 업데이트:", data.total_count, "키워드:", keyword.trim())
         setKeywords(prevKeywords => 
           prevKeywords.map(kw => 
-            kw.keyword === keyword.trim() ? { ...kw, total_results: data.total_count } : kw
+            kw.keyword === keyword.trim() ? { 
+              ...kw, 
+              total_results: data.total_count
+            } : kw
           )
         )
       }
@@ -582,10 +586,23 @@ export default function NaverRankPage() {
     try {
       console.log("[DELETE] 키워드 삭제 시작:", keywordId)
       
+      const token = getToken()
+      if (!token) {
+        toast({
+          title: "❌ 인증 오류",
+          description: "로그인이 필요합니다",
+          variant: "destructive"
+        })
+        return
+      }
+      
       const response = await fetch(
         api.naver.deleteKeyword(keywordId),
         {
-          method: "DELETE"
+          method: "DELETE",
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
         }
       )
 
