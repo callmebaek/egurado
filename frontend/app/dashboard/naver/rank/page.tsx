@@ -307,6 +307,7 @@ export default function NaverRankPage() {
       
       if (response.ok) {
         const data = await response.json()
+        console.log("[loadKeywords] API Response:", data.keywords)
         setKeywords(data.keywords || [])
       }
     } catch (error) {
@@ -567,10 +568,23 @@ export default function NaverRankPage() {
     }
 
     try {
+      const token = getToken()
+      if (!token) {
+        toast({
+          title: "❌ 인증 오류",
+          description: "로그인이 필요합니다",
+          variant: "destructive"
+        })
+        return
+      }
+
       const response = await fetch(
         api.naver.deleteKeyword(keywordId),
         {
           method: "DELETE",
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
         }
       )
 
@@ -584,36 +598,11 @@ export default function NaverRankPage() {
         setRankHistory([])
       }
 
-      // 키워드 목록 새로고침 및 전체 카운트 업데이트 ⭐
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        // 전체 키워드 수 재계산
-        const allStoresResponse = await fetch(api.stores.list(user.id))
-        
-        if (allStoresResponse.ok) {
-          const allStoresData = await allStoresResponse.json()
-          const naverStores = allStoresData.stores.filter((s: Store) => s.platform === "naver")
-          
-          let totalKeywords = 0
-          for (const store of naverStores) {
-            const keywordResponse = await fetch(api.naver.keywords(store.id))
-            if (keywordResponse.ok) {
-              const keywordData = await keywordResponse.json()
-              totalKeywords += (keywordData.keywords || []).length
-            }
-          }
-          setCurrentKeywordCount(totalKeywords)
-        }
-      }
-      
-      const keywordsResponse = await fetch(api.naver.keywords(selectedStoreId))
-      if (keywordsResponse.ok) {
-        const keywordsData = await keywordsResponse.json()
-        setKeywords(keywordsData.keywords || [])
-      }
+      // 키워드 목록 새로고침
+      await loadKeywords(selectedStoreId)
 
       toast({
-        title: "키워드 삭제 완료",
+        title: "✅ 키워드 삭제 완료",
         description: `"${keywordName}" 키워드가 삭제되었습니다.`,
       })
     } catch (error: any) {

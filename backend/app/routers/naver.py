@@ -473,6 +473,8 @@ async def check_place_rank(request: RankCheckRequest):
             else:
                 total_results = total_count_value if total_count_value else 0
             
+            logger.info(f"[Rank Check] total_count: {total_count_value}, total_results: {total_results}")
+            
             supabase.table("keywords").update({
                 "previous_rank": previous_rank,
                 "current_rank": rank_result["rank"],
@@ -510,6 +512,8 @@ async def check_place_rank(request: RankCheckRequest):
                 total_results = int(total_count_value.replace(",", "")) if total_count_value else 0
             else:
                 total_results = total_count_value if total_count_value else 0
+            
+            logger.info(f"[Rank Check] NEW KEYWORD - total_count: {total_count_value}, total_results: {total_results}")
             
             keyword_insert = supabase.table("keywords").insert({
                 "store_id": str(request.store_id),
