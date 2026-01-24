@@ -33,6 +33,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
 import { useToast } from "@/components/ui/use-toast"
+import { Switch } from "@/components/ui/switch"
 import { 
   Dialog,
   DialogContent,
