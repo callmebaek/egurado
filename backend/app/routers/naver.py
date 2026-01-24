@@ -467,13 +467,18 @@ async def check_place_rank(request: RankCheckRequest):
             
             # keywords 테이블 업데이트
             # total_count 처리: 정수 또는 문자열 "1,234" → 1234 변환
-            total_count_value = rank_result.get("total_count", 0)
-            if isinstance(total_count_value, str):
-                total_results = int(total_count_value.replace(",", "")) if total_count_value else 0
-            else:
-                total_results = total_count_value if total_count_value else 0
+            total_count_value = rank_result.get("total_count")
+            total_results = 0
             
-            logger.info(f"[Rank Check] total_count: {total_count_value}, total_results: {total_results}")
+            if total_count_value is not None:
+                if isinstance(total_count_value, str):
+                    # 문자열 "1,234" → 1234
+                    total_results = int(total_count_value.replace(",", "")) if total_count_value.strip() else 0
+                elif isinstance(total_count_value, int):
+                    # 정수 그대로
+                    total_results = total_count_value
+            
+            logger.info(f"[Rank Check] UPDATE - total_count: {total_count_value}, total_results: {total_results}")
             
             supabase.table("keywords").update({
                 "previous_rank": previous_rank,
@@ -507,11 +512,16 @@ async def check_place_rank(request: RankCheckRequest):
             
             # 새 키워드 등록
             # total_count 처리: 정수 또는 문자열 "1,234" → 1234 변환
-            total_count_value = rank_result.get("total_count", 0)
-            if isinstance(total_count_value, str):
-                total_results = int(total_count_value.replace(",", "")) if total_count_value else 0
-            else:
-                total_results = total_count_value if total_count_value else 0
+            total_count_value = rank_result.get("total_count")
+            total_results = 0
+            
+            if total_count_value is not None:
+                if isinstance(total_count_value, str):
+                    # 문자열 "1,234" → 1234
+                    total_results = int(total_count_value.replace(",", "")) if total_count_value.strip() else 0
+                elif isinstance(total_count_value, int):
+                    # 정수 그대로
+                    total_results = total_count_value
             
             logger.info(f"[Rank Check] NEW KEYWORD - total_count: {total_count_value}, total_results: {total_results}")
             

@@ -568,29 +568,25 @@ export default function NaverRankPage() {
     }
 
     try {
-      const token = getToken()
-      if (!token) {
-        toast({
-          title: "❌ 인증 오류",
-          description: "로그인이 필요합니다",
-          variant: "destructive"
-        })
-        return
-      }
-
+      console.log("[DELETE] 키워드 삭제 시작:", keywordId)
+      
       const response = await fetch(
         api.naver.deleteKeyword(keywordId),
         {
-          method: "DELETE",
-          headers: {
-            "Authorization": `Bearer ${token}`
-          }
+          method: "DELETE"
         }
       )
 
+      console.log("[DELETE] 응답 상태:", response.status)
+
       if (!response.ok) {
-        throw new Error("키워드 삭제에 실패했습니다")
+        const errorText = await response.text()
+        console.error("[DELETE] 에러 응답:", errorText)
+        throw new Error(`키워드 삭제에 실패했습니다 (${response.status})`)
       }
+
+      const result = await response.json()
+      console.log("[DELETE] 삭제 성공:", result)
 
       // 선택된 키워드였다면 차트 닫기
       if (selectedKeywordForChart?.id === keywordId) {
