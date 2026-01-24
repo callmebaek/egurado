@@ -108,6 +108,8 @@ export default function MetricsTrackerPage() {
   const [newKeyword, setNewKeyword] = useState("")
   const [updateFrequency, setUpdateFrequency] = useState<'daily_once' | 'daily_twice' | 'daily_thrice'>('daily_once')
   const [updateTimes, setUpdateTimes] = useState<number[]>([16]) // 기본: 16시 (오후 4시)
+  const [notificationEnabled, setNotificationEnabled] = useState(false)
+  const [notificationType, setNotificationType] = useState<'email' | 'sms' | 'kakao' | null>(null)
   const [isAdding, setIsAdding] = useState(false)
   const [searchedKeywords, setSearchedKeywords] = useState<SearchedKeyword[]>([])
   const [loadingKeywords, setLoadingKeywords] = useState(false)
