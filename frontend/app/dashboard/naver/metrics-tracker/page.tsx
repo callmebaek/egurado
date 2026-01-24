@@ -117,13 +117,19 @@ export default function MetricsTrackerPage() {
   const [metrics, setMetrics] = useState<DailyMetric[]>([])
   const [loadingMetrics, setLoadingMetrics] = useState(false)
 
-  // 설정 모달
+  // 설정 모달 (매장별 일괄 설정)
   const [showSettingsDialog, setShowSettingsDialog] = useState(false)
-  const [editingTracker, setEditingTracker] = useState<MetricTracker | null>(null)
-  const [editFrequency, setEditFrequency] = useState<'daily_once' | 'daily_twice' | 'daily_thrice'>('daily_once')
-  const [editUpdateTimes, setEditUpdateTimes] = useState<number[]>([16]) // 수집 시간 배열
-  const [editNotificationEnabled, setEditNotificationEnabled] = useState(false)
-  const [editNotificationType, setEditNotificationType] = useState<'email' | 'sms' | 'kakao' | ''>('')
+  const [editingStore, setEditingStore] = useState<{id: string, name: string} | null>(null)
+  const [editingTrackers, setEditingTrackers] = useState<MetricTracker[]>([])
+  const [editTrackerSettings, setEditTrackerSettings] = useState<{
+    [trackerId: string]: {
+      frequency: 'daily_once' | 'daily_twice' | 'daily_thrice'
+      times: number[]
+      notificationEnabled: boolean
+      notificationType: 'email' | 'sms' | 'kakao' | ''
+    }
+  }>({})
+  const [isSavingSettings, setIsSavingSettings] = useState(false)
 
   // 주기별 기본 수집 시간 설정
   const getDefaultUpdateTimes = (frequency: 'daily_once' | 'daily_twice' | 'daily_thrice'): number[] => {
@@ -147,14 +153,6 @@ export default function MetricsTrackerPage() {
   useEffect(() => {
     setUpdateTimes(getDefaultUpdateTimes(updateFrequency))
   }, [updateFrequency])
-
-  // 주기 변경 시 기본 시간 설정 (추가 모달에서만)
-  // 설정 모달에서는 handleEditSettings에서 이미 기존 시간을 설정하므로 여기서 덮어쓰지 않음
-  useEffect(() => {
-    if (showAddDialog && !showSettingsDialog) {
-      setUpdateTimes(getDefaultUpdateTimes(updateFrequency))
-    }
-  }, [updateFrequency, showAddDialog, showSettingsDialog])
 
   // 매장 목록 로드
   useEffect(() => {
@@ -547,54 +545,86 @@ export default function MetricsTrackerPage() {
     }
   }
 
-  // 설정 수정
-  const handleEditSettings = (tracker: MetricTracker) => {
-    setEditingTracker(tracker)
-    setEditFrequency(tracker.update_frequency)
-    // 기존 시간이 있으면 사용, 없으면 기본값 사용
-    setEditUpdateTimes(tracker.update_times && tracker.update_times.length > 0 
-      ? tracker.update_times 
-      : getDefaultUpdateTimes(tracker.update_frequency))
-    setEditNotificationEnabled(tracker.notification_enabled)
-    setEditNotificationType(tracker.notification_type || '')
+  // 매장별 자동수집 설정 (여러 키워드 한번에)
+  const handleEditStoreSettings = (storeId: string, storeName: string, storeTrackers: MetricTracker[]) => {
+    setEditingStore({ id: storeId, name: storeName })
+    setEditingTrackers(storeTrackers)
+    
+    // 각 tracker의 현재 설정을 초기화
+    const settings: typeof editTrackerSettings = {}
+    storeTrackers.forEach(tracker => {
+      settings[tracker.id] = {
+        frequency: tracker.update_frequency,
+        times: tracker.update_times && tracker.update_times.length > 0 
+          ? tracker.update_times 
+          : getDefaultUpdateTimes(tracker.update_frequency),
+        notificationEnabled: tracker.notification_enabled,
+        notificationType: tracker.notification_type || ''
+      }
+    })
+    setEditTrackerSettings(settings)
     setShowSettingsDialog(true)
   }
 
   const handleUpdateSettings = async () => {
-    if (!editingTracker) return
+    if (!editingStore || editingTrackers.length === 0) return
 
     try {
+      setIsSavingSettings(true)
       const token = getToken()
       if (!token) return
 
-      const response = await fetch(api.metrics.update(editingTracker.id), {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          update_frequency: editFrequency,
-          update_times: editUpdateTimes,
-          notification_enabled: editNotificationEnabled,
-          notification_type: editNotificationEnabled ? editNotificationType : null
+      // 모든 tracker를 병렬로 업데이트
+      const updatePromises = editingTrackers.map(async (tracker) => {
+        const settings = editTrackerSettings[tracker.id]
+        if (!settings) return null
+
+        const response = await fetch(api.metrics.update(tracker.id), {
+          method: 'PATCH',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            update_frequency: settings.frequency,
+            update_times: settings.times,
+            notification_enabled: settings.notificationEnabled,
+            notification_type: settings.notificationEnabled ? settings.notificationType : null
+          })
         })
+
+        if (response.ok) {
+          const updatedTracker = await response.json()
+          return updatedTracker
+        }
+        return null
       })
 
-      if (response.ok) {
-        toast({
-          title: "✅ 설정 수정 완료",
-          description: "추적 설정이 수정되었습니다"
-        })
-        setShowSettingsDialog(false)
-        await loadTrackers()
-      }
+      const results = await Promise.all(updatePromises)
+      
+      // ✅ State만 업데이트 (페이지 새로고침 없음)
+      setTrackers(prev => prev.map(t => {
+        const updated = results.find(r => r && r.id === t.id)
+        return updated ? { ...t, ...updated } : t
+      }))
+
+      toast({
+        title: "✅ 설정 저장 완료",
+        description: `${editingStore.name}의 자동수집 설정이 저장되었습니다`
+      })
+      
+      setShowSettingsDialog(false)
+      setEditingStore(null)
+      setEditingTrackers([])
+      setEditTrackerSettings({})
     } catch (error) {
       toast({
-        title: "설정 수정 실패",
-        description: "설정 수정 중 오류가 발생했습니다",
+        title: "설정 저장 실패",
+        description: "설정 저장 중 오류가 발생했습니다",
         variant: "destructive"
       })
+    } finally {
+      setIsSavingSettings(false)
     }
   }
 
@@ -752,19 +782,30 @@ export default function MetricsTrackerPage() {
                         </div>
                       </div>
                       
-                      {/* 전체 수집 버튼 */}
-                      <button
-                        onClick={() => handleCollectAllStore(group.store.id, group.trackers.map(t => t.id))}
-                        disabled={isRefreshing.has(`store_${group.store.id}`)}
-                        className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm transition-all shadow-md ${
-                          isRefreshing.has(`store_${group.store.id}`)
-                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                            : `bg-gradient-to-r ${gradient} text-white hover:shadow-lg hover:scale-105`
-                        }`}
-                      >
-                        <RefreshCw className={`w-4 h-4 ${isRefreshing.has(`store_${group.store.id}`) ? 'animate-spin' : ''}`} />
-                        <span className="hidden sm:inline">전체 수집</span>
-                      </button>
+                      {/* 자동수집설정 & 전체 수집 버튼 */}
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleEditStoreSettings(group.store.id, group.store.name, group.trackers)}
+                          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm transition-all shadow-md bg-white/80 border-2 ${
+                            `border-gray-300 text-gray-700 hover:border-gray-400 hover:bg-white hover:shadow-lg hover:scale-105`
+                          }`}
+                        >
+                          <Settings className="w-4 h-4" />
+                          <span className="hidden lg:inline">자동수집설정</span>
+                        </button>
+                        <button
+                          onClick={() => handleCollectAllStore(group.store.id, group.trackers.map(t => t.id))}
+                          disabled={isRefreshing.has(`store_${group.store.id}`)}
+                          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm transition-all shadow-md ${
+                            isRefreshing.has(`store_${group.store.id}`)
+                              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                              : `bg-gradient-to-r ${gradient} text-white hover:shadow-lg hover:scale-105`
+                          }`}
+                        >
+                          <RefreshCw className={`w-4 h-4 ${isRefreshing.has(`store_${group.store.id}`) ? 'animate-spin' : ''}`} />
+                          <span className="hidden sm:inline">전체 수집</span>
+                        </button>
+                      </div>
                     </div>
 
                     {/* 추적 키워드 목록 */}
@@ -775,14 +816,10 @@ export default function MetricsTrackerPage() {
                           className="backdrop-blur-sm bg-white/80 rounded-2xl p-4 sm:p-5 hover:bg-white/90 transition-all duration-300 border border-gray-100 hover:border-gray-200 shadow-sm hover:shadow-md"
                         >
                           {/* 키워드명과 상태 */}
-                          <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-3 flex-wrap flex-1">
+                          <div className="flex flex-col gap-3 mb-4">
+                            <div className="flex items-center gap-3 flex-wrap">
                               <span className="font-bold text-lg text-gray-800">
                                 {tracker.keyword}
-                              </span>
-                              <span className="text-xs px-2.5 py-1 bg-gray-100 text-gray-600 rounded-full font-medium">
-                                {tracker.update_frequency === 'daily_once' ? '1회/일' : 
-                                 tracker.update_frequency === 'daily_twice' ? '2회/일' : '3회/일'}
                               </span>
                               {tracker.notification_enabled && (
                                 <div className="flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 text-blue-600 rounded-full text-xs font-medium">
@@ -800,25 +837,42 @@ export default function MetricsTrackerPage() {
                                 </span>
                               )}
                             </div>
-                            <div className="hidden lg:flex items-center gap-2 text-xs text-gray-400">
-                              <Clock className="w-3.5 h-3.5" />
-                              {isRefreshing.has(tracker.id) ? (
-                                <span className="flex items-center gap-1.5 text-blue-500 font-medium">
-                                  <Loader2 className="w-3 h-3 animate-spin" />
-                                  수집 중...
-                                </span>
-                              ) : tracker.last_collected_at ? (
+                            
+                            {/* 최근 업데이트 & 자동수집 정보 */}
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-xs">
+                              <div className="flex items-center gap-2 text-gray-500">
+                                <Clock className="w-3.5 h-3.5" />
+                                {isRefreshing.has(tracker.id) ? (
+                                  <span className="flex items-center gap-1.5 text-blue-500 font-medium">
+                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                    수집 중...
+                                  </span>
+                                ) : tracker.last_collected_at ? (
+                                  <span>
+                                    최근 업데이트: {new Date(tracker.last_collected_at).toLocaleDateString('ko-KR', {
+                                      month: 'short',
+                                      day: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    })}
+                                  </span>
+                                ) : (
+                                  <span>최근 업데이트: 수집 대기중</span>
+                                )}
+                              </div>
+                              <span className="hidden sm:inline text-gray-300">|</span>
+                              <div className="flex items-center gap-2 text-gray-500">
+                                <Settings className="w-3.5 h-3.5" />
                                 <span>
-                                  {new Date(tracker.last_collected_at).toLocaleDateString('ko-KR', {
-                                    month: 'short',
-                                    day: 'numeric',
-                                    hour: '2-digit',
-                                    minute: '2-digit'
-                                  })}
+                                  자동수집: {tracker.update_frequency === 'daily_once' ? '1회/일' : 
+                                           tracker.update_frequency === 'daily_twice' ? '2회/일' : '3회/일'}
+                                  {tracker.update_times && tracker.update_times.length > 0 && (
+                                    <span className="ml-1 text-gray-400">
+                                      ({tracker.update_times.map(t => `${t < 10 ? '0' : ''}${t}시`).join(', ')})
+                                    </span>
+                                  )}
                                 </span>
-                              ) : (
-                                <span>수집 대기중</span>
-                              )}
+                              </div>
                             </div>
                           </div>
 
@@ -944,35 +998,12 @@ export default function MetricsTrackerPage() {
                               <span className="sm:hidden">수집</span>
                             </button>
                             <button
-                              onClick={() => handleEditSettings(tracker)}
-                              className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-gray-50 text-gray-600 hover:bg-gray-100 rounded-xl text-sm font-semibold transition-all hover:scale-105"
-                            >
-                              <Settings className="w-4 h-4" />
-                              <span className="hidden sm:inline">설정</span>
-                              <span className="sm:hidden">설정</span>
-                            </button>
-                            <button
                               onClick={() => handleDelete(tracker.id, tracker.keyword)}
                               className="flex items-center justify-center px-3 py-2.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-xl text-sm font-semibold transition-all hover:scale-105"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
-
-                          {/* 모바일: 마지막 수집 시간 */}
-                          {tracker.last_collected_at && (
-                            <div className="lg:hidden flex items-center gap-2 text-xs text-gray-400 mt-3 pt-3 border-t">
-                              <Clock className="w-3.5 h-3.5" />
-                              <span>
-                                {new Date(tracker.last_collected_at).toLocaleDateString('ko-KR', {
-                                  month: 'short',
-                                  day: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })}
-                              </span>
-                            </div>
-                          )}
                         </div>
                       ))}
                     </div>
@@ -1233,148 +1264,135 @@ export default function MetricsTrackerPage() {
         </DialogContent>
       </Dialog>
 
-      {/* 설정 수정 모달 */}
+      {/* 매장별 자동수집 설정 모달 */}
       <Dialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog}>
-        <DialogContent className="sm:max-w-lg backdrop-blur-xl bg-white/95 border-2 border-white/40 shadow-2xl">
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-hidden backdrop-blur-xl bg-white/95 border-2 border-white/40 shadow-2xl flex flex-col">
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              추적 설정
+              자동수집 설정
             </DialogTitle>
             <DialogDescription className="text-gray-600">
-              {editingTracker?.keyword} - {editingTracker?.store_name}
+              {editingStore?.name} - 추적중인 키워드별 자동수집 시간을 설정합니다
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-5 py-4">
-            <div>
-              <label className="text-sm font-semibold mb-2 block text-gray-700">수집 주기</label>
-              <select
-                value={editFrequency}
-                onChange={(e) => {
-                  const newFrequency = e.target.value as 'daily_once' | 'daily_twice' | 'daily_thrice'
-                  setEditFrequency(newFrequency)
-                  // 수집 주기 변경 시 기본 시간으로 자동 설정
-                  setEditUpdateTimes(getDefaultUpdateTimes(newFrequency))
-                }}
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white"
-              >
-                <option value="daily_once">하루 1회</option>
-                <option value="daily_twice">하루 2회</option>
-                <option value="daily_thrice">하루 3회</option>
-              </select>
-            </div>
+          
+          <div className="flex-1 overflow-y-auto py-4">
+            <div className="space-y-4">
+              {editingTrackers.map((tracker) => {
+                const settings = editTrackerSettings[tracker.id]
+                if (!settings) return null
 
-            {/* 수집 시간 설정 */}
-            <div className="space-y-3">
-              <label className="text-sm font-semibold block text-gray-700">수집 시간</label>
-              <div className="space-y-2">
-                {editUpdateTimes.map((time, index) => (
-                  <div key={index} className="flex items-center gap-3">
-                    <span className="text-sm text-gray-600 w-12">
-                      {index + 1}회차
-                    </span>
-                    <select
-                      value={time}
-                      onChange={(e) => {
-                        const newTimes = [...editUpdateTimes]
-                        newTimes[index] = parseInt(e.target.value)
-                        setEditUpdateTimes(newTimes)
-                      }}
-                      className="flex-1 px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white"
-                    >
-                      {Array.from({ length: 24 }, (_, i) => (
-                        <option key={i} value={i}>
-                          {i < 10 ? `0${i}:00` : `${i}:00`} 
-                          {i === 0 ? ' (자정)' : i < 12 ? ' (오전)' : i === 12 ? ' (정오)' : ' (오후)'}
-                        </option>
-                      ))}
-                    </select>
+                const frequencyCount = settings.frequency === 'daily_once' ? 1 :
+                                      settings.frequency === 'daily_twice' ? 2 : 3
+
+                return (
+                  <div key={tracker.id} className="border-2 border-gray-200 rounded-2xl p-5 bg-white/50 hover:bg-white/80 transition-all">
+                    {/* 키워드명 */}
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="font-bold text-lg text-gray-800">{tracker.keyword}</h3>
+                      {tracker.notification_enabled && (
+                        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 text-blue-600 rounded-full text-xs font-medium">
+                          <Bell className="w-3 h-3" />
+                          <span>알림 설정됨</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* 수집 주기 */}
+                    <div className="mb-4">
+                      <label className="text-sm font-semibold mb-2 block text-gray-700">수집 주기</label>
+                      <select
+                        value={settings.frequency}
+                        onChange={(e) => {
+                          const newFrequency = e.target.value as 'daily_once' | 'daily_twice' | 'daily_thrice'
+                          setEditTrackerSettings(prev => ({
+                            ...prev,
+                            [tracker.id]: {
+                              ...prev[tracker.id],
+                              frequency: newFrequency,
+                              times: getDefaultUpdateTimes(newFrequency)
+                            }
+                          }))
+                        }}
+                        className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white"
+                      >
+                        <option value="daily_once">하루 1회</option>
+                        <option value="daily_twice">하루 2회</option>
+                        <option value="daily_thrice">하루 3회</option>
+                      </select>
+                    </div>
+
+                    {/* 수집 시간 */}
+                    <div>
+                      <label className="text-sm font-semibold mb-2 block text-gray-700">수집 시간</label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {settings.times.slice(0, frequencyCount).map((time, index) => (
+                          <div key={index} className="flex items-center gap-2">
+                            <span className="text-sm text-gray-600 w-12">
+                              {index + 1}회차
+                            </span>
+                            <select
+                              value={time}
+                              onChange={(e) => {
+                                const newTimes = [...settings.times]
+                                newTimes[index] = parseInt(e.target.value)
+                                setEditTrackerSettings(prev => ({
+                                  ...prev,
+                                  [tracker.id]: {
+                                    ...prev[tracker.id],
+                                    times: newTimes
+                                  }
+                                }))
+                              }}
+                              className="flex-1 px-3 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white text-sm"
+                            >
+                              {Array.from({ length: 24 }, (_, i) => (
+                                <option key={i} value={i}>
+                                  {i < 10 ? `0${i}:00` : `${i}:00`}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
-                ))}
-              </div>
-              <p className="text-xs text-gray-500 mt-2">
-                ℹ️ 설정한 시간에 자동으로 지표를 수집합니다 (한국시간 기준)
-              </p>
+                )
+              })}
             </div>
             
-            {/* 알림 설정 */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <label className="text-sm font-semibold text-gray-700">순위 알림받기</label>
-                <button
-                  onClick={() => setEditNotificationEnabled(!editNotificationEnabled)}
-                  className={`relative inline-flex h-7 w-12 items-center rounded-full transition-all ${
-                    editNotificationEnabled ? 'bg-blue-600' : 'bg-gray-300'
-                  }`}
-                >
-                  <span
-                    className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
-                      editNotificationEnabled ? 'translate-x-6' : 'translate-x-1'
-                    }`}
-                  />
-                </button>
-              </div>
-              
-              {editNotificationEnabled && (
-                <div className="space-y-2 pl-4 border-l-2 border-blue-200">
-                  <p className="text-xs text-gray-500 mb-2">알림 방법 선택</p>
-                  <div className="space-y-2">
-                    <button
-                      onClick={() => setEditNotificationType('email')}
-                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all ${
-                        editNotificationType === 'email'
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'border-gray-200 bg-white hover:border-gray-300'
-                      }`}
-                    >
-                      <Mail className={`w-5 h-5 ${editNotificationType === 'email' ? 'text-blue-600' : 'text-gray-400'}`} />
-                      <span className={`font-medium ${editNotificationType === 'email' ? 'text-blue-600' : 'text-gray-600'}`}>
-                        이메일
-                      </span>
-                    </button>
-                    <button
-                      onClick={() => setEditNotificationType('sms')}
-                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all ${
-                        editNotificationType === 'sms'
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'border-gray-200 bg-white hover:border-gray-300'
-                      }`}
-                    >
-                      <Phone className={`w-5 h-5 ${editNotificationType === 'sms' ? 'text-blue-600' : 'text-gray-400'}`} />
-                      <span className={`font-medium ${editNotificationType === 'sms' ? 'text-blue-600' : 'text-gray-600'}`}>
-                        문자 (SMS)
-                      </span>
-                    </button>
-                    <button
-                      onClick={() => setEditNotificationType('kakao')}
-                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all ${
-                        editNotificationType === 'kakao'
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'border-gray-200 bg-white hover:border-gray-300'
-                      }`}
-                    >
-                      <MessageCircle className={`w-5 h-5 ${editNotificationType === 'kakao' ? 'text-blue-600' : 'text-gray-400'}`} />
-                      <span className={`font-medium ${editNotificationType === 'kakao' ? 'text-blue-600' : 'text-gray-600'}`}>
-                        카카오톡
-                      </span>
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
+            <p className="text-xs text-gray-500 mt-4 text-center">
+              ℹ️ 설정한 시간에 자동으로 지표를 수집합니다 (한국시간 기준)
+            </p>
           </div>
-          <div className="flex gap-3">
+
+          <div className="flex gap-3 pt-4 border-t">
             <Button
               variant="outline"
-              onClick={() => setShowSettingsDialog(false)}
+              onClick={() => {
+                setShowSettingsDialog(false)
+                setEditingStore(null)
+                setEditingTrackers([])
+                setEditTrackerSettings({})
+              }}
+              disabled={isSavingSettings}
               className="flex-1 h-12 rounded-xl border-2"
             >
               취소
             </Button>
             <Button
               onClick={handleUpdateSettings}
-              className="flex-1 h-12 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold shadow-lg"
+              disabled={isSavingSettings}
+              className="flex-1 h-12 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold shadow-lg disabled:opacity-50"
             >
-              저장
+              {isSavingSettings ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  저장 중...
+                </span>
+              ) : (
+                '저장'
+              )}
             </Button>
           </div>
         </DialogContent>
