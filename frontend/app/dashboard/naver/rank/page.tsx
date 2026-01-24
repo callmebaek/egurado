@@ -720,7 +720,7 @@ export default function NaverRankPage() {
               </Button>
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              네이버 지도에서 검색할 키워드를 입력하세요 (최대 200개까지 확인)
+              네이버 지도에서 검색할 키워드를 입력하세요 (최대 300개까지 확인)
             </p>
           </div>
         </div>
@@ -937,11 +937,13 @@ export default function NaverRankPage() {
                       </td>
                       <td className="py-3 px-4 text-center">
                         <span className="text-lg font-bold text-primary">
-                          {kw.current_rank ? `${kw.current_rank}위` : "-"}
+                          {kw.current_rank ? `${kw.current_rank}위` : (
+                            <span className="text-sm text-yellow-600 font-medium">300위권 밖</span>
+                          )}
                         </span>
                       </td>
                       <td className="py-3 px-4 text-center text-gray-600">
-                        {kw.total_results ? `${kw.total_results.toLocaleString()}개` : "-"}
+                        {kw.total_results && kw.total_results > 0 ? `${kw.total_results.toLocaleString()}개` : "-"}
                       </td>
                       <td className="py-3 px-4 text-center text-sm text-gray-600">
                         {new Date(kw.last_checked_at).toLocaleDateString('ko-KR', {
