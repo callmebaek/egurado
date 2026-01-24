@@ -4,11 +4,14 @@ Metric Tracker Service
 """
 import logging
 from typing import List, Dict, Optional
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from uuid import UUID, uuid4
 from app.core.database import get_supabase_client
 
 logger = logging.getLogger(__name__)
+
+# KST 시간대 정의 (UTC+9)
+KST = timezone(timedelta(hours=9))
 
 
 class MetricTrackerService:
@@ -112,41 +115,63 @@ class MetricTrackerService:
                 if 'keywords' in item and item['keywords']:
                     tracker['keyword'] = item['keywords'].get('keyword', '')
                 
-                # 최신 지표 조회 (오늘 데이터)
+                # 최신 지표 조회 (오늘 데이터 우선, 없으면 최신 데이터)
                 try:
-                    # 오늘 데이터 조회
+                    # 오늘 데이터 먼저 조회
                     metrics_result = self.supabase.table('daily_metrics')\
                         .select('*')\
                         .eq('tracker_id', item['id'])\
                         .eq('collection_date', today.isoformat())\
                         .execute()
                     
+                    latest_metric = None
+                    latest_date = today
+                    
                     if metrics_result.data and len(metrics_result.data) > 0:
+                        # 오늘 데이터가 있음
                         latest_metric = metrics_result.data[0]
+                        latest_date = today
+                        logger.debug(f"[Trackers Get All] Tracker {item['id']}: 오늘 데이터 사용")
+                    else:
+                        # 오늘 데이터가 없으면 가장 최근 데이터 조회
+                        recent_result = self.supabase.table('daily_metrics')\
+                            .select('*')\
+                            .eq('tracker_id', item['id'])\
+                            .order('collection_date', desc=True)\
+                            .limit(1)\
+                            .execute()
+                        
+                        if recent_result.data and len(recent_result.data) > 0:
+                            latest_metric = recent_result.data[0]
+                            latest_date = date.fromisoformat(latest_metric['collection_date'])
+                            logger.info(f"[Trackers Get All] Tracker {item['id']}: 최신 데이터 사용 ({latest_date})")
+                    
+                    if latest_metric:
+                        # 최신 지표 데이터 설정
                         tracker['latest_rank'] = latest_metric.get('rank')
                         tracker['rank_change'] = latest_metric.get('rank_change')
                         tracker['visitor_review_count'] = latest_metric.get('visitor_review_count')
                         tracker['blog_review_count'] = latest_metric.get('blog_review_count')
                         
-                        # 어제 데이터 조회하여 변동값 계산
-                        yesterday = today - timedelta(days=1)
+                        # 이전 날짜 데이터 조회하여 변동값 계산
+                        previous_date = latest_date - timedelta(days=1)
                         previous_result = self.supabase.table('daily_metrics')\
                             .select('*')\
                             .eq('tracker_id', item['id'])\
-                            .eq('collection_date', yesterday.isoformat())\
+                            .eq('collection_date', previous_date.isoformat())\
                             .execute()
                         
                         if previous_result.data and len(previous_result.data) > 0:
                             previous_metric = previous_result.data[0]
-                            # 변동값 = 오늘 - 어제
+                            # 변동값 = 최신 - 이전
                             tracker['visitor_review_change'] = latest_metric.get('visitor_review_count', 0) - previous_metric.get('visitor_review_count', 0)
                             tracker['blog_review_change'] = latest_metric.get('blog_review_count', 0) - previous_metric.get('blog_review_count', 0)
                         else:
-                            # 어제 데이터가 없으면 변동값 없음
+                            # 이전 데이터가 없으면 변동값 없음
                             tracker['visitor_review_change'] = None
                             tracker['blog_review_change'] = None
                     else:
-                        # 오늘 데이터가 없으면 null
+                        # 데이터가 전혀 없음
                         tracker['latest_rank'] = None
                         tracker['rank_change'] = None
                         tracker['visitor_review_count'] = None
@@ -187,8 +212,9 @@ class MetricTrackerService:
             현재 시간에 수집할 tracker 목록 (stores, keywords 정보 포함)
         """
         try:
-            current_hour = datetime.now().hour
-            logger.info(f"[Get Active Trackers] 현재 시간: {current_hour}시")
+            # KST 시간대로 현재 시간 조회 (UTC+9)
+            current_hour = datetime.now(KST).hour
+            logger.info(f"[Get Active Trackers] 현재 시간 (KST): {current_hour}시")
             
             # 모든 활성 tracker 조회
             result = self.supabase.table('metric_trackers')\
