@@ -1323,7 +1323,7 @@ export default function MetricsTrackerPage() {
                     </div>
 
                     {/* 수집 시간 */}
-                    <div>
+                    <div className="mb-4">
                       <label className="text-sm font-semibold mb-2 block text-gray-700">수집 시간</label>
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                         {settings.times.slice(0, frequencyCount).map((time, index) => (
@@ -1355,6 +1355,104 @@ export default function MetricsTrackerPage() {
                           </div>
                         ))}
                       </div>
+                    </div>
+
+                    {/* 순위 알림받기 */}
+                    <div className="space-y-3 pt-4 border-t border-gray-200">
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm font-semibold text-gray-700">순위 알림받기</label>
+                        <button
+                          onClick={() => {
+                            setEditTrackerSettings(prev => ({
+                              ...prev,
+                              [tracker.id]: {
+                                ...prev[tracker.id],
+                                notificationEnabled: !prev[tracker.id].notificationEnabled
+                              }
+                            }))
+                          }}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-all ${
+                            settings.notificationEnabled ? 'bg-blue-600' : 'bg-gray-300'
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                              settings.notificationEnabled ? 'translate-x-6' : 'translate-x-1'
+                            }`}
+                          />
+                        </button>
+                      </div>
+                      
+                      {settings.notificationEnabled && (
+                        <div className="space-y-2 pl-4 border-l-2 border-blue-200">
+                          <p className="text-xs text-gray-500 mb-2">알림 방법 선택</p>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            <button
+                              onClick={() => {
+                                setEditTrackerSettings(prev => ({
+                                  ...prev,
+                                  [tracker.id]: {
+                                    ...prev[tracker.id],
+                                    notificationType: 'email'
+                                  }
+                                }))
+                              }}
+                              className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border-2 transition-all ${
+                                settings.notificationType === 'email'
+                                  ? 'border-blue-500 bg-blue-50'
+                                  : 'border-gray-200 bg-white hover:border-gray-300'
+                              }`}
+                            >
+                              <Mail className={`w-4 h-4 ${settings.notificationType === 'email' ? 'text-blue-600' : 'text-gray-400'}`} />
+                              <span className={`text-sm font-medium ${settings.notificationType === 'email' ? 'text-blue-600' : 'text-gray-600'}`}>
+                                이메일
+                              </span>
+                            </button>
+                            <button
+                              onClick={() => {
+                                setEditTrackerSettings(prev => ({
+                                  ...prev,
+                                  [tracker.id]: {
+                                    ...prev[tracker.id],
+                                    notificationType: 'sms'
+                                  }
+                                }))
+                              }}
+                              className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border-2 transition-all ${
+                                settings.notificationType === 'sms'
+                                  ? 'border-blue-500 bg-blue-50'
+                                  : 'border-gray-200 bg-white hover:border-gray-300'
+                              }`}
+                            >
+                              <Phone className={`w-4 h-4 ${settings.notificationType === 'sms' ? 'text-blue-600' : 'text-gray-400'}`} />
+                              <span className={`text-sm font-medium ${settings.notificationType === 'sms' ? 'text-blue-600' : 'text-gray-600'}`}>
+                                문자
+                              </span>
+                            </button>
+                            <button
+                              onClick={() => {
+                                setEditTrackerSettings(prev => ({
+                                  ...prev,
+                                  [tracker.id]: {
+                                    ...prev[tracker.id],
+                                    notificationType: 'kakao'
+                                  }
+                                }))
+                              }}
+                              className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border-2 transition-all ${
+                                settings.notificationType === 'kakao'
+                                  ? 'border-blue-500 bg-blue-50'
+                                  : 'border-gray-200 bg-white hover:border-gray-300'
+                              }`}
+                            >
+                              <MessageCircle className={`w-4 h-4 ${settings.notificationType === 'kakao' ? 'text-blue-600' : 'text-gray-400'}`} />
+                              <span className={`text-sm font-medium ${settings.notificationType === 'kakao' ? 'text-blue-600' : 'text-gray-600'}`}>
+                                카카오톡
+                              </span>
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )
