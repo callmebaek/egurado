@@ -341,7 +341,8 @@ export default function MetricsTrackerPage() {
           keyword: newKeyword.trim(),
           update_frequency: updateFrequency,
           update_times: updateTimes,
-          notification_enabled: false
+          notification_enabled: notificationEnabled,
+          notification_type: notificationEnabled ? notificationType : null
         })
       })
 
@@ -354,6 +355,9 @@ export default function MetricsTrackerPage() {
         setSelectedStoreId("")
         setNewKeyword("")
         setUpdateFrequency('daily_once')
+        setUpdateTimes([9])
+        setNotificationEnabled(false)
+        setNotificationType(null)
         setSearchedKeywords([])
         
         // 목록 새로고침
@@ -1093,6 +1097,70 @@ export default function MetricsTrackerPage() {
                 <option value="daily_twice">하루 2회</option>
                 <option value="daily_thrice">하루 3회</option>
               </select>
+            </div>
+
+            {/* 수집 시간 */}
+            <div>
+              <label className="text-sm font-semibold mb-2 block text-gray-700">수집 시간</label>
+              <div className="space-y-2">
+                {updateTimes.map((time, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-gray-600 w-16">
+                      {index + 1}차
+                    </span>
+                    <select
+                      value={time}
+                      onChange={(e) => {
+                        const newTimes = [...updateTimes]
+                        newTimes[index] = parseInt(e.target.value)
+                        setUpdateTimes(newTimes)
+                      }}
+                      className="flex-1 px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white"
+                    >
+                      {Array.from({ length: 24 }, (_, i) => (
+                        <option key={i} value={i}>
+                          {i}시
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 순위 알림받기 */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-semibold text-gray-700">순위 알림받기</label>
+                <Switch
+                  checked={notificationEnabled}
+                  onCheckedChange={(checked) => {
+                    setNotificationEnabled(checked)
+                    if (!checked) {
+                      setNotificationType(null)
+                    }
+                  }}
+                />
+              </div>
+
+              {notificationEnabled && (
+                <div className="pl-4 border-l-2 border-blue-200">
+                  <label className="text-sm font-medium mb-2 block text-gray-600">알림 방법</label>
+                  <select
+                    value={notificationType || ''}
+                    onChange={(e) => setNotificationType(e.target.value as 'email' | 'sms' | 'kakao')}
+                    className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white"
+                  >
+                    <option value="">알림 방법 선택</option>
+                    <option value="email">📧 이메일</option>
+                    <option value="sms">📱 SMS</option>
+                    <option value="kakao">💬 카카오톡</option>
+                  </select>
+                  <p className="text-xs text-gray-500 mt-2">
+                    💡 순위 변동 시 선택한 방법으로 알림을 받습니다
+                  </p>
+                </div>
+              )}
             </div>
           </div>
           <div className="flex gap-3">

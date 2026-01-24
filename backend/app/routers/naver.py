@@ -469,6 +469,7 @@ async def check_place_rank(request: RankCheckRequest):
             supabase.table("keywords").update({
                 "previous_rank": previous_rank,
                 "current_rank": rank_result["rank"],
+                "total_results": rank_result.get("total_results", 0),
                 "last_checked_at": now.isoformat()
             }).eq("id", keyword_id).execute()
             
@@ -501,6 +502,7 @@ async def check_place_rank(request: RankCheckRequest):
                 "keyword": request.keyword,
                 "current_rank": rank_result["rank"],
                 "previous_rank": None,
+                "total_results": rank_result.get("total_results", 0),
                 "last_checked_at": now.isoformat()
             }).execute()
             
@@ -584,12 +586,22 @@ async def get_store_keywords(store_id: UUID):
                 detail="매장을 찾을 수 없습니다."
             )
         
-        # 키워드 조회 (최근 30개만)
+        # 키워드 조회 (최근 30개만) with is_tracked 정보
         keywords_result = supabase.table("keywords").select(
-            "id, keyword, current_rank, previous_rank, last_checked_at, created_at"
+            "id, keyword, current_rank, previous_rank, total_results, last_checked_at, created_at"
         ).eq("store_id", str(store_id)).order(
             "last_checked_at", desc=True
         ).limit(30).execute()
+        
+        # 추적 중인 키워드 ID 목록 조회
+        trackers_result = supabase.table("metric_trackers").select(
+            "keyword_id"
+        ).eq("store_id", str(store_id)).execute()
+        
+        tracked_keyword_ids = set()
+        for tracker in trackers_result.data:
+            if tracker.get("keyword_id"):
+                tracked_keyword_ids.add(tracker["keyword_id"])
         
         keywords = []
         for kw in keywords_result.data:
@@ -597,12 +609,17 @@ async def get_store_keywords(store_id: UUID):
             if kw["previous_rank"] and kw["current_rank"]:
                 rank_change = kw["previous_rank"] - kw["current_rank"]
             
+            # keywords 테이블의 id를 사용하여 is_tracked 확인
+            is_tracked = kw["id"] in tracked_keyword_ids
+            
             keywords.append({
                 "id": kw["id"],
                 "keyword": kw["keyword"],
                 "current_rank": kw["current_rank"],
                 "previous_rank": kw["previous_rank"],
                 "rank_change": rank_change,
+                "total_results": kw.get("total_results", 0),
+                "is_tracked": is_tracked,
                 "last_checked_at": kw["last_checked_at"],
                 "created_at": kw["created_at"]
             })

@@ -8,6 +8,10 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
 import { useToast } from "@/components/ui/use-toast"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
 import { useState, useEffect } from "react"
 import { supabase } from "@/lib/supabase"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
@@ -26,6 +30,8 @@ interface KeywordData {
   current_rank: number | null
   previous_rank: number | null
   rank_change: number | null
+  total_results: number
+  is_tracked: boolean
   last_checked_at: string
   created_at: string
 }
@@ -82,6 +88,15 @@ export default function NaverRankPage() {
   const [keywordLimit, setKeywordLimit] = useState<number>(50) // ⭐ 초기값을 50으로 설정 (로딩 중 표시)
   const [currentKeywordCount, setCurrentKeywordCount] = useState<number>(0)
   const [tierLoaded, setTierLoaded] = useState<boolean>(false) // ⭐ tier 로드 완료 플래그
+  
+  // 추적 추가 모달 상태
+  const [showAddTrackingDialog, setShowAddTrackingDialog] = useState(false)
+  const [selectedKeywordForTracking, setSelectedKeywordForTracking] = useState<KeywordData | null>(null)
+  const [updateFrequency, setUpdateFrequency] = useState<'daily_once' | 'daily_twice' | 'daily_thrice'>('daily_once')
+  const [updateTimes, setUpdateTimes] = useState<number[]>([9])
+  const [notificationEnabled, setNotificationEnabled] = useState(false)
+  const [notificationType, setNotificationType] = useState<'email' | 'sms' | 'kakao' | ''>('')
+  const [isAddingTracker, setIsAddingTracker] = useState(false)
 
   // 사용자 구독 tier 로드 (최우선 실행) ⭐
   useEffect(() => {
@@ -452,6 +467,84 @@ export default function NaverRankPage() {
     }
   }
 
+  // 추적 추가 핸들러
+  const handleAddTracking = (keyword: KeywordData) => {
+    setSelectedKeywordForTracking(keyword)
+    setUpdateFrequency('daily_once')
+    setUpdateTimes([9])
+    setNotificationEnabled(false)
+    setNotificationType('')
+    setShowAddTrackingDialog(true)
+  }
+
+  // 추적 추가 실행
+  const handleSubmitTracking = async () => {
+    if (!selectedKeywordForTracking || !selectedStoreId) {
+      toast({
+        title: "❌ 오류",
+        description: "매장 또는 키워드 정보가 없습니다",
+        variant: "destructive"
+      })
+      return
+    }
+
+    setIsAddingTracker(true)
+    try {
+      const token = getToken()
+      if (!token) {
+        toast({
+          title: "❌ 인증 오류",
+          description: "로그인이 필요합니다",
+          variant: "destructive"
+        })
+        return
+      }
+
+      const payload = {
+        store_id: selectedStoreId,
+        keyword_id: selectedKeywordForTracking.id,
+        keyword: selectedKeywordForTracking.keyword,
+        update_frequency: updateFrequency,
+        update_times: updateTimes,
+        notification_enabled: notificationEnabled,
+        notification_type: notificationEnabled ? notificationType : null
+      }
+
+      const response = await fetch(`${api.baseURL}/naver/metric-trackers`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || "추적 추가 실패")
+      }
+
+      toast({
+        title: "✅ 추적 추가 완료",
+        description: `"${selectedKeywordForTracking.keyword}" 키워드가 추적 목록에 추가되었습니다`
+      })
+
+      setShowAddTrackingDialog(false)
+      
+      // 키워드 목록 새로고침
+      await loadKeywords(selectedStoreId)
+    } catch (error: any) {
+      console.error("추적 추가 오류:", error)
+      toast({
+        title: "❌ 추적 추가 실패",
+        description: error.message || "추적 추가 중 오류가 발생했습니다",
+        variant: "destructive"
+      })
+    } finally {
+      setIsAddingTracker(false)
+    }
+  }
+
   // 키워드 삭제 ⭐
   const handleDeleteKeyword = async (keywordId: string, keywordName: string) => {
     // 경고 메시지 표시
@@ -817,9 +910,9 @@ export default function NaverRankPage() {
                   <tr className="border-b">
                     <th className="text-left py-3 px-4 font-semibold text-gray-700">키워드</th>
                     <th className="text-center py-3 px-4 font-semibold text-gray-700">현재 순위</th>
-                    <th className="text-center py-3 px-4 font-semibold text-gray-700">변동</th>
+                    <th className="text-center py-3 px-4 font-semibold text-gray-700">전체 업체 수</th>
                     <th className="text-center py-3 px-4 font-semibold text-gray-700">최근 조회</th>
-                    <th className="text-center py-3 px-4 font-semibold text-gray-700">차트</th>
+                    <th className="text-center py-3 px-4 font-semibold text-gray-700">추적</th>
                     <th className="text-center py-3 px-4 font-semibold text-gray-700">삭제</th>
                   </tr>
                 </thead>
@@ -827,9 +920,7 @@ export default function NaverRankPage() {
                   {keywords.map((kw) => (
                     <tr 
                       key={kw.id}
-                      className={`border-b hover:bg-gray-50 transition-colors ${
-                        selectedKeywordForChart?.id === kw.id ? 'bg-primary/5' : ''
-                      }`}
+                      className="border-b hover:bg-gray-50 transition-colors"
                     >
                       <td className="py-3 px-4">
                         <div className="font-medium text-gray-800">{kw.keyword}</div>
@@ -839,23 +930,8 @@ export default function NaverRankPage() {
                           {kw.current_rank ? `${kw.current_rank}위` : "-"}
                         </span>
                       </td>
-                      <td className="py-3 px-4 text-center">
-                        {kw.rank_change !== null && kw.rank_change !== 0 ? (
-                          <div className={`inline-flex items-center gap-1 ${
-                            kw.rank_change > 0 ? "text-green-600" : "text-red-600"
-                          }`}>
-                            {kw.rank_change > 0 ? (
-                              <TrendingUp className="w-4 h-4" />
-                            ) : (
-                              <TrendingDown className="w-4 h-4" />
-                            )}
-                            <span className="text-sm font-semibold">
-                              {Math.abs(kw.rank_change)}
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="text-gray-400 text-sm">-</span>
-                        )}
+                      <td className="py-3 px-4 text-center text-gray-600">
+                        {kw.total_results ? `${kw.total_results.toLocaleString()}개` : "-"}
                       </td>
                       <td className="py-3 px-4 text-center text-sm text-gray-600">
                         {new Date(kw.last_checked_at).toLocaleDateString('ko-KR', {
@@ -866,13 +942,18 @@ export default function NaverRankPage() {
                         })}
                       </td>
                       <td className="py-3 px-4 text-center">
-                        <button
-                          onClick={() => handleViewKeywordHistory(kw)}
-                          className="px-3 py-1.5 text-sm bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors font-medium"
-                        >
-                          <LineChartIcon className="w-4 h-4 inline mr-1" />
-                          차트
-                        </button>
+                        {kw.is_tracked ? (
+                          <span className="px-3 py-1.5 text-sm bg-green-50 text-green-600 rounded-lg font-medium">
+                            추적중
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => handleAddTracking(kw)}
+                            className="px-3 py-1.5 text-sm bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors font-medium"
+                          >
+                            추적
+                          </button>
+                        )}
                       </td>
                       <td className="py-3 px-4 text-center">
                         <button
@@ -1087,6 +1168,151 @@ export default function NaverRankPage() {
           )}
         </Card>
       )}
+
+      {/* 추적 추가 모달 */}
+      <Dialog open={showAddTrackingDialog} onOpenChange={setShowAddTrackingDialog}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>📌 키워드 추적 추가</DialogTitle>
+            <DialogDescription>
+              선택한 키워드를 추적 목록에 추가하고 자동 수집 및 알림 설정을 구성하세요
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            {/* 선택된 키워드 정보 */}
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <p className="text-sm text-gray-600 mb-1">키워드</p>
+              <p className="text-lg font-semibold text-gray-800">
+                {selectedKeywordForTracking?.keyword}
+              </p>
+            </div>
+
+            {/* 수집 주기 */}
+            <div className="space-y-2">
+              <Label htmlFor="frequency">수집 주기</Label>
+              <Select
+                value={updateFrequency}
+                onValueChange={(value: 'daily_once' | 'daily_twice' | 'daily_thrice') => {
+                  setUpdateFrequency(value)
+                  // 수집 주기 변경 시 기본 시간 설정
+                  if (value === 'daily_once') {
+                    setUpdateTimes([9])
+                  } else if (value === 'daily_twice') {
+                    setUpdateTimes([9, 18])
+                  } else {
+                    setUpdateTimes([9, 14, 20])
+                  }
+                }}
+              >
+                <SelectTrigger id="frequency">
+                  <SelectValue placeholder="수집 주기 선택" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="daily_once">하루 1회</SelectItem>
+                  <SelectItem value="daily_twice">하루 2회</SelectItem>
+                  <SelectItem value="daily_thrice">하루 3회</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* 수집 시간 */}
+            <div className="space-y-2">
+              <Label>수집 시간</Label>
+              <div className="space-y-2">
+                {updateTimes.map((time, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-gray-600 w-16">
+                      {index + 1}차
+                    </span>
+                    <Select
+                      value={time.toString()}
+                      onValueChange={(value) => {
+                        const newTimes = [...updateTimes]
+                        newTimes[index] = parseInt(value)
+                        setUpdateTimes(newTimes)
+                      }}
+                    >
+                      <SelectTrigger className="flex-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.from({ length: 24 }, (_, i) => (
+                          <SelectItem key={i} value={i.toString()}>
+                            {i}시
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 순위 알림받기 */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="notification">순위 알림받기</Label>
+                <Switch
+                  id="notification"
+                  checked={notificationEnabled}
+                  onCheckedChange={(checked) => {
+                    setNotificationEnabled(checked)
+                    if (!checked) {
+                      setNotificationType('')
+                    }
+                  }}
+                />
+              </div>
+
+              {notificationEnabled && (
+                <div className="space-y-2 pl-4 border-l-2 border-blue-200">
+                  <Label htmlFor="notification-type">알림 방법</Label>
+                  <Select
+                    value={notificationType}
+                    onValueChange={(value: 'email' | 'sms' | 'kakao') => setNotificationType(value)}
+                  >
+                    <SelectTrigger id="notification-type">
+                      <SelectValue placeholder="알림 방법 선택" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="email">📧 이메일</SelectItem>
+                      <SelectItem value="sms">📱 SMS</SelectItem>
+                      <SelectItem value="kakao">💬 카카오톡</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-gray-500 mt-2">
+                    💡 순위 변동 시 선택한 방법으로 알림을 받습니다
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowAddTrackingDialog(false)}
+              disabled={isAddingTracker}
+            >
+              취소
+            </Button>
+            <Button
+              onClick={handleSubmitTracking}
+              disabled={isAddingTracker}
+            >
+              {isAddingTracker ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  추가 중...
+                </>
+              ) : (
+                "추적 추가"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
