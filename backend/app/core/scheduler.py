@@ -239,44 +239,55 @@ async def collect_all_metrics():
 
 
 def start_scheduler():
-    """스케줄러 시작"""
-    # 매일 오전 6시: 리뷰 수집
+    """스케줄러 시작 (KST 시간대 기준)"""
+    from pytz import timezone as pytz_timezone
+    kst = pytz_timezone('Asia/Seoul')
+    
+    # 매일 오전 6시 (KST): 리뷰 수집
     scheduler.add_job(
         sync_all_stores_reviews,
-        CronTrigger(hour=6, minute=0),
+        CronTrigger(hour=6, minute=0, timezone=kst),
         id="sync_reviews",
         name="전체 매장 리뷰 자동 수집",
         replace_existing=True
     )
     
-    # 매일 오전 3시: 키워드 순위 확인 (리뷰 수집 전에 실행)
+    # 매일 오전 3시 (KST): 키워드 순위 확인
     scheduler.add_job(
         check_all_keywords_rank,
-        CronTrigger(hour=3, minute=0),
+        CronTrigger(hour=3, minute=0, timezone=kst),
         id="check_ranks",
         name="키워드 순위 자동 확인",
         replace_existing=True
     )
     
-    # 매 시간마다: 주요지표 추적 자동 수집
-    # 각 추적 설정의 next_collection_at을 확인하여 수집 시간이 된 항목만 처리
+    # 매 시간마다 (KST): 주요지표 추적 자동 수집
+    # 각 추적 설정의 update_times를 확인하여 수집 시간이 된 항목만 처리
     scheduler.add_job(
         collect_all_metrics,
-        CronTrigger(minute=0),  # 매 시간 정각
+        CronTrigger(minute=0, timezone=kst),  # 매 시간 정각 (KST)
         id="collect_metrics",
         name="주요지표 추적 자동 수집",
         replace_existing=True
     )
     
     scheduler.start()
-    print("[OK] Scheduler started")
-    print("  - Rank check: 3 AM daily (KST)")
-    print("  - Review sync: 6 AM daily (KST)")
-    print("  - Metric tracking: Every hour (KST)")
-    logger.info("[OK] Scheduler started")
-    logger.info("  - Rank check: 3 AM daily (KST)")
-    logger.info("  - Review sync: 6 AM daily (KST)")
-    logger.info("  - Metric tracking: Every hour (KST)")
+    print("=" * 60)
+    print("[OK] Scheduler started with timezone: Asia/Seoul (KST)")
+    print("=" * 60)
+    print("  📋 Scheduled Jobs:")
+    print("    - Rank check: 3 AM daily (KST)")
+    print("    - Review sync: 6 AM daily (KST)")
+    print("    - Metric tracking: Every hour at :00 (KST)")
+    print("=" * 60)
+    logger.info("=" * 60)
+    logger.info("[OK] Scheduler started with timezone: Asia/Seoul (KST)")
+    logger.info("=" * 60)
+    logger.info("  📋 Scheduled Jobs:")
+    logger.info("    - Rank check: 3 AM daily (KST)")
+    logger.info("    - Review sync: 6 AM daily (KST)")
+    logger.info("    - Metric tracking: Every hour at :00 (KST)")
+    logger.info("=" * 60)
 
 
 def stop_scheduler():

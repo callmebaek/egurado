@@ -113,6 +113,20 @@ class NaverRankNewAPIService:
                         "blog_review_count": int(str(store.get("blog_review_count", "0")).replace(",", "")),
                         "save_count": 0  # 검색 결과에는 save_count가 없으므로 0
                     }
+                    
+                    # 🔧 리뷰 수가 둘 다 0일 때 추가 조회 (GraphQL 응답에 누락된 경우 대비)
+                    if target_store_data["visitor_review_count"] == 0 and target_store_data["blog_review_count"] == 0:
+                        logger.info(f"[신API Rank] ⚠️ 리뷰 수가 0, 추가 조회 시도: place_id={target_place_id}")
+                        try:
+                            place_detail = await self._get_place_detail(target_place_id)
+                            if place_detail:
+                                target_store_data["visitor_review_count"] = place_detail.get("visitor_review_count", 0)
+                                target_store_data["blog_review_count"] = place_detail.get("blog_review_count", 0)
+                                target_store_data["save_count"] = place_detail.get("save_count", 0)
+                                logger.info(f"[신API Rank] ✅ 추가 조회 성공: 방문자={target_store_data['visitor_review_count']}, 블로그={target_store_data['blog_review_count']}")
+                        except Exception as e:
+                            logger.warning(f"[신API Rank] 추가 조회 실패: {str(e)}")
+                    
                     break
             
             # 3. 순위를 못 찾았을 때 매장명으로 리뷰 수 조회

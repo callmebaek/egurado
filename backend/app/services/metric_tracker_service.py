@@ -131,9 +131,10 @@ class MetricTrackerService:
                         # 오늘 데이터가 있음
                         latest_metric = metrics_result.data[0]
                         latest_date = today
-                        logger.debug(f"[Trackers Get All] Tracker {item['id']}: 오늘 데이터 사용")
+                        print(f"[Trackers Get All] Tracker {item['id']}: 오늘 데이터 사용")
                     else:
                         # 오늘 데이터가 없으면 가장 최근 데이터 조회
+                        print(f"[Trackers Get All] Tracker {item['id']}: 오늘 데이터 없음, 최신 데이터 조회 중...")
                         recent_result = self.supabase.table('daily_metrics')\
                             .select('*')\
                             .eq('tracker_id', item['id'])\
@@ -144,7 +145,11 @@ class MetricTrackerService:
                         if recent_result.data and len(recent_result.data) > 0:
                             latest_metric = recent_result.data[0]
                             latest_date = date.fromisoformat(latest_metric['collection_date'])
-                            logger.info(f"[Trackers Get All] Tracker {item['id']}: 최신 데이터 사용 ({latest_date})")
+                            print(f"[Trackers Get All] Tracker {item['id']}: 최신 데이터 사용 ({latest_date})")
+                            print(f"  - visitor_review_count: {latest_metric.get('visitor_review_count')}")
+                            print(f"  - blog_review_count: {latest_metric.get('blog_review_count')}")
+                        else:
+                            print(f"[Trackers Get All] Tracker {item['id']}: 데이터 전혀 없음!")
                     
                     if latest_metric:
                         # 최신 지표 데이터 설정
