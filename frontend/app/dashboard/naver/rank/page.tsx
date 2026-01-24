@@ -391,6 +391,18 @@ export default function NaverRankPage() {
         save_count: data.save_count,
       })
 
+      // 키워드 목록 즉시 업데이트
+      await loadKeywords(selectedStoreId)
+      
+      // 방금 조회한 키워드의 total_count를 total_results로 업데이트
+      if (data.total_count && keyword) {
+        setKeywords(prevKeywords => 
+          prevKeywords.map(kw => 
+            kw.keyword === keyword.trim() ? { ...kw, total_results: data.total_count } : kw
+          )
+        )
+      }
+
       // 키워드 목록 새로고침 및 전체 카운트 업데이트 ⭐
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
@@ -595,7 +607,13 @@ export default function NaverRankPage() {
       }
 
       // 키워드 목록 새로고침
-      await loadKeywords(selectedStoreId)
+      console.log("[DELETE] 키워드 목록 새로고침 시작, selectedStoreId:", selectedStoreId)
+      if (selectedStoreId) {
+        await loadKeywords(selectedStoreId)
+        console.log("[DELETE] 키워드 목록 새로고침 완료")
+      } else {
+        console.error("[DELETE] selectedStoreId가 없습니다!")
+      }
 
       toast({
         title: "✅ 키워드 삭제 완료",

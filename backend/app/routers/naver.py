@@ -757,17 +757,36 @@ async def delete_keyword(keyword_id: UUID):
         
         logger.info(f"[Delete Keyword] Deleting keyword: {keyword_name} (ID: {keyword_id})")
         
-        # 1. rank_history 먼저 삭제 (외래 키 제약)
+        # 1. metric_trackers에서 먼저 삭제 (있다면)
+        trackers_result = supabase.table("metric_trackers").delete().eq(
+            "keyword_id", str(keyword_id)
+        ).execute()
+        
+        tracker_count = len(trackers_result.data) if trackers_result.data else 0
+        logger.info(f"[Delete Keyword] Deleted {tracker_count} metric tracker records")
+        
+        # 2. rank_history 삭제
         history_result = supabase.table("rank_history").delete().eq(
             "keyword_id", str(keyword_id)
         ).execute()
         
-        logger.info(f"[Delete Keyword] Deleted rank history records")
+        history_count = len(history_result.data) if history_result.data else 0
+        logger.info(f"[Delete Keyword] Deleted {history_count} rank history records")
         
-        # 2. keywords 삭제
-        supabase.table("keywords").delete().eq(
+        # 3. keywords 삭제
+        keyword_result = supabase.table("keywords").delete().eq(
             "id", str(keyword_id)
         ).execute()
+        
+        deleted_count = len(keyword_result.data) if keyword_result.data else 0
+        logger.info(f"[Delete Keyword] Deleted {deleted_count} keyword records, Data: {keyword_result.data}")
+        
+        if deleted_count == 0:
+            logger.error(f"[Delete Keyword] ⚠️ No keyword was deleted! keyword_id: {keyword_id}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="키워드 삭제에 실패했습니다. 데이터베이스에서 레코드를 찾을 수 없습니다."
+            )
         
         logger.info(f"[Delete Keyword] Successfully deleted keyword: {keyword_name}")
         
