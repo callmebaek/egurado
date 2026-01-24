@@ -584,12 +584,12 @@ async def get_store_keywords(store_id: UUID):
                 detail="매장을 찾을 수 없습니다."
             )
         
-        # 키워드 조회
+        # 키워드 조회 (최근 30개만)
         keywords_result = supabase.table("keywords").select(
             "id, keyword, current_rank, previous_rank, last_checked_at, created_at"
         ).eq("store_id", str(store_id)).order(
             "last_checked_at", desc=True
-        ).execute()
+        ).limit(30).execute()
         
         keywords = []
         for kw in keywords_result.data:

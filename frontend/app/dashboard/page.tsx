@@ -847,7 +847,7 @@ export default function DashboardPage() {
       </div>
 
       {/* 통계 카드 그리드 */}
-      <div className="grid gap-4 sm:gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+      <div className="grid gap-4 sm:gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         {/* 크레딧 카드 */}
         <div className="group bg-white rounded-xl sm:rounded-2xl border border-gray-200 p-4 sm:p-5 lg:p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
           <div className="flex items-center justify-between mb-3 sm:mb-4">
@@ -909,40 +909,8 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* 키워드 Quota 카드 */}
-        <div className="group bg-white rounded-xl sm:rounded-2xl border border-gray-200 p-4 sm:p-5 lg:p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
-          <div className="flex items-center justify-between mb-3 sm:mb-4">
-            <div className="p-2 sm:p-3 bg-gradient-to-br from-orange-100 to-orange-200 rounded-lg sm:rounded-xl">
-              <Key className="w-5 h-5 sm:w-6 sm:h-6 text-orange-600" />
-            </div>
-            <div className="text-xs text-gray-500 font-medium px-2 sm:px-3 py-1 bg-gray-100 rounded-full">
-              키워드
-            </div>
-          </div>
-          <p className="text-gray-500 text-xs sm:text-sm mb-1">등록 키워드</p>
-          <p className="text-xl sm:text-2xl font-bold text-gray-800">
-            {keywords.length}
-            {maxKeywords !== -1 && <span className="text-base sm:text-lg text-gray-400"> / {maxKeywords}</span>}
-          </p>
-          <div className="mt-2 sm:mt-3">
-            {maxKeywords === -1 ? (
-              <span className="text-xs text-green-600 font-semibold px-2 py-1 bg-green-50 rounded-full inline-block">
-                ✨ 무제한
-              </span>
-            ) : keywords.length >= maxKeywords ? (
-              <span className="text-xs text-red-600 font-semibold px-2 py-1 bg-red-50 rounded-full inline-block">
-                ⚠️ 한도 도달
-              </span>
-            ) : (
-              <span className="text-xs text-blue-600 font-semibold px-2 py-1 bg-blue-50 rounded-full inline-block">
-                ➕ {maxKeywords - keywords.length}개 가능
-              </span>
-            )}
-          </div>
-        </div>
-
         {/* 추적 키워드 카드 */}
-        <div className="group bg-white rounded-xl sm:rounded-2xl border border-gray-200 p-4 sm:p-5 lg:p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 sm:col-span-2 lg:col-span-1 xl:col-span-2">
+        <div className="group bg-white rounded-xl sm:rounded-2xl border border-gray-200 p-4 sm:p-5 lg:p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 sm:col-span-2">
           <div className="flex items-center justify-between mb-3 sm:mb-4">
             <div className="p-2 sm:p-3 bg-gradient-to-br from-indigo-100 to-indigo-200 rounded-lg sm:rounded-xl">
               <Activity className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-600" />

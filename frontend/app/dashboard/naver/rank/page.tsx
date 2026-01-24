@@ -794,22 +794,16 @@ export default function NaverRankPage() {
         </Card>
       )}
 
-      {/* 등록된 키워드 목록 */}
+      {/* 조회한 키워드 목록 (최근 30개) */}
       {keywords.length > 0 && (
         <Card className="p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold">
-              등록된 키워드 ({keywords.length})
+              조회한 키워드 (최근 {keywords.length}개)
             </h2>
-            <div className={`text-sm font-medium px-3 py-1 rounded-full ${
-              currentKeywordCount >= keywordLimit 
-                ? "bg-red-100 text-red-700" 
-                : currentKeywordCount >= keywordLimit * 0.8
-                ? "bg-yellow-100 text-yellow-700"
-                : "bg-green-100 text-green-700"
-            }`}>
-              전체 {currentKeywordCount}/{keywordLimit}개
-            </div>
+            <p className="text-sm text-gray-500">
+              💡 최근 조회한 30개의 키워드만 표시됩니다
+            </p>
           </div>
           
           {loadingKeywords ? (
@@ -817,70 +811,82 @@ export default function NaverRankPage() {
               <Loader2 className="w-6 h-6 animate-spin text-primary mx-auto" />
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {keywords.map((kw) => (
-                <div
-                  key={kw.id}
-                  className={`p-3 border rounded-lg hover:bg-gray-50 transition-colors relative group ${
-                    selectedKeywordForChart?.id === kw.id ? 'ring-2 ring-primary bg-primary/5' : ''
-                  }`}
-                >
-                  <div 
-                    className="cursor-pointer"
-                    onClick={() => {
-                      handleViewKeywordHistory(kw)
-                    }}
-                  >
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium truncate">{kw.keyword}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {new Date(kw.last_checked_at).toLocaleDateString('ko-KR')}
-                        </div>
-                      </div>
-                      
-                      {/* 현재 순위 */}
-                      <div className="text-center flex-shrink-0">
-                        <div className="text-xl font-bold text-primary">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-3 px-4 font-semibold text-gray-700">키워드</th>
+                    <th className="text-center py-3 px-4 font-semibold text-gray-700">현재 순위</th>
+                    <th className="text-center py-3 px-4 font-semibold text-gray-700">변동</th>
+                    <th className="text-center py-3 px-4 font-semibold text-gray-700">최근 조회</th>
+                    <th className="text-center py-3 px-4 font-semibold text-gray-700">차트</th>
+                    <th className="text-center py-3 px-4 font-semibold text-gray-700">삭제</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {keywords.map((kw) => (
+                    <tr 
+                      key={kw.id}
+                      className={`border-b hover:bg-gray-50 transition-colors ${
+                        selectedKeywordForChart?.id === kw.id ? 'bg-primary/5' : ''
+                      }`}
+                    >
+                      <td className="py-3 px-4">
+                        <div className="font-medium text-gray-800">{kw.keyword}</div>
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <span className="text-lg font-bold text-primary">
                           {kw.current_rank ? `${kw.current_rank}위` : "-"}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* 순위 변동 */}
-                    {kw.rank_change !== null && kw.rank_change !== 0 && (
-                      <div className={`flex items-center gap-1 text-sm ${
-                        kw.rank_change > 0 ? "text-green-600" : "text-red-600"
-                      }`}>
-                        {kw.rank_change > 0 ? (
-                          <TrendingUp className="w-3 h-3" />
-                        ) : kw.rank_change < 0 ? (
-                          <TrendingDown className="w-3 h-3" />
-                        ) : (
-                          <Minus className="w-3 h-3" />
-                        )}
-                        <span className="text-xs font-medium">
-                          {Math.abs(kw.rank_change)} 변동
                         </span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* 삭제 버튼 ⭐ */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handleDeleteKeyword(kw.id, kw.keyword)
-                    }}
-                    className="absolute top-2 right-2 p-1 rounded-md bg-red-50 text-red-600 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-100"
-                    title="키워드 삭제"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                    </svg>
-                  </button>
-                </div>
-              ))}
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        {kw.rank_change !== null && kw.rank_change !== 0 ? (
+                          <div className={`inline-flex items-center gap-1 ${
+                            kw.rank_change > 0 ? "text-green-600" : "text-red-600"
+                          }`}>
+                            {kw.rank_change > 0 ? (
+                              <TrendingUp className="w-4 h-4" />
+                            ) : (
+                              <TrendingDown className="w-4 h-4" />
+                            )}
+                            <span className="text-sm font-semibold">
+                              {Math.abs(kw.rank_change)}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 text-sm">-</span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-center text-sm text-gray-600">
+                        {new Date(kw.last_checked_at).toLocaleDateString('ko-KR', {
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <button
+                          onClick={() => handleViewKeywordHistory(kw)}
+                          className="px-3 py-1.5 text-sm bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors font-medium"
+                        >
+                          <LineChartIcon className="w-4 h-4 inline mr-1" />
+                          차트
+                        </button>
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <button
+                          onClick={() => handleDeleteKeyword(kw.id, kw.keyword)}
+                          className="p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+                          title="키워드 삭제"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </Card>
