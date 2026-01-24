@@ -466,10 +466,14 @@ async def check_place_rank(request: RankCheckRequest):
             previous_rank = existing_keyword["current_rank"]
             
             # keywords 테이블 업데이트
+            # total_count 처리: "1,234" → 1234 변환
+            total_count_str = rank_result.get("total_count", "0")
+            total_results = int(total_count_str.replace(",", "")) if total_count_str else 0
+            
             supabase.table("keywords").update({
                 "previous_rank": previous_rank,
                 "current_rank": rank_result["rank"],
-                "total_results": rank_result.get("total_results", 0),
+                "total_results": total_results,
                 "last_checked_at": now.isoformat()
             }).eq("id", keyword_id).execute()
             
@@ -497,12 +501,16 @@ async def check_place_rank(request: RankCheckRequest):
                 )
             
             # 새 키워드 등록
+            # total_count 처리: "1,234" → 1234 변환
+            total_count_str = rank_result.get("total_count", "0")
+            total_results = int(total_count_str.replace(",", "")) if total_count_str else 0
+            
             keyword_insert = supabase.table("keywords").insert({
                 "store_id": str(request.store_id),
                 "keyword": request.keyword,
                 "current_rank": rank_result["rank"],
                 "previous_rank": None,
-                "total_results": rank_result.get("total_results", 0),
+                "total_results": total_results,
                 "last_checked_at": now.isoformat()
             }).execute()
             
@@ -866,7 +874,7 @@ async def check_place_rank_unofficial(request: RankCheckRequest):
     - 재조회 시: keywords 테이블 UPDATE, rank_history에 오늘 날짜 데이터 UPSERT
     
     속도 최적화:
-    - 최대 200개까지 확인
+    - 최대 300개까지 확인
     - 타겟 매장 발견 시 즉시 중단 가능
     """
     try:

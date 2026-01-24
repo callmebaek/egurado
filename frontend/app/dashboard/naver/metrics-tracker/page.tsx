@@ -1133,8 +1133,11 @@ export default function MetricsTrackerPage() {
 
             {/* 순위 알림받기 */}
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <label className="text-sm font-semibold text-gray-700">순위 알림받기</label>
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                <div>
+                  <label className="text-sm font-semibold text-gray-700 block">순위 알림받기</label>
+                  <p className="text-xs text-gray-500 mt-1">순위 변동 시 알림을 받습니다</p>
+                </div>
                 <Switch
                   checked={notificationEnabled}
                   onCheckedChange={(checked) => {
@@ -1143,6 +1146,7 @@ export default function MetricsTrackerPage() {
                       setNotificationType(null)
                     }
                   }}
+                  className="data-[state=checked]:bg-blue-600"
                 />
               </div>
 

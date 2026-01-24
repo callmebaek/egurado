@@ -510,7 +510,7 @@ export default function NaverRankPage() {
         notification_type: notificationEnabled ? notificationType : null
       }
 
-      const response = await fetch(`${api.baseURL}/naver/metric-trackers`, {
+      const response = await fetch(api.metrics.create(), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -520,8 +520,15 @@ export default function NaverRankPage() {
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.detail || "추적 추가 실패")
+        const errorText = await response.text()
+        let errorMessage = "추적 추가 실패"
+        try {
+          const errorData = JSON.parse(errorText)
+          errorMessage = errorData.detail || errorMessage
+        } catch {
+          errorMessage = errorText || errorMessage
+        }
+        throw new Error(errorMessage)
       }
 
       toast({
@@ -951,7 +958,7 @@ export default function NaverRankPage() {
                             onClick={() => handleAddTracking(kw)}
                             className="px-3 py-1.5 text-sm bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors font-medium"
                           >
-                            추적
+                            추적하기
                           </button>
                         )}
                       </td>
@@ -1251,8 +1258,11 @@ export default function NaverRankPage() {
 
             {/* 순위 알림받기 */}
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="notification">순위 알림받기</Label>
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                <div>
+                  <Label htmlFor="notification" className="text-base font-semibold">순위 알림받기</Label>
+                  <p className="text-xs text-gray-500 mt-1">순위 변동 시 알림을 받습니다</p>
+                </div>
                 <Switch
                   id="notification"
                   checked={notificationEnabled}
@@ -1262,6 +1272,7 @@ export default function NaverRankPage() {
                       setNotificationType('')
                     }
                   }}
+                  className="data-[state=checked]:bg-blue-600"
                 />
               </div>
 
