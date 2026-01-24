@@ -264,59 +264,62 @@ export default function NaverRankPage() {
     }
   }, [hasStores, tierLoaded, getToken, toast])
 
-  // 선택된 매장의 키워드 목록 로드
-  useEffect(() => {
-    const loadKeywords = async () => {
-      if (!selectedStoreId || !tierLoaded) {
-        console.log(`⏳ 키워드 로드 대기 중... (selectedStoreId: ${selectedStoreId}, tierLoaded: ${tierLoaded})`)
-        return
-      }
-
-      setLoadingKeywords(true)
-      try {
-        const token = getToken()
-        if (!token) return
-        
-        // 모든 매장의 키워드 개수 계산 (전체 quota) ⭐
-        const allStoresResponse = await fetch(api.stores.list(), {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        })
-        
-        if (allStoresResponse.ok) {
-          const allStoresData = await allStoresResponse.json()
-          const naverStores = allStoresData.stores.filter((s: Store) => s.platform === "naver")
-          
-          // 모든 매장의 키워드 수 합산
-          let totalKeywords = 0
-          for (const store of naverStores) {
-            const keywordResponse = await fetch(api.naver.keywords(store.id))
-            if (keywordResponse.ok) {
-              const keywordData = await keywordResponse.json()
-              totalKeywords += (keywordData.keywords || []).length
-            }
-          }
-          setCurrentKeywordCount(totalKeywords)
-          console.log(`📊 전체 키워드 수: ${totalKeywords}/${keywordLimit} (tier: ${subscriptionTier})`)
-        }
-        
-        // 현재 선택된 매장의 키워드 로드
-        const response = await fetch(api.naver.keywords(selectedStoreId))
-        
-        if (response.ok) {
-          const data = await response.json()
-          setKeywords(data.keywords || [])
-        }
-      } catch (error) {
-        console.error("키워드 로드 실패:", error)
-      } finally {
-        setLoadingKeywords(false)
-      }
+  // 키워드 목록 로드 함수 (외부에서도 호출 가능)
+  const loadKeywords = async (storeId?: string) => {
+    const targetStoreId = storeId || selectedStoreId
+    
+    if (!targetStoreId || !tierLoaded) {
+      console.log(`⏳ 키워드 로드 대기 중... (targetStoreId: ${targetStoreId}, tierLoaded: ${tierLoaded})`)
+      return
     }
 
+    setLoadingKeywords(true)
+    try {
+      const token = getToken()
+      if (!token) return
+      
+      // 모든 매장의 키워드 개수 계산 (전체 quota) ⭐
+      const allStoresResponse = await fetch(api.stores.list(), {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      
+      if (allStoresResponse.ok) {
+        const allStoresData = await allStoresResponse.json()
+        const naverStores = allStoresData.stores.filter((s: Store) => s.platform === "naver")
+        
+        // 모든 매장의 키워드 수 합산
+        let totalKeywords = 0
+        for (const store of naverStores) {
+          const keywordResponse = await fetch(api.naver.keywords(store.id))
+          if (keywordResponse.ok) {
+            const keywordData = await keywordResponse.json()
+            totalKeywords += (keywordData.keywords || []).length
+          }
+        }
+        setCurrentKeywordCount(totalKeywords)
+        console.log(`📊 전체 키워드 수: ${totalKeywords}/${keywordLimit} (tier: ${subscriptionTier})`)
+      }
+      
+      // 현재 선택된 매장의 키워드 로드
+      const response = await fetch(api.naver.keywords(targetStoreId))
+      
+      if (response.ok) {
+        const data = await response.json()
+        setKeywords(data.keywords || [])
+      }
+    } catch (error) {
+      console.error("키워드 로드 실패:", error)
+    } finally {
+      setLoadingKeywords(false)
+    }
+  }
+
+  // 선택된 매장의 키워드 목록 로드
+  useEffect(() => {
     loadKeywords()
-  }, [selectedStoreId, keywordLimit, tierLoaded, getToken])
+  }, [selectedStoreId, keywordLimit, tierLoaded])
 
   // 순위 조회
   const handleCheckRank = async () => {
@@ -416,10 +419,10 @@ export default function NaverRankPage() {
       }
 
       toast({
-        title: data.found ? "순위 조회 완료" : "200위 밖",
+        title: data.found ? "순위 조회 완료" : "300위 밖",
         description: data.found 
           ? `현재 순위: ${data.rank}위${data.total_count ? ` (전체 ${data.total_count}개 중)` : ''}`
-          : `상위 200개 내에서 매장을 찾을 수 없습니다`,
+          : `상위 300개 내에서 매장을 찾을 수 없습니다`,
         variant: data.found ? "default" : "destructive",
       })
     } catch (error: any) {
@@ -876,14 +879,14 @@ export default function NaverRankPage() {
           ) : (
             <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-center">
               <div className="text-3xl font-bold text-yellow-600 mb-2">
-                200위 밖
+                300위 밖
               </div>
               <p className="text-yellow-700 font-medium">
-                상위 200개 내에서 매장을 찾을 수 없습니다
+                상위 300개 내에서 매장을 찾을 수 없습니다
               </p>
               <p className="text-sm text-yellow-600 mt-1">
                 {rankResult.total_count 
-                  ? `전체 ${rankResult.total_count}개 중 200개 확인됨` 
+                  ? `전체 ${rankResult.total_count}개 중 300개 확인됨` 
                   : `총 ${rankResult.total_results}개 확인됨`}
               </p>
               <p className="text-sm text-yellow-600 mt-2">

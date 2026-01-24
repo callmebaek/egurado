@@ -466,9 +466,12 @@ async def check_place_rank(request: RankCheckRequest):
             previous_rank = existing_keyword["current_rank"]
             
             # keywords 테이블 업데이트
-            # total_count 처리: "1,234" → 1234 변환
-            total_count_str = rank_result.get("total_count", "0")
-            total_results = int(total_count_str.replace(",", "")) if total_count_str else 0
+            # total_count 처리: 정수 또는 문자열 "1,234" → 1234 변환
+            total_count_value = rank_result.get("total_count", 0)
+            if isinstance(total_count_value, str):
+                total_results = int(total_count_value.replace(",", "")) if total_count_value else 0
+            else:
+                total_results = total_count_value if total_count_value else 0
             
             supabase.table("keywords").update({
                 "previous_rank": previous_rank,
@@ -501,9 +504,12 @@ async def check_place_rank(request: RankCheckRequest):
                 )
             
             # 새 키워드 등록
-            # total_count 처리: "1,234" → 1234 변환
-            total_count_str = rank_result.get("total_count", "0")
-            total_results = int(total_count_str.replace(",", "")) if total_count_str else 0
+            # total_count 처리: 정수 또는 문자열 "1,234" → 1234 변환
+            total_count_value = rank_result.get("total_count", 0)
+            if isinstance(total_count_value, str):
+                total_results = int(total_count_value.replace(",", "")) if total_count_value else 0
+            else:
+                total_results = total_count_value if total_count_value else 0
             
             keyword_insert = supabase.table("keywords").insert({
                 "store_id": str(request.store_id),
