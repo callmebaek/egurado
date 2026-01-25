@@ -43,6 +43,7 @@ import {
   Center,
   Alert,
 } from '@mantine/core'
+import { Card as ShadcnCard } from "@/components/ui/card"
 
 interface Store {
   id: string
@@ -847,98 +848,69 @@ export default function NaverRankPage() {
           {rankResult.found && rankResult.rank ? (
             <Stack gap="lg">
               {/* 순위 및 리뷰 정보 - Premium Card */}
-              <Paper
-                p="xl"
-                radius="md"
-                style={{
-                  background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
-                  border: '2px solid #86efac'
-                }}
-              >
-                <Grid gutter="xl">
-                  {/* 순위 정보 */}
-                  <Grid.Col span={{ base: 12, sm: 4 }}>
-                    <Stack gap="xs">
-                      <Group gap="md" align="center">
-                        <ThemeIcon
-                          size={64}
-                          radius="md"
-                          variant="gradient"
-                          gradient={{ from: 'green.4', to: 'green.6', deg: 135 }}
-                        >
-                          <Text size="2xl" fw={700} c="white">
+              <ShadcnCard className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200">
+                <div className="p-6">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    {/* 순위 정보 - 이전 스타일 (더 직관적) */}
+                    <div className="md:col-span-1 flex items-center justify-center">
+                      <div className="text-center">
+                        <div className="inline-flex items-center justify-center w-28 h-28 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl shadow-lg mb-3">
+                          <span className="text-5xl font-bold text-white">
                             {rankResult.rank}
-                          </Text>
-                        </ThemeIcon>
-                        <div>
-                          <Text fw={600} size="lg" c="green.9">
-                            {selectedStore?.name}
-                          </Text>
-                          <Text size="sm" c="dimmed">
-                            {rankResult.total_count 
-                              ? `전체 ${rankResult.total_count}개 중` 
-                              : `상위 ${rankResult.total_results}개 중`}
-                          </Text>
+                          </span>
                         </div>
-                      </Group>
-                    </Stack>
-                  </Grid.Col>
+                        <p className="text-lg font-semibold text-green-900">{selectedStore?.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {rankResult.total_count 
+                            ? `전체 ${rankResult.total_count}개 중` 
+                            : `상위 ${rankResult.total_results}개 중`}
+                        </p>
+                      </div>
+                    </div>
 
-                  <Grid.Col span={{ base: 12, sm: 8 }}>
-                    <Grid gutter="md">
+                    <div className="md:col-span-3 grid grid-cols-2 md:grid-cols-3 gap-4">
                       {/* 방문자 리뷰 */}
-                      <Grid.Col span={{ base: 6, sm: 4 }}>
-                        <Paper p="md" radius="md" bg="white" style={{ border: '1px solid #e0e7ff' }}>
-                          <Stack gap={4}>
-                            <Text size="xs" c="dimmed" fw={500}>방문자 리뷰</Text>
-                            <Text size="xl" fw={700} c="blue.6">
-                              {(rankResult.visitor_review_count || 0).toLocaleString()}
-                            </Text>
-                          </Stack>
-                        </Paper>
-                      </Grid.Col>
+                      <ShadcnCard className="bg-white">
+                        <div className="p-4 text-center">
+                          <p className="text-xs text-muted-foreground mb-1">방문자 리뷰</p>
+                          <p className="text-2xl font-bold text-blue-600">
+                            {(rankResult.visitor_review_count || 0).toLocaleString()}
+                          </p>
+                        </div>
+                      </ShadcnCard>
 
                       {/* 블로그 리뷰 */}
-                      <Grid.Col span={{ base: 6, sm: 4 }}>
-                        <Paper p="md" radius="md" bg="white" style={{ border: '1px solid #e0e7ff' }}>
-                          <Stack gap={4}>
-                            <Text size="xs" c="dimmed" fw={500}>블로그 리뷰</Text>
-                            <Text size="xl" fw={700} c="violet.6">
-                              {(rankResult.blog_review_count || 0).toLocaleString()}
-                            </Text>
-                          </Stack>
-                        </Paper>
-                      </Grid.Col>
+                      <ShadcnCard className="bg-white">
+                        <div className="p-4 text-center">
+                          <p className="text-xs text-muted-foreground mb-1">블로그 리뷰</p>
+                          <p className="text-2xl font-bold text-purple-600">
+                            {(rankResult.blog_review_count || 0).toLocaleString()}
+                          </p>
+                        </div>
+                      </ShadcnCard>
 
                       {/* 순위 변동 */}
                       {rankResult.rank_change !== null && rankResult.rank_change !== 0 && (
-                        <Grid.Col span={{ base: 12, sm: 4 }}>
-                          <Paper 
-                            p="md" 
-                            radius="md" 
-                            bg={rankResult.rank_change > 0 ? 'green.0' : 'red.0'}
-                            style={{ border: `1px solid ${rankResult.rank_change > 0 ? '#86efac' : '#fca5a5'}` }}
-                          >
-                            <Stack gap={4}>
-                              <Text size="xs" c="dimmed" fw={500}>순위 변동</Text>
-                              <Group gap="xs">
-                                {rankResult.rank_change > 0 ? (
-                                  <TrendingUp size={24} color="#16a34a" />
-                                ) : (
-                                  <TrendingDown size={24} color="#dc2626" />
-                                )}
-                                <Text size="xl" fw={700} c={rankResult.rank_change > 0 ? 'green.7' : 'red.7'}>
-                                  {Math.abs(rankResult.rank_change)}
-                                </Text>
-                              </Group>
-                            </Stack>
-                          </Paper>
-                        </Grid.Col>
+                        <ShadcnCard className={rankResult.rank_change > 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}>
+                          <div className="p-4 text-center">
+                            <p className="text-xs text-muted-foreground mb-1">순위 변동</p>
+                            <div className="flex items-center justify-center gap-2">
+                              {rankResult.rank_change > 0 ? (
+                                <TrendingUp className="w-6 h-6 text-green-600" />
+                              ) : (
+                                <TrendingDown className="w-6 h-6 text-red-600" />
+                              )}
+                              <span className={`text-2xl font-bold ${rankResult.rank_change > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                {Math.abs(rankResult.rank_change)}
+                              </span>
+                            </div>
+                          </div>
+                        </ShadcnCard>
                       )}
-                    </Grid>
-                  </Grid.Col>
-                </Grid>
-              </Paper>
+                    </div>
+                  </div>
+                </div>
+              </ShadcnCard>
 
               {/* 검색 결과 목록 - Stripe Style */}
               <div>
@@ -1146,13 +1118,13 @@ export default function NaverRankPage() {
                       </Table.Td>
                       <Table.Td ta="center">
                         {kw.current_rank ? (
-                          <Badge size="lg" variant="gradient" gradient={{ from: 'brand', to: 'brand.7', deg: 135 }}>
+                          <span className="inline-flex items-center justify-center px-3 py-1 rounded-lg bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold text-lg shadow-sm">
                             {kw.current_rank}위
-                          </Badge>
+                          </span>
                         ) : (
-                          <Badge size="lg" color="yellow">
+                          <span className="inline-flex items-center justify-center px-3 py-1 rounded-lg bg-yellow-100 text-yellow-800 font-semibold text-sm border border-yellow-300">
                             300위권 밖
-                          </Badge>
+                          </span>
                         )}
                       </Table.Td>
                       <Table.Td ta="center">
