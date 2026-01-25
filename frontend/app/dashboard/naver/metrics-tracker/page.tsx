@@ -848,8 +848,8 @@ export default function MetricsTrackerPage() {
                                   <span>순위</span>
                                 </div>
                                 <div className="flex flex-col items-center">
-                                  <span className="text-2xl sm:text-3xl font-bold text-blue-700">
-                                    {tracker.latest_rank || '-'}
+                                  <span className={`${tracker.latest_rank ? 'text-2xl sm:text-3xl' : 'text-sm sm:text-base'} font-bold ${tracker.latest_rank ? 'text-blue-700' : 'text-yellow-600'}`}>
+                                    {tracker.latest_rank ? tracker.latest_rank : '300위권 밖'}
                                   </span>
                                   {tracker.rank_change !== undefined && tracker.rank_change !== null && tracker.rank_change !== 0 ? (
                                     <span className={`text-xs font-bold flex items-center gap-0.5 mt-1 ${tracker.rank_change > 0 ? 'text-red-600' : 'text-blue-600'}`}>

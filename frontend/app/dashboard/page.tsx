@@ -600,7 +600,7 @@ export default function DashboardPage() {
   const storeColorMap = getStoreColorMap(storeGroups)
 
   // 추적 키워드 로드
-  const loadTrackers = async () => {
+  const loadTrackers = async (storesList?: Store[]) => {
     const token = getToken()
     if (!token) return
 
@@ -622,7 +622,9 @@ export default function DashboardPage() {
       setTrackers(trackersList)
       
       // 매장별 그룹화 (이미 display_order로 정렬됨)
-      const groups = groupTrackersByStore(trackersList, stores)
+      // stores 파라미터가 있으면 사용, 없으면 state에서 가져옴
+      const currentStores = storesList || stores
+      const groups = groupTrackersByStore(trackersList, currentStores)
       setStoreGroups(groups)
     }
   }
@@ -660,13 +662,16 @@ export default function DashboardPage() {
           }
         })
         
+        let loadedStores: Store[] = []
         if (storesRes.ok) {
           const storesData = await storesRes.json()
-          setStores(storesData.stores || [])
+          loadedStores = storesData.stores || []
+          setStores(loadedStores)
         }
 
         // 3. 추적 키워드 목록 조회 (백엔드에서 변동값 포함하여 반환)
-        await loadTrackers()
+        // 매장 목록을 함께 전달하여 즉시 그룹화
+        await loadTrackers(loadedStores)
 
       } catch (error) {
         console.error("[DEBUG] Error loading dashboard data:", error)
