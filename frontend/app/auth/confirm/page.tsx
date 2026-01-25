@@ -4,8 +4,8 @@
  * 이메일 인증 확인 페이지
  * Supabase에서 이메일 인증 링크를 클릭하면 이 페이지로 리다이렉트됨
  */
-import { useEffect, useState } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { Suspense, useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import Image from "next/image"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2, CheckCircle, XCircle } from "lucide-react"
@@ -15,9 +15,8 @@ import { useAuth } from "@/lib/auth-context"
 // 동적 렌더링 강제
 export const dynamic = 'force-dynamic'
 
-export default function ConfirmEmailPage() {
+function ConfirmEmailContent() {
   const router = useRouter()
-  const searchParams = useSearchParams()
   const { confirmEmail } = useAuth()
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
   const [message, setMessage] = useState('이메일 인증을 처리 중입니다...')
@@ -118,5 +117,34 @@ export default function ConfirmEmailPage() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+export default function ConfirmEmailPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-cyan-50 p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="space-y-1">
+            <div className="flex justify-center mb-6">
+              <Image
+                src="/whiplace-logo.png"
+                alt="WhiPlace"
+                width={180}
+                height={60}
+                priority
+                className="w-full max-w-[200px] h-auto"
+              />
+            </div>
+            <div className="flex justify-center mb-4">
+              <Loader2 className="w-16 h-16 text-blue-500 animate-spin" />
+            </div>
+            <CardTitle className="text-2xl text-center">로딩 중...</CardTitle>
+          </CardHeader>
+        </Card>
+      </div>
+    }>
+      <ConfirmEmailContent />
+    </Suspense>
   )
 }

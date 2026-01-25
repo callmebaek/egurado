@@ -4,17 +4,18 @@
  * 이메일 인증 대기 페이지
  * 회원가입 후 이메일 확인을 기다리는 페이지
  */
+import { Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Mail, ArrowLeft } from "lucide-react"
+import { Mail, ArrowLeft, Loader2 } from "lucide-react"
 
 // 동적 렌더링 강제
 export const dynamic = 'force-dynamic'
 
-export default function VerifyEmailPage() {
+function VerifyEmailContent() {
   const searchParams = useSearchParams()
   const email = searchParams?.get('email') || ''
 
@@ -76,5 +77,21 @@ export default function VerifyEmailPage() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+export default function VerifyEmailPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-cyan-50 p-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="pt-6 flex justify-center">
+            <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+          </CardContent>
+        </Card>
+      </div>
+    }>
+      <VerifyEmailContent />
+    </Suspense>
   )
 }
