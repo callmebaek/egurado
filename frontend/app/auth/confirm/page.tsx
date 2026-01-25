@@ -1,156 +1,120 @@
-'use client'
+"use client"
 
 /**
- * 이메일 확인 콜백 페이지
- * Supabase에서 이메일 인증 후 리다이렉트되는 페이지
+ * 이메일 인증 확인 페이지
+ * Supabase에서 이메일 인증 링크를 클릭하면 이 페이지로 리다이렉트됨
  */
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { CheckCircle2, XCircle, Loader2 } from 'lucide-react'
-import { useAuth } from '@/lib/auth-context'
+import { useEffect, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import Image from "next/image"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Loader2, CheckCircle, XCircle } from "lucide-react"
+import { supabase } from "@/lib/supabase"
+import { useAuth } from "@/lib/auth-context"
 
+// 동적 렌더링 강제
 export const dynamic = 'force-dynamic'
 
 export default function ConfirmEmailPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { confirmEmail } = useAuth()
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
-  const [message, setMessage] = useState('')
-  const [isProcessing, setIsProcessing] = useState(false)
+  const [message, setMessage] = useState('이메일 인증을 처리 중입니다...')
 
   useEffect(() => {
-    if (isProcessing) return
-    setIsProcessing(true)
-
     const handleEmailConfirmation = async () => {
       try {
-        // URL 해시에서 토큰 추출
-        const hashParams = new URLSearchParams(window.location.hash.substring(1))
-        const accessToken = hashParams.get('access_token')
-        const type = hashParams.get('type')
-        const error = hashParams.get('error')
-        const errorDescription = hashParams.get('error_description')
-
-        // 에러가 있는 경우
-        if (error) {
-          throw new Error(errorDescription || error)
+        // URL 해시에서 토큰 추출 (Supabase는 #access_token=... 형식으로 전달)
+        const hash = window.location.hash
+        if (!hash) {
+          throw new Error('인증 토큰이 없습니다')
         }
 
-        // 이메일 확인 타입인지 확인
-        if (type === 'signup' && accessToken) {
-          // Supabase에서 제공하는 access_token을 사용하여 사용자 정보 가져오기
-          const response = await fetch(
-            `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/user`,
-            {
-              headers: {
-                'Authorization': `Bearer ${accessToken}`,
-                'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-              }
-            }
-          )
+        // 해시에서 토큰 파싱
+        const params = new URLSearchParams(hash.substring(1)) // '#' 제거
+        const accessToken = params.get('access_token')
+        const refreshToken = params.get('refresh_token')
 
-          if (!response.ok) {
-            throw new Error('사용자 정보를 가져올 수 없습니다')
-          }
-
-          const userData = await response.json()
-          const userId = userData.id
-          const email = userData.email
-          const displayName = userData.user_metadata?.display_name
-
-          // 백엔드에 프로필 생성 요청
-          await confirmEmail(userId, email, displayName)
-
-          setStatus('success')
-          setMessage('이메일 인증이 완료되었습니다!')
-
-          // 3초 후 온보딩 페이지로 이동 (confirmEmail 함수가 이미 리다이렉트하지만 안전장치)
-          setTimeout(() => {
-            // confirmEmail 내부에서 이미 리다이렉트되지만, 만약을 대비
-          }, 3000)
-        } else {
+        if (!accessToken) {
           throw new Error('유효하지 않은 인증 링크입니다')
         }
+
+        // Supabase 세션 설정
+        const { data: { user }, error } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken || ''
+        })
+
+        if (error || !user) {
+          throw new Error('이메일 인증에 실패했습니다')
+        }
+
+        console.log('[이메일 인증] 사용자 확인됨:', user.id, user.email)
+
+        // 백엔드에 프로필 생성 요청
+        await confirmEmail(
+          user.id,
+          user.email || '',
+          user.user_metadata?.display_name
+        )
+
+        setStatus('success')
+        setMessage('이메일 인증이 완료되었습니다! 온보딩 페이지로 이동합니다...')
+
+        // 3초 후 온보딩 페이지로 이동 (confirmEmail이 자동으로 처리)
+        setTimeout(() => {
+          // confirmEmail 함수가 이미 리다이렉트를 처리하므로 여기서는 추가 처리 불필요
+        }, 2000)
+
       } catch (error: any) {
-        console.error('이메일 확인 오류:', error)
+        console.error('[이메일 인증 오류]', error)
         setStatus('error')
-        setMessage(error.message || '이메일 인증에 실패했습니다')
-      } finally {
-        setIsProcessing(false)
+        setMessage(error.message || '이메일 인증 중 오류가 발생했습니다')
+
+        // 5초 후 로그인 페이지로 이동
+        setTimeout(() => {
+          router.push('/login')
+        }, 5000)
       }
     }
 
-    // 약간의 지연 후 실행 (URL 해시가 제대로 로드되도록)
-    const timer = setTimeout(() => {
-      handleEmailConfirmation()
-    }, 100)
-
-    return () => clearTimeout(timer)
-  }, [confirmEmail, router, isProcessing])
+    handleEmailConfirmation()
+  }, [confirmEmail, router])
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      <Card className="w-full max-w-md shadow-xl">
-        <CardHeader className="text-center">
-          <div className="mx-auto mb-4 w-16 h-16 bg-white rounded-full flex items-center justify-center">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-cyan-50 p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="space-y-1">
+          <div className="flex justify-center mb-6">
+            <Image
+              src="/whiplace-logo.png"
+              alt="WhiPlace"
+              width={180}
+              height={60}
+              priority
+              className="w-full max-w-[200px] h-auto"
+            />
+          </div>
+          <div className="flex justify-center mb-4">
             {status === 'loading' && (
-              <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+              <Loader2 className="w-16 h-16 text-blue-500 animate-spin" />
             )}
             {status === 'success' && (
-              <CheckCircle2 className="w-8 h-8 text-green-600" />
+              <CheckCircle className="w-16 h-16 text-green-500" />
             )}
             {status === 'error' && (
-              <XCircle className="w-8 h-8 text-red-600" />
+              <XCircle className="w-16 h-16 text-red-500" />
             )}
           </div>
-
-          <CardTitle className="text-2xl font-bold">
-            {status === 'loading' && '⏳ 이메일 확인 중...'}
-            {status === 'success' && '✅ 이메일 인증 완료!'}
-            {status === 'error' && '❌ 이메일 인증 실패'}
+          <CardTitle className="text-2xl text-center">
+            {status === 'loading' && '이메일 인증 중...'}
+            {status === 'success' && '인증 완료!'}
+            {status === 'error' && '인증 실패'}
           </CardTitle>
         </CardHeader>
-
-        <CardContent className="text-center">
-          {status === 'loading' && (
-            <div className="space-y-2">
-              <p className="text-gray-600">잠시만 기다려주세요...</p>
-              <div className="flex justify-center gap-1 mt-4">
-                <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
-              </div>
-            </div>
-          )}
-
-          {status === 'success' && (
-            <div className="space-y-4">
-              <p className="text-lg text-gray-900 font-medium">{message}</p>
-              <p className="text-sm text-gray-600">
-                곧 온보딩 페이지로 이동합니다...
-              </p>
-              <div className="pt-4">
-                <div className="inline-block px-4 py-2 bg-green-50 text-green-700 rounded-lg text-sm">
-                  🎉 회원가입이 완료되었습니다!
-                </div>
-              </div>
-            </div>
-          )}
-
-          {status === 'error' && (
-            <div className="space-y-4">
-              <p className="text-gray-900">{message}</p>
-              <div className="pt-4">
-                <button
-                  onClick={() => router.push('/signup')}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  다시 회원가입하기
-                </button>
-              </div>
-            </div>
-          )}
+        <CardContent>
+          <p className="text-center text-gray-600">{message}</p>
         </CardContent>
       </Card>
     </div>
