@@ -121,7 +121,7 @@ export default function SignupPage() {
               width={180}
               height={60}
               priority
-              className="h-12 w-auto"
+              className="w-full max-w-[200px] h-auto"
             />
           </div>
           <CardTitle className="text-xl font-bold text-center">

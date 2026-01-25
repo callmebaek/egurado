@@ -263,14 +263,14 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       >
         {/* 로고 및 닫기 버튼 */}
         <div className="p-4 border-b flex items-center justify-between">
-          <Link href="/dashboard" className="flex items-center gap-2" onClick={onClose}>
+          <Link href="/dashboard" className="flex items-center gap-2 flex-1" onClick={onClose}>
             <Image
               src="/whiplace-logo.png"
               alt="WhiPlace"
-              width={120}
-              height={40}
+              width={500}
+              height={160}
               priority
-              className="h-8 w-auto"
+              className="w-[90%] h-auto max-w-full"
             />
           </Link>
           

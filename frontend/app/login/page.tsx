@@ -81,7 +81,7 @@ export default function LoginPage() {
               width={900}
               height={300}
               priority
-              className="h-60 w-auto"
+              className="w-full max-w-xs h-auto"
             />
           </div>
         </CardHeader>
