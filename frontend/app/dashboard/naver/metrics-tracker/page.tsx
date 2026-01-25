@@ -245,51 +245,6 @@ export default function MetricsTrackerPage() {
     }
   }
 
-  const loadAllLatestMetrics = async (trackerList: MetricTracker[]) => {
-    const token = getToken()
-    if (!token) return
-
-    // 🚀 성능 최적화: 모든 API 호출을 병렬로 처리
-    const promises = trackerList.map(async (tracker) => {
-      try {
-        const response = await fetch(api.metrics.getMetrics(tracker.id), {
-          headers: { 'Authorization': `Bearer ${token}` }
-        })
-
-        if (response.ok) {
-          const data = await response.json()
-          if (data.metrics && data.metrics.length > 0) {
-            return {
-              trackerId: tracker.id,
-              latest: data.metrics[0],
-              previous: data.metrics[1] || null
-            }
-          }
-        }
-      } catch (error) {
-        console.error(`지표 로드 실패 (${tracker.id}):`, error)
-      }
-      return null
-    })
-
-    // 모든 API 호출이 완료될 때까지 대기
-    const results = await Promise.all(promises)
-    
-    // 결과를 state에 저장
-    const latestData: {[key: string]: DailyMetric} = {}
-    const previousData: {[key: string]: DailyMetric | null} = {}
-    
-    results.forEach(result => {
-      if (result) {
-        latestData[result.trackerId] = result.latest
-        previousData[result.trackerId] = result.previous
-      }
-    })
-
-    setLatestMetrics(latestData)
-    setPreviousMetrics(previousData)
-  }
-
   // 매장별 그룹화
   const storeGroups = useMemo<StoreGroup[]>(() => {
     const groups: {[storeId: string]: StoreGroup} = {}
@@ -401,31 +356,20 @@ export default function MetricsTrackerPage() {
           description: "지표가 수집되었습니다"
         })
         
-        // ✅ tracker의 last_collected_at 업데이트 (날짜 바로 반영)
+        // ✅ tracker의 last_collected_at 및 최신 지표 업데이트 (전체 새로고침 불필요)
         setTrackers(prev => prev.map(t => 
           t.id === trackerId 
-            ? { ...t, last_collected_at: new Date().toISOString() }
+            ? { 
+                ...t, 
+                last_collected_at: new Date().toISOString(),
+                // 수집된 지표로 업데이트
+                latest_rank: collectedMetric.rank,
+                rank_change: collectedMetric.rank_change,
+                visitor_review_count: collectedMetric.visitor_review_count,
+                blog_review_count: collectedMetric.blog_review_count
+              }
             : t
         ))
-        
-        // 해당 tracker의 최근 지표 다시 로드
-        const metricsResponse = await fetch(api.metrics.getMetrics(trackerId), {
-          headers: { 'Authorization': `Bearer ${token}` }
-        })
-        
-        if (metricsResponse.ok) {
-          const data = await metricsResponse.json()
-          if (data.metrics && data.metrics.length > 0) {
-            setLatestMetrics(prev => ({
-              ...prev,
-              [trackerId]: data.metrics[0]
-            }))
-            setPreviousMetrics(prev => ({
-              ...prev,
-              [trackerId]: data.metrics[1] || null
-            }))
-          }
-        }
       } else {
         const errorData = await response.json().catch(() => ({}))
         throw new Error(errorData.detail || "지표 수집 실패")
@@ -446,9 +390,12 @@ export default function MetricsTrackerPage() {
     }
   }
 
-  // 매장 전체 수집
+  // 매장 전체 수집 (🚀 병렬 처리로 최적화)
   const handleCollectAllStore = async (storeId: string, trackerIds: string[]) => {
     const storeKey = `store_${storeId}`
+    const token = getToken()
+    if (!token) return
+    
     try {
       setIsRefreshing(prev => new Set(prev).add(storeKey))
       
@@ -457,59 +404,59 @@ export default function MetricsTrackerPage() {
         setIsRefreshing(prev => new Set(prev).add(trackerId))
       })
       
-      // 모든 키워드 수집 (순차적으로, 각각 UI 업데이트)
-      for (const trackerId of trackerIds) {
+      // 🚀 모든 키워드 수집을 병렬로 처리 (순차 → 병렬)
+      const collectPromises = trackerIds.map(async (trackerId) => {
         try {
-          const token = getToken()
-          if (!token) continue
-
           const response = await fetch(api.metrics.collectNow(trackerId), {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}` }
           })
 
           if (response.ok) {
-            // ✅ tracker의 last_collected_at 업데이트
-            setTrackers(prev => prev.map(t => 
-              t.id === trackerId 
-                ? { ...t, last_collected_at: new Date().toISOString() }
-                : t
-            ))
-            
-            // 최근 지표 로드
-            const metricsResponse = await fetch(api.metrics.getMetrics(trackerId), {
-              headers: { 'Authorization': `Bearer ${token}` }
-            })
-            
-            if (metricsResponse.ok) {
-              const data = await metricsResponse.json()
-              if (data.metrics && data.metrics.length > 0) {
-                setLatestMetrics(prev => ({
-                  ...prev,
-                  [trackerId]: data.metrics[0]
-                }))
-                setPreviousMetrics(prev => ({
-                  ...prev,
-                  [trackerId]: data.metrics[1] || null
-                }))
-              }
+            const collectedMetric = await response.json()
+            return {
+              trackerId,
+              success: true,
+              metric: collectedMetric
             }
           }
+          return { trackerId, success: false }
         } catch (error) {
           console.error(`Tracker ${trackerId} 수집 실패:`, error)
-        } finally {
-          // 개별 tracker 로딩 상태 제거
-          setIsRefreshing(prev => {
-            const next = new Set(prev)
-            next.delete(trackerId)
-            return next
-          })
+          return { trackerId, success: false }
         }
-      }
+      })
       
+      // 모든 수집 완료 대기
+      const results = await Promise.all(collectPromises)
+      
+      // ✅ 한 번에 모든 tracker 업데이트
+      setTrackers(prev => prev.map(t => {
+        const result = results.find(r => r.trackerId === t.id)
+        if (result && result.success && result.metric) {
+          return {
+            ...t,
+            last_collected_at: new Date().toISOString(),
+            latest_rank: result.metric.rank,
+            rank_change: result.metric.rank_change,
+            visitor_review_count: result.metric.visitor_review_count,
+            blog_review_count: result.metric.blog_review_count
+          }
+        }
+        return t
+      }))
+      
+      // 개별 tracker 로딩 상태 일괄 제거
+      setIsRefreshing(prev => {
+        const next = new Set(prev)
+        trackerIds.forEach(id => next.delete(id))
+        return next
+      })
+      
+      const successCount = results.filter(r => r.success).length
       toast({
         title: "🎉 전체 수집 완료",
-        description: "모든 키워드의 지표가 수집되었습니다"
+        description: `${successCount}/${trackerIds.length}개 키워드의 지표가 수집되었습니다`
       })
     } catch (error) {
       console.error("전체 수집 실패:", error)
@@ -635,7 +582,7 @@ export default function MetricsTrackerPage() {
     }
   }
 
-  // 삭제
+  // 삭제 (🚀 state에서만 제거로 최적화)
   const handleDelete = async (trackerId: string, keyword: string) => {
     if (!confirm(`"${keyword}" 추적을 삭제하시겠습니까?`)) return
 
@@ -653,7 +600,9 @@ export default function MetricsTrackerPage() {
           title: "✅ 삭제 완료",
           description: "추적 설정이 삭제되었습니다"
         })
-        await loadTrackers()
+        
+        // ✅ 전체 새로고침 대신 state에서만 제거 (즉각 반영)
+        setTrackers(prev => prev.filter(t => t.id !== trackerId))
       }
     } catch (error) {
       toast({
@@ -890,9 +839,9 @@ export default function MetricsTrackerPage() {
                               <p className="font-semibold text-gray-600">지표 수집 중...</p>
                               <p className="text-xs text-gray-400 mt-1">잠시만 기다려주세요</p>
                             </div>
-                          ) : latestMetrics[tracker.id] ? (
+                          ) : tracker.latest_rank !== undefined || tracker.visitor_review_count !== undefined ? (
                             <div className="grid grid-cols-3 gap-3 mb-4">
-                              {/* 순위 */}
+                              {/* 순위 (✅ 백엔드에서 제공하는 데이터 직접 사용) */}
                               <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-3 sm:p-4 border border-blue-200/50">
                                 <div className="text-xs text-blue-600 font-semibold mb-2 flex items-center gap-1.5">
                                   <TrendingUp className="w-3.5 h-3.5" />
@@ -900,27 +849,20 @@ export default function MetricsTrackerPage() {
                                 </div>
                                 <div className="flex flex-col items-center">
                                   <span className="text-2xl sm:text-3xl font-bold text-blue-700">
-                                    {latestMetrics[tracker.id].rank || '-'}
+                                    {tracker.latest_rank || '-'}
                                   </span>
-                                  {previousMetrics[tracker.id] && latestMetrics[tracker.id].rank && previousMetrics[tracker.id]!.rank ? (
-                                    (() => {
-                                      const change = latestMetrics[tracker.id].rank! - previousMetrics[tracker.id]!.rank!
-                                      return change !== 0 ? (
-                                        <span className={`text-xs font-bold flex items-center gap-0.5 mt-1 ${change > 0 ? 'text-red-600' : 'text-blue-600'}`}>
-                                          {change > 0 ? <TrendingDown className="w-3 h-3" /> : <TrendingUp className="w-3 h-3" />}
-                                          {Math.abs(change)}
-                                        </span>
-                                      ) : (
-                                        <span className="text-xs text-gray-400 mt-1">변동없음</span>
-                                      )
-                                    })()
+                                  {tracker.rank_change !== undefined && tracker.rank_change !== null && tracker.rank_change !== 0 ? (
+                                    <span className={`text-xs font-bold flex items-center gap-0.5 mt-1 ${tracker.rank_change > 0 ? 'text-red-600' : 'text-blue-600'}`}>
+                                      {tracker.rank_change > 0 ? <TrendingDown className="w-3 h-3" /> : <TrendingUp className="w-3 h-3" />}
+                                      {Math.abs(tracker.rank_change)}
+                                    </span>
                                   ) : (
-                                    <span className="text-xs text-gray-400 mt-1">신규</span>
+                                    <span className="text-xs text-gray-400 mt-1">{tracker.rank_change === 0 ? '변동없음' : '신규'}</span>
                                   )}
                                 </div>
                               </div>
                               
-                              {/* 방문자 리뷰 */}
+                              {/* 방문자 리뷰 (✅ 백엔드에서 제공하는 데이터 직접 사용) */}
                               <div className="bg-gradient-to-br from-green-50 to-emerald-100 rounded-xl p-3 sm:p-4 border border-green-200/50">
                                 <div className="text-xs text-green-600 font-semibold mb-2 flex items-center gap-1.5">
                                   <MessageSquare className="w-3.5 h-3.5" />
@@ -929,27 +871,20 @@ export default function MetricsTrackerPage() {
                                 </div>
                                 <div className="flex flex-col items-center">
                                   <span className="text-xl sm:text-2xl font-bold text-green-700">
-                                    {latestMetrics[tracker.id].visitor_review_count.toLocaleString()}
+                                    {tracker.visitor_review_count?.toLocaleString() || '0'}
                                   </span>
-                                  {previousMetrics[tracker.id] ? (
-                                    (() => {
-                                      const change = latestMetrics[tracker.id].visitor_review_count - previousMetrics[tracker.id]!.visitor_review_count
-                                      return change !== 0 ? (
-                                        <span className={`text-xs font-bold flex items-center gap-0.5 mt-1 ${change > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                          {change > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                                          {Math.abs(change)}
-                                        </span>
-                                      ) : (
-                                        <span className="text-xs text-gray-400 mt-1">변동없음</span>
-                                      )
-                                    })()
+                                  {tracker.visitor_review_change !== undefined && tracker.visitor_review_change !== null && tracker.visitor_review_change !== 0 ? (
+                                    <span className={`text-xs font-bold flex items-center gap-0.5 mt-1 ${tracker.visitor_review_change > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                      {tracker.visitor_review_change > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                                      {Math.abs(tracker.visitor_review_change)}
+                                    </span>
                                   ) : (
-                                    <span className="text-xs text-gray-400 mt-1">신규</span>
+                                    <span className="text-xs text-gray-400 mt-1">{tracker.visitor_review_change === 0 ? '변동없음' : '신규'}</span>
                                   )}
                                 </div>
                               </div>
                               
-                              {/* 블로그 리뷰 */}
+                              {/* 블로그 리뷰 (✅ 백엔드에서 제공하는 데이터 직접 사용) */}
                               <div className="bg-gradient-to-br from-amber-50 to-orange-100 rounded-xl p-3 sm:p-4 border border-amber-200/50">
                                 <div className="text-xs text-amber-600 font-semibold mb-2 flex items-center gap-1.5">
                                   <FileText className="w-3.5 h-3.5" />
@@ -958,22 +893,15 @@ export default function MetricsTrackerPage() {
                                 </div>
                                 <div className="flex flex-col items-center">
                                   <span className="text-xl sm:text-2xl font-bold text-amber-700">
-                                    {latestMetrics[tracker.id].blog_review_count.toLocaleString()}
+                                    {tracker.blog_review_count?.toLocaleString() || '0'}
                                   </span>
-                                  {previousMetrics[tracker.id] ? (
-                                    (() => {
-                                      const change = latestMetrics[tracker.id].blog_review_count - previousMetrics[tracker.id]!.blog_review_count
-                                      return change !== 0 ? (
-                                        <span className={`text-xs font-bold flex items-center gap-0.5 mt-1 ${change > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                          {change > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                                          {Math.abs(change)}
-                                        </span>
-                                      ) : (
-                                        <span className="text-xs text-gray-400 mt-1">변동없음</span>
-                                      )
-                                    })()
+                                  {tracker.blog_review_change !== undefined && tracker.blog_review_change !== null && tracker.blog_review_change !== 0 ? (
+                                    <span className={`text-xs font-bold flex items-center gap-0.5 mt-1 ${tracker.blog_review_change > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                      {tracker.blog_review_change > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                                      {Math.abs(tracker.blog_review_change)}
+                                    </span>
                                   ) : (
-                                    <span className="text-xs text-gray-400 mt-1">신규</span>
+                                    <span className="text-xs text-gray-400 mt-1">{tracker.blog_review_change === 0 ? '변동없음' : '신규'}</span>
                                   )}
                                 </div>
                               </div>

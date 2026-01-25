@@ -93,19 +93,58 @@ class MetricTrackerService:
             return None
     
     def get_all_trackers(self, user_id: str) -> List[dict]:
-        """사용자의 모든 tracker 조회 (최신 지표 포함)"""
+        """
+        사용자의 모든 tracker 조회 (최신 지표 포함)
+        
+        🚀 성능 최적화: 단일 쿼리로 모든 daily_metrics를 한 번에 조회하여
+        N+1 쿼리 문제 해결 (N*3회 → 2회 쿼리로 감소)
+        """
         try:
+            # 1️⃣ 모든 trackers 조회
             result = self.supabase.table('metric_trackers')\
                 .select('*, stores(store_name, platform), keywords(keyword)')\
                 .eq('user_id', user_id)\
                 .order('created_at', desc=True)\
                 .execute()
             
-            trackers = []
+            if not result.data:
+                return []
+            
+            tracker_ids = [item['id'] for item in result.data]
+            
+            # 2️⃣ 모든 trackers의 최근 daily_metrics를 한 번에 조회 (최적화)
+            # 각 tracker당 최근 2개의 데이터만 가져옴 (최신 + 이전 날짜)
             today = date.today()
+            cutoff_date = (today - timedelta(days=7)).isoformat()  # 최근 7일치
+            
+            all_metrics_result = self.supabase.table('daily_metrics')\
+                .select('*')\
+                .in_('tracker_id', tracker_ids)\
+                .gte('collection_date', cutoff_date)\
+                .order('collection_date', desc=True)\
+                .execute()
+            
+            # 3️⃣ tracker_id별로 metrics를 그룹화 (메모리 상에서 처리)
+            metrics_by_tracker: Dict[str, List[dict]] = {}
+            for metric in (all_metrics_result.data or []):
+                tracker_id = metric['tracker_id']
+                if tracker_id not in metrics_by_tracker:
+                    metrics_by_tracker[tracker_id] = []
+                metrics_by_tracker[tracker_id].append(metric)
+            
+            # 각 tracker의 metrics를 날짜순으로 정렬 (최신이 첫 번째)
+            for tracker_id in metrics_by_tracker:
+                metrics_by_tracker[tracker_id].sort(
+                    key=lambda m: m['collection_date'], 
+                    reverse=True
+                )
+            
+            # 4️⃣ trackers 데이터 구성
+            trackers = []
             
             for item in result.data:
                 tracker = {**item}
+                tracker_id = item['id']
                 
                 # stores와 keywords 정보 평탄화
                 if 'stores' in item and item['stores']:
@@ -115,76 +154,34 @@ class MetricTrackerService:
                 if 'keywords' in item and item['keywords']:
                     tracker['keyword'] = item['keywords'].get('keyword', '')
                 
-                # 최신 지표 조회 (오늘 데이터 우선, 없으면 최신 데이터)
-                try:
-                    # 오늘 데이터 먼저 조회
-                    metrics_result = self.supabase.table('daily_metrics')\
-                        .select('*')\
-                        .eq('tracker_id', item['id'])\
-                        .eq('collection_date', today.isoformat())\
-                        .execute()
+                # 해당 tracker의 metrics 가져오기
+                tracker_metrics = metrics_by_tracker.get(tracker_id, [])
+                
+                if tracker_metrics:
+                    # 최신 데이터 (첫 번째)
+                    latest_metric = tracker_metrics[0]
+                    tracker['latest_rank'] = latest_metric.get('rank')
+                    tracker['rank_change'] = latest_metric.get('rank_change')
+                    tracker['visitor_review_count'] = latest_metric.get('visitor_review_count')
+                    tracker['blog_review_count'] = latest_metric.get('blog_review_count')
                     
-                    latest_metric = None
-                    latest_date = today
-                    
-                    if metrics_result.data and len(metrics_result.data) > 0:
-                        # 오늘 데이터가 있음
-                        latest_metric = metrics_result.data[0]
-                        latest_date = today
-                        print(f"[Trackers Get All] Tracker {item['id']}: 오늘 데이터 사용")
+                    # 이전 데이터가 있으면 변동값 계산 (두 번째)
+                    if len(tracker_metrics) > 1:
+                        previous_metric = tracker_metrics[1]
+                        tracker['visitor_review_change'] = (
+                            latest_metric.get('visitor_review_count', 0) - 
+                            previous_metric.get('visitor_review_count', 0)
+                        )
+                        tracker['blog_review_change'] = (
+                            latest_metric.get('blog_review_count', 0) - 
+                            previous_metric.get('blog_review_count', 0)
+                        )
                     else:
-                        # 오늘 데이터가 없으면 가장 최근 데이터 조회
-                        print(f"[Trackers Get All] Tracker {item['id']}: 오늘 데이터 없음, 최신 데이터 조회 중...")
-                        recent_result = self.supabase.table('daily_metrics')\
-                            .select('*')\
-                            .eq('tracker_id', item['id'])\
-                            .order('collection_date', desc=True)\
-                            .limit(1)\
-                            .execute()
-                        
-                        if recent_result.data and len(recent_result.data) > 0:
-                            latest_metric = recent_result.data[0]
-                            latest_date = date.fromisoformat(latest_metric['collection_date'])
-                            print(f"[Trackers Get All] Tracker {item['id']}: 최신 데이터 사용 ({latest_date})")
-                            print(f"  - visitor_review_count: {latest_metric.get('visitor_review_count')}")
-                            print(f"  - blog_review_count: {latest_metric.get('blog_review_count')}")
-                        else:
-                            print(f"[Trackers Get All] Tracker {item['id']}: 데이터 전혀 없음!")
-                    
-                    if latest_metric:
-                        # 최신 지표 데이터 설정
-                        tracker['latest_rank'] = latest_metric.get('rank')
-                        tracker['rank_change'] = latest_metric.get('rank_change')
-                        tracker['visitor_review_count'] = latest_metric.get('visitor_review_count')
-                        tracker['blog_review_count'] = latest_metric.get('blog_review_count')
-                        
-                        # 이전 날짜 데이터 조회하여 변동값 계산
-                        previous_date = latest_date - timedelta(days=1)
-                        previous_result = self.supabase.table('daily_metrics')\
-                            .select('*')\
-                            .eq('tracker_id', item['id'])\
-                            .eq('collection_date', previous_date.isoformat())\
-                            .execute()
-                        
-                        if previous_result.data and len(previous_result.data) > 0:
-                            previous_metric = previous_result.data[0]
-                            # 변동값 = 최신 - 이전
-                            tracker['visitor_review_change'] = latest_metric.get('visitor_review_count', 0) - previous_metric.get('visitor_review_count', 0)
-                            tracker['blog_review_change'] = latest_metric.get('blog_review_count', 0) - previous_metric.get('blog_review_count', 0)
-                        else:
-                            # 이전 데이터가 없으면 변동값 없음
-                            tracker['visitor_review_change'] = None
-                            tracker['blog_review_change'] = None
-                    else:
-                        # 데이터가 전혀 없음
-                        tracker['latest_rank'] = None
-                        tracker['rank_change'] = None
-                        tracker['visitor_review_count'] = None
-                        tracker['blog_review_count'] = None
+                        # 이전 데이터가 없으면 변동값 없음
                         tracker['visitor_review_change'] = None
                         tracker['blog_review_change'] = None
-                except Exception as metric_error:
-                    logger.warning(f"[Trackers Get All] 지표 조회 실패 (tracker_id={item['id']}): {str(metric_error)}")
+                else:
+                    # 데이터가 전혀 없음
                     tracker['latest_rank'] = None
                     tracker['rank_change'] = None
                     tracker['visitor_review_count'] = None
@@ -194,9 +191,13 @@ class MetricTrackerService:
                 
                 trackers.append(tracker)
             
+            logger.info(f"[Trackers Get All] ✅ 최적화된 쿼리로 {len(trackers)}개 tracker 조회 완료 (쿼리 2회)")
             return trackers
+            
         except Exception as e:
             logger.error(f"[Trackers Get All] 오류: {str(e)}")
+            import traceback
+            logger.error(traceback.format_exc())
             return []
     
     def get_trackers_by_user(self, user_id: str) -> List[dict]:

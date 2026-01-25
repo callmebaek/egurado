@@ -77,15 +77,6 @@ interface Store {
   created_at: string
 }
 
-interface Keyword {
-  id: string
-  keyword: string
-  current_rank: number | null
-  previous_rank: number | null
-  store_id: string
-  created_at: string
-}
-
 interface MetricTracker {
   id: string
   keyword: string
@@ -395,7 +386,6 @@ export default function DashboardPage() {
   
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [stores, setStores] = useState<Store[]>([])
-  const [keywords, setKeywords] = useState<Keyword[]>([])
   const [trackers, setTrackers] = useState<MetricTracker[]>([])
   const [storeGroups, setStoreGroups] = useState<StoreTrackerGroup[]>([])
   const [isLoadingData, setIsLoadingData] = useState(true)
@@ -673,24 +663,9 @@ export default function DashboardPage() {
         if (storesRes.ok) {
           const storesData = await storesRes.json()
           setStores(storesData.stores || [])
-
-          // 3. 키워드 목록 조회
-          const allKeywords: Keyword[] = []
-          for (const store of (storesData.stores || [])) {
-            try {
-              const keywordsRes = await fetch(api.naver.keywords(store.id))
-              if (keywordsRes.ok) {
-                const keywordsData = await keywordsRes.json()
-                allKeywords.push(...(keywordsData.keywords || []))
-              }
-            } catch (error) {
-              console.error(`Failed to fetch keywords for store ${store.id}:`, error)
-            }
-          }
-          setKeywords(allKeywords)
         }
 
-        // 4. 추적 키워드 목록 조회
+        // 3. 추적 키워드 목록 조회 (백엔드에서 변동값 포함하여 반환)
         await loadTrackers()
 
       } catch (error) {
@@ -702,15 +677,6 @@ export default function DashboardPage() {
 
     loadDashboardData()
   }, [user])
-
-  // stores가 로드되면 그룹화 다시 수행
-  useEffect(() => {
-    if (stores.length > 0 && trackers.length > 0) {
-      // 매장별 그룹화 (이미 display_order로 정렬됨)
-      const groups = groupTrackersByStore(trackers, stores)
-      setStoreGroups(groups)
-    }
-  }, [stores, trackers])
 
   // 로딩 중
   if (authLoading || isLoadingData) {
