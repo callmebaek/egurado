@@ -1,21 +1,48 @@
 "use client"
 
+/**
+ * 플레이스 순위조회 - Stripe Style Premium Design
+ * Mantine UI + 100% 반응형 + 브랜드 컬러 (#407645, #635bff)
+ */
+
 import { useStores } from "@/lib/hooks/useStores"
 import { useAuth } from "@/lib/auth-context"
 import { EmptyStoreMessage } from "@/components/EmptyStoreMessage"
 import { Loader2, TrendingUp, TrendingDown, Search, Minus, MapPin, Star, X, LineChart as LineChartIcon } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card } from "@/components/ui/card"
 import { useToast } from "@/components/ui/use-toast"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Switch } from "@/components/ui/switch"
 import { useState, useEffect } from "react"
 import { supabase } from "@/lib/supabase"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { api } from "@/lib/config"
+import {
+  Container,
+  Title,
+  Text,
+  Paper,
+  Stack,
+  Group,
+  Button,
+  TextInput,
+  Select,
+  Badge,
+  Table,
+  Modal,
+  Switch,
+  Loader,
+  ActionIcon,
+  Card,
+  Grid,
+  Progress,
+  Tooltip as MantineTooltip,
+  rem,
+  Box,
+  Divider,
+  ThemeIcon,
+  Flex,
+  NumberInput,
+  Center,
+  Alert,
+} from '@mantine/core'
 
 interface Store {
   id: string
@@ -657,12 +684,14 @@ export default function NaverRankPage() {
 
   if (storesLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
-          <p className="text-muted-foreground">매장 정보를 불러오는 중...</p>
-        </div>
-      </div>
+      <Container size="xl" py="xl">
+        <Center style={{ minHeight: '60vh' }}>
+          <Stack align="center" gap="md">
+            <Loader size="xl" color="brand" />
+            <Text c="dimmed" size="sm">매장 정보를 불러오는 중...</Text>
+          </Stack>
+        </Center>
+      </Container>
     )
   }
 
@@ -673,345 +702,508 @@ export default function NaverRankPage() {
   const selectedStore = stores.find(s => s.id === selectedStoreId)
 
   return (
-    <div className="space-y-6">
-      {/* 헤더 */}
-      <div>
-        <h1 className="text-2xl md:text-3xl font-bold text-primary mb-2">
-          플레이스 순위 조회
-        </h1>
-        <p className="text-muted-foreground">
-          키워드별 네이버 플레이스 검색 순위를 확인하세요
-        </p>
-      </div>
-
-      {/* 조회 폼 */}
-      <Card className="p-6">
-        <div className="space-y-4">
-          {/* 매장 선택 */}
-          <div>
-            <label className="block text-sm font-medium mb-2">매장 선택</label>
-            {stores.length === 0 ? (
-              <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-md text-center">
-                <p className="text-sm text-yellow-800">
-                  네이버 플레이스 매장이 없습니다. 
-                  <a href="/dashboard/connect-store" className="underline ml-1 font-medium">
-                    매장 등록하기
-                  </a>
-                </p>
-              </div>
-            ) : (
-              <select
-                value={selectedStoreId}
-                onChange={(e) => setSelectedStoreId(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                {stores.map((store) => (
-                  <option key={store.id} value={store.id}>
-                    {store.name}
-                  </option>
-                ))}
-              </select>
-            )}
-          </div>
-
-          {/* 키워드 입력 */}
-          <div>
-            <label className="block text-sm font-medium mb-2">검색 키워드</label>
-            <div className="flex gap-2">
-              <Input
-                type="text"
-                value={keyword}
-                onChange={(e) => setKeyword(e.target.value)}
-                placeholder="예: 강남 카페"
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter') {
-                    handleCheckRank()
-                  }
-                }}
-                disabled={isChecking}
-              />
-              <Button
-                onClick={handleCheckRank}
-                disabled={isChecking || !selectedStoreId || stores.length === 0}
-                className="px-6"
-              >
-                {isChecking ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    조회 중...
-                  </>
-                ) : (
-                  <>
-                    <Search className="w-4 h-4 mr-2" />
-                    순위 확인
-                  </>
-                )}
-              </Button>
+    <Container size="xl" py="xl">
+      <Stack gap="xl">
+        {/* 헤더 - Stripe Style */}
+        <Box>
+          <Group justify="space-between" align="flex-start" mb="xs">
+            <div>
+              <Title order={1} size="h1" fw={600} mb="xs" style={{ 
+                background: 'linear-gradient(135deg, #635bff 0%, #407645 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text'
+              }}>
+                플레이스 순위 조회
+              </Title>
+              <Text c="dimmed" size="md">
+                키워드별 네이버 플레이스 검색 순위를 실시간으로 확인하세요
+              </Text>
             </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              네이버 지도에서 검색할 키워드를 입력하세요 (최대 300개까지 확인)
-            </p>
-          </div>
-        </div>
-      </Card>
+            <Badge 
+              size="lg" 
+              variant="gradient" 
+              gradient={{ from: 'brand', to: 'green', deg: 135 }}
+              style={{ textTransform: 'none' }}
+            >
+              최대 300위까지 조회
+            </Badge>
+          </Group>
+        </Box>
 
-      {/* 순위 결과 */}
+        {/* 조회 폼 - Stripe Style Premium Card */}
+        <Paper 
+          shadow="md" 
+          p="xl" 
+          radius="lg"
+          style={{
+            border: '1px solid #e0e7ff',
+            background: 'linear-gradient(to bottom, #ffffff 0%, #f8fafc 100%)'
+          }}
+        >
+          <Stack gap="lg">
+            {/* 매장 선택 */}
+            <div>
+              <Text size="sm" fw={500} mb="xs" c="gray.7">
+                매장 선택
+              </Text>
+              {stores.length === 0 ? (
+                <Alert color="yellow" variant="light" radius="md">
+                  <Text size="sm">
+                    네이버 플레이스 매장이 없습니다.{' '}
+                    <Text component="a" href="/dashboard/connect-store" fw={600} td="underline" c="yellow.8">
+                      매장 등록하기
+                    </Text>
+                  </Text>
+                </Alert>
+              ) : (
+                <Select
+                  size="md"
+                  value={selectedStoreId}
+                  onChange={(value) => setSelectedStoreId(value || '')}
+                  data={stores.map((store) => ({
+                    value: store.id,
+                    label: store.name
+                  }))}
+                  placeholder="매장을 선택하세요"
+                  leftSection={<MapPin size={16} />}
+                  styles={{
+                    input: {
+                      borderColor: '#e0e7ff',
+                      '&:focus': {
+                        borderColor: '#635bff',
+                      }
+                    }
+                  }}
+                />
+              )}
+            </div>
+
+            {/* 키워드 입력 */}
+            <div>
+              <Text size="sm" fw={500} mb="xs" c="gray.7">
+                검색 키워드
+              </Text>
+              <Group gap="sm" align="flex-start">
+                <TextInput
+                  size="md"
+                  flex={1}
+                  value={keyword}
+                  onChange={(e) => setKeyword(e.target.value)}
+                  placeholder="예: 강남 카페"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleCheckRank()
+                    }
+                  }}
+                  disabled={isChecking}
+                  leftSection={<Search size={16} />}
+                  styles={{
+                    input: {
+                      borderColor: '#e0e7ff',
+                      '&:focus': {
+                        borderColor: '#635bff',
+                      }
+                    }
+                  }}
+                />
+                <Button
+                  size="md"
+                  onClick={handleCheckRank}
+                  disabled={isChecking || !selectedStoreId || stores.length === 0}
+                  leftSection={isChecking ? <Loader size={16} color="white" /> : <Search size={16} />}
+                  variant="gradient"
+                  gradient={{ from: 'brand', to: 'brand.7', deg: 135 }}
+                  style={{ 
+                    minWidth: '140px',
+                    boxShadow: '0 4px 12px rgba(99, 91, 255, 0.25)'
+                  }}
+                >
+                  {isChecking ? '조회 중...' : '순위 확인'}
+                </Button>
+              </Group>
+              <Text size="xs" c="dimmed" mt="xs">
+                네이버 지도에서 검색할 키워드를 입력하세요 (최대 300개까지 확인)
+              </Text>
+            </div>
+          </Stack>
+        </Paper>
+
+      {/* 순위 결과 - Stripe Style */}
       {rankResult && (
-        <Card className="p-6">
-          <h2 className="text-lg font-semibold mb-4">순위 결과</h2>
+        <Paper 
+          shadow="lg" 
+          p="xl" 
+          radius="lg"
+          style={{
+            border: '1px solid #e0e7ff',
+            background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)'
+          }}
+        >
+          <Title order={2} size="h3" fw={600} mb="lg">
+            순위 결과
+          </Title>
           
           {rankResult.found && rankResult.rank ? (
-            <div className="space-y-4">
-              {/* 순위 및 리뷰 정보 한 줄로 표시 ⭐ */}
-              <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                  {/* 순위 */}
-                  <div className="flex items-center gap-4">
-                    <div className="text-4xl font-bold text-green-600 whitespace-nowrap">
-                      {rankResult.rank}위
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{selectedStore?.name}</p>
-                      <p className="text-sm text-muted-foreground truncate">
-                        {rankResult.total_count 
-                          ? `전체 ${rankResult.total_count}개 중` 
-                          : `상위 ${rankResult.total_results}개 중 확인됨`}
-                      </p>
-                    </div>
-                  </div>
+            <Stack gap="lg">
+              {/* 순위 및 리뷰 정보 - Premium Card */}
+              <Paper
+                p="xl"
+                radius="md"
+                style={{
+                  background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
+                  border: '2px solid #86efac'
+                }}
+              >
+                <Grid gutter="xl">
+                  {/* 순위 정보 */}
+                  <Grid.Col span={{ base: 12, sm: 4 }}>
+                    <Stack gap="xs">
+                      <Group gap="md" align="center">
+                        <ThemeIcon
+                          size={64}
+                          radius="md"
+                          variant="gradient"
+                          gradient={{ from: 'green.4', to: 'green.6', deg: 135 }}
+                        >
+                          <Text size="2xl" fw={700} c="white">
+                            {rankResult.rank}
+                          </Text>
+                        </ThemeIcon>
+                        <div>
+                          <Text fw={600} size="lg" c="green.9">
+                            {selectedStore?.name}
+                          </Text>
+                          <Text size="sm" c="dimmed">
+                            {rankResult.total_count 
+                              ? `전체 ${rankResult.total_count}개 중` 
+                              : `상위 ${rankResult.total_results}개 중`}
+                          </Text>
+                        </div>
+                      </Group>
+                    </Stack>
+                  </Grid.Col>
 
-                  {/* 구분선 */}
-                  <div className="hidden sm:block w-px h-12 bg-green-300" />
+                  <Grid.Col span={{ base: 12, sm: 8 }}>
+                    <Grid gutter="md">
+                      {/* 방문자 리뷰 */}
+                      <Grid.Col span={{ base: 6, sm: 4 }}>
+                        <Paper p="md" radius="md" bg="white" style={{ border: '1px solid #e0e7ff' }}>
+                          <Stack gap={4}>
+                            <Text size="xs" c="dimmed" fw={500}>방문자 리뷰</Text>
+                            <Text size="xl" fw={700} c="blue.6">
+                              {(rankResult.visitor_review_count || 0).toLocaleString()}
+                            </Text>
+                          </Stack>
+                        </Paper>
+                      </Grid.Col>
 
-                  {/* 리뷰수 정보 */}
-                  <div className="flex flex-wrap gap-4 sm:gap-6 items-center">
-                    {/* 방문자 리뷰 */}
-                    <div className="flex items-center gap-2">
-                      <div className="text-xs text-muted-foreground whitespace-nowrap">방문자 리뷰</div>
-                      <div className="text-xl font-bold text-blue-600 whitespace-nowrap">
-                        {(rankResult.visitor_review_count || 0).toLocaleString()}개
-                      </div>
-                    </div>
+                      {/* 블로그 리뷰 */}
+                      <Grid.Col span={{ base: 6, sm: 4 }}>
+                        <Paper p="md" radius="md" bg="white" style={{ border: '1px solid #e0e7ff' }}>
+                          <Stack gap={4}>
+                            <Text size="xs" c="dimmed" fw={500}>블로그 리뷰</Text>
+                            <Text size="xl" fw={700} c="violet.6">
+                              {(rankResult.blog_review_count || 0).toLocaleString()}
+                            </Text>
+                          </Stack>
+                        </Paper>
+                      </Grid.Col>
 
-                    {/* 블로그 리뷰 */}
-                    <div className="flex items-center gap-2">
-                      <div className="text-xs text-muted-foreground whitespace-nowrap">블로그 리뷰</div>
-                      <div className="text-xl font-bold text-purple-600 whitespace-nowrap">
-                        {(rankResult.blog_review_count || 0).toLocaleString()}개
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 순위 변동 */}
-                  {rankResult.rank_change !== null && rankResult.rank_change !== 0 && (
-                    <div className={`flex items-center gap-1 ml-auto ${
-                      rankResult.rank_change > 0 ? "text-green-600" : "text-red-600"
-                    }`}>
-                      {rankResult.rank_change > 0 ? (
-                        <TrendingUp className="w-5 h-5" />
-                      ) : (
-                        <TrendingDown className="w-5 h-5" />
+                      {/* 순위 변동 */}
+                      {rankResult.rank_change !== null && rankResult.rank_change !== 0 && (
+                        <Grid.Col span={{ base: 12, sm: 4 }}>
+                          <Paper 
+                            p="md" 
+                            radius="md" 
+                            bg={rankResult.rank_change > 0 ? 'green.0' : 'red.0'}
+                            style={{ border: `1px solid ${rankResult.rank_change > 0 ? '#86efac' : '#fca5a5'}` }}
+                          >
+                            <Stack gap={4}>
+                              <Text size="xs" c="dimmed" fw={500}>순위 변동</Text>
+                              <Group gap="xs">
+                                {rankResult.rank_change > 0 ? (
+                                  <TrendingUp size={24} color="#16a34a" />
+                                ) : (
+                                  <TrendingDown size={24} color="#dc2626" />
+                                )}
+                                <Text size="xl" fw={700} c={rankResult.rank_change > 0 ? 'green.7' : 'red.7'}>
+                                  {Math.abs(rankResult.rank_change)}
+                                </Text>
+                              </Group>
+                            </Stack>
+                          </Paper>
+                        </Grid.Col>
                       )}
-                      <span className="font-semibold">
-                        {Math.abs(rankResult.rank_change)}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
+                    </Grid>
+                  </Grid.Col>
+                </Grid>
+              </Paper>
 
-              {/* 검색 결과 목록 */}
+              {/* 검색 결과 목록 - Stripe Style */}
               <div>
-                <h3 className="font-medium mb-3">검색 결과 ({rankResult.search_results.length}개)</h3>
-                <div className="space-y-2 max-h-[500px] overflow-y-auto">
+                <Group justify="space-between" mb="md">
+                  <Text fw={600} size="lg">검색 결과</Text>
+                  <Badge size="lg" variant="light" color="brand">
+                    {rankResult.search_results.length}개 확인
+                  </Badge>
+                </Group>
+                <Stack gap="sm" style={{ maxHeight: '500px', overflowY: 'auto' }}>
                   {rankResult.search_results.map((result, index) => (
-                    <div
+                    <Paper
                       key={result.place_id}
-                      className={`p-3 border rounded-lg flex items-center gap-3 ${
-                        result.place_id === selectedStore?.place_id
-                          ? "bg-green-50 border-green-300"
-                          : "bg-white"
-                      }`}
+                      p="md"
+                      radius="md"
+                      style={{
+                        background: result.place_id === selectedStore?.place_id
+                          ? 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)'
+                          : 'white',
+                        border: result.place_id === selectedStore?.place_id
+                          ? '2px solid #86efac'
+                          : '1px solid #e5e7eb'
+                      }}
                     >
-                      {/* 순위 ⭐ */}
-                      <div className={`flex flex-col items-center justify-center w-12 flex-shrink-0 ${
-                        result.place_id === selectedStore?.place_id
-                          ? "text-green-600"
-                          : "text-gray-500"
-                      }`}>
-                        <div className="text-2xl font-bold">
-                          {index + 1}
-                        </div>
-                        <div className="text-xs font-medium">
-                          위
-                        </div>
-                      </div>
+                      <Group gap="md" wrap="nowrap">
+                        {/* 순위 Badge */}
+                        <ThemeIcon
+                          size={48}
+                          radius="md"
+                          variant={result.place_id === selectedStore?.place_id ? 'gradient' : 'light'}
+                          gradient={{ from: 'green.4', to: 'green.6', deg: 135 }}
+                          color={result.place_id === selectedStore?.place_id ? undefined : 'gray'}
+                        >
+                          <Stack gap={0} align="center">
+                            <Text size="xl" fw={700}>
+                              {index + 1}
+                            </Text>
+                            <Text size="xs">위</Text>
+                          </Stack>
+                        </ThemeIcon>
 
-                      {/* 썸네일 */}
-                      {result.thumbnail && (
-                        <div className="relative w-12 h-12 flex-shrink-0">
-                          <div className="absolute inset-0 bg-gray-200 rounded animate-pulse" />
-                          <img
-                            src={result.thumbnail}
-                            alt={result.name}
-                            className="relative w-12 h-12 rounded object-cover"
-                            loading="lazy"
-                            onLoad={(e) => {
-                              const parent = e.currentTarget.previousElementSibling as HTMLElement
-                              if (parent) parent.style.display = 'none'
-                            }}
-                            onError={(e) => {
-                              e.currentTarget.style.display = 'none'
-                            }}
-                          />
-                        </div>
-                      )}
+                        {/* 썸네일 */}
+                        {result.thumbnail && (
+                          <div style={{ position: 'relative', width: 48, height: 48, flexShrink: 0 }}>
+                            <img
+                              src={result.thumbnail}
+                              alt={result.name}
+                              style={{
+                                width: 48,
+                                height: 48,
+                                borderRadius: 8,
+                                objectFit: 'cover'
+                              }}
+                              loading="lazy"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none'
+                              }}
+                            />
+                          </div>
+                        )}
 
-                      {/* 매장 정보 */}
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium truncate">{result.name}</div>
-                        <div className="text-sm text-muted-foreground truncate">
-                          {result.category}
-                        </div>
-                        <div className="text-xs text-muted-foreground truncate flex items-center gap-1">
-                          <MapPin className="w-3 h-3" />
-                          {result.address}
-                        </div>
-                      </div>
+                        {/* 매장 정보 */}
+                        <Box style={{ flex: 1, minWidth: 0 }}>
+                          <Text fw={600} size="sm" truncate="end">
+                            {result.name}
+                          </Text>
+                          <Text size="xs" c="dimmed" truncate="end">
+                            {result.category}
+                          </Text>
+                          <Group gap={4} mt={2}>
+                            <MapPin size={12} color="#9ca3af" />
+                            <Text size="xs" c="dimmed" truncate="end">
+                              {result.address}
+                            </Text>
+                          </Group>
+                        </Box>
 
-                      {/* 평점 및 리뷰 수 ⭐ */}
-                      {result.review_count && result.review_count > 0 && (
-                        <div className="text-sm flex items-center gap-1 flex-shrink-0">
-                          <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                          {/* 평점이 있으면 표시 */}
-                          {result.rating && result.rating !== "None" && typeof result.rating === 'number' && result.rating > 0 && (
-                            <span className="font-medium">{result.rating.toFixed(1)}</span>
-                          )}
-                          {/* 리뷰수는 항상 표시 */}
-                          <span className="text-muted-foreground">
-                            ({typeof result.review_count === 'number' ? result.review_count.toLocaleString() : result.review_count})
-                          </span>
-                        </div>
-                      )}
+                        {/* 평점 및 리뷰 */}
+                        {result.review_count && result.review_count > 0 && (
+                          <Group gap={4} style={{ flexShrink: 0 }}>
+                            <Star size={16} fill="#fbbf24" color="#fbbf24" />
+                            {result.rating && typeof result.rating === 'number' && result.rating > 0 && (
+                              <Text size="sm" fw={600}>
+                                {result.rating.toFixed(1)}
+                              </Text>
+                            )}
+                            <Text size="sm" c="dimmed">
+                              ({typeof result.review_count === 'number' ? result.review_count.toLocaleString() : result.review_count})
+                            </Text>
+                          </Group>
+                        )}
 
-                      {/* 내 매장 표시 */}
-                      {result.place_id === selectedStore?.place_id && (
-                        <div className="px-2 py-1 bg-green-600 text-white text-xs rounded font-medium">
-                          내 매장
-                        </div>
-                      )}
-                    </div>
+                        {/* 내 매장 Badge */}
+                        {result.place_id === selectedStore?.place_id && (
+                          <Badge variant="gradient" gradient={{ from: 'green', to: 'teal', deg: 135 }}>
+                            내 매장
+                          </Badge>
+                        )}
+                      </Group>
+                    </Paper>
                   ))}
-                </div>
+                </Stack>
               </div>
-            </div>
+            </Stack>
           ) : (
-            <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-center">
-              <div className="text-3xl font-bold text-yellow-600 mb-2">
-                300위 밖
-              </div>
-              <p className="text-yellow-700 font-medium">
-                상위 300개 내에서 매장을 찾을 수 없습니다
-              </p>
-              <p className="text-sm text-yellow-600 mt-1">
-                {rankResult.total_count 
-                  ? `전체 ${rankResult.total_count}개 중 300개 확인됨` 
-                  : `총 ${rankResult.total_results}개 확인됨`}
-              </p>
-              <p className="text-sm text-yellow-600 mt-2">
-                💡 더 구체적인 키워드로 시도해보세요
-              </p>
-            </div>
+            <Paper
+              p="xl"
+              radius="md"
+              style={{
+                background: 'linear-gradient(135deg, #fef3c7 0%, #fed7aa 100%)',
+                border: '2px solid #fbbf24',
+                textAlign: 'center'
+              }}
+            >
+              <Stack align="center" gap="md">
+                <ThemeIcon size={64} radius="md" variant="light" color="yellow">
+                  <Text size="2xl" fw={700}>
+                    300+
+                  </Text>
+                </ThemeIcon>
+                <div>
+                  <Text size="xl" fw={700} c="yellow.9" mb="xs">
+                    300위 밖
+                  </Text>
+                  <Text c="yellow.8" fw={500}>
+                    상위 300개 내에서 매장을 찾을 수 없습니다
+                  </Text>
+                  <Text size="sm" c="yellow.7" mt="xs">
+                    {rankResult.total_count 
+                      ? `전체 ${rankResult.total_count}개 중 300개 확인됨` 
+                      : `총 ${rankResult.total_results}개 확인됨`}
+                  </Text>
+                  <Text size="sm" c="yellow.7" mt="md" fw={500}>
+                    💡 더 구체적인 키워드로 시도해보세요
+                  </Text>
+                </div>
+              </Stack>
+            </Paper>
           )}
-        </Card>
+        </Paper>
       )}
 
-      {/* 조회한 키워드 목록 (최근 30개) */}
+      {/* 조회한 키워드 목록 - Stripe Style Premium Table */}
       {keywords.length > 0 && (
-        <Card className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold">
-              조회한 키워드 (최근 {keywords.length}개)
-            </h2>
-            <p className="text-sm text-gray-500">
-              💡 최근 조회한 30개의 키워드만 표시됩니다
-            </p>
-          </div>
+        <Paper 
+          shadow="md" 
+          p="xl" 
+          radius="lg"
+          style={{
+            border: '1px solid #e0e7ff',
+            background: 'white'
+          }}
+        >
+          <Group justify="space-between" mb="lg">
+            <div>
+              <Title order={2} size="h3" fw={600}>
+                조회한 키워드
+              </Title>
+              <Text size="sm" c="dimmed">
+                최근 조회한 {keywords.length}개의 키워드
+              </Text>
+            </div>
+            <Badge 
+              size="lg" 
+              variant="light" 
+              color="gray"
+              leftSection={<span>💡</span>}
+              style={{ textTransform: 'none' }}
+            >
+              최근 30개만 표시
+            </Badge>
+          </Group>
           
           {loadingKeywords ? (
-            <div className="text-center py-4">
-              <Loader2 className="w-6 h-6 animate-spin text-primary mx-auto" />
-            </div>
+            <Center py="xl">
+              <Loader size="lg" color="brand" />
+            </Center>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700">키워드</th>
-                    <th className="text-center py-3 px-4 font-semibold text-gray-700">현재 순위</th>
-                    <th className="text-center py-3 px-4 font-semibold text-gray-700">전체 업체 수</th>
-                    <th className="text-center py-3 px-4 font-semibold text-gray-700">최근 조회</th>
-                    <th className="text-center py-3 px-4 font-semibold text-gray-700">추적</th>
-                    <th className="text-center py-3 px-4 font-semibold text-gray-700">삭제</th>
-                  </tr>
-                </thead>
-                <tbody>
+            <Box style={{ overflowX: 'auto' }}>
+              <Table 
+                striped 
+                highlightOnHover 
+                withTableBorder
+                withColumnBorders
+                style={{
+                  borderRadius: 8,
+                  overflow: 'hidden'
+                }}
+              >
+                <Table.Thead style={{ background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)' }}>
+                  <Table.Tr>
+                    <Table.Th style={{ fontWeight: 600 }}>키워드</Table.Th>
+                    <Table.Th ta="center" style={{ fontWeight: 600 }}>현재 순위</Table.Th>
+                    <Table.Th ta="center" style={{ fontWeight: 600 }}>전체 업체 수</Table.Th>
+                    <Table.Th ta="center" style={{ fontWeight: 600 }}>최근 조회</Table.Th>
+                    <Table.Th ta="center" style={{ fontWeight: 600 }}>추적</Table.Th>
+                    <Table.Th ta="center" style={{ fontWeight: 600 }}>삭제</Table.Th>
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
                   {keywords.map((kw) => (
-                    <tr 
-                      key={kw.id}
-                      className="border-b hover:bg-gray-50 transition-colors"
-                    >
-                      <td className="py-3 px-4">
-                        <div className="font-medium text-gray-800">{kw.keyword}</div>
-                      </td>
-                      <td className="py-3 px-4 text-center">
-                        <span className="text-lg font-bold text-primary">
-                          {kw.current_rank ? `${kw.current_rank}위` : (
-                            <span className="text-sm text-yellow-600 font-medium">300위권 밖</span>
-                          )}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-center text-gray-600">
-                        {kw.total_results && kw.total_results > 0 ? `${kw.total_results.toLocaleString()}개` : "-"}
-                      </td>
-                      <td className="py-3 px-4 text-center text-sm text-gray-600">
-                        {new Date(kw.last_checked_at).toLocaleDateString('ko-KR', {
-                          month: 'short',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                      </td>
-                      <td className="py-3 px-4 text-center">
-                        {kw.is_tracked ? (
-                          <span className="px-3 py-1.5 text-sm bg-green-50 text-green-600 rounded-lg font-medium">
-                            추적중
-                          </span>
+                    <Table.Tr key={kw.id}>
+                      <Table.Td>
+                        <Text fw={600} size="sm">{kw.keyword}</Text>
+                      </Table.Td>
+                      <Table.Td ta="center">
+                        {kw.current_rank ? (
+                          <Badge size="lg" variant="gradient" gradient={{ from: 'brand', to: 'brand.7', deg: 135 }}>
+                            {kw.current_rank}위
+                          </Badge>
                         ) : (
-                          <button
+                          <Badge size="lg" color="yellow">
+                            300위권 밖
+                          </Badge>
+                        )}
+                      </Table.Td>
+                      <Table.Td ta="center">
+                        <Text c="dimmed" size="sm">
+                          {kw.total_results && kw.total_results > 0 ? `${kw.total_results.toLocaleString()}개` : "-"}
+                        </Text>
+                      </Table.Td>
+                      <Table.Td ta="center">
+                        <Text c="dimmed" size="xs">
+                          {new Date(kw.last_checked_at).toLocaleDateString('ko-KR', {
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </Text>
+                      </Table.Td>
+                      <Table.Td ta="center">
+                        {kw.is_tracked ? (
+                          <Badge size="md" color="green" variant="light">
+                            추적중
+                          </Badge>
+                        ) : (
+                          <Button
+                            size="xs"
+                            variant="light"
+                            color="brand"
                             onClick={() => handleAddTracking(kw)}
-                            className="px-3 py-1.5 text-sm bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors font-medium"
                           >
                             추적하기
-                          </button>
+                          </Button>
                         )}
-                      </td>
-                      <td className="py-3 px-4 text-center">
-                        <button
+                      </Table.Td>
+                      <Table.Td ta="center">
+                        <ActionIcon
+                          variant="light"
+                          color="red"
+                          size="md"
                           onClick={() => handleDeleteKeyword(kw.id, kw.keyword)}
-                          className="p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
                           title="키워드 삭제"
                         >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </td>
-                    </tr>
+                          <X size={16} />
+                        </ActionIcon>
+                      </Table.Td>
+                    </Table.Tr>
                   ))}
-                </tbody>
-              </table>
-            </div>
+                </Table.Tbody>
+              </Table>
+            </Box>
           )}
-        </Card>
+        </Paper>
       )}
 
       {/* 순위 히스토리 차트 ⭐ */}
@@ -1211,153 +1403,171 @@ export default function NaverRankPage() {
       )}
 
       {/* 추적 추가 모달 */}
-      <Dialog open={showAddTrackingDialog} onOpenChange={setShowAddTrackingDialog}>
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle>📌 키워드 추적 추가</DialogTitle>
-            <DialogDescription>
-              선택한 키워드를 추적 목록에 추가하고 자동 수집 및 알림 설정을 구성하세요
-            </DialogDescription>
-          </DialogHeader>
+      {/* 추적 추가 모달 - Stripe Style */}
+      <Modal
+        opened={showAddTrackingDialog}
+        onClose={() => setShowAddTrackingDialog(false)}
+        title={
+          <Group gap="xs">
+            <Text size="xl" fw={600}>📌 키워드 추적 추가</Text>
+          </Group>
+        }
+        size="lg"
+        centered
+        styles={{
+          title: { fontWeight: 600 },
+          header: { 
+            background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+            borderBottom: '1px solid #e0e7ff'
+          }
+        }}
+      >
+        <Stack gap="lg">
+          <Text size="sm" c="dimmed">
+            선택한 키워드를 추적 목록에 추가하고 자동 수집 및 알림 설정을 구성하세요
+          </Text>
 
-          <div className="space-y-6 py-4">
-            {/* 선택된 키워드 정보 */}
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <p className="text-sm text-gray-600 mb-1">키워드</p>
-              <p className="text-lg font-semibold text-gray-800">
-                {selectedKeywordForTracking?.keyword}
-              </p>
-            </div>
+          {/* 선택된 키워드 정보 */}
+          <Paper p="md" radius="md" style={{ background: 'linear-gradient(135deg, #f0f4f8 0%, #e8eef5 100%)' }}>
+            <Text size="xs" c="dimmed" mb={4}>키워드</Text>
+            <Text size="lg" fw={700}>{selectedKeywordForTracking?.keyword}</Text>
+          </Paper>
 
-            {/* 수집 주기 */}
-            <div className="space-y-2">
-              <Label htmlFor="frequency">수집 주기</Label>
-              <Select
-                value={updateFrequency}
-                onValueChange={(value: 'daily_once' | 'daily_twice' | 'daily_thrice') => {
-                  setUpdateFrequency(value)
-                  // 수집 주기 변경 시 기본 시간 설정
-                  if (value === 'daily_once') {
-                    setUpdateTimes([9])
-                  } else if (value === 'daily_twice') {
-                    setUpdateTimes([9, 18])
-                  } else {
-                    setUpdateTimes([9, 14, 20])
-                  }
-                }}
-              >
-                <SelectTrigger id="frequency">
-                  <SelectValue placeholder="수집 주기 선택" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="daily_once">하루 1회</SelectItem>
-                  <SelectItem value="daily_twice">하루 2회</SelectItem>
-                  <SelectItem value="daily_thrice">하루 3회</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* 수집 시간 */}
-            <div className="space-y-2">
-              <Label>수집 시간</Label>
-              <div className="space-y-2">
-                {updateTimes.map((time, index) => (
-                  <div key={index} className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-gray-600 w-16">
-                      {index + 1}차
-                    </span>
-                    <Select
-                      value={time.toString()}
-                      onValueChange={(value) => {
-                        const newTimes = [...updateTimes]
-                        newTimes[index] = parseInt(value)
-                        setUpdateTimes(newTimes)
-                      }}
-                    >
-                      <SelectTrigger className="flex-1">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Array.from({ length: 24 }, (_, i) => (
-                          <SelectItem key={i} value={i.toString()}>
-                            {i}시
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* 순위 알림받기 */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                <div>
-                  <Label htmlFor="notification" className="text-base font-semibold">순위 알림받기</Label>
-                  <p className="text-xs text-gray-500 mt-1">순위 변동 시 알림을 받습니다</p>
-                </div>
-                <Switch
-                  id="notification"
-                  checked={notificationEnabled}
-                  onCheckedChange={(checked) => {
-                    setNotificationEnabled(checked)
-                    if (!checked) {
-                      setNotificationType('')
-                    }
-                  }}
-                  className="data-[state=checked]:bg-blue-600"
-                />
-              </div>
-
-              {notificationEnabled && (
-                <div className="space-y-2 pl-4 border-l-2 border-blue-200">
-                  <Label htmlFor="notification-type">알림 방법</Label>
-                  <Select
-                    value={notificationType}
-                    onValueChange={(value: 'email' | 'sms' | 'kakao') => setNotificationType(value)}
-                  >
-                    <SelectTrigger id="notification-type">
-                      <SelectValue placeholder="알림 방법 선택" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="email">📧 이메일</SelectItem>
-                      <SelectItem value="sms">📱 SMS</SelectItem>
-                      <SelectItem value="kakao">💬 카카오톡</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-gray-500 mt-2">
-                    💡 순위 변동 시 선택한 방법으로 알림을 받습니다
-                  </p>
-                </div>
-              )}
-            </div>
+          {/* 수집 주기 */}
+          <div>
+            <Text size="sm" fw={500} mb="xs">수집 주기</Text>
+            <Select
+              size="md"
+              value={updateFrequency}
+              onChange={(value) => {
+                const freq = value as 'daily_once' | 'daily_twice' | 'daily_thrice'
+                setUpdateFrequency(freq)
+                if (freq === 'daily_once') {
+                  setUpdateTimes([9])
+                } else if (freq === 'daily_twice') {
+                  setUpdateTimes([9, 18])
+                } else {
+                  setUpdateTimes([9, 14, 20])
+                }
+              }}
+              data={[
+                { value: 'daily_once', label: '하루 1회' },
+                { value: 'daily_twice', label: '하루 2회' },
+                { value: 'daily_thrice', label: '하루 3회' },
+              ]}
+              styles={{
+                input: {
+                  borderColor: '#e0e7ff',
+                  '&:focus': { borderColor: '#635bff' }
+                }
+              }}
+            />
           </div>
 
-          <DialogFooter>
+          {/* 수집 시간 */}
+          <div>
+            <Text size="sm" fw={500} mb="xs">수집 시간</Text>
+            <Stack gap="sm">
+              {updateTimes.map((time, index) => (
+                <Group key={index} gap="sm">
+                  <Badge size="lg" variant="light" color="brand" style={{ width: 60 }}>
+                    {index + 1}차
+                  </Badge>
+                  <Select
+                    size="md"
+                    flex={1}
+                    value={time.toString()}
+                    onChange={(value) => {
+                      const newTimes = [...updateTimes]
+                      newTimes[index] = parseInt(value || '9')
+                      setUpdateTimes(newTimes)
+                    }}
+                    data={Array.from({ length: 24 }, (_, i) => ({
+                      value: i.toString(),
+                      label: `${i}시`
+                    }))}
+                    styles={{
+                      input: {
+                        borderColor: '#e0e7ff',
+                        '&:focus': { borderColor: '#635bff' }
+                      }
+                    }}
+                  />
+                </Group>
+              ))}
+            </Stack>
+          </div>
+
+          {/* 순위 알림받기 */}
+          <Paper p="md" radius="md" style={{ border: '1px solid #e0e7ff' }}>
+            <Group justify="space-between" mb="sm">
+              <div>
+                <Text size="sm" fw={600}>순위 알림받기</Text>
+                <Text size="xs" c="dimmed">순위 변동 시 알림을 받습니다</Text>
+              </div>
+              <Switch
+                size="lg"
+                color="brand"
+                checked={notificationEnabled}
+                onChange={(event) => {
+                  const checked = event.currentTarget.checked
+                  setNotificationEnabled(checked)
+                  if (!checked) {
+                    setNotificationType('')
+                  }
+                }}
+              />
+            </Group>
+
+            {notificationEnabled && (
+              <Box pl="md" style={{ borderLeft: '2px solid #635bff' }}>
+                <Text size="sm" fw={500} mb="xs">알림 방법</Text>
+                <Select
+                  size="md"
+                  value={notificationType}
+                  onChange={(value) => setNotificationType(value as 'email' | 'sms' | 'kakao' | '')}
+                  placeholder="알림 방법 선택"
+                  data={[
+                    { value: 'email', label: '📧 이메일' },
+                    { value: 'sms', label: '📱 SMS' },
+                    { value: 'kakao', label: '💬 카카오톡' },
+                  ]}
+                  styles={{
+                    input: {
+                      borderColor: '#e0e7ff',
+                      '&:focus': { borderColor: '#635bff' }
+                    }
+                  }}
+                />
+                <Text size="xs" c="dimmed" mt="xs">
+                  💡 순위 변동 시 선택한 방법으로 알림을 받습니다
+                </Text>
+              </Box>
+            )}
+          </Paper>
+
+          {/* 버튼 */}
+          <Group justify="flex-end" mt="md">
             <Button
-              variant="outline"
+              variant="light"
+              color="gray"
               onClick={() => setShowAddTrackingDialog(false)}
               disabled={isAddingTracker}
             >
               취소
             </Button>
             <Button
+              variant="gradient"
+              gradient={{ from: 'brand', to: 'brand.7', deg: 135 }}
               onClick={handleSubmitTracking}
               disabled={isAddingTracker}
+              leftSection={isAddingTracker ? <Loader size={16} color="white" /> : null}
             >
-              {isAddingTracker ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  추가 중...
-                </>
-              ) : (
-                "추적 추가"
-              )}
+              {isAddingTracker ? '추가 중...' : '추적 추가'}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
+          </Group>
+        </Stack>
+      </Modal>
+    </Container>
   )
 }
