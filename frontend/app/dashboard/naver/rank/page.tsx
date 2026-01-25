@@ -396,12 +396,21 @@ export default function NaverRankPage() {
       
       // 방금 조회한 키워드의 total_count를 total_results로 즉시 업데이트
       if (data.total_count && keyword) {
-        console.log("[순위조회] total_count 업데이트:", data.total_count, "키워드:", keyword.trim())
+        // total_count를 숫자로 변환 (문자열 "1,638" → 1638)
+        let totalResultsNum = 0
+        if (typeof data.total_count === 'string') {
+          totalResultsNum = parseInt(data.total_count.replace(/,/g, ''), 10) || 0
+        } else if (typeof data.total_count === 'number') {
+          totalResultsNum = data.total_count
+        }
+        
+        console.log("[순위조회] total_count 업데이트:", data.total_count, "→", totalResultsNum, "키워드:", keyword.trim())
+        
         setKeywords(prevKeywords => 
           prevKeywords.map(kw => 
             kw.keyword === keyword.trim() ? { 
               ...kw, 
-              total_results: data.total_count
+              total_results: totalResultsNum
             } : kw
           )
         )

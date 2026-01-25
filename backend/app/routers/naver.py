@@ -732,7 +732,7 @@ async def get_keyword_rank_history(keyword_id: UUID):
 @router.delete("/keywords/{keyword_id}")
 async def delete_keyword(keyword_id: UUID, current_user: dict = Depends(get_current_user)):
     """
-    키워드 삭제
+    키워드 삭제 (Stored Procedure 사용, RLS 우회)
     
     ⚠️ 경고: 이 작업은 되돌릴 수 없습니다.
     - 키워드 정보가 영구적으로 삭제됩니다.
@@ -742,61 +742,53 @@ async def delete_keyword(keyword_id: UUID, current_user: dict = Depends(get_curr
     try:
         supabase = get_supabase_client()
         
-        # 키워드 존재 확인
-        keyword_check = supabase.table("keywords").select(
-            "id, keyword, store_id"
-        ).eq("id", str(keyword_id)).single().execute()
+        logger.info(f"[Delete Keyword] Attempting to delete keyword ID: {keyword_id}")
         
-        if not keyword_check.data:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="키워드를 찾을 수 없습니다."
+        # Stored procedure를 호출하여 cascade delete 수행 (RLS 우회)
+        result = supabase.rpc(
+            'delete_keyword_cascade',
+            {'p_keyword_id': str(keyword_id)}
+        ).execute()
+        
+        logger.info(f"[Delete Keyword] RPC result: {result.data}")
+        
+        # 결과 파싱
+        if result.data:
+            response_data = result.data
+            
+            if response_data.get('status') == 'error':
+                logger.error(f"[Delete Keyword] RPC returned error: {response_data.get('message')}")
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=response_data.get('message', '키워드를 찾을 수 없습니다.')
+                )
+            
+            # 성공
+            keyword_name = response_data.get('keyword', 'Unknown')
+            deleted_trackers = response_data.get('deleted_trackers', 0)
+            deleted_history = response_data.get('deleted_history', 0)
+            deleted_keywords = response_data.get('deleted_keywords', 0)
+            
+            logger.info(
+                f"[Delete Keyword] Successfully deleted: "
+                f"keyword='{keyword_name}', "
+                f"trackers={deleted_trackers}, "
+                f"history={deleted_history}, "
+                f"keywords={deleted_keywords}"
             )
-        
-        keyword_data = keyword_check.data
-        keyword_name = keyword_data["keyword"]
-        
-        logger.info(f"[Delete Keyword] Deleting keyword: {keyword_name} (ID: {keyword_id})")
-        
-        # 1. metric_trackers에서 먼저 삭제 (있다면)
-        trackers_result = supabase.table("metric_trackers").delete().eq(
-            "keyword_id", str(keyword_id)
-        ).execute()
-        
-        tracker_count = len(trackers_result.data) if trackers_result.data else 0
-        logger.info(f"[Delete Keyword] Deleted {tracker_count} metric tracker records")
-        
-        # 2. rank_history 삭제
-        history_result = supabase.table("rank_history").delete().eq(
-            "keyword_id", str(keyword_id)
-        ).execute()
-        
-        history_count = len(history_result.data) if history_result.data else 0
-        logger.info(f"[Delete Keyword] Deleted {history_count} rank history records")
-        
-        # 3. keywords 삭제
-        keyword_result = supabase.table("keywords").delete().eq(
-            "id", str(keyword_id)
-        ).execute()
-        
-        deleted_count = len(keyword_result.data) if keyword_result.data else 0
-        logger.info(f"[Delete Keyword] Deleted {deleted_count} keyword records, Data: {keyword_result.data}")
-        
-        if deleted_count == 0:
-            logger.error(f"[Delete Keyword] ⚠️ No keyword was deleted! keyword_id: {keyword_id}")
+            
+            return {
+                "status": "success",
+                "message": f"키워드 '{keyword_name}'가 삭제되었습니다.",
+                "keyword_id": str(keyword_id),
+                "keyword": keyword_name
+            }
+        else:
+            logger.error(f"[Delete Keyword] RPC returned empty data")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="키워드 삭제에 실패했습니다. 데이터베이스에서 레코드를 찾을 수 없습니다."
+                detail="키워드 삭제에 실패했습니다."
             )
-        
-        logger.info(f"[Delete Keyword] Successfully deleted keyword: {keyword_name}")
-        
-        return {
-            "status": "success",
-            "message": f"키워드 '{keyword_name}'가 삭제되었습니다.",
-            "keyword_id": str(keyword_id),
-            "keyword": keyword_name
-        }
         
     except HTTPException:
         raise
