@@ -447,7 +447,7 @@ export default function NaverRankPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
         // 전체 키워드 수 재계산
-        const allStoresResponse = await fetch(api.stores.list(user.id))
+        const allStoresResponse = await fetch(api.stores.list())
         
         if (allStoresResponse.ok) {
           const allStoresData = await allStoresResponse.json()
@@ -1206,66 +1206,105 @@ export default function NaverRankPage() {
         </Paper>
       )}
 
-      {/* 순위 히스토리 차트 ⭐ */}
+      {/* 순위 히스토리 차트 ⭐ - Stripe Style */}
       {selectedKeywordForChart && (
-        <Card className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <LineChartIcon className="w-5 h-5 text-primary" />
-              <h2 className="text-lg font-semibold">
-                순위 변화 차트: "{selectedKeywordForChart.keyword}"
-              </h2>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
+        <Paper 
+          shadow="md" 
+          radius="lg" 
+          p="xl" 
+          mt="xl"
+          style={{
+            background: 'linear-gradient(135deg, rgba(99, 91, 255, 0.02) 0%, rgba(64, 118, 69, 0.02) 100%)',
+            border: '1px solid rgba(99, 91, 255, 0.1)',
+          }}
+        >
+          <Group justify="space-between" mb="lg">
+            <Group gap="xs">
+              <ThemeIcon size="lg" radius="md" variant="light" color="brand">
+                <LineChartIcon size={20} />
+              </ThemeIcon>
+              <div>
+                <Text size="lg" fw={600}>순위 변화 차트</Text>
+                <Text size="sm" c="dimmed">"{selectedKeywordForChart.keyword}"</Text>
+              </div>
+            </Group>
+            <ActionIcon
+              variant="subtle"
+              color="gray"
+              size="lg"
               onClick={() => {
                 setSelectedKeywordForChart(null)
                 setRankHistory([])
               }}
             >
-              <X className="w-4 h-4" />
-            </Button>
-          </div>
+              <X size={18} />
+            </ActionIcon>
+          </Group>
 
           {loadingHistory ? (
-            <div className="text-center py-8">
-              <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto" />
-              <p className="text-sm text-muted-foreground mt-2">데이터를 불러오는 중...</p>
-            </div>
+            <Center py="xl">
+              <Stack align="center" gap="md">
+                <Loader size="lg" />
+                <Text size="sm" c="dimmed">데이터를 불러오는 중...</Text>
+              </Stack>
+            </Center>
           ) : rankHistory.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-muted-foreground">순위 히스토리가 없습니다.</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                순위를 조회하면 여기에 날짜별 변화가 표시됩니다.
-              </p>
-            </div>
+            <Center py="xl">
+              <Stack align="center" gap="xs">
+                <Text c="dimmed">순위 히스토리가 없습니다.</Text>
+                <Text size="sm" c="dimmed">
+                  순위를 조회하면 여기에 날짜별 변화가 표시됩니다.
+                </Text>
+              </Stack>
+            </Center>
           ) : (
-            <div className="space-y-4">
+            <Stack gap="lg">
               {/* 통계 요약 */}
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-center">
-                  <p className="text-xs text-muted-foreground mb-1">현재 순위</p>
-                  <p className="text-2xl font-bold text-blue-600">
-                    {selectedKeywordForChart.current_rank || '-'}위
-                  </p>
-                </div>
-                <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-center">
-                  <p className="text-xs text-muted-foreground mb-1">측정 횟수 (최근 30일)</p>
-                  <p className="text-2xl font-bold text-green-600">
-                    {(() => {
-                      const thirtyDaysAgo = new Date()
-                      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-                      return rankHistory.filter(item => 
-                        new Date(item.checked_at) >= thirtyDaysAgo
-                      ).length
-                    })()}회
-                  </p>
-                </div>
-              </div>
+              <Grid>
+                <Grid.Col span={{ base: 12, sm: 6 }}>
+                  <Paper 
+                    p="md" 
+                    radius="md"
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(66, 153, 225, 0.1) 0%, rgba(66, 153, 225, 0.05) 100%)',
+                      border: '1px solid rgba(66, 153, 225, 0.2)',
+                    }}
+                  >
+                    <Stack align="center" gap="xs">
+                      <Text size="xs" c="dimmed" tt="uppercase">현재 순위</Text>
+                      <Text size="32px" fw={700} c="blue">
+                        {selectedKeywordForChart.current_rank || '-'}위
+                      </Text>
+                    </Stack>
+                  </Paper>
+                </Grid.Col>
+                <Grid.Col span={{ base: 12, sm: 6 }}>
+                  <Paper 
+                    p="md" 
+                    radius="md"
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(72, 187, 120, 0.1) 0%, rgba(72, 187, 120, 0.05) 100%)',
+                      border: '1px solid rgba(72, 187, 120, 0.2)',
+                    }}
+                  >
+                    <Stack align="center" gap="xs">
+                      <Text size="xs" c="dimmed" tt="uppercase">측정 횟수 (최근 30일)</Text>
+                      <Text size="32px" fw={700} c="green">
+                        {(() => {
+                          const thirtyDaysAgo = new Date()
+                          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+                          return rankHistory.filter(item => 
+                            new Date(item.checked_at) >= thirtyDaysAgo
+                          ).length
+                        })()}회
+                      </Text>
+                    </Stack>
+                  </Paper>
+                </Grid.Col>
+              </Grid>
 
               {/* 차트 */}
-              <div className="w-full h-80">
+              <Box style={{ width: '100%', height: 400 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart
                     data={(() => {
@@ -1362,11 +1401,11 @@ export default function NaverRankPage() {
                       strokeWidth={2}
                       dot={(props: any) => {
                         const { cx, cy, payload } = props
-                        if (!payload.rank || !payload.rawDate) return null
+                        if (!payload.rank || !payload.rawDate) return <circle cx={cx} cy={cy} r={0} />
                         
                         // 최신 데이터인지 확인
                         const allData = rankHistory.filter(h => h.rank !== null)
-                        if (allData.length === 0) return null
+                        if (allData.length === 0) return <circle cx={cx} cy={cy} r={0} />
                         
                         const latestDate = new Date(Math.max(...allData.map(h => new Date(h.checked_at).getTime())))
                         const currentDate = new Date(payload.rawDate)
@@ -1392,14 +1431,14 @@ export default function NaverRankPage() {
                     />
                   </LineChart>
                 </ResponsiveContainer>
-              </div>
+              </Box>
 
-              <p className="text-xs text-muted-foreground text-center">
+              <Text size="xs" c="dimmed" ta="center">
                 💡 하루에 5분만 투자해서 관리하세요
-              </p>
-            </div>
+              </Text>
+            </Stack>
           )}
-        </Card>
+        </Paper>
       )}
 
       {/* 추적 추가 모달 */}
@@ -1568,6 +1607,7 @@ export default function NaverRankPage() {
           </Group>
         </Stack>
       </Modal>
+      </Stack>
     </Container>
   )
 }
