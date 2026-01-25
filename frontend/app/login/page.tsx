@@ -76,7 +76,7 @@ export default function LoginPage() {
         <CardHeader className="space-y-1">
           <div className="flex justify-center mb-6">
             <Image
-              src="/whiplace-logo.svg"
+              src="/whiplace-logo.png"
               alt="WhiPlace"
               width={900}
               height={300}

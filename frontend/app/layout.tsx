@@ -104,8 +104,10 @@ export default function RootLayout({
       <head>
         {/* 추가 SEO 태그 */}
         <meta name="format-detection" content="telephone=no" />
-        <link rel="icon" href="/whiplace-logo.svg" type="image/svg+xml" />
+        <link rel="icon" href="/favicon.png" type="image/png" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+        <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${notoSansKR.variable} antialiased`}

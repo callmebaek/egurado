@@ -116,7 +116,7 @@ export default function SignupPage() {
         <CardHeader className="space-y-1">
           <div className="flex justify-center mb-2">
             <Image
-              src="/whiplace-logo.svg"
+              src="/whiplace-logo.png"
               alt="WhiPlace"
               width={180}
               height={60}

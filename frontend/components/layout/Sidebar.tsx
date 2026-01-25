@@ -265,7 +265,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         <div className="p-4 border-b flex items-center justify-between">
           <Link href="/dashboard" className="flex items-center gap-2" onClick={onClose}>
             <Image
-              src="/whiplace-logo.svg"
+              src="/whiplace-logo.png"
               alt="WhiPlace"
               width={120}
               height={40}

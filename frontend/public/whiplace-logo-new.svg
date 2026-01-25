@@ -1,0 +1,7 @@
+<svg width="500" height="160" viewBox="0 0 500 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- "whi" part in blue/purple -->
+  <text x="30" y="120" font-family="Arial, sans-serif" font-size="80" font-weight="bold" fill="#5B6FDB">whi</text>
+  
+  <!-- "place" part in green -->
+  <text x="215" y="120" font-family="Arial, sans-serif" font-size="80" font-weight="bold" fill="#4A6741">place</text>
+</svg>
