@@ -24,6 +24,7 @@ import {
   ChevronRight,
   X,
   Target,
+  Key,
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 
@@ -59,6 +60,11 @@ const navigation: NavItem[] = [
         title: '주요지표 추적',
         href: '/dashboard/naver/metrics-tracker',
         icon: <BarChart3 className="w-4 h-4" />,
+      },
+      {
+        title: '대표키워드 분석',
+        href: '/dashboard/naver/main-keywords',
+        icon: <Key className="w-4 h-4" />,
       },
       {
         title: '타겟키워드 추출',
