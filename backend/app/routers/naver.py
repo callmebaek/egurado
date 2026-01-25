@@ -971,22 +971,36 @@ async def check_place_rank_unofficial(request: RankCheckRequest):
         keyword_id = None
         previous_rank = None
         
+        # total_count 파싱 (문자열 "778" 또는 정수 778 → 정수 778)
+        total_count_value = rank_result.get("total_count", 0)
+        total_results_int = 0
+        if total_count_value is not None:
+            if isinstance(total_count_value, str):
+                # 문자열 "1,234" → 1234
+                total_results_int = int(total_count_value.replace(",", "")) if total_count_value.strip() else 0
+            elif isinstance(total_count_value, int):
+                # 정수 그대로
+                total_results_int = total_count_value
+        
+        logger.info(f"[Total Results] Parsed total_count: {total_count_value} → {total_results_int}")
+        
         if keyword_check.data and len(keyword_check.data) > 0:
             # 기존 키워드 업데이트
             existing_keyword = keyword_check.data[0]
             keyword_id = existing_keyword["id"]
             previous_rank = existing_keyword["current_rank"]
             
-            # keywords 테이블 업데이트
+            # keywords 테이블 업데이트 (total_results 포함)
             supabase.table("keywords").update({
                 "previous_rank": previous_rank,
                 "current_rank": rank_result["rank"],
+                "total_results": total_results_int,
                 "last_checked_at": now.isoformat()
             }).eq("id", keyword_id).execute()
             
             logger.info(
                 f"[Unofficial API Rank] Updated existing keyword (ID: {keyword_id}), "
-                f"Rank: {previous_rank} → {rank_result['rank']}"
+                f"Rank: {previous_rank} → {rank_result['rank']}, Total: {total_results_int}"
             )
             
         else:
@@ -1007,12 +1021,13 @@ async def check_place_rank_unofficial(request: RankCheckRequest):
                     detail=f"키워드 등록 제한에 도달했습니다. (현재: {current_count}/{max_count}개) 구독 플랜을 업그레이드해주세요."
                 )
             
-            # 새 키워드 등록
+            # 새 키워드 등록 (total_results 포함)
             keyword_insert = supabase.table("keywords").insert({
                 "store_id": str(request.store_id),
                 "keyword": request.keyword,
                 "current_rank": rank_result["rank"],
                 "previous_rank": None,
+                "total_results": total_results_int,
                 "last_checked_at": now.isoformat()
             }).execute()
             
@@ -1020,7 +1035,7 @@ async def check_place_rank_unofficial(request: RankCheckRequest):
             
             logger.info(
                 f"[Unofficial API Rank] Created new keyword (ID: {keyword_id}), "
-                f"Rank: {rank_result['rank']}, User keywords: {current_count + 1}/{max_count}"
+                f"Rank: {rank_result['rank']}, Total: {total_results_int}, User keywords: {current_count + 1}/{max_count}"
             )
         
         # rank_history 처리 (오늘 날짜 데이터만 유지)
