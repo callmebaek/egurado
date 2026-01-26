@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 import os
 import sys
 import asyncio
+import logging
 from contextlib import asynccontextmanager
 
 # Windows에서 Playwright async subprocess 지원을 위한 이벤트 루프 정책 설정
@@ -17,6 +18,12 @@ if sys.platform == 'win32':
 
 # 환경변수 로드
 load_dotenv()
+
+# 로깅 설정 (모든 로거에 적용)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(levelname)s:     %(name)s - %(message)s'
+)
 
 
 @asynccontextmanager
