@@ -1,14 +1,32 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Users, Search, Loader2, TrendingUp, TrendingDown, Minus, AlertCircle, CheckCircle2, Store, Target } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
+import { useState, useEffect, useRef } from "react"
+import { Users, Search, Loader2, TrendingUp, TrendingDown, Minus, AlertCircle, CheckCircle2, Store, Target, FileText, ExternalLink } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { useAuth } from "@/lib/auth-context"
-import { supabase } from "@/lib/supabase"
 import { api } from "@/lib/config"
+import {
+  Paper,
+  Card,
+  Badge,
+  Progress,
+  RingProgress,
+  Table,
+  Timeline,
+  Modal,
+  Grid,
+  Group,
+  Stack,
+  Title,
+  Text,
+  Button,
+  TextInput,
+  Container,
+  ThemeIcon,
+  Center,
+  Loader,
+} from '@mantine/core'
+import '@mantine/core/styles.css'
 
 interface RegisteredStore {
   id: string
@@ -18,6 +36,7 @@ interface RegisteredStore {
   category: string
   address: string
   platform: string
+  thumbnail?: string
 }
 
 interface KeywordInfo {
@@ -115,6 +134,9 @@ export default function CompetitorsPage() {
   const [comparison, setComparison] = useState<ComparisonResult | null>(null)
   const [loadingAnalysis, setLoadingAnalysis] = useState(false)
   const [analysisProgress, setAnalysisProgress] = useState({ current: 0, total: 0 })
+
+  // 분석 결과 섹션 ref
+  const summaryRef = useRef<HTMLDivElement>(null)
   
   // 초기 로드: 등록된 매장 가져오기
   useEffect(() => {
@@ -198,8 +220,6 @@ export default function CompetitorsPage() {
     }
     
     setLoadingSearch(true)
-    console.log("[경쟁매장] 검색 시작:", keyword)
-    console.log("[경쟁매장] API URL:", `${api.baseUrl}/api/v1/naver/competitor/search`)
     
     try {
       const response = await fetch(`${api.baseUrl}/api/v1/naver/competitor/search`, {
@@ -211,16 +231,12 @@ export default function CompetitorsPage() {
         }),
       })
       
-      console.log("[경쟁매장] 응답 상태:", response.status)
-      
       if (!response.ok) {
         const errorText = await response.text()
-        console.error("[경쟁매장] 에러 응답:", errorText)
         throw new Error(`검색 실패: ${response.status} ${errorText}`)
       }
       
       const data = await response.json()
-      console.log("[경쟁매장] 검색 결과:", data)
       
       if (!data.stores || data.stores.length === 0) {
         toast({
@@ -235,12 +251,10 @@ export default function CompetitorsPage() {
       const basicStores = data.stores.map((store: any, index: number) => ({
         rank: index + 1,
         place_id: store.place_id,
-        name: store.name || store.store_name, // API 응답에는 name으로 올 수 있음
+        name: store.name || store.store_name,
         category: store.category,
         address: store.address,
       }))
-      
-      console.log("[경쟁매장] 파싱된 매장 목록:", basicStores)
       
       setTopStores(basicStores)
       setStep(3)
@@ -256,7 +270,6 @@ export default function CompetitorsPage() {
       }, 500)
       
     } catch (error: any) {
-      console.error("[경쟁매장] 검색 실패:", error)
       toast({
         title: "검색 실패",
         description: error.message || "경쟁매장 검색 중 오류가 발생했습니다.",
@@ -274,7 +287,6 @@ export default function CompetitorsPage() {
     const stores = storesToAnalyze || topStores
     
     if (stores.length === 0) {
-      console.error("[경쟁매장] 분석할 매장이 없습니다")
       toast({
         title: "오류",
         description: "분석할 경쟁매장이 없습니다.",
@@ -290,69 +302,39 @@ export default function CompetitorsPage() {
       // 점진적 분석: 우리 매장 먼저
       const myStoreUrl = `${api.baseUrl}/api/v1/naver/competitor/analyze-single/${selectedStore.place_id}?rank=0&store_name=${encodeURIComponent(selectedStore.store_name)}`
       
-      console.log("[경쟁매장] 우리 매장 분석 시작:", {
-        store_name: selectedStore.store_name,
-        place_id: selectedStore.place_id,
-        url: myStoreUrl
-      })
-      
       setAnalysisProgress({ current: 1, total: stores.length + 1 })
       
       const myStoreResponse = await fetch(myStoreUrl)
       
-      console.log("[경쟁매장] 우리 매장 응답 상태:", myStoreResponse.status)
-      
       if (!myStoreResponse.ok) {
         const errorText = await myStoreResponse.text()
-        console.error("[경쟁매장] 우리 매장 에러:", errorText)
         throw new Error(`우리 매장 분석 실패: ${myStoreResponse.status} - ${errorText}`)
       }
       
       const myStoreData = await myStoreResponse.json()
-      console.log("[경쟁매장] 우리 매장 응답 데이터:", myStoreData)
-      
       const myStore = myStoreData.result
-      console.log("[경쟁매장] 우리 매장 분석 완료:", myStore)
       
       // 경쟁사 분석 (점진적)
       const analyzed: CompetitorStore[] = []
-      
-      console.log("[경쟁매장] 경쟁사 분석 시작: 총 " + stores.length + "개")
       
       for (let i = 0; i < stores.length; i++) {
         const store = stores[i]
         setAnalysisProgress({ current: i + 2, total: stores.length + 1 })
         
-        console.log(`[경쟁매장] ${i + 1}/${stores.length} 분석 중: ${store.name}`)
-        
         try {
           const competitorUrl = `${api.baseUrl}/api/v1/naver/competitor/analyze-single/${store.place_id}?rank=${store.rank}&store_name=${encodeURIComponent(store.name)}`
           
           const response = await fetch(competitorUrl)
-          console.log(`[경쟁매장] ${store.name} 응답 상태:`, response.status)
           
           if (response.ok) {
             const data = await response.json()
-            console.log(`[경쟁매장] ${store.name} 데이터:`, data.result)
             analyzed.push(data.result)
             
             // 실시간 업데이트
             setAnalyzedStores([...analyzed])
-          } else {
-            const errorText = await response.text()
-            console.error(`[경쟁매장] ${store.name} 에러:`, errorText)
-            
-            // 에러 정보 파싱
-            try {
-              const errorJson = JSON.parse(errorText)
-              console.warn(`[경쟁매장] ${store.name} 분석 실패: ${errorJson.detail || '알 수 없는 오류'}`)
-            } catch {
-              console.warn(`[경쟁매장] ${store.name} 분석 실패 (${response.status})`)
-            }
           }
         } catch (error) {
-          console.error(`[경쟁매장] ${store.name} 분석 실패:`, error)
-          console.warn(`[경쟁매장] ${store.name} 스킵됨 - 다음 매장 분석 계속`)
+          console.error(`${store.name} 분석 실패:`, error)
         }
         
         // Rate limiting
@@ -360,12 +342,6 @@ export default function CompetitorsPage() {
       }
       
       // 비교 분석 생성
-      console.log("[경쟁매장] 비교 분석 생성 시작")
-      console.log("[경쟁매장] 우리 매장:", myStore)
-      console.log("[경쟁매장] 분석된 경쟁사:", analyzed)
-      
-      // 백엔드에서 LLM 기반 비교 분석 가져오기
-      console.log("[경쟁매장] 백엔드에서 비교 분석 요청 중...")
       const comparisonResponse = await fetch(
         `${api.url("/api/v1/naver/competitor/compare")}`,
         {
@@ -379,22 +355,26 @@ export default function CompetitorsPage() {
       )
       
       if (!comparisonResponse.ok) {
-        console.warn("[경쟁매장] 백엔드 비교 분석 실패, 로컬 생성 사용")
         const comparisonData = generateComparison(myStore, analyzed)
         setComparison(comparisonData)
       } else {
         const comparisonResult = await comparisonResponse.json()
-        console.log("[경쟁매장] 비교 분석 결과 (LLM):", comparisonResult)
         setComparison(comparisonResult)
       }
+
+      // 분석 완료 후 결과 섹션으로 스크롤
+      setTimeout(() => {
+        summaryRef.current?.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'start' 
+        })
+      }, 100)
       
       toast({
         title: "분석 완료",
         description: `${analyzed.length}개 경쟁매장 분석이 완료되었습니다.`,
       })
     } catch (error: any) {
-      console.error("[경쟁매장] 분석 실패:", error)
-      
       let errorMessage = "경쟁매장 분석 중 오류가 발생했습니다."
       
       if (error.message.includes("404")) {
@@ -530,599 +510,532 @@ export default function CompetitorsPage() {
     setAnalyzedStores([])
     setComparison(null)
   }
+
+  const getGradeColor = (grade: string) => {
+    switch (grade) {
+      case 'S': return '#9b59b6'
+      case 'A': return '#3498db'
+      case 'B': return '#2ecc71'
+      case 'C': return '#f39c12'
+      default: return '#e74c3c'
+    }
+  }
   
   return (
-    <div className="p-6 space-y-6">
-      {/* 헤더 */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Users className="w-8 h-8 text-purple-600" />
-            경쟁매장 분석
-          </h1>
-          <p className="text-gray-600 mt-2">
-            키워드 기반으로 상위 노출 경쟁매장을 분석하고 우리 매장과 비교합니다
-          </p>
-        </div>
-        {step > 1 && (
-          <Button variant="outline" onClick={resetAnalysis}>
-            처음으로
-          </Button>
-        )}
-      </div>
-      
-      {/* 진행 단계 표시 */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-center justify-between">
-            {[1, 2, 3].map((s) => (
-              <div key={s} className="flex items-center">
-                <div
-                  className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
-                    step >= s
-                      ? "bg-purple-600 text-white"
-                      : "bg-gray-200 text-gray-500"
-                  }`}
-                >
-                  {s}
-                </div>
-                <div className="ml-2 text-sm">
-                  {s === 1 && "매장 선택"}
-                  {s === 2 && "키워드 입력"}
-                  {s === 3 && "분석 결과"}
-                </div>
-                {s < 3 && (
-                  <div
-                    className={`w-20 h-1 mx-4 ${
-                      step > s ? "bg-purple-600" : "bg-gray-200"
-                    }`}
-                  />
-                )}
-              </div>
-            ))}
+    <Container size="xl" px="md" py="xl" style={{ backgroundColor: '#f8f9fa', minHeight: '100vh' }}>
+      {/* Header */}
+      <Paper shadow="sm" p="xl" mb="xl" style={{ borderLeft: '6px solid #635bff' }}>
+        <Group justify="space-between" align="flex-start">
+          <div>
+            <Group gap="sm" mb="xs">
+              <Users size={32} color="#635bff" />
+              <Title order={1} style={{ color: '#212529' }}>경쟁매장 분석</Title>
+            </Group>
+            <Text size="lg" c="dimmed">
+              키워드 기반으로 상위 노출 경쟁매장을 분석하고 우리 매장과 비교합니다
+            </Text>
           </div>
-        </CardContent>
-      </Card>
-      
+          {step > 1 && (
+            <Button
+              variant="outline"
+              color="gray"
+              onClick={resetAnalysis}
+            >
+              처음으로
+            </Button>
+          )}
+        </Group>
+      </Paper>
+
+      {/* 진행 단계 표시 */}
+      <Paper shadow="sm" p="lg" mb="xl">
+        <Group justify="space-between">
+          {[1, 2, 3].map((s) => (
+            <div key={s} style={{ display: 'flex', alignItems: 'center' }}>
+              <ThemeIcon
+                size="xl"
+                radius="xl"
+                color={step >= s ? '#635bff' : 'gray'}
+                variant={step >= s ? 'filled' : 'light'}
+              >
+                <Text fw={700}>{s}</Text>
+              </ThemeIcon>
+              <Text size="sm" fw={600} ml="xs">
+                {s === 1 && "매장 선택"}
+                {s === 2 && "키워드 입력"}
+                {s === 3 && "분석 결과"}
+              </Text>
+              {s < 3 && (
+                <div style={{
+                  width: '80px',
+                  height: '3px',
+                  marginLeft: '16px',
+                  marginRight: '16px',
+                  backgroundColor: step > s ? '#635bff' : '#dee2e6',
+                  borderRadius: '3px'
+                }} />
+              )}
+            </div>
+          ))}
+        </Group>
+      </Paper>
+
       {/* 1단계: 매장 선택 */}
       {step === 1 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Store className="w-5 h-5" />
-              1단계: 분석할 매장 선택
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loadingStores ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
-              </div>
-            ) : stores.length === 0 ? (
-              <div className="text-center py-12">
-                <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600">등록된 매장이 없습니다.</p>
-                <p className="text-sm text-gray-500 mt-2">
-                  먼저 네이버 플레이스 매장을 등록해주세요.
-                </p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {stores.map((store) => (
-                  <button
-                    key={store.id}
-                    className="border rounded-lg p-4 hover:border-purple-600 hover:bg-purple-50 cursor-pointer transition-all text-left"
+        <Paper shadow="sm" p="xl">
+          <Group mb="lg">
+            <ThemeIcon size="lg" radius="md" color="blue" variant="light">
+              <Store size={20} />
+            </ThemeIcon>
+            <div>
+              <Title order={2}>1단계: 분석할 매장 선택</Title>
+              <Text size="sm" c="dimmed">경쟁 분석을 진행할 우리 매장을 선택하세요</Text>
+            </div>
+          </Group>
+
+          {loadingStores ? (
+            <Center py="xl">
+              <Stack align="center" gap="md">
+                <Loader size="lg" color="#635bff" />
+                <Text c="dimmed">매장 목록을 불러오는 중...</Text>
+              </Stack>
+            </Center>
+          ) : stores.length === 0 ? (
+            <Center py="xl">
+              <Stack align="center" gap="md">
+                <AlertCircle size={64} color="#dee2e6" />
+                <Text c="dimmed">등록된 매장이 없습니다.</Text>
+                <Text size="sm" c="dimmed">먼저 네이버 플레이스 매장을 등록해주세요.</Text>
+              </Stack>
+            </Center>
+          ) : (
+            <Grid>
+              {stores.map((store) => (
+                <Grid.Col key={store.id} span={{ base: 12, sm: 6, md: 4 }}>
+                  <Card
+                    shadow="sm"
+                    padding="lg"
+                    radius="md"
+                    withBorder
+                    style={{ height: '100%', cursor: 'pointer', transition: 'transform 0.2s, box-shadow 0.2s' }}
                     onClick={() => handleStoreSelect(store)}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'translateY(-4px)'
+                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0)'
+                      e.currentTarget.style.boxShadow = ''
+                    }}
                   >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-lg text-gray-900">
-                          {store.store_name || "매장명 없음"}
-                        </h3>
-                        <p className="text-sm text-gray-600 mt-1">
-                          {store.category || "카테고리 없음"}
-                        </p>
-                        <p className="text-sm text-gray-500 mt-1">
-                          {store.address || "주소 없음"}
-                        </p>
-                      </div>
-                      <Store className="w-5 h-5 text-purple-600 flex-shrink-0" />
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                    {/* Thumbnail */}
+                    {store.thumbnail ? (
+                      <Card.Section>
+                        <div style={{ position: 'relative', width: '100%', paddingTop: '100%' }}>
+                          <img
+                            src={store.thumbnail}
+                            alt={store.store_name}
+                            style={{
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover'
+                            }}
+                          />
+                        </div>
+                      </Card.Section>
+                    ) : (
+                      <Card.Section>
+                        <div style={{
+                          backgroundColor: '#f8f9fa',
+                          paddingTop: '100%',
+                          position: 'relative'
+                        }}>
+                          <Center style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            width: '100%',
+                            height: '100%'
+                          }}>
+                            <Store size={64} color="#635bff" />
+                          </Center>
+                        </div>
+                      </Card.Section>
+                    )}
+
+                    {/* Store Info */}
+                    <Stack gap="xs" mt="md" style={{ textAlign: 'center' }}>
+                      <Text fw={600} size="lg" lineClamp={1}>{store.store_name || "매장명 없음"}</Text>
+                      <Text size="sm" c="dimmed" lineClamp={1}>{store.category || "카테고리 없음"}</Text>
+                      <Text size="xs" c="dimmed" lineClamp={2}>{store.address || "주소 없음"}</Text>
+                    </Stack>
+
+                    <Button
+                      fullWidth
+                      mt="md"
+                      color="#635bff"
+                      leftSection={<Target size={16} />}
+                    >
+                      이 매장 선택
+                    </Button>
+                  </Card>
+                </Grid.Col>
+              ))}
+            </Grid>
+          )}
+        </Paper>
       )}
-      
+
       {/* 2단계: 키워드 입력 */}
       {step === 2 && selectedStore && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Target className="w-5 h-5" />
-              2단계: 타겟 키워드 입력
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+        <Paper shadow="sm" p="xl">
+          <Group mb="lg">
+            <ThemeIcon size="lg" radius="md" color="green" variant="light">
+              <Target size={20} />
+            </ThemeIcon>
             <div>
-              <p className="text-sm text-gray-600 mb-2">선택된 매장</p>
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h3 className="font-semibold">{selectedStore.store_name}</h3>
-                <p className="text-sm text-gray-600">{selectedStore.category || "카테고리 정보 없음"}</p>
-              </div>
+              <Title order={2}>2단계: 타겟 키워드 입력</Title>
+              <Text size="sm" c="dimmed">경쟁 분석을 진행할 키워드를 입력하세요</Text>
             </div>
-            
+          </Group>
+
+          <Stack gap="md">
+            <Paper p="md" style={{ backgroundColor: '#f8f9fa' }}>
+              <Text size="sm" fw={600} mb="xs">선택된 매장</Text>
+              <Text size="lg" fw={700}>{selectedStore.store_name}</Text>
+              <Text size="sm" c="dimmed">{selectedStore.category || "카테고리 정보 없음"}</Text>
+            </Paper>
+
             <div>
-              <label className="block text-sm font-medium mb-2">
-                분석할 키워드 입력
-              </label>
-              <div className="flex gap-2">
-                <Input
+              <Text size="sm" fw={600} mb="xs">분석할 키워드 입력</Text>
+              <Group>
+                <TextInput
                   placeholder="예: 강남 맛집, 성수동 카페"
                   value={keyword}
                   onChange={(e) => setKeyword(e.target.value)}
                   onKeyPress={(e) => e.key === "Enter" && handleKeywordSubmit()}
+                  style={{ flex: 1 }}
+                  size="lg"
                 />
                 <Button
                   onClick={handleKeywordSubmit}
                   disabled={loadingSearch || !keyword.trim()}
+                  size="lg"
+                  color="#635bff"
+                  leftSection={loadingSearch ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search size={16} />}
                 >
-                  {loadingSearch ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Search className="w-4 h-4" />
-                  )}
                   검색
                 </Button>
-              </div>
+              </Group>
             </div>
-            
+
             {loadingKeywords ? (
-              <div className="flex items-center justify-center py-4">
-                <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
-              </div>
+              <Center py="md">
+                <Loader size="md" color="gray" />
+              </Center>
             ) : registeredKeywords.length > 0 && (
               <div>
-                <p className="text-sm text-gray-600 mb-2">
-                  등록된 키워드에서 선택
-                </p>
-                <div className="flex flex-wrap gap-2">
+                <Text size="sm" fw={600} mb="xs">등록된 키워드에서 선택</Text>
+                <Group gap="xs">
                   {registeredKeywords.map((kw) => (
-                    <button
+                    <Badge
                       key={kw.id}
-                      className="px-3 py-1 bg-gray-100 hover:bg-purple-100 rounded-full text-sm transition-colors"
+                      size="lg"
+                      variant="light"
+                      style={{ cursor: 'pointer' }}
                       onClick={() => setKeyword(kw.keyword)}
                     >
                       {kw.keyword}
-                    </button>
+                    </Badge>
                   ))}
-                </div>
+                </Group>
               </div>
             )}
-          </CardContent>
-        </Card>
+          </Stack>
+        </Paper>
       )}
-      
-      {/* 3단계: 상위 매장 분석 결과 */}
+
+      {/* 3단계: 분석 결과 */}
       {step === 3 && topStores.length > 0 && (
         <>
           {/* 진행 상황 */}
           {loadingAnalysis && (
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-center space-y-4">
-                  <Loader2 className="w-12 h-12 animate-spin text-purple-600 mx-auto" />
-                  <div>
-                    <p className="font-medium">
+            <Paper shadow="sm" p="xl">
+              <Center>
+                <Stack align="center" gap="md">
+                  <Loader size="xl" color="#635bff" />
+                  <div style={{ textAlign: 'center' }}>
+                    <Text fw={600} size="lg">
                       경쟁매장 분석 중... ({analysisProgress.current}/{analysisProgress.total})
-                    </p>
-                    <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-                      <div
-                        className="bg-purple-600 h-2 rounded-full transition-all"
-                        style={{
-                          width: `${(analysisProgress.current / analysisProgress.total) * 100}%`,
-                        }}
-                      />
-                    </div>
+                    </Text>
+                    <Progress
+                      value={(analysisProgress.current / analysisProgress.total) * 100}
+                      color="#635bff"
+                      size="lg"
+                      radius="xl"
+                      mt="md"
+                      style={{ width: '300px' }}
+                    />
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </Stack>
+              </Center>
+            </Paper>
           )}
-          
-          {/* 비교 요약 (분석 완료 후) */}
+
+          {/* 비교 분석 요약 */}
           {!loadingAnalysis && analyzedStores.length > 0 && comparison && (
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <Store className="w-6 h-6 text-purple-600" />
-                  <div>
-                    <CardTitle className="text-2xl">비교 분석 요약</CardTitle>
-                    <p className="text-sm text-gray-600 mt-1">
-                      <span className="font-semibold text-purple-600">{selectedStore?.store_name}</span> vs 상위 20개 경쟁매장
-                    </p>
-                  </div>
+            <>
+              <Paper ref={summaryRef} shadow="md" p="xl" mb="xl" style={{ border: '2px solid #635bff' }}>
+                <Title order={2} mb="xl" style={{ color: '#212529' }}>
+                  📊 비교 분석 요약
+                </Title>
+                
+                <Group mb="lg">
+                  <Text size="lg">
+                    <Text component="span" fw={700} c="#635bff">{selectedStore?.store_name}</Text> vs 상위 {comparison.competitor_count}개 경쟁매장
+                  </Text>
+                </Group>
+
+                <Grid>
+                  <Grid.Col span={{ base: 12, md: 6 }}>
+                    <ComparisonMetricCard
+                      label="플레이스 진단 점수"
+                      myValue={comparison.gaps.diagnosis_score.my_value as number}
+                      avgValue={comparison.gaps.diagnosis_score.competitor_avg || 0}
+                      status={comparison.gaps.diagnosis_score.status}
+                      unit="점"
+                    />
+                  </Grid.Col>
+                  <Grid.Col span={{ base: 12, md: 6 }}>
+                    <ComparisonMetricCard
+                      label="일평균 방문자 리뷰 (7일)"
+                      myValue={comparison.gaps.visitor_reviews_7d_avg.my_value as number}
+                      avgValue={comparison.gaps.visitor_reviews_7d_avg.competitor_avg || 0}
+                      status={comparison.gaps.visitor_reviews_7d_avg.status}
+                      unit="개"
+                    />
+                  </Grid.Col>
+                  <Grid.Col span={{ base: 12, md: 6 }}>
+                    <ComparisonMetricCard
+                      label="일평균 블로그 리뷰 (7일)"
+                      myValue={comparison.gaps.blog_reviews_7d_avg.my_value as number}
+                      avgValue={comparison.gaps.blog_reviews_7d_avg.competitor_avg || 0}
+                      status={comparison.gaps.blog_reviews_7d_avg.status}
+                      unit="개"
+                    />
+                  </Grid.Col>
+                  <Grid.Col span={{ base: 12, md: 6 }}>
+                    <ComparisonMetricCard
+                      label="7일간 공지 등록 수"
+                      myValue={comparison.gaps.announcements_7d.my_value as number}
+                      avgValue={comparison.gaps.announcements_7d.competitor_avg || 0}
+                      status={comparison.gaps.announcements_7d.status}
+                      unit="개"
+                    />
+                  </Grid.Col>
+                </Grid>
+              </Paper>
+
+              {/* 개선 권장사항 */}
+              {comparison.recommendations.length > 0 && (
+                <Paper shadow="sm" p="xl" mb="xl">
+                  <Title order={2} mb="xl" style={{ color: '#212529' }}>
+                    🎯 개선 권장사항
+                  </Title>
+                  
+                  <Timeline active={comparison.recommendations.length} bulletSize={24} lineWidth={2}>
+                    {comparison.recommendations.map((rec, idx) => (
+                      <Timeline.Item
+                        key={idx}
+                        bullet={<Text size="xs" fw={700}>{idx + 1}</Text>}
+                        title={
+                          <Badge color={rec.priority === "high" ? "red" : "orange"} size="sm">
+                            {rec.priority === "high" ? "높음" : "보통"}
+                          </Badge>
+                        }
+                      >
+                        <Paper p="md" mt="xs" style={{ backgroundColor: '#f8f9fa' }}>
+                          <Text fw={600} mb="xs">{rec.title}</Text>
+                          <Text size="sm" c="dimmed">{rec.description}</Text>
+                        </Paper>
+                      </Timeline.Item>
+                    ))}
+                  </Timeline>
+                </Paper>
+              )}
+
+              {/* 경쟁매장 상세 목록 */}
+              <Paper shadow="sm" p="xl">
+                <Title order={2} mb="xl" style={{ color: '#212529' }}>
+                  📋 경쟁매장 상세 분석
+                </Title>
+                
+                <Text size="sm" c="dimmed" mb="md">
+                  분석 완료: {analyzedStores.length} / {topStores.length}개
+                </Text>
+
+                <div style={{ overflowX: 'auto' }}>
+                  <Table striped highlightOnHover withTableBorder withColumnBorders>
+                    <Table.Thead>
+                      <Table.Tr>
+                        <Table.Th style={{ fontWeight: 700 }}>순위</Table.Th>
+                        <Table.Th style={{ fontWeight: 700 }}>매장명</Table.Th>
+                        <Table.Th style={{ fontWeight: 700 }}>업종</Table.Th>
+                        <Table.Th style={{ fontWeight: 700 }}>진단점수</Table.Th>
+                        <Table.Th style={{ fontWeight: 700 }}>전체리뷰</Table.Th>
+                        <Table.Th style={{ fontWeight: 700 }}>방문자(7일)</Table.Th>
+                        <Table.Th style={{ fontWeight: 700 }}>블로그(7일)</Table.Th>
+                        <Table.Th style={{ fontWeight: 700 }}>쿠폰</Table.Th>
+                        <Table.Th style={{ fontWeight: 700 }}>플플</Table.Th>
+                        <Table.Th style={{ fontWeight: 700 }}>네페이</Table.Th>
+                      </Table.Tr>
+                    </Table.Thead>
+                    <Table.Tbody>
+                      {topStores.map((store) => {
+                        const analyzed = analyzedStores.find(s => s.place_id === store.place_id)
+                        const isLoading = !analyzed && loadingAnalysis
+                        
+                        return (
+                          <Table.Tr key={store.place_id}>
+                            <Table.Td>{store.rank}</Table.Td>
+                            <Table.Td><Text fw={600}>{store.name}</Text></Table.Td>
+                            <Table.Td><Text size="sm" c="dimmed">{store.category}</Text></Table.Td>
+                            <Table.Td>
+                              {isLoading ? (
+                                <Loader size="xs" />
+                              ) : analyzed ? (
+                                <Badge color={getGradeColor(analyzed.diagnosis_grade || 'D')}>
+                                  {analyzed.diagnosis_score?.toFixed(1)}점 ({analyzed.diagnosis_grade})
+                                </Badge>
+                              ) : (
+                                <Text size="xs" c="dimmed">-</Text>
+                              )}
+                            </Table.Td>
+                            <Table.Td>
+                              {isLoading ? (
+                                <Loader size="xs" />
+                              ) : analyzed ? (
+                                `${analyzed.visitor_review_count || 0}+${analyzed.blog_review_count || 0}`
+                              ) : '-'}
+                            </Table.Td>
+                            <Table.Td>
+                              {isLoading ? (
+                                <Loader size="xs" />
+                              ) : analyzed ? (
+                                analyzed.visitor_reviews_7d_avg?.toFixed(1) || 0
+                              ) : '-'}
+                            </Table.Td>
+                            <Table.Td>
+                              {isLoading ? (
+                                <Loader size="xs" />
+                              ) : analyzed ? (
+                                analyzed.blog_reviews_7d_avg?.toFixed(1) || 0
+                              ) : '-'}
+                            </Table.Td>
+                            <Table.Td style={{ textAlign: 'center' }}>
+                              {isLoading ? (
+                                <Loader size="xs" />
+                              ) : analyzed ? (
+                                analyzed.has_coupon ? <CheckCircle2 size={16} color="#2ecc71" /> : <Minus size={16} color="#dee2e6" />
+                              ) : '-'}
+                            </Table.Td>
+                            <Table.Td style={{ textAlign: 'center' }}>
+                              {isLoading ? (
+                                <Loader size="xs" />
+                              ) : analyzed ? (
+                                analyzed.is_place_plus ? <CheckCircle2 size={16} color="#2ecc71" /> : <Minus size={16} color="#dee2e6" />
+                              ) : '-'}
+                            </Table.Td>
+                            <Table.Td style={{ textAlign: 'center' }}>
+                              {isLoading ? (
+                                <Loader size="xs" />
+                              ) : analyzed ? (
+                                analyzed.supports_naverpay ? <CheckCircle2 size={16} color="#2ecc71" /> : <Minus size={16} color="#dee2e6" />
+                              ) : '-'}
+                            </Table.Td>
+                          </Table.Tr>
+                        )
+                      })}
+                    </Table.Tbody>
+                  </Table>
                 </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <ComparisonMetric
-                    label="플레이스 진단 점수"
-                    myValue={comparison.gaps.diagnosis_score.my_value as number}
-                    avgValueTop5={comparison.gaps.diagnosis_score.competitor_avg_top5 || 0}
-                    avgValueTop20={comparison.gaps.diagnosis_score.competitor_avg_top20 || 0}
-                    statusTop5={(comparison.gaps.diagnosis_score.status_top5 || "good") as "good" | "bad"}
-                    statusTop20={(comparison.gaps.diagnosis_score.status_top20 || "good") as "good" | "bad"}
-                    unit="점"
-                  />
-                  <ComparisonMetric
-                    label="일평균 방문자 리뷰 (지난 7일)"
-                    myValue={comparison.gaps.visitor_reviews_7d_avg.my_value as number}
-                    avgValueTop5={comparison.gaps.visitor_reviews_7d_avg.competitor_avg_top5 || 0}
-                    avgValueTop20={comparison.gaps.visitor_reviews_7d_avg.competitor_avg_top20 || 0}
-                    statusTop5={(comparison.gaps.visitor_reviews_7d_avg.status_top5 || "good") as "good" | "bad"}
-                    statusTop20={(comparison.gaps.visitor_reviews_7d_avg.status_top20 || "good") as "good" | "bad"}
-                    unit="개"
-                  />
-                  <ComparisonMetric
-                    label="일평균 블로그 리뷰 (지난 7일)"
-                    myValue={comparison.gaps.blog_reviews_7d_avg.my_value as number}
-                    avgValueTop5={comparison.gaps.blog_reviews_7d_avg.competitor_avg_top5 || 0}
-                    avgValueTop20={comparison.gaps.blog_reviews_7d_avg.competitor_avg_top20 || 0}
-                    statusTop5={(comparison.gaps.blog_reviews_7d_avg.status_top5 || "good") as "good" | "bad"}
-                    statusTop20={(comparison.gaps.blog_reviews_7d_avg.status_top20 || "good") as "good" | "bad"}
-                    unit="개"
-                  />
-                  <ComparisonMetric
-                    label="7일간 공지 등록 수"
-                    myValue={comparison.gaps.announcements_7d.my_value as number}
-                    avgValueTop5={comparison.gaps.announcements_7d.competitor_avg_top5 || 0}
-                    avgValueTop20={comparison.gaps.announcements_7d.competitor_avg_top20 || 0}
-                    statusTop5={(comparison.gaps.announcements_7d.status_top5 || "good") as "good" | "bad"}
-                    statusTop20={(comparison.gaps.announcements_7d.status_top20 || "good") as "good" | "bad"}
-                    unit="개"
-                  />
-                </div>
-              </CardContent>
-            </Card>
+              </Paper>
+            </>
           )}
-          
-          {/* 개선 권장사항 (분석 완료 후) */}
-          {!loadingAnalysis && comparison && comparison.recommendations.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>개선 권장사항</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {comparison.recommendations.map((rec, idx) => (
-                    <div
-                      key={idx}
-                      className={`p-4 rounded-lg border-l-4 ${
-                        rec.priority === "high"
-                          ? "border-red-500 bg-red-50"
-                          : "border-yellow-500 bg-yellow-50"
-                      }`}
-                    >
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <h4 className="font-semibold">{rec.title}</h4>
-                          <p className="text-sm text-gray-600 mt-1">
-                            {rec.description}
-                          </p>
-                        </div>
-                        <span
-                          className={`px-2 py-1 rounded text-xs font-medium ${
-                            rec.priority === "high"
-                              ? "bg-red-100 text-red-700"
-                              : "bg-yellow-100 text-yellow-700"
-                          }`}
-                        >
-                          {rec.priority === "high" ? "높음" : "보통"}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-          
-          {/* 경쟁매장 상세 목록 */}
-          <Card>
-            <CardHeader>
-              <CardTitle>
-                경쟁매장 상세 분석 ({analyzedStores.length}/{topStores.length}개)
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left p-2">순위</th>
-                      <th className="text-left p-2">매장명</th>
-                      <th className="text-left p-2">업종</th>
-                      <th className="text-left p-2">주소</th>
-                      <th className="text-left p-2">진단점수</th>
-                      <th className="text-left p-2">전체리뷰수</th>
-                      <th className="text-left p-2">방문자리뷰(7일)</th>
-                      <th className="text-left p-2">블로그리뷰(7일)</th>
-                      <th className="text-left p-2">공지(7일)</th>
-                      <th className="text-left p-2">쿠폰</th>
-                      <th className="text-left p-2">플플</th>
-                      <th className="text-left p-2">새로오픈</th>
-                      <th className="text-left p-2">네이버페이</th>
-                      <th className="text-left p-2">네이버예약</th>
-                      <th className="text-left p-2">매장명 검색량</th>
-                      <th className="text-left p-2 min-w-[200px]">하이라이트 리뷰</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {topStores.map((store) => {
-                      // 분석된 매장 찾기
-                      const analyzed = analyzedStores.find(s => s.place_id === store.place_id)
-                      const isLoading = !analyzed && loadingAnalysis
-                      
-                      return (
-                        <tr key={store.place_id} className="border-b hover:bg-gray-50">
-                          <td className="p-2">{store.rank}</td>
-                          <td className="p-2 font-medium">{store.name}</td>
-                          <td className="p-2 text-gray-600">{store.category}</td>
-                          <td className="p-2 text-gray-600 text-xs">{store.address}</td>
-                          <td className="p-2">
-                            {isLoading ? (
-                              <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
-                            ) : analyzed ? (
-                              <span
-                                className={`px-2 py-1 rounded text-xs font-medium ${
-                                  analyzed.diagnosis_grade === "S" || analyzed.diagnosis_grade === "A"
-                                    ? "bg-green-100 text-green-700"
-                                    : analyzed.diagnosis_grade === "B"
-                                    ? "bg-yellow-100 text-yellow-700"
-                                    : "bg-red-100 text-red-700"
-                                }`}
-                              >
-                                {analyzed.diagnosis_score?.toFixed(1)}점 ({analyzed.diagnosis_grade})
-                              </span>
-                            ) : (
-                              <span className="text-gray-400 text-xs">대기 중</span>
-                            )}
-                          </td>
-                          <td className="p-2">
-                            {isLoading ? (
-                              <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
-                            ) : analyzed ? (
-                              <span className="text-sm text-gray-700">
-                                {analyzed.visitor_review_count || 0}+{analyzed.blog_review_count || 0}
-                              </span>
-                            ) : (
-                              <span className="text-gray-400 text-xs">-</span>
-                            )}
-                          </td>
-                          <td className="p-2">
-                            {isLoading ? (
-                              <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
-                            ) : analyzed ? (
-                              analyzed.visitor_reviews_7d_avg?.toFixed(1) || 0
-                            ) : (
-                              <span className="text-gray-400 text-xs">-</span>
-                            )}
-                          </td>
-                          <td className="p-2">
-                            {isLoading ? (
-                              <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
-                            ) : analyzed ? (
-                              analyzed.blog_reviews_7d_avg?.toFixed(1) || 0
-                            ) : (
-                              <span className="text-gray-400 text-xs">-</span>
-                            )}
-                          </td>
-                          <td className="p-2">
-                            {isLoading ? (
-                              <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
-                            ) : analyzed ? (
-                              analyzed.announcements_7d || 0
-                            ) : (
-                              <span className="text-gray-400 text-xs">-</span>
-                            )}
-                          </td>
-                          <td className="p-2">
-                            {isLoading ? (
-                              <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
-                            ) : analyzed ? (
-                              analyzed.has_coupon ? (
-                                <CheckCircle2 className="w-4 h-4 text-green-600" />
-                              ) : (
-                                <Minus className="w-4 h-4 text-gray-400" />
-                              )
-                            ) : (
-                              <span className="text-gray-400 text-xs">-</span>
-                            )}
-                          </td>
-                          <td className="p-2">
-                            {isLoading ? (
-                              <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
-                            ) : analyzed ? (
-                              analyzed.is_place_plus ? (
-                                <CheckCircle2 className="w-4 h-4 text-green-600" />
-                              ) : (
-                                <Minus className="w-4 h-4 text-gray-400" />
-                              )
-                            ) : (
-                              <span className="text-gray-400 text-xs">-</span>
-                            )}
-                          </td>
-                          <td className="p-2">
-                            {isLoading ? (
-                              <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
-                            ) : analyzed ? (
-                              analyzed.is_new_business ? (
-                                <CheckCircle2 className="w-4 h-4 text-green-600" />
-                              ) : (
-                                <Minus className="w-4 h-4 text-gray-400" />
-                              )
-                            ) : (
-                              <span className="text-gray-400 text-xs">-</span>
-                            )}
-                          </td>
-                          <td className="p-2">
-                            {isLoading ? (
-                              <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
-                            ) : analyzed ? (
-                              analyzed.supports_naverpay ? (
-                                <CheckCircle2 className="w-4 h-4 text-green-600" />
-                              ) : (
-                                <Minus className="w-4 h-4 text-gray-400" />
-                              )
-                            ) : (
-                              <span className="text-gray-400 text-xs">-</span>
-                            )}
-                          </td>
-                          <td className="p-2">
-                            {isLoading ? (
-                              <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
-                            ) : analyzed ? (
-                              analyzed.has_naver_booking ? (
-                                <CheckCircle2 className="w-4 h-4 text-green-600" />
-                              ) : (
-                                <Minus className="w-4 h-4 text-gray-400" />
-                              )
-                            ) : (
-                              <span className="text-gray-400 text-xs">-</span>
-                            )}
-                          </td>
-                          <td className="p-2">
-                            {isLoading ? (
-                              <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
-                            ) : analyzed ? (
-                              <span className="text-sm text-gray-700">
-                                {analyzed.store_search_volume ? analyzed.store_search_volume.toLocaleString() : '0'}
-                              </span>
-                            ) : (
-                              <span className="text-gray-400 text-xs">-</span>
-                            )}
-                          </td>
-                          <td className="p-2 max-w-[200px]">
-                            {isLoading ? (
-                              <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
-                            ) : analyzed ? (
-                              <span className="text-xs text-gray-600 line-clamp-2" title={analyzed.important_review || '없음'}>
-                                {analyzed.important_review || '-'}
-                              </span>
-                            ) : (
-                              <span className="text-gray-400 text-xs">-</span>
-                            )}
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
         </>
       )}
-    </div>
+
+      {/* Footer */}
+      <Paper p="md" mt="xl" style={{ backgroundColor: '#f8f9fa', textAlign: 'center' }}>
+        <Text size="xs" c="dimmed">
+          © {new Date().getFullYear()} Egurado Competitor Analysis Report • Generated on {new Date().toLocaleString('ko-KR')}
+        </Text>
+      </Paper>
+    </Container>
   )
 }
 
-// 비교 메트릭 컴포넌트 (개선된 가독성 - Top 5 & Top 20)
-function ComparisonMetric({
+// 비교 메트릭 카드 컴포넌트
+function ComparisonMetricCard({
   label,
   myValue,
-  avgValueTop5,
-  avgValueTop20,
-  statusTop5,
-  statusTop20,
+  avgValue,
+  status,
   unit,
 }: {
   label: string
   myValue: number
-  avgValueTop5: number
-  avgValueTop20: number
-  statusTop5: "good" | "bad"
-  statusTop20: "good" | "bad"
+  avgValue: number
+  status: "good" | "bad"
   unit: string
 }) {
-  const diffTop5 = Math.abs(myValue - avgValueTop5)
-  const diffTop20 = Math.abs(myValue - avgValueTop20)
-  const isHigherTop5 = myValue > avgValueTop5
-  const isHigherTop20 = myValue > avgValueTop20
-  
-  // 전체 상태는 top5 기준으로 결정 (더 엄격한 기준)
-  const overallStatus = statusTop5
+  const diff = Math.abs(myValue - avgValue)
+  const isHigher = myValue > avgValue
   
   return (
-    <div className={`rounded-lg border-2 p-5 ${
-      overallStatus === "good" 
-        ? "bg-green-50 border-green-200" 
-        : "bg-red-50 border-red-200"
-    }`}>
-      <div className="flex items-center gap-2 mb-3">
-        {overallStatus === "good" ? (
-          <TrendingUp className="w-5 h-5 text-green-600" />
+    <Card
+      shadow="sm"
+      padding="lg"
+      radius="md"
+      style={{
+        height: '100%',
+        border: `2px solid ${status === "good" ? '#2ecc71' : '#e74c3c'}`,
+        backgroundColor: status === "good" ? '#d5f4e6' : '#fadbd8'
+      }}
+    >
+      <Group mb="md">
+        {status === "good" ? (
+          <TrendingUp size={24} color="#2ecc71" />
         ) : (
-          <TrendingDown className="w-5 h-5 text-red-600" />
+          <TrendingDown size={24} color="#e74c3c" />
         )}
-        <h4 className="font-semibold text-gray-900">{label}</h4>
-      </div>
+        <Text fw={600}>{label}</Text>
+      </Group>
       
-      <div className="space-y-2">
-        {/* Top 5 비교 */}
-        <p className="text-base text-gray-800">
-          <span className="font-medium text-gray-700">상위 5개</span> 매장 평균보다{" "}
-          <span className={`font-bold ${
-            statusTop5 === "good" ? "text-green-700" : "text-red-700"
-          }`}>
-            {diffTop5.toFixed(1)}{unit}
-          </span>
+      <Stack gap="xs">
+        <Text size="sm">
+          경쟁매장 평균보다{" "}
+          <Text component="span" fw={700} c={status === "good" ? "green" : "red"}>
+            {diff.toFixed(1)}{unit}
+          </Text>
           {" "}
-          <span className={`font-medium ${
-            statusTop5 === "good" ? "text-green-700" : "text-red-700"
-          }`}>
-            {isHigherTop5 ? "높습니다" : "낮습니다"}
-          </span>
-        </p>
+          <Text component="span" fw={600} c={status === "good" ? "green" : "red"}>
+            {isHigher ? "높습니다" : "낮습니다"}
+          </Text>
+        </Text>
         
-        {/* Top 20 비교 */}
-        <p className="text-base text-gray-800">
-          <span className="font-medium text-gray-700">상위 20개</span> 매장 평균보다{" "}
-          <span className={`font-bold ${
-            statusTop20 === "good" ? "text-green-700" : "text-red-700"
-          }`}>
-            {diffTop20.toFixed(1)}{unit}
-          </span>
-          {" "}
-          <span className={`font-medium ${
-            statusTop20 === "good" ? "text-green-700" : "text-red-700"
-          }`}>
-            {isHigherTop20 ? "높습니다" : "낮습니다"}
-          </span>
-        </p>
-        
-        <div className="flex items-center justify-between pt-2 border-t border-gray-200">
-          <span className="text-sm font-medium text-gray-700">우리 매장</span>
-          <span className="text-base font-bold text-gray-900">
-            {myValue.toFixed(1)}{unit}
-          </span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '8px', borderTop: '1px solid #dee2e6' }}>
+          <Text size="sm" fw={600}>우리 매장</Text>
+          <Text size="sm" fw={700}>{myValue.toFixed(1)}{unit}</Text>
         </div>
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-gray-600">경쟁사 평균 (Top 5)</span>
-          <span className="text-sm font-medium text-gray-600">
-            {avgValueTop5.toFixed(1)}{unit}
-          </span>
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <Text size="sm" c="dimmed">경쟁사 평균</Text>
+          <Text size="sm" c="dimmed" fw={600}>{avgValue.toFixed(1)}{unit}</Text>
         </div>
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-gray-600">경쟁사 평균 (Top 20)</span>
-          <span className="text-sm font-medium text-gray-600">
-            {avgValueTop20.toFixed(1)}{unit}
-          </span>
-        </div>
-      </div>
-    </div>
+      </Stack>
+    </Card>
   )
 }
