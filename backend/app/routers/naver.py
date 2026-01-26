@@ -760,22 +760,22 @@ async def delete_keyword(keyword_id: UUID, current_user: dict = Depends(get_curr
                 logger.error(f"[Delete Keyword] RPC returned error: {response_data.get('message')}")
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                    detail=response_data.get('message', '키워드를 찾을 수 없습니다.')
-                )
-            
-            # 성공
-            keyword_name = response_data.get('keyword', 'Unknown')
-            deleted_trackers = response_data.get('deleted_trackers', 0)
-            deleted_history = response_data.get('deleted_history', 0)
-            deleted_keywords = response_data.get('deleted_keywords', 0)
-        
-            logger.info(
-                f"[Delete Keyword] Successfully deleted: "
-                f"keyword='{keyword_name}', "
-                f"trackers={deleted_trackers}, "
-                f"history={deleted_history}, "
-                f"keywords={deleted_keywords}"
+                detail=response_data.get('message', '키워드를 찾을 수 없습니다.')
             )
+        
+        # 성공
+        keyword_name = response_data.get('keyword', 'Unknown')
+        deleted_trackers = response_data.get('deleted_trackers', 0)
+        deleted_history = response_data.get('deleted_history', 0)
+        deleted_keywords = response_data.get('deleted_keywords', 0)
+        
+        logger.info(
+            f"[Delete Keyword] Successfully deleted: "
+            f"keyword='{keyword_name}', "
+            f"trackers={deleted_trackers}, "
+            f"history={deleted_history}, "
+            f"keywords={deleted_keywords}"
+        )
         
         return {
             "status": "success",
@@ -783,12 +783,6 @@ async def delete_keyword(keyword_id: UUID, current_user: dict = Depends(get_curr
             "keyword_id": str(keyword_id),
             "keyword": keyword_name
         }
-        else:
-            logger.error(f"[Delete Keyword] RPC returned empty data")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="키워드 삭제에 실패했습니다."
-            )
         
     except HTTPException:
         raise
