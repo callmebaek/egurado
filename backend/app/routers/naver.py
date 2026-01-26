@@ -2,7 +2,7 @@
 네이버 플레이스 관련 API 라우터
 (경쟁매장 분석 포함)
 """
-from fastapi import APIRouter, HTTPException, status, Query, Depends
+from fastapi import APIRouter, HTTPException, status, Query, Depends, Header
 from pydantic import BaseModel
 from typing import List, Dict, Optional, Any
 from uuid import UUID
@@ -1157,7 +1157,7 @@ async def get_place_details(
     mode: str = "complete", 
     store_name: str = None,
     store_id: Optional[UUID] = None,
-    current_user: dict = Depends(get_current_user)
+    authorization: Optional[str] = Header(None)
 ):
     """
     플레이스 상세 정보 조회 (진단용)
@@ -1169,10 +1169,10 @@ async def get_place_details(
             - "standard": 표준 진단 (GraphQL + HTML, 3-5초) - 미구현
             - "complete": 완전 진단 (모든 데이터, 5-10초)
         store_name: 매장명 (선택, 제공하면 검색 API 사용으로 정확도 향상)
-        store_id: 매장 ID (선택, 제공하면 진단 히스토리 저장)
+        store_id: 매장 ID (선택, 제공하면 진단 히스토리 저장, 인증 필요)
     """
     try:
-        logger.info(f"[플레이스 진단] 요청: place_id={place_id}, mode={mode}, store_name={store_name}")
+        logger.info(f"[플레이스 진단] 요청: place_id={place_id}, mode={mode}, store_name={store_name}, store_id={store_id}")
         
         # 완전 진단 서비스 사용
         from app.services.naver_complete_diagnosis_service import complete_diagnosis_service
@@ -1202,26 +1202,39 @@ async def get_place_details(
         logger.info(f"[플레이스 진단] 채워진 정보: {filled_count}/{total_count} ({fill_rate:.1f}%)")
         logger.info(f"[플레이스 진단] 평가 점수: {diagnosis_result['total_score']}/{diagnosis_result['max_score']}점 ({diagnosis_result['grade']}등급)")
         
-        # 진단 히스토리 저장 (store_id가 제공된 경우에만)
-        if store_id and current_user:
+        # 진단 히스토리 저장 (store_id와 authorization이 제공된 경우에만)
+        if store_id and authorization:
             try:
+                # Authorization 헤더에서 토큰 추출
+                token = authorization.replace("Bearer ", "") if authorization.startswith("Bearer ") else authorization
+                
+                # Supabase 클라이언트로 사용자 정보 확인
                 supabase = get_supabase_client()
-                history_data = {
-                    "user_id": str(current_user["id"]),
-                    "store_id": str(store_id),
-                    "place_id": place_id,
-                    "store_name": details.get("name", "Unknown"),
-                    "total_score": diagnosis_result["total_score"],
-                    "max_score": diagnosis_result["max_score"],
-                    "grade": diagnosis_result["grade"],
-                    "diagnosis_result": diagnosis_result,
-                    "place_details": details
-                }
-                supabase.table("diagnosis_history").insert(history_data).execute()
-                logger.info(f"[진단 히스토리] 저장 완료: store_id={store_id}, user_id={current_user['id']}")
+                user_response = supabase.auth.get_user(token)
+                
+                if user_response and user_response.user:
+                    user_id = user_response.user.id
+                    
+                    history_data = {
+                        "user_id": str(user_id),
+                        "store_id": str(store_id),
+                        "place_id": place_id,
+                        "store_name": details.get("name", "Unknown"),
+                        "total_score": diagnosis_result["total_score"],
+                        "max_score": diagnosis_result["max_score"],
+                        "grade": diagnosis_result["grade"],
+                        "diagnosis_result": diagnosis_result,
+                        "place_details": details
+                    }
+                    supabase.table("diagnosis_history").insert(history_data).execute()
+                    logger.info(f"[진단 히스토리] 저장 완료: store_id={store_id}, user_id={user_id}")
+                else:
+                    logger.warning(f"[진단 히스토리] 유효하지 않은 토큰, 히스토리 저장 건너뜀")
             except Exception as e:
                 # 히스토리 저장 실패해도 진단 결과는 반환 (기존 기능에 영향 없음)
                 logger.error(f"[진단 히스토리] 저장 실패: {str(e)}")
+        elif store_id and not authorization:
+            logger.info(f"[진단 히스토리] Authorization 헤더 없음, 히스토리 저장 건너뜀")
         
         return {
             "status": "success",

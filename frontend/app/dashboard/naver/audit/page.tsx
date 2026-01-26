@@ -236,11 +236,14 @@ export default function AuditPage() {
       const url = api.naver.analyzePlaceDetails(selectedStore.place_id, selectedStore.name, selectedStore.id)
       console.log("📡 API URL:", url)
       
-      const response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
-        }
-      })
+      const token = getToken()
+      const headers: Record<string, string> = {}
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+      
+      const response = await fetch(url, { headers })
       console.log("📥 Response status:", response.status)
 
       if (!response.ok) {
@@ -288,7 +291,11 @@ export default function AuditPage() {
     setDiagnosisHistory([])
     
     try {
-      const token = (await supabase.auth.getSession()).data.session?.access_token
+      const token = getToken()
+      if (!token) {
+        throw new Error("로그인이 필요합니다.")
+      }
+      
       const url = api.naver.diagnosisHistory(store.id)
       
       const response = await fetch(url, {
@@ -321,7 +328,11 @@ export default function AuditPage() {
     setIsLoadingHistoryDetail(true)
     
     try {
-      const token = (await supabase.auth.getSession()).data.session?.access_token
+      const token = getToken()
+      if (!token) {
+        throw new Error("로그인이 필요합니다.")
+      }
+      
       const url = api.naver.diagnosisHistoryDetail(historyId)
       
       const response = await fetch(url, {
