@@ -736,10 +736,10 @@ export default function AuditPage() {
                     <td className="p-4 font-semibold bg-orange-50 text-orange-900 border-r">메뉴</td>
                     <td className="p-4 text-gray-700">등록된 메뉴</td>
                     <td className="p-4">
-                      {placeDetails.menu_list && placeDetails.menu_list.length > 0 ? (
+                      {placeDetails.menus && placeDetails.menus.length > 0 ? (
                         <div className="text-sm space-y-2 max-h-96 overflow-y-auto border border-gray-200 rounded p-3 bg-gray-50">
-                          <div className="font-bold mb-2 sticky top-0 bg-gray-50 text-gray-900">총 {placeDetails.menu_list.length}개</div>
-                          {placeDetails.menu_list.map((menu: any, idx: number) => (
+                          <div className="font-bold mb-2 sticky top-0 bg-gray-50 text-gray-900">총 {placeDetails.menus.length}개</div>
+                          {placeDetails.menus.map((menu: any, idx: number) => (
                             <div key={idx} className="border-l-3 border-orange-400 pl-3 py-1">
                               <div className="font-semibold text-gray-900">{menu.name}</div>
                               {menu.price && <div className="text-xs text-gray-600">{Number(menu.price).toLocaleString()}원</div>}
