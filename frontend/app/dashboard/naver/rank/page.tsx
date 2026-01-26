@@ -291,7 +291,43 @@ export default function NaverRankPage() {
     }
   }, [hasStores, tierLoaded, getToken, toast])
 
-  // 키워드 목록 로드 함수 (외부에서도 호출 가능)
+  // 전체 키워드 수 계산 함수 (병렬 처리로 최적화) ⭐
+  const calculateTotalKeywordCount = async () => {
+    try {
+      const token = getToken()
+      if (!token) return
+      
+      const allStoresResponse = await fetch(api.stores.list(), {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      
+      if (allStoresResponse.ok) {
+        const allStoresData = await allStoresResponse.json()
+        const naverStores = allStoresData.stores.filter((s: Store) => s.platform === "naver")
+        
+        // 🚀 병렬 처리: 모든 매장의 키워드를 동시에 가져옴
+        const keywordPromises = naverStores.map((store: Store) =>
+          fetch(api.naver.keywords(store.id))
+            .then(res => res.ok ? res.json() : { keywords: [] })
+            .catch(() => ({ keywords: [] }))
+        )
+        
+        const keywordResults = await Promise.all(keywordPromises)
+        const totalKeywords = keywordResults.reduce((sum, data) => 
+          sum + (data.keywords || []).length, 0
+        )
+        
+        setCurrentKeywordCount(totalKeywords)
+        console.log(`📊 전체 키워드 수: ${totalKeywords}/${keywordLimit} (tier: ${subscriptionTier})`)
+      }
+    } catch (error) {
+      console.error("키워드 수 계산 실패:", error)
+    }
+  }
+
+  // 키워드 목록 로드 함수 (최적화됨) ⭐
   const loadKeywords = async (storeId?: string) => {
     const targetStoreId = storeId || selectedStoreId
     
@@ -305,31 +341,7 @@ export default function NaverRankPage() {
       const token = getToken()
       if (!token) return
       
-      // 모든 매장의 키워드 개수 계산 (전체 quota) ⭐
-      const allStoresResponse = await fetch(api.stores.list(), {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
-      
-      if (allStoresResponse.ok) {
-        const allStoresData = await allStoresResponse.json()
-        const naverStores = allStoresData.stores.filter((s: Store) => s.platform === "naver")
-        
-        // 모든 매장의 키워드 수 합산
-        let totalKeywords = 0
-        for (const store of naverStores) {
-          const keywordResponse = await fetch(api.naver.keywords(store.id))
-          if (keywordResponse.ok) {
-            const keywordData = await keywordResponse.json()
-            totalKeywords += (keywordData.keywords || []).length
-          }
-        }
-        setCurrentKeywordCount(totalKeywords)
-        console.log(`📊 전체 키워드 수: ${totalKeywords}/${keywordLimit} (tier: ${subscriptionTier})`)
-      }
-      
-      // 현재 선택된 매장의 키워드 로드
+      // 🚀 현재 선택된 매장의 키워드만 로드 (빠름)
       const response = await fetch(api.naver.keywords(targetStoreId))
       
       if (response.ok) {
@@ -344,10 +356,19 @@ export default function NaverRankPage() {
     }
   }
 
-  // 선택된 매장의 키워드 목록 로드
+  // 선택된 매장의 키워드 목록 로드 (최적화) ⭐
   useEffect(() => {
-    loadKeywords()
-  }, [selectedStoreId, keywordLimit, tierLoaded])
+    if (selectedStoreId && tierLoaded) {
+      loadKeywords()
+    }
+  }, [selectedStoreId, tierLoaded])
+
+  // 전체 키워드 수 계산 (초기 로드 시 한 번만) ⭐
+  useEffect(() => {
+    if (tierLoaded && stores.length > 0) {
+      calculateTotalKeywordCount()
+    }
+  }, [tierLoaded, stores.length])
 
   // 순위 조회
   const handleCheckRank = async () => {
@@ -420,6 +441,8 @@ export default function NaverRankPage() {
 
       // 키워드 목록 새로고침
       await loadKeywords(selectedStoreId)
+      // 🚀 전체 키워드 수 업데이트 (병렬 처리로 빠름)
+      calculateTotalKeywordCount()
       
       // 방금 조회한 키워드의 total_count를 total_results로 즉시 업데이트
       if (data.total_count && keyword) {
@@ -664,6 +687,8 @@ export default function NaverRankPage() {
       if (selectedStoreId) {
         await loadKeywords(selectedStoreId)
         console.log("[DELETE] 키워드 목록 새로고침 완료")
+        // 🚀 전체 키워드 수 업데이트 (병렬 처리로 빠름)
+        calculateTotalKeywordCount()
       } else {
         console.error("[DELETE] selectedStoreId가 없습니다!")
       }
