@@ -215,6 +215,76 @@ class NaverPlaceNewAPIService:
             raise Exception(f"신API와 크롤링 모두 실패: {str(e)}")
 
 
+    async def check_naverpay_from_search_html(self, place_id: str, store_name: str) -> bool:
+        """검색 결과 HTML에서 네이버페이 아이콘 확인
+        
+        Args:
+            place_id: 네이버 플레이스 ID
+            store_name: 매장명
+            
+        Returns:
+            네이버페이 사용 여부 (True: 사용중, False: 미사용)
+        """
+        logger.info(f"[네이버페이 체크] place_id={place_id}, store_name={store_name}")
+        
+        try:
+            # 모바일 검색 결과 페이지 크롤링
+            search_url = f"https://m.search.naver.com/search.naver?query={store_name}&sm=mtb_hty.top&where=m&oquery={store_name}&tqi=iuxI0lpzLihsslP8MiossssssKh-479030"
+            
+            headers = {
+                "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Language": "ko-KR,ko;q=0.9",
+                "Accept-Encoding": "gzip, deflate, br",
+                "Connection": "keep-alive",
+            }
+            
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                response = await client.get(search_url, headers=headers, follow_redirects=True)
+                response.raise_for_status()
+                html = response.text
+            
+            # place_id가 HTML에 있는지 확인
+            if place_id not in html:
+                logger.warning(f"[네이버페이 체크] place_id가 검색 결과에 없음")
+                return False
+            
+            # place_id 위치 찾기
+            place_id_pattern = f'/place/{place_id}/'
+            place_id_idx = html.find(place_id_pattern)
+            
+            if place_id_idx == -1:
+                logger.warning(f"[네이버페이 체크] place_id 패턴을 찾을 수 없음")
+                return False
+            
+            # place_id 주변 4000자 확인 (앞 2000자 + 뒤 2000자)
+            start_idx = max(0, place_id_idx - 2000)
+            end_idx = min(len(html), place_id_idx + 2000)
+            context = html[start_idx:end_idx]
+            
+            # 네이버페이 아이콘 HTML 패턴 확인
+            # 사용자 제공 패턴: <span class="urQl1"><span class="place_blind">네이버페이</span><svg
+            naverpay_patterns = [
+                '<span class="urQl1"><span class="place_blind">네이버페이</span>',
+                'class="place_blind">네이버페이</span>',
+                '<span class="place_blind">네이버페이</span><svg',
+            ]
+            
+            has_naverpay = any(pattern in context for pattern in naverpay_patterns)
+            
+            if has_naverpay:
+                logger.info(f"[네이버페이 체크] ✅ 네이버페이 사용 중: {store_name}")
+            else:
+                logger.info(f"[네이버페이 체크] ❌ 네이버페이 미사용: {store_name}")
+            
+            return has_naverpay
+            
+        except Exception as e:
+            logger.error(f"[네이버페이 체크] 오류: {str(e)}")
+            # 오류 시 False 반환 (보수적 판단)
+            return False
+
+
 # 싱글톤 인스턴스
 search_service_new_api = NaverPlaceNewAPIService()
 # 하위 호환성을 위한 별칭

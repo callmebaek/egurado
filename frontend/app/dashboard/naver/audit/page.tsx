@@ -648,7 +648,7 @@ export default function AuditPage() {
                   <tr className="border-b hover:bg-gray-50">
                     <td className="p-4 font-semibold bg-purple-50 text-purple-900 border-r">결제 수단</td>
                     <td className="p-4 text-gray-700">지원 결제 방식</td>
-                    <td className="p-4">
+                    <td className="p-4" colSpan={2}>
                       {(placeDetails as any).payment_methods && (placeDetails as any).payment_methods.length > 0 ? (
                         <div className="flex flex-wrap gap-2">
                           {(placeDetails as any).payment_methods.map((method: string, idx: number) => (
@@ -659,7 +659,6 @@ export default function AuditPage() {
                         </div>
                       ) : <span className="text-gray-400 text-sm">정보 없음</span>}
                     </td>
-                    {renderDiagnosisCell('naverpay')}
                   </tr>
 
                   {/* 7. 마이크로 리뷰 (한줄평) */}
@@ -856,7 +855,25 @@ export default function AuditPage() {
                     {renderDiagnosisCell('place_plus')}
                   </tr>
 
-                  {/* 16. 스마트콜 */}
+                  {/* 16. 네이버페이 ⭐ */}
+                  <tr className="border-b">
+                    <td className="p-4 font-semibold bg-green-50 text-green-900">네이버페이</td>
+                    <td className="p-4 text-gray-700">검색 결과 네이버페이 아이콘 표시</td>
+                    <td className="p-4">
+                      {(placeDetails as any).has_naverpay_in_search ? (
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-green-100 text-green-800">
+                          ✓ 사용 중
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-red-100 text-red-600">
+                          미사용
+                        </span>
+                      )}
+                    </td>
+                    {renderDiagnosisCell('naverpay')}
+                  </tr>
+
+                  {/* 17. 스마트콜 */}
                   <tr className="border-b">
                     <td className="p-4 font-semibold bg-indigo-50 text-indigo-900">스마트콜</td>
                     <td className="p-4 text-gray-700">사용 여부</td>

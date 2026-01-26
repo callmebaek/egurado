@@ -456,32 +456,48 @@ class NaverPlaceDiagnosisEngine:
         }
     
     def _eval_naverpay(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        """네이버페이 평가 (6점)"""
-        # 결제 수단에서 네이버페이 확인
+        """네이버페이 평가 (6점)
+        
+        ⭐ 개선: 검색 결과 HTML에서 실제 네이버페이 아이콘 확인
+        - 사용중: S등급 (6점 만점)
+        - 미사용: D등급 (0점)
+        """
+        # 검색 결과 HTML에서 확인한 네이버페이 사용 여부 (정확함) ⭐
+        has_naverpay_in_search = data.get("has_naverpay_in_search", False)
+        
+        # 결제 수단 정보 (참고용)
         payment_methods = data.get("payment_methods", []) or []
-        supports_naverpay = "네이버페이" in payment_methods or "NAVER PAY" in str(payment_methods).upper()
         
         max_score = self.WEIGHTS["naverpay"]
-        score = max_score if supports_naverpay else 0
-        status = "PASS" if supports_naverpay else "FAIL"
+        
+        # Binary 판단: 사용중 = S등급 (6점), 미사용 = D등급 (0점) ⭐
+        if has_naverpay_in_search:
+            score = max_score  # 6점
+            status = "PASS"
+            grade = "S"  # ⭐ S등급
+        else:
+            score = 0  # 0점
+            status = "FAIL"
+            grade = "D"  # ⭐ D등급
         
         recommendations = []
-        if not supports_naverpay:
+        if not has_naverpay_in_search:
             recommendations.append({
                 "action": "네이버페이 결제 도입",
                 "method": "네이버페이 가맹점 신청 → POS 연동 또는 QR 결제 도입",
                 "estimated_gain": 6,
                 "priority": "high",
-                "note": "네이버 플레이스 노출 우대 혜택",
+                "note": "네이버 플레이스 노출 우대 혜택, 검색 결과에 네이버페이 아이콘 표시",
             })
         
         return {
             "score": score,
             "max_score": max_score,
             "status": status,
+            "grade": grade,  # ⭐ 등급 추가
             "evidence": {
-                "supports_naverpay": supports_naverpay,
-                "payment_methods": payment_methods,
+                "has_naverpay_in_search": has_naverpay_in_search,  # ⭐ 새로운 필드
+                "payment_methods": payment_methods,  # 참고용
             },
             "recommendations": recommendations,
         }

@@ -47,6 +47,21 @@ class NaverCompleteDiagnosisService:
         # 모든 정보 통합
         complete_info = self._merge_all_info(place_id, graphql_info, html_info, additional_info)
         
+        # 네이버페이 체크 (검색 결과 HTML에서 확인) ⭐
+        final_store_name = store_name or complete_info.get("name")
+        if final_store_name:
+            try:
+                has_naverpay = await search_service_api_unofficial.check_naverpay_from_search_html(
+                    place_id, final_store_name
+                )
+                complete_info["has_naverpay_in_search"] = has_naverpay
+                logger.info(f"[완전진단] 네이버페이: {'사용중' if has_naverpay else '미사용'}")
+            except Exception as e:
+                logger.error(f"[완전진단] 네이버페이 체크 오류: {str(e)}")
+                complete_info["has_naverpay_in_search"] = False
+        else:
+            complete_info["has_naverpay_in_search"] = False
+        
         # 통계 로깅
         filled_fields = sum(1 for v in complete_info.values() if self._is_filled(v))
         total_fields = len(complete_info)
