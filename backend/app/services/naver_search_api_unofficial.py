@@ -273,28 +273,40 @@ class NaverPlaceNewAPIService:
             
             logger.info(f"[네이버페이 체크] 검색 범위: {start_idx}~{end_idx} (총 {len(context)}자)")
             
-            # 네이버페이 아이콘 HTML 패턴 확인
-            # 사용자 제공 패턴: <span class="urQl1"><span class="place_blind">네이버페이</span><svg
-            naverpay_patterns = [
-                '<span class="urQl1"><span class="place_blind">네이버페이</span>',
-                'class="place_blind">네이버페이</span>',
-                '<span class="place_blind">네이버페이</span><svg',
-            ]
+            # 네이버페이 정보는 JSON 데이터에 포함됨
+            # 실제 패턴: "hasNPay":true 또는 "hasNPay":false
+            # 이전 HTML 패턴은 구식이므로 JSON 패턴 사용
             
-            # 각 패턴별로 확인
-            found_patterns = []
-            for pattern in naverpay_patterns:
-                if pattern in context:
-                    found_patterns.append(pattern)
+            # place_id와 연결된 JSON 객체에서 hasNPay 찾기
+            # JSON 형식: {"id":1132863024,"name":"...","hasNPay":true,...}
             
-            has_naverpay = len(found_patterns) > 0
+            # 방법 1: place_id 주변에서 hasNPay 확인
+            has_npay_true = f'"hasNPay":true' in context
+            has_npay_false = f'"hasNPay":false' in context
+            
+            # 방법 2: 더 넓은 범위에서 확인 (place_id와 hasNPay가 멀리 떨어져 있을 수 있음)
+            if not has_npay_true and not has_npay_false:
+                # place_id를 포함하는 JSON 객체 찾기
+                # {"id":1132863024 형태 찾기
+                json_pattern = f'"id":{place_id}'
+                if json_pattern in html:
+                    json_start = html.find(json_pattern)
+                    # 이 객체의 시작과 끝 찾기 (대략적으로 앞뒤 5000자)
+                    json_context_start = max(0, json_start - 1000)
+                    json_context_end = min(len(html), json_start + 5000)
+                    json_context = html[json_context_start:json_context_end]
+                    
+                    has_npay_true = '"hasNPay":true' in json_context
+                    has_npay_false = '"hasNPay":false' in json_context
+                    
+                    logger.info(f"[네이버페이 체크] JSON 객체에서 확인 - hasNPay:true={has_npay_true}, hasNPay:false={has_npay_false}")
+            
+            has_naverpay = has_npay_true
             
             if has_naverpay:
-                logger.info(f"[네이버페이 체크] ✅ 네이버페이 사용 중: {store_name} (매칭 패턴: {len(found_patterns)}개)")
+                logger.info(f"[네이버페이 체크] ✅ 네이버페이 사용 중: {store_name} (JSON 데이터 확인)")
             else:
-                # 네이버페이가 없을 때 더 상세한 로깅
-                naverpay_text_count = context.count('네이버페이')
-                logger.info(f"[네이버페이 체크] ❌ 네이버페이 미사용: {store_name} ('네이버페이' 텍스트: {naverpay_text_count}회)")
+                logger.info(f"[네이버페이 체크] ❌ 네이버페이 미사용: {store_name} (hasNPay:true 없음)")
             
             return has_naverpay
             
