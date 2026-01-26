@@ -459,11 +459,11 @@ export default function AuditPage() {
           </Group>
         </Paper>
 
-        {/* Executive Summary */}
+        {/* 종합 요약 */}
         {diagnosisResult && (
           <Paper shadow="md" p="xl" mb="xl" style={{ border: '2px solid #635bff' }}>
             <Title order={2} mb="xl" style={{ color: '#212529' }}>
-              📊 Executive Summary
+              📊 종합 요약
             </Title>
             
             <Grid>
@@ -548,11 +548,11 @@ export default function AuditPage() {
           </Paper>
         )}
 
-        {/* Detailed Analysis - 항목별 점수 */}
+        {/* 항목별 상세 분석 */}
         {diagnosisResult && (
           <Paper shadow="sm" p="xl" mb="xl">
             <Title order={2} mb="xl" style={{ color: '#212529' }}>
-              📈 Detailed Analysis
+              📈 항목별 상세 분석
             </Title>
             
             <Grid>
@@ -592,11 +592,11 @@ export default function AuditPage() {
           </Paper>
         )}
 
-        {/* Priority Recommendations */}
+        {/* 우선순위 개선 권장사항 */}
         {diagnosisResult && diagnosisResult.priority_actions.length > 0 && (
           <Paper shadow="sm" p="xl" mb="xl">
             <Title order={2} mb="xl" style={{ color: '#212529' }}>
-              🎯 Priority Recommendations
+              🎯 우선순위 개선 권장사항
             </Title>
             
             <Timeline active={diagnosisResult.priority_actions.length} bulletSize={24} lineWidth={2}>
@@ -637,230 +637,695 @@ export default function AuditPage() {
           </Paper>
         )}
 
-        {/* Detailed Findings Table */}
+        {/* 상세 정보 및 진단 */}
         <Paper shadow="sm" p="xl" mb="xl">
           <Title order={2} mb="xl" style={{ color: '#212529' }}>
-            📋 Detailed Findings
+            📋 상세 정보 및 진단
           </Title>
           
-          <div style={{ overflowX: 'auto' }}>
-            <Table striped highlightOnHover withTableBorder withColumnBorders>
-              <Table.Thead>
-                <Table.Tr>
-                  <Table.Th style={{ width: '160px', fontWeight: 700 }}>카테고리</Table.Th>
-                  <Table.Th style={{ width: '200px', fontWeight: 700 }}>항목</Table.Th>
-                  <Table.Th style={{ fontWeight: 700 }}>현재 상태</Table.Th>
-                  <Table.Th style={{ width: '120px', fontWeight: 700 }}>등급</Table.Th>
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {/* 기본 정보 */}
-                <Table.Tr>
-                  <Table.Td rowSpan={6} style={{ backgroundColor: '#e3f2fd', fontWeight: 600 }}>기본 정보</Table.Td>
-                  <Table.Td>매장명</Table.Td>
-                  <Table.Td>{placeDetails.name}</Table.Td>
-                  <Table.Td><Text size="xs" c="dimmed">-</Text></Table.Td>
-                </Table.Tr>
-                <Table.Tr>
-                  <Table.Td>카테고리</Table.Td>
-                  <Table.Td>{placeDetails.category}</Table.Td>
-                  <Table.Td><Text size="xs" c="dimmed">-</Text></Table.Td>
-                </Table.Tr>
-                <Table.Tr>
-                  <Table.Td>주소</Table.Td>
-                  <Table.Td>{placeDetails.address}</Table.Td>
-                  <Table.Td><Text size="xs" c="dimmed">-</Text></Table.Td>
-                </Table.Tr>
-                <Table.Tr>
-                  <Table.Td>도로명주소</Table.Td>
-                  <Table.Td>{placeDetails.road_address || '-'}</Table.Td>
-                  <Table.Td><Text size="xs" c="dimmed">-</Text></Table.Td>
-                </Table.Tr>
-                <Table.Tr>
-                  <Table.Td>전화번호</Table.Td>
-                  <Table.Td>{placeDetails.phone_number || '-'}</Table.Td>
-                  <Table.Td><Text size="xs" c="dimmed">-</Text></Table.Td>
-                </Table.Tr>
-                <Table.Tr>
-                  <Table.Td>플레이스 ID</Table.Td>
-                  <Table.Td>{placeDetails.place_id}</Table.Td>
-                  <Table.Td><Text size="xs" c="dimmed">-</Text></Table.Td>
-                </Table.Tr>
+          <Stack gap="md">
+            {/* 1. 기본 정보 */}
+            <Paper shadow="xs" p="lg" radius="md" style={{ border: '1px solid #e0e0e0' }}>
+              <Group mb="md">
+                <ThemeIcon size="lg" radius="md" color="blue" variant="light">
+                  <Store size={20} />
+                </ThemeIcon>
+                <div>
+                  <Text fw={700} size="lg">1. 기본 정보</Text>
+                  <Text size="xs" c="dimmed">플레이스 기본 정보 및 식별자</Text>
+                </div>
+              </Group>
+              <Table withTableBorder withColumnBorders highlightOnHover>
+                <Table.Tbody>
+                  <Table.Tr>
+                    <Table.Td style={{ width: '180px', backgroundColor: '#f8f9fa', fontWeight: 600 }}>매장명</Table.Td>
+                    <Table.Td>{placeDetails.name}</Table.Td>
+                    <Table.Td style={{ width: '100px', textAlign: 'center' }}>
+                      <Badge color="gray" size="sm">기본정보</Badge>
+                    </Table.Td>
+                  </Table.Tr>
+                  <Table.Tr>
+                    <Table.Td style={{ backgroundColor: '#f8f9fa', fontWeight: 600 }}>카테고리</Table.Td>
+                    <Table.Td>{placeDetails.category}</Table.Td>
+                    <Table.Td style={{ textAlign: 'center' }}>
+                      <Badge color="gray" size="sm">기본정보</Badge>
+                    </Table.Td>
+                  </Table.Tr>
+                  <Table.Tr>
+                    <Table.Td style={{ backgroundColor: '#f8f9fa', fontWeight: 600 }}>주소</Table.Td>
+                    <Table.Td>{placeDetails.address}</Table.Td>
+                    <Table.Td style={{ textAlign: 'center' }}>
+                      <Badge color="gray" size="sm">기본정보</Badge>
+                    </Table.Td>
+                  </Table.Tr>
+                  <Table.Tr>
+                    <Table.Td style={{ backgroundColor: '#f8f9fa', fontWeight: 600 }}>도로명주소</Table.Td>
+                    <Table.Td>{placeDetails.road_address || '-'}</Table.Td>
+                    <Table.Td style={{ textAlign: 'center' }}>
+                      <Badge color="gray" size="sm">기본정보</Badge>
+                    </Table.Td>
+                  </Table.Tr>
+                  <Table.Tr>
+                    <Table.Td style={{ backgroundColor: '#f8f9fa', fontWeight: 600 }}>전화번호</Table.Td>
+                    <Table.Td>{placeDetails.phone_number || '-'}</Table.Td>
+                    <Table.Td style={{ textAlign: 'center' }}>
+                      <Badge color="gray" size="sm">기본정보</Badge>
+                    </Table.Td>
+                  </Table.Tr>
+                  <Table.Tr>
+                    <Table.Td style={{ backgroundColor: '#f8f9fa', fontWeight: 600 }}>플레이스 ID</Table.Td>
+                    <Table.Td>{placeDetails.place_id}</Table.Td>
+                    <Table.Td style={{ textAlign: 'center' }}>
+                      <Badge color="gray" size="sm">기본정보</Badge>
+                    </Table.Td>
+                  </Table.Tr>
+                </Table.Tbody>
+              </Table>
+            </Paper>
 
-                {/* 평점 및 리뷰 */}
-                <Table.Tr>
-                  <Table.Td rowSpan={3} style={{ backgroundColor: '#e8f5e9', fontWeight: 600 }}>평점 및 리뷰</Table.Td>
-                  <Table.Td>방문자 평점</Table.Td>
-                  <Table.Td>{placeDetails.visitor_review_score || '-'}</Table.Td>
-                  <Table.Td><Text size="xs" c="dimmed">-</Text></Table.Td>
-                </Table.Tr>
-                <Table.Tr>
-                  <Table.Td>방문자 리뷰 수</Table.Td>
-                  <Table.Td>{(placeDetails.visitor_review_count || 0).toLocaleString()}개</Table.Td>
-                  <Table.Td>
-                    {diagnosisResult?.evaluations.visitor_reviews && (
-                      <Badge color={getGradeColor(diagnosisResult.evaluations.visitor_reviews.grade)}>
-                        {diagnosisResult.evaluations.visitor_reviews.grade}등급
-                      </Badge>
-                    )}
-                  </Table.Td>
-                </Table.Tr>
-                <Table.Tr>
-                  <Table.Td>블로그 리뷰 수</Table.Td>
-                  <Table.Td>{(placeDetails.blog_review_count || 0).toLocaleString()}개</Table.Td>
-                  <Table.Td>
-                    {diagnosisResult?.evaluations.blog_reviews && (
-                      <Badge color={getGradeColor(diagnosisResult.evaluations.blog_reviews.grade)}>
-                        {diagnosisResult.evaluations.blog_reviews.grade}등급
-                      </Badge>
-                    )}
-                  </Table.Td>
-                </Table.Tr>
+            {/* 2. 평점 및 리뷰 */}
+            <Paper shadow="xs" p="lg" radius="md" style={{ border: '1px solid #e0e0e0' }}>
+              <Group mb="md">
+                <ThemeIcon size="lg" radius="md" color="green" variant="light">
+                  <CheckCircle2 size={20} />
+                </ThemeIcon>
+                <div>
+                  <Text fw={700} size="lg">2. 평점 및 리뷰</Text>
+                  <Text size="xs" c="dimmed">방문자 평점 및 리뷰 통계</Text>
+                </div>
+              </Group>
+              <Table withTableBorder withColumnBorders highlightOnHover>
+                <Table.Tbody>
+                  <Table.Tr>
+                    <Table.Td style={{ width: '180px', backgroundColor: '#f8f9fa', fontWeight: 600 }}>방문자 평점</Table.Td>
+                    <Table.Td>
+                      {placeDetails.visitor_review_score ? (
+                        <Group gap="xs">
+                          <Text size="xl" fw={700} c="green">{placeDetails.visitor_review_score}</Text>
+                          <Text size="sm" c="dimmed">/ 5.0</Text>
+                        </Group>
+                      ) : '-'}
+                    </Table.Td>
+                    <Table.Td style={{ width: '100px', textAlign: 'center' }}>
+                      <Badge color="gray" size="sm">기본정보</Badge>
+                    </Table.Td>
+                  </Table.Tr>
+                  <Table.Tr>
+                    <Table.Td style={{ backgroundColor: '#f8f9fa', fontWeight: 600 }}>방문자 리뷰 수</Table.Td>
+                    <Table.Td>
+                      <Text fw={600}>{(placeDetails.visitor_review_count || 0).toLocaleString()}개</Text>
+                    </Table.Td>
+                    <Table.Td style={{ textAlign: 'center' }}>
+                      {diagnosisResult?.evaluations.visitor_reviews && (
+                        <Badge color={getGradeColor(diagnosisResult.evaluations.visitor_reviews.grade)} size="lg">
+                          {diagnosisResult.evaluations.visitor_reviews.grade}등급
+                        </Badge>
+                      )}
+                    </Table.Td>
+                  </Table.Tr>
+                  <Table.Tr>
+                    <Table.Td style={{ backgroundColor: '#f8f9fa', fontWeight: 600 }}>블로그 리뷰 수</Table.Td>
+                    <Table.Td>
+                      <Text fw={600}>{(placeDetails.blog_review_count || 0).toLocaleString()}개</Text>
+                    </Table.Td>
+                    <Table.Td style={{ textAlign: 'center' }}>
+                      {diagnosisResult?.evaluations.blog_reviews && (
+                        <Badge color={getGradeColor(diagnosisResult.evaluations.blog_reviews.grade)} size="lg">
+                          {diagnosisResult.evaluations.blog_reviews.grade}등급
+                        </Badge>
+                      )}
+                    </Table.Td>
+                  </Table.Tr>
+                </Table.Tbody>
+              </Table>
+            </Paper>
 
-                {/* 이미지 */}
-                <Table.Tr>
-                  <Table.Td rowSpan={2} style={{ backgroundColor: '#f3e5f5', fontWeight: 600 }}>이미지</Table.Td>
-                  <Table.Td>대표 이미지</Table.Td>
-                  <Table.Td>{placeDetails.image_url ? '있음' : '없음'}</Table.Td>
-                  <Table.Td rowSpan={2}>
-                    {diagnosisResult?.evaluations.images && (
-                      <Badge color={getGradeColor(diagnosisResult.evaluations.images.grade)}>
-                        {diagnosisResult.evaluations.images.grade}등급
-                      </Badge>
-                    )}
-                  </Table.Td>
-                </Table.Tr>
-                <Table.Tr>
-                  <Table.Td>전체 이미지 수</Table.Td>
-                  <Table.Td>{placeDetails.image_count || 0}개</Table.Td>
-                </Table.Tr>
+            {/* 3. 이미지 */}
+            <Paper shadow="xs" p="lg" radius="md" style={{ border: '1px solid #e0e0e0' }}>
+              <Group mb="md">
+                <ThemeIcon size="lg" radius="md" color="purple" variant="light">
+                  <FileText size={20} />
+                </ThemeIcon>
+                <div>
+                  <Text fw={700} size="lg">3. 이미지</Text>
+                  <Text size="xs" c="dimmed">대표 이미지 및 전체 이미지 수</Text>
+                </div>
+              </Group>
+              <Table withTableBorder withColumnBorders highlightOnHover>
+                <Table.Tbody>
+                  <Table.Tr>
+                    <Table.Td style={{ width: '180px', backgroundColor: '#f8f9fa', fontWeight: 600 }}>대표 이미지</Table.Td>
+                    <Table.Td>
+                      {placeDetails.image_url ? (
+                        <Badge color="green">✓ 있음</Badge>
+                      ) : (
+                        <Badge color="gray">없음</Badge>
+                      )}
+                    </Table.Td>
+                    <Table.Td style={{ width: '100px', textAlign: 'center' }} rowSpan={2}>
+                      {diagnosisResult?.evaluations.images && (
+                        <Badge color={getGradeColor(diagnosisResult.evaluations.images.grade)} size="lg">
+                          {diagnosisResult.evaluations.images.grade}등급
+                        </Badge>
+                      )}
+                    </Table.Td>
+                  </Table.Tr>
+                  <Table.Tr>
+                    <Table.Td style={{ backgroundColor: '#f8f9fa', fontWeight: 600 }}>전체 이미지 수</Table.Td>
+                    <Table.Td>
+                      <Text fw={600}>{placeDetails.image_count || 0}개</Text>
+                    </Table.Td>
+                  </Table.Tr>
+                </Table.Tbody>
+              </Table>
+            </Paper>
 
-                {/* 메뉴 */}
-                <Table.Tr>
-                  <Table.Td style={{ backgroundColor: '#fff3e0', fontWeight: 600 }}>메뉴</Table.Td>
-                  <Table.Td>등록된 메뉴</Table.Td>
-                  <Table.Td>
-                    {placeDetails.menus && placeDetails.menus.length > 0 ? (
-                      <div>
-                        <Text size="sm" fw={600} mb="xs">총 {placeDetails.menus.length}개</Text>
-                        <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
-                          {placeDetails.menus.slice(0, 5).map((menu: any, idx: number) => (
-                            <Paper key={idx} p="xs" mb="xs" style={{ backgroundColor: '#f8f9fa' }}>
-                              <Text size="sm" fw={600}>{menu.name}</Text>
-                              {menu.price && <Text size="xs" c="dimmed">{Number(menu.price).toLocaleString()}원</Text>}
-                              {menu.description && (
-                                <Text size="xs" c="dimmed" lineClamp={1}>{menu.description}</Text>
-                              )}
-                            </Paper>
-                          ))}
-                          {placeDetails.menus.length > 5 && (
-                            <Text size="xs" c="dimmed">외 {placeDetails.menus.length - 5}개</Text>
-                          )}
+            {/* 4. 메뉴 */}
+            <Paper shadow="xs" p="lg" radius="md" style={{ border: '1px solid #e0e0e0' }}>
+              <Group mb="md">
+                <ThemeIcon size="lg" radius="md" color="orange" variant="light">
+                  <FileText size={20} />
+                </ThemeIcon>
+                <div>
+                  <Text fw={700} size="lg">4. 메뉴</Text>
+                  <Text size="xs" c="dimmed">등록된 메뉴 및 가격 정보</Text>
+                </div>
+              </Group>
+              <Table withTableBorder withColumnBorders highlightOnHover>
+                <Table.Tbody>
+                  <Table.Tr>
+                    <Table.Td style={{ width: '180px', backgroundColor: '#f8f9fa', fontWeight: 600 }}>등록된 메뉴</Table.Td>
+                    <Table.Td>
+                      {placeDetails.menus && placeDetails.menus.length > 0 ? (
+                        <div>
+                          <Badge color="blue" size="lg" mb="md">총 {placeDetails.menus.length}개</Badge>
+                          <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                            {placeDetails.menus.map((menu: any, idx: number) => (
+                              <Paper key={idx} p="sm" mb="xs" style={{ backgroundColor: '#f8f9fa', border: '1px solid #e0e0e0' }}>
+                                <Text size="sm" fw={700}>{menu.name}</Text>
+                                {menu.price && <Text size="sm" c="blue" fw={600}>{Number(menu.price).toLocaleString()}원</Text>}
+                                {menu.description && (
+                                  <Text size="xs" c="dimmed" mt="xs">{menu.description}</Text>
+                                )}
+                              </Paper>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    ) : (
-                      <Text size="sm" c="dimmed">등록된 메뉴 없음</Text>
-                    )}
-                  </Table.Td>
-                  <Table.Td>
-                    {diagnosisResult?.evaluations.menus && (
-                      <Badge color={getGradeColor(diagnosisResult.evaluations.menus.grade)}>
-                        {diagnosisResult.evaluations.menus.grade}등급
-                      </Badge>
-                    )}
-                  </Table.Td>
-                </Table.Tr>
+                      ) : (
+                        <Badge color="gray">등록된 메뉴 없음</Badge>
+                      )}
+                    </Table.Td>
+                    <Table.Td style={{ width: '100px', textAlign: 'center' }}>
+                      {diagnosisResult?.evaluations.menus && (
+                        <Badge color={getGradeColor(diagnosisResult.evaluations.menus.grade)} size="lg">
+                          {diagnosisResult.evaluations.menus.grade}등급
+                        </Badge>
+                      )}
+                    </Table.Td>
+                  </Table.Tr>
+                </Table.Tbody>
+              </Table>
+            </Paper>
 
-                {/* 편의시설 */}
-                <Table.Tr>
-                  <Table.Td style={{ backgroundColor: '#fce4ec', fontWeight: 600 }}>편의시설</Table.Td>
-                  <Table.Td>편의시설 목록</Table.Td>
-                  <Table.Td>
-                    {(placeDetails as any).conveniences && (placeDetails as any).conveniences.length > 0 ? (
-                      <Group gap="xs">
-                        {(placeDetails as any).conveniences.map((item: string, idx: number) => (
-                          <Badge key={idx} size="sm" variant="light">{item}</Badge>
-                        ))}
-                      </Group>
-                    ) : (
-                      <Text size="sm" c="dimmed">정보 없음</Text>
-                    )}
-                  </Table.Td>
-                  <Table.Td>
-                    {diagnosisResult?.evaluations.conveniences && (
-                      <Badge color={getGradeColor(diagnosisResult.evaluations.conveniences.grade)}>
-                        {diagnosisResult.evaluations.conveniences.grade}등급
-                      </Badge>
-                    )}
-                  </Table.Td>
-                </Table.Tr>
+            {/* 5. 편의시설 */}
+            <Paper shadow="xs" p="lg" radius="md" style={{ border: '1px solid #e0e0e0' }}>
+              <Group mb="md">
+                <ThemeIcon size="lg" radius="md" color="pink" variant="light">
+                  <Store size={20} />
+                </ThemeIcon>
+                <div>
+                  <Text fw={700} size="lg">5. 편의시설</Text>
+                  <Text size="xs" c="dimmed">제공 가능한 편의시설 정보</Text>
+                </div>
+              </Group>
+              <Table withTableBorder withColumnBorders highlightOnHover>
+                <Table.Tbody>
+                  <Table.Tr>
+                    <Table.Td style={{ width: '180px', backgroundColor: '#f8f9fa', fontWeight: 600 }}>편의시설 목록</Table.Td>
+                    <Table.Td>
+                      {(placeDetails as any).conveniences && (placeDetails as any).conveniences.length > 0 ? (
+                        <Group gap="xs">
+                          {(placeDetails as any).conveniences.map((item: string, idx: number) => (
+                            <Badge key={idx} size="md" variant="light" color="pink">{item}</Badge>
+                          ))}
+                        </Group>
+                      ) : (
+                        <Badge color="gray">정보 없음</Badge>
+                      )}
+                    </Table.Td>
+                    <Table.Td style={{ width: '100px', textAlign: 'center' }}>
+                      {diagnosisResult?.evaluations.conveniences && (
+                        <Badge color={getGradeColor(diagnosisResult.evaluations.conveniences.grade)} size="lg">
+                          {diagnosisResult.evaluations.conveniences.grade}등급
+                        </Badge>
+                      )}
+                    </Table.Td>
+                  </Table.Tr>
+                </Table.Tbody>
+              </Table>
+            </Paper>
 
-                {/* 네이버페이 */}
-                <Table.Tr>
-                  <Table.Td style={{ backgroundColor: '#e8f5e9', fontWeight: 600 }}>네이버페이</Table.Td>
-                  <Table.Td>사용 여부</Table.Td>
-                  <Table.Td>
-                    {(placeDetails as any).has_naverpay_in_search ? (
-                      <Badge color="green">✓ 사용 중</Badge>
-                    ) : (
-                      <Badge color="red">미사용</Badge>
-                    )}
-                  </Table.Td>
-                  <Table.Td>
-                    {diagnosisResult?.evaluations.naverpay && (
-                      <Badge color={getGradeColor(diagnosisResult.evaluations.naverpay.grade)}>
-                        {diagnosisResult.evaluations.naverpay.grade}등급
-                      </Badge>
-                    )}
-                  </Table.Td>
-                </Table.Tr>
+            {/* 6. 결제 수단 */}
+            <Paper shadow="xs" p="lg" radius="md" style={{ border: '1px solid #e0e0e0' }}>
+              <Group mb="md">
+                <ThemeIcon size="lg" radius="md" color="violet" variant="light">
+                  <Store size={20} />
+                </ThemeIcon>
+                <div>
+                  <Text fw={700} size="lg">6. 결제 수단</Text>
+                  <Text size="xs" c="dimmed">지원 가능한 결제 방식</Text>
+                </div>
+              </Group>
+              <Table withTableBorder withColumnBorders highlightOnHover>
+                <Table.Tbody>
+                  <Table.Tr>
+                    <Table.Td style={{ width: '180px', backgroundColor: '#f8f9fa', fontWeight: 600 }}>지원 결제 방식</Table.Td>
+                    <Table.Td>
+                      {(placeDetails as any).payment_methods && (placeDetails as any).payment_methods.length > 0 ? (
+                        <Group gap="xs">
+                          {(placeDetails as any).payment_methods.map((method: string, idx: number) => (
+                            <Badge key={idx} size="md" variant="light" color="violet">{method}</Badge>
+                          ))}
+                        </Group>
+                      ) : (
+                        <Badge color="gray">정보 없음</Badge>
+                      )}
+                    </Table.Td>
+                    <Table.Td style={{ width: '100px', textAlign: 'center' }}>
+                      <Badge color="gray" size="sm">기본정보</Badge>
+                    </Table.Td>
+                  </Table.Tr>
+                </Table.Tbody>
+              </Table>
+            </Paper>
 
-                {/* 공지사항 */}
-                <Table.Tr>
-                  <Table.Td style={{ backgroundColor: '#fff9c4', fontWeight: 600 }}>공지사항</Table.Td>
-                  <Table.Td>최신 공지</Table.Td>
-                  <Table.Td>
-                    {placeDetails.announcements && placeDetails.announcements.length > 0 ? (
-                      <Stack gap="xs">
-                        {placeDetails.announcements.slice(0, 2).map((notice: any, idx: number) => (
-                          <Text key={idx} size="xs">• {notice.title} ({notice.relativeCreated})</Text>
-                        ))}
-                      </Stack>
-                    ) : (
-                      <Text size="sm" c="dimmed">없음</Text>
-                    )}
-                  </Table.Td>
-                  <Table.Td>
-                    {diagnosisResult?.evaluations.announcements && (
-                      <Badge color={getGradeColor(diagnosisResult.evaluations.announcements.grade)}>
-                        {diagnosisResult.evaluations.announcements.grade}등급
-                      </Badge>
-                    )}
-                  </Table.Td>
-                </Table.Tr>
+            {/* 7. 마이크로 리뷰 */}
+            <Paper shadow="xs" p="lg" radius="md" style={{ border: '1px solid #e0e0e0' }}>
+              <Group mb="md">
+                <ThemeIcon size="lg" radius="md" color="teal" variant="light">
+                  <FileText size={20} />
+                </ThemeIcon>
+                <div>
+                  <Text fw={700} size="lg">7. 마이크로 리뷰 (한줄평)</Text>
+                  <Text size="xs" c="dimmed">대표 한줄평</Text>
+                </div>
+              </Group>
+              <Table withTableBorder withColumnBorders highlightOnHover>
+                <Table.Tbody>
+                  <Table.Tr>
+                    <Table.Td style={{ width: '180px', backgroundColor: '#f8f9fa', fontWeight: 600 }}>대표 한줄평</Table.Td>
+                    <Table.Td>
+                      {(placeDetails as any).micro_reviews && (placeDetails as any).micro_reviews.length > 0 ? (
+                        <Text fs="italic" c="teal" fw={500}>"{(placeDetails as any).micro_reviews[0]}"</Text>
+                      ) : (
+                        <Badge color="gray">정보 없음</Badge>
+                      )}
+                    </Table.Td>
+                    <Table.Td style={{ width: '100px', textAlign: 'center' }}>
+                      <Badge color="gray" size="sm">기본정보</Badge>
+                    </Table.Td>
+                  </Table.Tr>
+                </Table.Tbody>
+              </Table>
+            </Paper>
 
-                {/* 플레이스 플러스 */}
-                <Table.Tr>
-                  <Table.Td style={{ backgroundColor: '#fff3e0', fontWeight: 600 }}>플레이스 플러스</Table.Td>
-                  <Table.Td>사용 여부</Table.Td>
-                  <Table.Td>
-                    {placeDetails.is_place_plus ? (
-                      <Badge color="green">✓ 사용 중</Badge>
-                    ) : (
-                      <Badge color="gray">미사용</Badge>
-                    )}
-                  </Table.Td>
-                  <Table.Td>
-                    {diagnosisResult?.evaluations.place_plus && (
-                      <Badge color={getGradeColor(diagnosisResult.evaluations.place_plus.grade)}>
-                        {diagnosisResult.evaluations.place_plus.grade}등급
-                      </Badge>
-                    )}
-                  </Table.Td>
-                </Table.Tr>
-              </Table.Tbody>
-            </Table>
-          </div>
+            {/* 8. 프로모션/쿠폰 */}
+            <Paper shadow="xs" p="lg" radius="md" style={{ border: '1px solid #e0e0e0' }}>
+              <Group mb="md">
+                <ThemeIcon size="lg" radius="md" color="red" variant="light">
+                  <Store size={20} />
+                </ThemeIcon>
+                <div>
+                  <Text fw={700} size="lg">8. 프로모션/쿠폰</Text>
+                  <Text size="xs" c="dimmed">사용 가능한 쿠폰 및 프로모션</Text>
+                </div>
+              </Group>
+              <Table withTableBorder withColumnBorders highlightOnHover>
+                <Table.Tbody>
+                  <Table.Tr>
+                    <Table.Td style={{ width: '180px', backgroundColor: '#f8f9fa', fontWeight: 600 }}>사용 가능한 쿠폰</Table.Td>
+                    <Table.Td>
+                      {(placeDetails as any).promotions && (placeDetails as any).promotions.total > 0 ? (
+                        <div>
+                          <Badge color="red" size="lg" mb="sm">{(placeDetails as any).promotions.total}개</Badge>
+                          {(placeDetails as any).promotions.coupons?.slice(0, 3).map((coupon: any, idx: number) => (
+                            <Text key={idx} size="sm" mb="xs">• {coupon.title}</Text>
+                          ))}
+                        </div>
+                      ) : (
+                        <Badge color="gray">없음</Badge>
+                      )}
+                    </Table.Td>
+                    <Table.Td style={{ width: '100px', textAlign: 'center' }}>
+                      {diagnosisResult?.evaluations.coupons && (
+                        <Badge color={getGradeColor(diagnosisResult.evaluations.coupons.grade)} size="lg">
+                          {diagnosisResult.evaluations.coupons.grade}등급
+                        </Badge>
+                      )}
+                    </Table.Td>
+                  </Table.Tr>
+                </Table.Tbody>
+              </Table>
+            </Paper>
+
+            {/* 9. 공지사항 */}
+            <Paper shadow="xs" p="lg" radius="md" style={{ border: '1px solid #e0e0e0' }}>
+              <Group mb="md">
+                <ThemeIcon size="lg" radius="md" color="yellow" variant="light">
+                  <AlertCircle size={20} />
+                </ThemeIcon>
+                <div>
+                  <Text fw={700} size="lg">9. 공지사항</Text>
+                  <Text size="xs" c="dimmed">매장 공지사항 및 안내</Text>
+                </div>
+              </Group>
+              <Table withTableBorder withColumnBorders highlightOnHover>
+                <Table.Tbody>
+                  <Table.Tr>
+                    <Table.Td style={{ width: '180px', backgroundColor: '#f8f9fa', fontWeight: 600 }}>최신 공지</Table.Td>
+                    <Table.Td>
+                      {placeDetails.announcements && placeDetails.announcements.length > 0 ? (
+                        <Stack gap="xs">
+                          {placeDetails.announcements.slice(0, 3).map((notice: any, idx: number) => (
+                            <Text key={idx} size="sm">• {notice.title} <Text component="span" size="xs" c="dimmed">({notice.relativeCreated})</Text></Text>
+                          ))}
+                        </Stack>
+                      ) : (
+                        <Badge color="gray">없음</Badge>
+                      )}
+                    </Table.Td>
+                    <Table.Td style={{ width: '100px', textAlign: 'center' }}>
+                      {diagnosisResult?.evaluations.announcements && (
+                        <Badge color={getGradeColor(diagnosisResult.evaluations.announcements.grade)} size="lg">
+                          {diagnosisResult.evaluations.announcements.grade}등급
+                        </Badge>
+                      )}
+                    </Table.Td>
+                  </Table.Tr>
+                </Table.Tbody>
+              </Table>
+            </Paper>
+
+            {/* 10. 업체 소개글 */}
+            <Paper shadow="xs" p="lg" radius="md" style={{ border: '1px solid #e0e0e0' }}>
+              <Group mb="md">
+                <ThemeIcon size="lg" radius="md" color="indigo" variant="light">
+                  <FileText size={20} />
+                </ThemeIcon>
+                <div>
+                  <Text fw={700} size="lg">10. 업체 소개글</Text>
+                  <Text size="xs" c="dimmed">업체가 직접 작성한 상세 설명</Text>
+                </div>
+              </Group>
+              <Table withTableBorder withColumnBorders highlightOnHover>
+                <Table.Tbody>
+                  <Table.Tr>
+                    <Table.Td style={{ width: '180px', backgroundColor: '#f8f9fa', fontWeight: 600 }}>상세 설명</Table.Td>
+                    <Table.Td>
+                      {placeDetails.description ? (
+                        <Paper p="md" style={{ backgroundColor: '#f8f9fa', maxHeight: '300px', overflowY: 'auto', whiteSpace: 'pre-line' }}>
+                          <Text size="sm">{placeDetails.description}</Text>
+                        </Paper>
+                      ) : (
+                        <Badge color="gray">업체가 등록하지 않음</Badge>
+                      )}
+                    </Table.Td>
+                    <Table.Td style={{ width: '100px', textAlign: 'center' }}>
+                      {diagnosisResult?.evaluations.description_seo && (
+                        <Badge color={getGradeColor(diagnosisResult.evaluations.description_seo.grade)} size="lg">
+                          {diagnosisResult.evaluations.description_seo.grade}등급
+                        </Badge>
+                      )}
+                    </Table.Td>
+                  </Table.Tr>
+                </Table.Tbody>
+              </Table>
+            </Paper>
+
+            {/* 11. AI 브리핑 */}
+            <Paper shadow="xs" p="lg" radius="md" style={{ border: '1px solid #e0e0e0' }}>
+              <Group mb="md">
+                <ThemeIcon size="lg" radius="md" color="grape" variant="light">
+                  <FileText size={20} />
+                </ThemeIcon>
+                <div>
+                  <Text fw={700} size="lg">11. AI 브리핑</Text>
+                  <Text size="xs" c="dimmed">AI가 생성한 요약 정보</Text>
+                </div>
+              </Group>
+              <Table withTableBorder withColumnBorders highlightOnHover>
+                <Table.Tbody>
+                  <Table.Tr>
+                    <Table.Td style={{ width: '180px', backgroundColor: '#f8f9fa', fontWeight: 600 }}>AI 요약 정보</Table.Td>
+                    <Table.Td>
+                      {placeDetails.ai_briefing ? (
+                        <Paper p="md" style={{ backgroundColor: '#f8f5ff', maxHeight: '200px', overflowY: 'auto', whiteSpace: 'pre-line', border: '1px solid #e0e0e0' }}>
+                          <Text size="sm">{placeDetails.ai_briefing}</Text>
+                        </Paper>
+                      ) : (
+                        <Badge color="gray">정보 없음</Badge>
+                      )}
+                    </Table.Td>
+                    <Table.Td style={{ width: '100px', textAlign: 'center' }}>
+                      <Badge color="gray" size="sm">기본정보</Badge>
+                    </Table.Td>
+                  </Table.Tr>
+                </Table.Tbody>
+              </Table>
+            </Paper>
+
+            {/* 12. 찾아오는 길 */}
+            <Paper shadow="xs" p="lg" radius="md" style={{ border: '1px solid #e0e0e0' }}>
+              <Group mb="md">
+                <ThemeIcon size="lg" radius="md" color="cyan" variant="light">
+                  <FileText size={20} />
+                </ThemeIcon>
+                <div>
+                  <Text fw={700} size="lg">12. 찾아오는 길</Text>
+                  <Text size="xs" c="dimmed">매장까지의 상세 안내</Text>
+                </div>
+              </Group>
+              <Table withTableBorder withColumnBorders highlightOnHover>
+                <Table.Tbody>
+                  <Table.Tr>
+                    <Table.Td style={{ width: '180px', backgroundColor: '#f8f9fa', fontWeight: 600 }}>상세 안내</Table.Td>
+                    <Table.Td>
+                      {placeDetails.directions ? (
+                        <Paper p="md" style={{ backgroundColor: '#f8f9fa', maxHeight: '300px', overflowY: 'auto', whiteSpace: 'pre-line' }}>
+                          <Text size="sm">{placeDetails.directions}</Text>
+                        </Paper>
+                      ) : (
+                        <Badge color="gray">정보 없음</Badge>
+                      )}
+                    </Table.Td>
+                    <Table.Td style={{ width: '100px', textAlign: 'center' }}>
+                      {diagnosisResult?.evaluations.directions_seo && (
+                        <Badge color={getGradeColor(diagnosisResult.evaluations.directions_seo.grade)} size="lg">
+                          {diagnosisResult.evaluations.directions_seo.grade}등급
+                        </Badge>
+                      )}
+                    </Table.Td>
+                  </Table.Tr>
+                </Table.Tbody>
+              </Table>
+            </Paper>
+
+            {/* 13. SNS 및 웹사이트 */}
+            <Paper shadow="xs" p="lg" radius="md" style={{ border: '1px solid #e0e0e0' }}>
+              <Group mb="md">
+                <ThemeIcon size="lg" radius="md" color="blue" variant="light">
+                  <ExternalLink size={20} />
+                </ThemeIcon>
+                <div>
+                  <Text fw={700} size="lg">13. SNS 및 웹사이트</Text>
+                  <Text size="xs" c="dimmed">온라인 채널 정보</Text>
+                </div>
+              </Group>
+              <Table withTableBorder withColumnBorders highlightOnHover>
+                <Table.Tbody>
+                  <Table.Tr>
+                    <Table.Td style={{ width: '180px', backgroundColor: '#f8f9fa', fontWeight: 600 }}>홈페이지</Table.Td>
+                    <Table.Td>
+                      {placeDetails.homepage || placeDetails.homepage_url ? (
+                        <a href={placeDetails.homepage || placeDetails.homepage_url} target="_blank" rel="noopener noreferrer" style={{ color: '#228be6', textDecoration: 'none' }}>
+                          <Text size="sm">{placeDetails.homepage || placeDetails.homepage_url}</Text>
+                        </a>
+                      ) : (
+                        <Badge color="gray">등록되지 않음</Badge>
+                      )}
+                    </Table.Td>
+                    <Table.Td style={{ width: '100px', textAlign: 'center' }} rowSpan={3}>
+                      {diagnosisResult?.evaluations.sns_web && (
+                        <Badge color={getGradeColor(diagnosisResult.evaluations.sns_web.grade)} size="lg">
+                          {diagnosisResult.evaluations.sns_web.grade}등급
+                        </Badge>
+                      )}
+                    </Table.Td>
+                  </Table.Tr>
+                  <Table.Tr>
+                    <Table.Td style={{ backgroundColor: '#f8f9fa', fontWeight: 600 }}>블로그</Table.Td>
+                    <Table.Td>
+                      {placeDetails.blog ? (
+                        <a href={placeDetails.blog} target="_blank" rel="noopener noreferrer" style={{ color: '#228be6', textDecoration: 'none' }}>
+                          <Text size="sm">{placeDetails.blog}</Text>
+                        </a>
+                      ) : (
+                        <Badge color="gray">등록되지 않음</Badge>
+                      )}
+                    </Table.Td>
+                  </Table.Tr>
+                  <Table.Tr>
+                    <Table.Td style={{ backgroundColor: '#f8f9fa', fontWeight: 600 }}>인스타그램</Table.Td>
+                    <Table.Td>
+                      {placeDetails.instagram ? (
+                        <a href={placeDetails.instagram} target="_blank" rel="noopener noreferrer" style={{ color: '#228be6', textDecoration: 'none' }}>
+                          <Text size="sm">{placeDetails.instagram}</Text>
+                        </a>
+                      ) : (
+                        <Badge color="gray">등록되지 않음</Badge>
+                      )}
+                    </Table.Td>
+                  </Table.Tr>
+                </Table.Tbody>
+              </Table>
+            </Paper>
+
+            {/* 14. TV 방송 정보 */}
+            <Paper shadow="xs" p="lg" radius="md" style={{ border: '1px solid #e0e0e0' }}>
+              <Group mb="md">
+                <ThemeIcon size="lg" radius="md" color="pink" variant="light">
+                  <FileText size={20} />
+                </ThemeIcon>
+                <div>
+                  <Text fw={700} size="lg">14. TV 방송 정보</Text>
+                  <Text size="xs" c="dimmed">TV 방송 출연 내역</Text>
+                </div>
+              </Group>
+              <Table withTableBorder withColumnBorders highlightOnHover>
+                <Table.Tbody>
+                  <Table.Tr>
+                    <Table.Td style={{ width: '180px', backgroundColor: '#f8f9fa', fontWeight: 600 }}>최근 방송</Table.Td>
+                    <Table.Td>
+                      {placeDetails.tv_program ? (
+                        <Text fw={600}>{placeDetails.tv_program}</Text>
+                      ) : (
+                        <Badge color="gray">정보 없음</Badge>
+                      )}
+                    </Table.Td>
+                    <Table.Td style={{ width: '100px', textAlign: 'center' }}>
+                      {diagnosisResult?.evaluations.tv_program && (
+                        <Badge color={getGradeColor(diagnosisResult.evaluations.tv_program.grade)} size="lg">
+                          {diagnosisResult.evaluations.tv_program.grade}등급
+                        </Badge>
+                      )}
+                    </Table.Td>
+                  </Table.Tr>
+                </Table.Tbody>
+              </Table>
+            </Paper>
+
+            {/* 15. 플레이스 플러스 */}
+            <Paper shadow="xs" p="lg" radius="md" style={{ border: '1px solid #e0e0e0' }}>
+              <Group mb="md">
+                <ThemeIcon size="lg" radius="md" color="orange" variant="light">
+                  <Store size={20} />
+                </ThemeIcon>
+                <div>
+                  <Text fw={700} size="lg">15. 플레이스 플러스</Text>
+                  <Text size="xs" c="dimmed">플레이스 플러스 구독 여부</Text>
+                </div>
+              </Group>
+              <Table withTableBorder withColumnBorders highlightOnHover>
+                <Table.Tbody>
+                  <Table.Tr>
+                    <Table.Td style={{ width: '180px', backgroundColor: '#f8f9fa', fontWeight: 600 }}>사용 여부</Table.Td>
+                    <Table.Td>
+                      {placeDetails.is_place_plus ? (
+                        <Badge color="green" size="lg">✓ 사용 중</Badge>
+                      ) : (
+                        <Badge color="gray" size="lg">미사용</Badge>
+                      )}
+                    </Table.Td>
+                    <Table.Td style={{ width: '100px', textAlign: 'center' }}>
+                      {diagnosisResult?.evaluations.place_plus && (
+                        <Badge color={getGradeColor(diagnosisResult.evaluations.place_plus.grade)} size="lg">
+                          {diagnosisResult.evaluations.place_plus.grade}등급
+                        </Badge>
+                      )}
+                    </Table.Td>
+                  </Table.Tr>
+                </Table.Tbody>
+              </Table>
+            </Paper>
+
+            {/* 16. 네이버페이 */}
+            <Paper shadow="xs" p="lg" radius="md" style={{ border: '1px solid #e0e0e0' }}>
+              <Group mb="md">
+                <ThemeIcon size="lg" radius="md" color="green" variant="light">
+                  <CheckCircle2 size={20} />
+                </ThemeIcon>
+                <div>
+                  <Text fw={700} size="lg">16. 네이버페이</Text>
+                  <Text size="xs" c="dimmed">네이버페이 결제 지원 여부</Text>
+                </div>
+              </Group>
+              <Table withTableBorder withColumnBorders highlightOnHover>
+                <Table.Tbody>
+                  <Table.Tr>
+                    <Table.Td style={{ width: '180px', backgroundColor: '#f8f9fa', fontWeight: 600 }}>사용 여부 (검색 결과)</Table.Td>
+                    <Table.Td>
+                      {(placeDetails as any).has_naverpay_in_search ? (
+                        <Badge color="green" size="lg">✓ 사용 중</Badge>
+                      ) : (
+                        <Badge color="red" size="lg">미사용</Badge>
+                      )}
+                    </Table.Td>
+                    <Table.Td style={{ width: '100px', textAlign: 'center' }}>
+                      {diagnosisResult?.evaluations.naverpay && (
+                        <Badge color={getGradeColor(diagnosisResult.evaluations.naverpay.grade)} size="lg">
+                          {diagnosisResult.evaluations.naverpay.grade}등급
+                        </Badge>
+                      )}
+                    </Table.Td>
+                  </Table.Tr>
+                </Table.Tbody>
+              </Table>
+            </Paper>
+
+            {/* 17. 스마트콜 */}
+            <Paper shadow="xs" p="lg" radius="md" style={{ border: '1px solid #e0e0e0' }}>
+              <Group mb="md">
+                <ThemeIcon size="lg" radius="md" color="indigo" variant="light">
+                  <FileText size={20} />
+                </ThemeIcon>
+                <div>
+                  <Text fw={700} size="lg">17. 스마트콜</Text>
+                  <Text size="xs" c="dimmed">네이버 스마트콜 사용 여부</Text>
+                </div>
+              </Group>
+              <Table withTableBorder withColumnBorders highlightOnHover>
+                <Table.Tbody>
+                  <Table.Tr>
+                    <Table.Td style={{ width: '180px', backgroundColor: '#f8f9fa', fontWeight: 600 }}>사용 여부</Table.Td>
+                    <Table.Td>
+                      {placeDetails.phone_number?.startsWith('0507') ? (
+                        <Badge color="green" size="lg">✓ 사용 중 ({placeDetails.phone_number})</Badge>
+                      ) : (
+                        <Badge color="gray" size="lg">미사용 {placeDetails.phone_number ? `(${placeDetails.phone_number})` : ''}</Badge>
+                      )}
+                    </Table.Td>
+                    <Table.Td style={{ width: '100px', textAlign: 'center' }}>
+                      {diagnosisResult?.evaluations.smart_call && (
+                        <Badge color={getGradeColor(diagnosisResult.evaluations.smart_call.grade)} size="lg">
+                          {diagnosisResult.evaluations.smart_call.grade}등급
+                        </Badge>
+                      )}
+                    </Table.Td>
+                  </Table.Tr>
+                </Table.Tbody>
+              </Table>
+            </Paper>
+          </Stack>
         </Paper>
 
         {/* Footer */}
