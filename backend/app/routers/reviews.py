@@ -311,23 +311,24 @@ async def analyze_store_reviews(request: AnalyzeReviewsRequest):
         today_date = datetime.now(KST).strftime("%Y-%m-%d")
         supabase.table("review_stats").delete().eq("store_id", store_id).eq("date", today_date).execute()
         
-        # 7-2. 통계 저장
+        # 7-2. 통계 저장 (RLS bypass 함수 사용)
         stats_data = {
-            "store_id": store_id,
-            "date": today_date,  # 조회 시점 날짜
-            "visitor_review_count": len(analyzed_reviews),
-            "visitor_positive_count": stats["positive"],
-            "visitor_neutral_count": stats["neutral"],
-            "visitor_negative_count": stats["negative"],
-            "visitor_receipt_count": stats["receipt"],
-            "visitor_reservation_count": stats["reservation"],
-            "blog_review_count": blog_review_count,
-            "summary": summary,
-            "checked_at": datetime.now(KST).isoformat()
+            "p_store_id": store_id,
+            "p_date": today_date,  # 조회 시점 날짜
+            "p_visitor_review_count": len(analyzed_reviews),
+            "p_visitor_positive_count": stats["positive"],
+            "p_visitor_neutral_count": stats["neutral"],
+            "p_visitor_negative_count": stats["negative"],
+            "p_visitor_receipt_count": stats["receipt"],
+            "p_visitor_reservation_count": stats["reservation"],
+            "p_blog_review_count": blog_review_count,
+            "p_summary": summary,
+            "p_checked_at": datetime.now(KST).isoformat()
         }
         
-        stats_insert_result = supabase.table("review_stats").insert(stats_data).execute()
-        review_stats_id = stats_insert_result.data[0]["id"]
+        # ⭐ RLS bypass 함수 호출
+        stats_insert_result = supabase.rpc("insert_review_stats_bypass_rls", stats_data).execute()
+        review_stats_id = stats_insert_result.data
         logger.info(f"통계 저장 완료: id={review_stats_id}")
         
         # 7-3. 개별 리뷰 저장
@@ -582,24 +583,26 @@ async def analyze_reviews_stream(store_id: str, start_date: str, end_date: str):
             temperature_scores = [r.get("temperature_score", 0) for r in analyzed_reviews if r.get("temperature_score") is not None]
             average_temperature = round(sum(temperature_scores) / len(temperature_scores), 1) if temperature_scores else 0.0
             
+            # RLS bypass 함수 사용을 위한 파라미터 변환
             stats_data = {
-                "store_id": store_id,
-                "date": today_date,
-                "visitor_review_count": len(analyzed_reviews),
-                "visitor_positive_count": stats["positive"],
-                "visitor_neutral_count": stats["neutral"],
-                "visitor_negative_count": stats["negative"],
-                "visitor_receipt_count": sum(1 for r in analyzed_reviews if r.get("is_receipt_review")),
-                "visitor_reservation_count": sum(1 for r in analyzed_reviews if r.get("is_reservation_review")),
-                "photo_review_count": photo_review_count,
-                "average_temperature": average_temperature,
-                "blog_review_count": blog_review_count,
-                "summary": summary,
-                "checked_at": datetime.now(KST).isoformat()
+                "p_store_id": store_id,
+                "p_date": today_date,
+                "p_visitor_review_count": len(analyzed_reviews),
+                "p_visitor_positive_count": stats["positive"],
+                "p_visitor_neutral_count": stats["neutral"],
+                "p_visitor_negative_count": stats["negative"],
+                "p_visitor_receipt_count": sum(1 for r in analyzed_reviews if r.get("is_receipt_review")),
+                "p_visitor_reservation_count": sum(1 for r in analyzed_reviews if r.get("is_reservation_review")),
+                "p_photo_review_count": photo_review_count,
+                "p_average_temperature": average_temperature,
+                "p_blog_review_count": blog_review_count,
+                "p_summary": summary,
+                "p_checked_at": datetime.now(KST).isoformat()
             }
             
-            stats_insert_result = supabase.table("review_stats").insert(stats_data).execute()
-            review_stats_id = stats_insert_result.data[0]["id"]
+            # ⭐ RLS bypass 함수 호출
+            stats_insert_result = supabase.rpc("insert_review_stats_bypass_rls", stats_data).execute()
+            review_stats_id = stats_insert_result.data
             
             # 개별 리뷰 저장
             saved_count = 0
