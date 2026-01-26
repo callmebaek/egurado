@@ -761,31 +761,168 @@ export default function CompetitorsPage() {
       {/* 3단계: 분석 결과 */}
       {step === 3 && topStores.length > 0 && (
         <>
-          {/* 진행 상황 */}
+          {/* 진행 상황 (작게 표시) */}
           {loadingAnalysis && (
-            <Paper shadow="sm" p="xl">
-              <Center>
-                <Stack align="center" gap="md">
-                  <Loader size="xl" color="#635bff" />
-                  <div style={{ textAlign: 'center' }}>
-                    <Text fw={600} size="lg">
-                      경쟁매장 분석 중... ({analysisProgress.current}/{analysisProgress.total})
-                    </Text>
-                    <Progress
-                      value={(analysisProgress.current / analysisProgress.total) * 100}
-                      color="#635bff"
-                      size="lg"
-                      radius="xl"
-                      mt="md"
-                      style={{ width: '300px' }}
-                    />
-                  </div>
-                </Stack>
-              </Center>
+            <Paper shadow="sm" p="md" mb="md" style={{ backgroundColor: '#f0f7ff', border: '1px solid #635bff' }}>
+              <Group>
+                <Loader size="md" color="#635bff" />
+                <div>
+                  <Text fw={600} size="sm">
+                    경쟁매장 분석 중... ({analysisProgress.current}/{analysisProgress.total})
+                  </Text>
+                  <Progress
+                    value={(analysisProgress.current / analysisProgress.total) * 100}
+                    color="#635bff"
+                    size="sm"
+                    radius="xl"
+                    mt="xs"
+                    style={{ width: '200px' }}
+                  />
+                </div>
+              </Group>
             </Paper>
           )}
 
-          {/* 비교 분석 요약 */}
+          {/* 경쟁매장 상세 목록 (항상 표시) */}
+          <Paper shadow="sm" p="xl" mb="xl">
+            <Title order={2} mb="md" style={{ color: '#212529' }}>
+              📋 경쟁매장 상세 분석
+            </Title>
+            
+            <Text size="sm" c="dimmed" mb="md">
+              분석 완료: {analyzedStores.length} / {topStores.length}개
+            </Text>
+
+            <div style={{ overflowX: 'auto' }}>
+              <Table striped highlightOnHover withTableBorder withColumnBorders>
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th style={{ fontWeight: 700, minWidth: '60px' }}>순위</Table.Th>
+                    <Table.Th style={{ fontWeight: 700, minWidth: '150px' }}>매장명</Table.Th>
+                    <Table.Th style={{ fontWeight: 700, minWidth: '100px' }}>업종</Table.Th>
+                    <Table.Th style={{ fontWeight: 700, minWidth: '200px' }}>주소</Table.Th>
+                    <Table.Th style={{ fontWeight: 700, minWidth: '120px' }}>진단점수</Table.Th>
+                    <Table.Th style={{ fontWeight: 700, minWidth: '100px' }}>전체리뷰</Table.Th>
+                    <Table.Th style={{ fontWeight: 700, minWidth: '100px' }}>방문자(7일)</Table.Th>
+                    <Table.Th style={{ fontWeight: 700, minWidth: '100px' }}>블로그(7일)</Table.Th>
+                    <Table.Th style={{ fontWeight: 700, minWidth: '90px' }}>공지(7일)</Table.Th>
+                    <Table.Th style={{ fontWeight: 700, minWidth: '70px', textAlign: 'center' }}>쿠폰</Table.Th>
+                    <Table.Th style={{ fontWeight: 700, minWidth: '70px', textAlign: 'center' }}>플플</Table.Th>
+                    <Table.Th style={{ fontWeight: 700, minWidth: '90px', textAlign: 'center' }}>새로오픈</Table.Th>
+                    <Table.Th style={{ fontWeight: 700, minWidth: '80px', textAlign: 'center' }}>네페이</Table.Th>
+                    <Table.Th style={{ fontWeight: 700, minWidth: '90px', textAlign: 'center' }}>네예약</Table.Th>
+                    <Table.Th style={{ fontWeight: 700, minWidth: '100px' }}>검색량</Table.Th>
+                    <Table.Th style={{ fontWeight: 700, minWidth: '250px' }}>하이라이트 리뷰</Table.Th>
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {topStores.map((store) => {
+                    const analyzed = analyzedStores.find(s => s.place_id === store.place_id)
+                    const isLoading = !analyzed && loadingAnalysis
+                    
+                    return (
+                      <Table.Tr key={store.place_id}>
+                        <Table.Td>{store.rank}</Table.Td>
+                        <Table.Td><Text fw={600}>{store.name}</Text></Table.Td>
+                        <Table.Td><Text size="sm" c="dimmed">{store.category}</Text></Table.Td>
+                        <Table.Td><Text size="xs" c="dimmed">{store.address}</Text></Table.Td>
+                        <Table.Td>
+                          {isLoading ? (
+                            <Loader size="xs" />
+                          ) : analyzed ? (
+                            <Badge color={getGradeColor(analyzed.diagnosis_grade || 'D')}>
+                              {analyzed.diagnosis_score?.toFixed(1)}점 ({analyzed.diagnosis_grade})
+                            </Badge>
+                          ) : (
+                            <Text size="xs" c="dimmed">-</Text>
+                          )}
+                        </Table.Td>
+                        <Table.Td>
+                          {isLoading ? (
+                            <Loader size="xs" />
+                          ) : analyzed ? (
+                            <Text size="sm">{analyzed.visitor_review_count || 0}+{analyzed.blog_review_count || 0}</Text>
+                          ) : '-'}
+                        </Table.Td>
+                        <Table.Td>
+                          {isLoading ? (
+                            <Loader size="xs" />
+                          ) : analyzed ? (
+                            analyzed.visitor_reviews_7d_avg?.toFixed(1) || 0
+                          ) : '-'}
+                        </Table.Td>
+                        <Table.Td>
+                          {isLoading ? (
+                            <Loader size="xs" />
+                          ) : analyzed ? (
+                            analyzed.blog_reviews_7d_avg?.toFixed(1) || 0
+                          ) : '-'}
+                        </Table.Td>
+                        <Table.Td>
+                          {isLoading ? (
+                            <Loader size="xs" />
+                          ) : analyzed ? (
+                            analyzed.announcements_7d || 0
+                          ) : '-'}
+                        </Table.Td>
+                        <Table.Td style={{ textAlign: 'center' }}>
+                          {isLoading ? (
+                            <Loader size="xs" />
+                          ) : analyzed ? (
+                            analyzed.has_coupon ? <CheckCircle2 size={16} color="#2ecc71" /> : <Minus size={16} color="#dee2e6" />
+                          ) : '-'}
+                        </Table.Td>
+                        <Table.Td style={{ textAlign: 'center' }}>
+                          {isLoading ? (
+                            <Loader size="xs" />
+                          ) : analyzed ? (
+                            analyzed.is_place_plus ? <CheckCircle2 size={16} color="#2ecc71" /> : <Minus size={16} color="#dee2e6" />
+                          ) : '-'}
+                        </Table.Td>
+                        <Table.Td style={{ textAlign: 'center' }}>
+                          {isLoading ? (
+                            <Loader size="xs" />
+                          ) : analyzed ? (
+                            analyzed.is_new_business ? <CheckCircle2 size={16} color="#2ecc71" /> : <Minus size={16} color="#dee2e6" />
+                          ) : '-'}
+                        </Table.Td>
+                        <Table.Td style={{ textAlign: 'center' }}>
+                          {isLoading ? (
+                            <Loader size="xs" />
+                          ) : analyzed ? (
+                            analyzed.supports_naverpay ? <CheckCircle2 size={16} color="#2ecc71" /> : <Minus size={16} color="#dee2e6" />
+                          ) : '-'}
+                        </Table.Td>
+                        <Table.Td style={{ textAlign: 'center' }}>
+                          {isLoading ? (
+                            <Loader size="xs" />
+                          ) : analyzed ? (
+                            analyzed.has_naver_booking ? <CheckCircle2 size={16} color="#2ecc71" /> : <Minus size={16} color="#dee2e6" />
+                          ) : '-'}
+                        </Table.Td>
+                        <Table.Td>
+                          {isLoading ? (
+                            <Loader size="xs" />
+                          ) : analyzed ? (
+                            <Text size="sm">{analyzed.store_search_volume ? analyzed.store_search_volume.toLocaleString() : '0'}</Text>
+                          ) : '-'}
+                        </Table.Td>
+                        <Table.Td style={{ maxWidth: '250px' }}>
+                          {isLoading ? (
+                            <Loader size="xs" />
+                          ) : analyzed ? (
+                            <Text size="xs" c="dimmed" lineClamp={2}>{analyzed.important_review || '-'}</Text>
+                          ) : '-'}
+                        </Table.Td>
+                      </Table.Tr>
+                    )
+                  })}
+                </Table.Tbody>
+              </Table>
+            </div>
+          </Paper>
+
+          {/* 비교 분석 요약 (분석 완료 후에만 표시) */}
           {!loadingAnalysis && analyzedStores.length > 0 && comparison && (
             <>
               <Paper ref={summaryRef} shadow="md" p="xl" mb="xl" style={{ border: '2px solid #635bff' }}>
@@ -866,103 +1003,6 @@ export default function CompetitorsPage() {
                   </Timeline>
                 </Paper>
               )}
-
-              {/* 경쟁매장 상세 목록 */}
-              <Paper shadow="sm" p="xl">
-                <Title order={2} mb="xl" style={{ color: '#212529' }}>
-                  📋 경쟁매장 상세 분석
-                </Title>
-                
-                <Text size="sm" c="dimmed" mb="md">
-                  분석 완료: {analyzedStores.length} / {topStores.length}개
-                </Text>
-
-                <div style={{ overflowX: 'auto' }}>
-                  <Table striped highlightOnHover withTableBorder withColumnBorders>
-                    <Table.Thead>
-                      <Table.Tr>
-                        <Table.Th style={{ fontWeight: 700 }}>순위</Table.Th>
-                        <Table.Th style={{ fontWeight: 700 }}>매장명</Table.Th>
-                        <Table.Th style={{ fontWeight: 700 }}>업종</Table.Th>
-                        <Table.Th style={{ fontWeight: 700 }}>진단점수</Table.Th>
-                        <Table.Th style={{ fontWeight: 700 }}>전체리뷰</Table.Th>
-                        <Table.Th style={{ fontWeight: 700 }}>방문자(7일)</Table.Th>
-                        <Table.Th style={{ fontWeight: 700 }}>블로그(7일)</Table.Th>
-                        <Table.Th style={{ fontWeight: 700 }}>쿠폰</Table.Th>
-                        <Table.Th style={{ fontWeight: 700 }}>플플</Table.Th>
-                        <Table.Th style={{ fontWeight: 700 }}>네페이</Table.Th>
-                      </Table.Tr>
-                    </Table.Thead>
-                    <Table.Tbody>
-                      {topStores.map((store) => {
-                        const analyzed = analyzedStores.find(s => s.place_id === store.place_id)
-                        const isLoading = !analyzed && loadingAnalysis
-                        
-                        return (
-                          <Table.Tr key={store.place_id}>
-                            <Table.Td>{store.rank}</Table.Td>
-                            <Table.Td><Text fw={600}>{store.name}</Text></Table.Td>
-                            <Table.Td><Text size="sm" c="dimmed">{store.category}</Text></Table.Td>
-                            <Table.Td>
-                              {isLoading ? (
-                                <Loader size="xs" />
-                              ) : analyzed ? (
-                                <Badge color={getGradeColor(analyzed.diagnosis_grade || 'D')}>
-                                  {analyzed.diagnosis_score?.toFixed(1)}점 ({analyzed.diagnosis_grade})
-                                </Badge>
-                              ) : (
-                                <Text size="xs" c="dimmed">-</Text>
-                              )}
-                            </Table.Td>
-                            <Table.Td>
-                              {isLoading ? (
-                                <Loader size="xs" />
-                              ) : analyzed ? (
-                                `${analyzed.visitor_review_count || 0}+${analyzed.blog_review_count || 0}`
-                              ) : '-'}
-                            </Table.Td>
-                            <Table.Td>
-                              {isLoading ? (
-                                <Loader size="xs" />
-                              ) : analyzed ? (
-                                analyzed.visitor_reviews_7d_avg?.toFixed(1) || 0
-                              ) : '-'}
-                            </Table.Td>
-                            <Table.Td>
-                              {isLoading ? (
-                                <Loader size="xs" />
-                              ) : analyzed ? (
-                                analyzed.blog_reviews_7d_avg?.toFixed(1) || 0
-                              ) : '-'}
-                            </Table.Td>
-                            <Table.Td style={{ textAlign: 'center' }}>
-                              {isLoading ? (
-                                <Loader size="xs" />
-                              ) : analyzed ? (
-                                analyzed.has_coupon ? <CheckCircle2 size={16} color="#2ecc71" /> : <Minus size={16} color="#dee2e6" />
-                              ) : '-'}
-                            </Table.Td>
-                            <Table.Td style={{ textAlign: 'center' }}>
-                              {isLoading ? (
-                                <Loader size="xs" />
-                              ) : analyzed ? (
-                                analyzed.is_place_plus ? <CheckCircle2 size={16} color="#2ecc71" /> : <Minus size={16} color="#dee2e6" />
-                              ) : '-'}
-                            </Table.Td>
-                            <Table.Td style={{ textAlign: 'center' }}>
-                              {isLoading ? (
-                                <Loader size="xs" />
-                              ) : analyzed ? (
-                                analyzed.supports_naverpay ? <CheckCircle2 size={16} color="#2ecc71" /> : <Minus size={16} color="#dee2e6" />
-                              ) : '-'}
-                            </Table.Td>
-                          </Table.Tr>
-                        )
-                      })}
-                    </Table.Tbody>
-                  </Table>
-                </div>
-              </Paper>
             </>
           )}
         </>
@@ -994,47 +1034,63 @@ function ComparisonMetricCard({
 }) {
   const diff = Math.abs(myValue - avgValue)
   const isHigher = myValue > avgValue
+  const borderColor = status === "good" ? '#2ecc71' : '#e74c3c'
+  const iconColor = status === "good" ? '#2ecc71' : '#e74c3c'
   
   return (
     <Card
-      shadow="sm"
-      padding="lg"
+      shadow="md"
+      padding="xl"
       radius="md"
       style={{
         height: '100%',
-        border: `2px solid ${status === "good" ? '#2ecc71' : '#e74c3c'}`,
-        backgroundColor: status === "good" ? '#d5f4e6' : '#fadbd8'
+        border: `3px solid ${borderColor}`,
+        backgroundColor: '#ffffff',
+        transition: 'transform 0.2s',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = 'translateY(-2px)'
+        e.currentTarget.style.boxShadow = '0 8px 16px rgba(0,0,0,0.1)'
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = 'translateY(0)'
+        e.currentTarget.style.boxShadow = ''
       }}
     >
-      <Group mb="md">
-        {status === "good" ? (
-          <TrendingUp size={24} color="#2ecc71" />
-        ) : (
-          <TrendingDown size={24} color="#e74c3c" />
-        )}
-        <Text fw={600}>{label}</Text>
-      </Group>
-      
-      <Stack gap="xs">
-        <Text size="sm">
-          경쟁매장 평균보다{" "}
-          <Text component="span" fw={700} c={status === "good" ? "green" : "red"}>
-            {diff.toFixed(1)}{unit}
+      <Stack gap="md">
+        {/* Header */}
+        <Group justify="space-between">
+          <Text size="sm" fw={600} c="dimmed">{label}</Text>
+          {status === "good" ? (
+            <ThemeIcon size="lg" radius="xl" color="green" variant="light">
+              <TrendingUp size={20} />
+            </ThemeIcon>
+          ) : (
+            <ThemeIcon size="lg" radius="xl" color="red" variant="light">
+              <TrendingDown size={20} />
+            </ThemeIcon>
+          )}
+        </Group>
+
+        {/* Main Value */}
+        <div style={{ textAlign: 'center', padding: '16px 0' }}>
+          <Text size="48px" fw={700} style={{ lineHeight: 1, color: borderColor }}>
+            {myValue.toFixed(1)}
           </Text>
-          {" "}
-          <Text component="span" fw={600} c={status === "good" ? "green" : "red"}>
-            {isHigher ? "높습니다" : "낮습니다"}
-          </Text>
-        </Text>
-        
-        <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '8px', borderTop: '1px solid #dee2e6' }}>
-          <Text size="sm" fw={600}>우리 매장</Text>
-          <Text size="sm" fw={700}>{myValue.toFixed(1)}{unit}</Text>
+          <Text size="lg" fw={600} c="dimmed" mt="xs">{unit}</Text>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <Text size="sm" c="dimmed">경쟁사 평균</Text>
-          <Text size="sm" c="dimmed" fw={600}>{avgValue.toFixed(1)}{unit}</Text>
-        </div>
+
+        {/* Comparison */}
+        <Paper p="md" radius="sm" style={{ backgroundColor: '#f8f9fa' }}>
+          <Stack gap="xs">
+            <Text size="sm" ta="center" c="dimmed">
+              경쟁매장 평균: <Text component="span" fw={700} c="dark">{avgValue.toFixed(1)}{unit}</Text>
+            </Text>
+            <Text size="md" ta="center" fw={700} c={status === "good" ? "green" : "red"}>
+              {isHigher ? '▲' : '▼'} {diff.toFixed(1)}{unit} {isHigher ? '우수' : '부족'}
+            </Text>
+          </Stack>
+        </Paper>
       </Stack>
     </Card>
   )
