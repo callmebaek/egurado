@@ -639,7 +639,19 @@ class NaverPlaceDiagnosisEngine:
         # 완성도 평가 (설명 채움률)
         described_count = sum(1 for m in menus if m.get("description"))
         description_filled_rate = described_count / menu_count if menu_count > 0 else 0
-        completeness_score = description_filled_rate * 8
+        
+        # 가격정보에서 가져온 경우 판단 (모든 메뉴에 설명이 없음)
+        # 가격정보는 설명을 추가할 수 없으므로 완성도 점수 만점 처리
+        is_from_price_info = (described_count == 0) and (menu_count > 0)
+        
+        if is_from_price_info:
+            # 가격정보에서 가져온 경우: 설명 없음이 정상이므로 만점 처리
+            completeness_score = 8.0
+            description_filled_rate_for_display = 1.0  # 화면 표시용
+        else:
+            # 메뉴 섹션에서 가져온 경우: 설명 채움률로 평가
+            completeness_score = description_filled_rate * 8
+            description_filled_rate_for_display = description_filled_rate
         
         # SEO 평가 (지역, 업종, 대표메뉴 키워드)
         category = data.get("category", "")
@@ -689,7 +701,8 @@ class NaverPlaceDiagnosisEngine:
             status = "FAIL"
         
         recommendations = []
-        if description_filled_rate < 1.0:
+        # 가격정보에서 가져온 경우가 아니고, 설명이 부족한 경우에만 권장사항 추가
+        if description_filled_rate < 1.0 and not is_from_price_info:
             gap = menu_count - described_count
             
             # 업종별 다른 가이드
@@ -723,10 +736,11 @@ class NaverPlaceDiagnosisEngine:
             "status": status,
             "evidence": {
                 "menu_count": menu_count,
-                "description_filled_rate": round(description_filled_rate, 2),
+                "description_filled_rate": round(description_filled_rate_for_display, 2),
                 "completeness_score": round(completeness_score, 1),
                 "seo_score": seo_score,
                 "seo_checks": seo_checks,
+                "is_from_price_info": is_from_price_info,
             },
             "recommendations": recommendations,
         }
