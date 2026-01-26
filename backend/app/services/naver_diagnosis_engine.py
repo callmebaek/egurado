@@ -3,6 +3,7 @@ from typing import Dict, Any, List, Tuple
 from datetime import datetime, timedelta
 import re
 import logging
+import hashlib
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +46,60 @@ class NaverPlaceDiagnosisEngine:
         "place_plus": "플레이스플러스",
         "smart_call": "스마트콜",
     }
+    
+    def _is_food_cafe_category(self, category: str) -> bool:
+        """식당, 카페, 베이커리 업종인지 판단"""
+        if not category:
+            return False
+        
+        category_lower = category.lower()
+        food_cafe_keywords = [
+            "식당", "음식점", "레스토랑", "카페", "커피", "베이커리", "빵집",
+            "한식", "중식", "일식", "양식", "분식", "치킨", "피자", "햄버거",
+            "디저트", "아이스크림", "케이크", "브런치", "bar", "바", "술집",
+            "고기", "회", "초밥", "파스타", "스테이크", "뷔페", "맛집",
+            "칼국수", "국밥", "찌개", "전골", "족발", "보쌈", "삼겹살",
+            "갈비", "곱창", "닭갈비", "떡볶이", "김밥", "도시락"
+        ]
+        return any(kw in category_lower for kw in food_cafe_keywords)
+    
+    def _get_review_target(self, category: str, review_type: str = "visitor") -> int:
+        """업종에 따른 리뷰 목표 개수 반환"""
+        is_food_cafe = self._is_food_cafe_category(category)
+        
+        if is_food_cafe:
+            # 식당, 카페, 베이커리: 1000개 기준
+            return 1000
+        else:
+            # 다른 업종: 599개 기준
+            return 599
+    
+    def _get_message_variant(self, place_id: str, category: str, variants: List[str]) -> str:
+        """place_id와 category 기반으로 일관된 메시지 선택
+        
+        같은 매장의 같은 카테고리는 항상 같은 메시지를 반환하여
+        사용자 혼란을 방지하면서도, 다른 매장에는 다양한 메시지 제공
+        
+        Args:
+            place_id: 플레이스 ID
+            category: 평가 카테고리 (visitor_reviews, images 등)
+            variants: 메시지 변형 리스트
+            
+        Returns:
+            선택된 메시지
+        """
+        if not variants:
+            return ""
+        
+        if len(variants) == 1:
+            return variants[0]
+        
+        # place_id와 category를 조합하여 Hash 생성
+        hash_input = f"{place_id}_{category}"
+        hash_value = int(hashlib.md5(hash_input.encode()).hexdigest(), 16)
+        index = hash_value % len(variants)
+        
+        return variants[index]
     
     def diagnose(self, place_data: Dict[str, Any]) -> Dict[str, Any]:
         """플레이스 데이터를 진단하고 평가 결과 반환
@@ -129,118 +184,285 @@ class NaverPlaceDiagnosisEngine:
         return result
     
     def _eval_visitor_reviews(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        """방문자 리뷰 수 평가 (12점)"""
+        """방문자 리뷰 수 평가 (12점) - 업종별 차등 기준"""
         count = data.get("visitor_review_count", 0) or 0
+        category = data.get("category", "")
         max_score = self.WEIGHTS["visitor_reviews"]
         
-        # 점수 계산
-        if count >= 3000:
-            score = 12
-            status = "PASS"
-        elif count >= 1500:
-            score = 10
-            status = "PASS"
-        elif count >= 1000:
-            score = 8
-            status = "WARN"
-        elif count >= 500:
-            score = 6
-            status = "WARN"
-        elif count >= 200:
-            score = 4
-            status = "WARN"
-        elif count >= 50:
-            score = 2
-            status = "FAIL"
+        # 업종에 따른 목표 개수
+        target = self._get_review_target(category)
+        is_food_cafe = self._is_food_cafe_category(category)
+        
+        # 점수 계산 (업종별 차등)
+        if is_food_cafe:
+            # 식당/카페/베이커리: 1000개 기준
+            if count >= 3000:
+                score = 12
+                status = "PASS"
+            elif count >= 1500:
+                score = 10
+                status = "PASS"
+            elif count >= 1000:
+                score = 8
+                status = "PASS"
+            elif count >= 500:
+                score = 6
+                status = "WARN"
+            elif count >= 200:
+                score = 4
+                status = "WARN"
+            elif count >= 50:
+                score = 2
+                status = "FAIL"
+            else:
+                score = 0
+                status = "FAIL"
         else:
-            score = 0
-            status = "FAIL"
+            # 다른 업종: 599개 기준
+            if count >= 1500:
+                score = 12
+                status = "PASS"
+            elif count >= 1000:
+                score = 10
+                status = "PASS"
+            elif count >= 599:
+                score = 8
+                status = "PASS"
+            elif count >= 300:
+                score = 6
+                status = "WARN"
+            elif count >= 100:
+                score = 4
+                status = "WARN"
+            elif count >= 30:
+                score = 2
+                status = "FAIL"
+            else:
+                score = 0
+                status = "FAIL"
         
-        # 권장사항
+        # 권장사항 (메시지 다양화 - Hash 기반)
         recommendations = []
-        if count < 3000:
-            gap = 3000 - count if count >= 1500 else (1500 - count if count >= 1000 else 1000 - count)
-            next_tier = 3000 if count >= 1500 else (1500 if count >= 1000 else 1000)
-            recommendations.append({
-                "action": f"방문자 리뷰 {gap}개 더 받기 (목표: {next_tier}개)",
-                "method": "서비스 품질 개선, 리뷰 요청 프로세스 개선 (결제 시 QR 코드 안내 등)",
-                "estimated_gain": 2 if gap <= 500 else 4,
-                "priority": "high" if count < 500 else "medium",
-            })
+        place_id = data.get("place_id", "")
         
-        if count < 200:
-            recommendations.append({
-                "action": "초기 신뢰도 확보를 위한 서비스 개선",
-                "method": "만족도 높은 고객에게 자연스럽게 리뷰 작성 안내, 리뷰 이벤트 고지(단, 대가 제공 금지)",
-                "estimated_gain": 4,
-                "priority": "high",
-            })
+        # 점수 구간 세분화 및 메시지 다양화
+        if count >= target * 2:
+            # 목표의 2배 이상 (탁월)
+            messages = [
+                "훌륭합니다! 🎉 방문자 리뷰가 매우 풍부합니다. 이 수준을 계속 유지하면서, 최근 리뷰에 적극 답글을 달아 고객과의 소통을 이어가세요.",
+                "완벽합니다! 🌟 방문자 리뷰 관리를 탁월하게 하고 계십니다. 이제는 리뷰 답글로 고객 충성도를 높이는 데 집중하세요.",
+                "최상위 수준입니다! 🏆 방문자 리뷰가 매우 많습니다. 이 모멘텀을 유지하면서 고객과의 소통(답글)도 적극적으로 해주세요."
+            ]
+            message = self._get_message_variant(place_id, "visitor_reviews_excellent", messages)
+            estimated_gain = 0.5
+            priority = "low"
+            action = "방문자 리뷰 관리 우수"
+            
+        elif count >= target * 1.5:
+            # 목표의 1.5배 이상 (우수)
+            messages = [
+                "아주 잘 하고 계십니다! 👍 방문자 리뷰가 풍부합니다. 이 수준을 유지하면서 신규 고객 유입에 집중하세요.",
+                "훌륭한 성과입니다! 🎯 방문자 리뷰 관리를 잘 하고 계십니다. 계속 이 페이스를 유지해주세요.",
+                "매우 좋습니다! ✨ 방문자 리뷰가 충분히 쌓여 있습니다. 일관된 서비스로 이 수준을 계속 유지하세요."
+            ]
+            message = self._get_message_variant(place_id, "visitor_reviews_great", messages)
+            estimated_gain = 1.0
+            priority = "low"
+            action = "방문자 리뷰 관리 전략"
+            
+        elif count >= target:
+            # 목표 달성
+            messages = [
+                "잘 하고 계십니다! 👍 방문자 리뷰는 고객들이 우리 매장을 방문할 때 전환율에 가장 큰 영향을 주는 지표입니다. Keep up the great work!",
+                f"목표({target}개)를 달성했습니다! 🎉 방문자 리뷰는 플레이스 점수의 핵심입니다. 이 수준을 꾸준히 유지해주세요.",
+                f"좋은 수준입니다! 💪 현재 {count}개로 목표를 충족했습니다. 일별 목표를 유지하면서 지속적으로 관리하세요."
+            ]
+            message = self._get_message_variant(place_id, "visitor_reviews_target", messages)
+            estimated_gain = 1.5
+            priority = "low"
+            action = "방문자 리뷰 유지 전략"
+            
+        elif count >= target * 0.7:
+            # 목표의 70% (목표 근접)
+            messages = [
+                f"목표({target}개)가 곧 보입니다! 조금만 더 힘내세요. 방문자 리뷰는 고객 전환율에 가장 큰 영향을 줍니다. 일별 목표를 유지하면서 리뷰를 올려주세요.",
+                f"거의 다 왔습니다! 🚀 현재 {count}개, 목표 {target}개까지 얼마 남지 않았습니다. 만족한 고객에게 리뷰 작성을 적극 안내하세요.",
+                f"좋은 진전입니다! 📈 목표({target}개)까지 {target - count}개 남았습니다. 결제 시 QR 코드 안내가 효과적입니다."
+            ]
+            message = self._get_message_variant(place_id, "visitor_reviews_near", messages)
+            estimated_gain = 2.0
+            priority = "medium"
+            action = "방문자 리뷰 목표 근접"
+            
+        elif count >= target * 0.4:
+            # 목표의 40-70% (중위권)
+            messages = [
+                f"방문자 리뷰는 고객 전환율에 가장 큰 영향을 주는 지표입니다. 좋은 진전이 있습니다! 목표({target}개)까지 일별 목표를 잡아서 리뷰를 올려주세요.",
+                f"중간 지점을 지나고 있습니다! 💫 리뷰 이벤트(대가 제공 X)를 고려하고, 서비스 품질을 높여 자연스러운 리뷰 유입을 늘리세요.",
+                f"순조롭게 진행 중입니다! 현재 {count}개, 목표 {target}개까지 꾸준히 리뷰를 모아가세요. 일별 2-3개 목표를 추천합니다."
+            ]
+            message = self._get_message_variant(place_id, "visitor_reviews_mid", messages)
+            estimated_gain = 3.0
+            priority = "high"
+            action = "방문자 리뷰 중위권 개선"
+            
+        elif count >= target * 0.2:
+            # 목표의 20-40% (하위권)
+            messages = [
+                "방문자 리뷰는 고객 전환율에 가장 큰 영향을 주는 지표입니다. 서비스 품질을 개선하고, 결제 시 QR 코드 안내를 통해 리뷰 작성을 유도하세요. 일별 목표(예: 하루 2-3개)를 잡아서 꾸준히 늘려주세요.",
+                f"리뷰 수가 부족합니다. 현재 {count}개, 목표 {target}개까지 체계적인 관리가 필요합니다. 만족한 고객에게 자연스럽게 리뷰 작성을 안내하세요.",
+                "아직 초기 단계입니다. 리뷰는 신규 고객의 방문 결정에 가장 큰 영향을 줍니다. QR 코드, 테이블 안내문 등을 활용해 리뷰 요청을 시작하세요."
+            ]
+            message = self._get_message_variant(place_id, "visitor_reviews_low", messages)
+            estimated_gain = 4.0
+            priority = "high"
+            action = "방문자 리뷰 확보 전략"
+            
+        else:
+            # 목표의 20% 미만 (초기 단계)
+            messages = [
+                "방문자 리뷰는 고객 전환율에 가장 큰 영향을 주는 지표입니다. 아직 초기 단계이니, 만족도 높은 고객에게 자연스럽게 리뷰 작성을 안내해보세요. 일별 목표 개수를 잡아서 방문자 리뷰를 늘려주세요.",
+                "이제 막 시작하셨네요! 리뷰는 온라인 신뢰도의 시작입니다. 서비스 품질을 높이고, 만족한 고객에게 적극적으로 리뷰를 요청하세요. 리뷰 이벤트(대가 제공 X)도 효과적입니다.",
+                f"리뷰가 매우 부족합니다. 현재 {count}개로는 신규 고객 유입이 어렵습니다. 테이블 QR 코드, 카운터 안내문 등을 활용해 즉시 리뷰 수집을 시작하세요."
+            ]
+            message = self._get_message_variant(place_id, "visitor_reviews_start", messages)
+            estimated_gain = 6.0
+            priority = "critical"
+            action = "방문자 리뷰 초기 확보"
+        
+        recommendations.append({
+            "action": action,
+            "method": message,
+            "estimated_gain": estimated_gain,
+            "priority": priority,
+        })
         
         return {
-            "score": score,
+            "score": round(score, 1),
             "max_score": max_score,
             "status": status,
             "evidence": {
                 "count": count,
-                "tier": "상위권" if count >= 1500 else ("중위권" if count >= 500 else "하위권")
+                "target": target,
+                "is_food_cafe": is_food_cafe,
+                "tier": "상위권" if count >= target * 1.5 else ("중위권" if count >= target * 0.5 else "하위권")
             },
             "recommendations": recommendations,
         }
     
     def _eval_blog_reviews(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        """블로그 리뷰 평가 (8점) - 최근 90일 기준"""
+        """블로그 리뷰 평가 (8점) - 최근 90일 기준, 업종별 차등"""
         total_count = data.get("blog_review_count", 0) or 0
+        category = data.get("category", "")
         max_score = self.WEIGHTS["blog_reviews"]
         
         # TODO: 최근 90일 데이터가 없으므로 전체 수로 임시 계산
-        # 실제로는 최근 90일 데이터를 별도로 수집해야 함
         recent_count = total_count  # 임시
         accuracy_warning = True
         
-        # 점수 계산 (최근 90일 기준으로 추정)
-        estimated_recent = min(recent_count, total_count // 3)  # 전체의 1/3 정도로 추정
+        # 점수 계산 (최근 90일 기준으로 추정, 전체의 1/3 정도)
+        estimated_recent = min(recent_count, total_count // 3)
         
-        if estimated_recent >= 30:
-            score = 8
+        # 업종에 따른 목표
+        is_food_cafe = self._is_food_cafe_category(category)
+        target = 30 if is_food_cafe else 20  # 90일 기준
+        
+        if estimated_recent >= target * 1.5:
+            score = 8.0
             status = "PASS"
-        elif estimated_recent >= 15:
-            score = 6
+        elif estimated_recent >= target:
+            score = 6.0
             status = "PASS"
-        elif estimated_recent >= 5:
-            score = 4
+        elif estimated_recent >= target * 0.5:
+            score = 4.0
             status = "WARN"
-        elif estimated_recent >= 1:
-            score = 2
+        elif estimated_recent >= target * 0.2:
+            score = 2.0
             status = "WARN"
         else:
             score = 0
             status = "FAIL"
         
         recommendations = []
-        if estimated_recent < 30:
-            gap = 30 - estimated_recent
-            recommendations.append({
-                "action": f"블로그 체험단/협찬 진행하여 리뷰 {gap}개 확보",
-                "method": "블로그 체험단 플랫폼 활용 (레뷰, 서울오빠 등), 인플루언서 초대",
-                "estimated_gain": 2 if gap <= 10 else 4,
-                "priority": "high" if estimated_recent < 15 else "medium",
-            })
+        place_id = data.get("place_id", "")
         
-        if estimated_recent < 5:
-            recommendations.append({
-                "action": "온라인 노출 강화를 위한 콘텐츠 마케팅",
-                "method": "SNS 해시태그 활용, 포토존 설치, 시즌 메뉴 출시",
-                "estimated_gain": 2,
-                "priority": "medium",
-            })
+        # 점수 구간 세분화 및 메시지 다양화 (Hash 기반)
+        if estimated_recent >= target * 1.8:
+            # 목표의 1.8배 이상 (탁월)
+            messages = [
+                "블로그 리뷰가 매우 활발합니다! 🎉 온라인 노출과 브랜드 신뢰도가 탁월합니다. 인플루언서와의 관계를 지속적으로 관리하세요.",
+                "완벽합니다! 🌟 블로그 마케팅을 최상으로 하고 계십니다. 이 수준을 유지하면서 신규 인플루언서 발굴도 계속하세요.",
+                "최고 수준입니다! 🏆 블로그 리뷰가 풍부하여 온라인 인지도가 매우 높습니다. 이 모멘텀을 계속 유지하세요."
+            ]
+            message = self._get_message_variant(place_id, "blog_reviews_excellent", messages)
+            estimated_gain = 0.5
+            priority = "low"
+            action = "블로그 리뷰 관리 우수"
+            
+        elif estimated_recent >= target:
+            # 목표 달성
+            messages = [
+                "블로그 리뷰 관리를 잘 하고 계십니다! 👍 온라인 마케팅이 효과적으로 이루어지고 있습니다. 이 페이스를 유지하세요!",
+                f"목표({target}개/90일)를 달성했습니다! 🎯 블로그는 신규 고객 유입의 핵심 채널입니다. 이 수준을 꾸준히 유지하세요.",
+                f"훌륭합니다! 💪 현재 약 {estimated_recent}개로 목표를 충족했습니다. 인플루언서와의 협업을 계속 이어가세요."
+            ]
+            message = self._get_message_variant(place_id, "blog_reviews_target", messages)
+            estimated_gain = 1.0
+            priority = "low"
+            action = "블로그 리뷰 관리 전략"
+            
+        elif estimated_recent >= target * 0.6:
+            # 목표의 60% (목표 근접)
+            messages = [
+                f"블로그 리뷰가 점점 증가하고 있습니다! 목표({target}개/90일)까지 조금만 더 힘내세요. 인플루언서와의 협업을 확대하고, 매력적인 콘텐츠를 제공하세요.",
+                f"거의 다 왔습니다! 🚀 현재 약 {estimated_recent}개, 목표 {target}개까지 얼마 남지 않았습니다. 블로그 체험단을 한 번 더 진행해보세요.",
+                f"좋은 진전입니다! 📈 블로그 마케팅이 효과를 보고 있습니다. SNS 해시태그와 포토존 활용도 병행하세요."
+            ]
+            message = self._get_message_variant(place_id, "blog_reviews_near", messages)
+            estimated_gain = 2.0
+            priority = "medium"
+            action = "블로그 리뷰 목표 근접"
+            
+        elif estimated_recent >= target * 0.3:
+            # 목표의 30-60% (중위권)
+            messages = [
+                "블로그 리뷰는 온라인 노출과 브랜드 인지도 향상에 중요합니다. 인플루언서를 초대하거나, 블로그 체험단을 정기적으로 진행해보세요. 월별 목표를 잡아서 꾸준히 늘려주세요.",
+                f"중간 수준입니다. 현재 약 {estimated_recent}개, 목표 {target}개까지 블로그 마케팅을 강화하세요. 레뷰, 서울오빠 등 플랫폼을 활용하세요.",
+                "순조롭게 진행 중입니다! 💫 블로그 체험단을 월 1-2회 진행하고, 시즌 메뉴 출시 시 적극 홍보하세요."
+            ]
+            message = self._get_message_variant(place_id, "blog_reviews_mid", messages)
+            estimated_gain = 3.0
+            priority = "high"
+            action = "블로그 리뷰 중위권 개선"
+            
+        else:
+            # 목표의 30% 미만 (초기 단계)
+            messages = [
+                "블로그 리뷰는 신규 고객 유입과 온라인 노출에 매우 중요합니다. 블로그 체험단 플랫폼(레뷰, 서울오빠 등)을 활용하거나, SNS 해시태그를 적극 활용해보세요. 포토존 설치와 시즌 메뉴 출시도 효과적입니다.",
+                f"블로그 리뷰가 매우 부족합니다. 현재 약 {estimated_recent}개로는 온라인 노출이 어렵습니다. 인플루언서를 초대하고, 블로그 체험단을 즉시 시작하세요.",
+                "이제 막 시작 단계입니다. 블로그는 검색 노출의 핵심입니다. 소규모라도 블로그 체험단을 진행하고, SNS에서 우리 매장 태그를 적극 유도하세요."
+            ]
+            message = self._get_message_variant(place_id, "blog_reviews_start", messages)
+            estimated_gain = 4.0
+            priority = "high"
+            action = "블로그 리뷰 초기 확보"
+        
+        recommendations.append({
+            "action": action,
+            "method": message,
+            "estimated_gain": estimated_gain,
+            "priority": priority,
+        })
         
         return {
-            "score": score,
+            "score": round(score, 1),
             "max_score": max_score,
             "status": status,
             "evidence": {
                 "total_count": total_count,
                 "estimated_recent_90d": estimated_recent,
+                "target": target,
+                "is_food_cafe": is_food_cafe,
                 "accuracy_warning": accuracy_warning,
                 "note": "실제 최근 90일 데이터 수집 필요"
             },
@@ -250,9 +472,10 @@ class NaverPlaceDiagnosisEngine:
     def _eval_images(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """이미지 평가 (10점) - 수량(7점) + 최신성(3점)"""
         image_count = data.get("image_count", 0) or 0
+        category = data.get("category", "")
         max_score = self.WEIGHTS["images"]
         
-        # 수량 점수 (최대 7점)
+        # 수량 점수 (최대 7점, 목표 120장)
         quantity_score = min(image_count / 120 * 7, 7)
         
         # 최신성 점수 (최대 3점) - 임시로 3점 만점 가정
@@ -269,22 +492,82 @@ class NaverPlaceDiagnosisEngine:
             status = "FAIL"
         
         recommendations = []
-        if image_count < 120:
-            gap = 120 - image_count
-            recommendations.append({
-                "action": f"이미지 {gap}장 추가 업로드 (현재 {image_count}장 → 목표 120장)",
-                "method": "메뉴별 3장 이상, 인테리어 다양한 각도, 외부 전경, 주차장 등",
-                "estimated_gain": min(gap / 120 * 7, 7 - quantity_score),
-                "priority": "high" if image_count < 40 else "medium",
-            })
+        place_id = data.get("place_id", "")
+        is_food = self._is_food_cafe_category(category)
+        product_type = "메뉴 사진" if is_food else "상품 사진"
+        example = "메뉴별로 3장 이상, 음식 스타일링" if is_food else "상품별로 다양한 각도"
         
-        if image_count < 40:
-            recommendations.append({
-                "action": "고품질 이미지로 첫인상 개선",
-                "method": "자연광 활용, 음식 스타일링, 전문 촬영 고려",
-                "estimated_gain": 2,
-                "priority": "high",
-            })
+        # 점수 구간 세분화 및 메시지 다양화 (Hash 기반)
+        if image_count >= 120:
+            # 목표 달성
+            messages = [
+                "이미지가 충분합니다! 👍 네이버는 120장까지 업로드할 수 있는데, 이미 목표를 달성했습니다. 이제는 정기적으로 새로운 사진으로 업데이트하면서 신선도를 유지하세요.",
+                "완벽합니다! 🌟 이미지 120장을 모두 채웠습니다. 이제는 계절별, 시즌별로 새로운 사진을 추가하면서 매장의 활력을 보여주세요.",
+                "최고입니다! 🏆 이미지 관리를 탁월하게 하고 계십니다. 신메뉴나 인테리어 변경 시 즉시 사진을 업데이트하세요."
+            ]
+            message = self._get_message_variant(place_id, "images_perfect", messages)
+            estimated_gain = 0.5
+            priority = "low"
+            action = "이미지 관리 우수"
+            
+        elif image_count >= 90:
+            # 90-119장 (목표 근접)
+            gap = 120 - image_count
+            messages = [
+                f"거의 다 왔습니다! 🚀 현재 {image_count}장, 목표 120장까지 {gap}장만 더 추가하면 됩니다. 우리 매장에서 강조하고 싶은 포인트를 멋지게 찍어서 채워보세요!",
+                f"네이버는 120장까지 업로드 가능합니다. 현재 {image_count}장으로 목표에 매우 가깝습니다! {product_type}, 외부 전경, 메뉴판 등 {gap}장만 더 추가하세요.",
+                f"아주 잘 하고 계십니다! 💪 {gap}장만 더 추가하면 120장 만점입니다. 다양한 각도와 시간대의 사진으로 채워보세요."
+            ]
+            message = self._get_message_variant(place_id, "images_near", messages)
+            estimated_gain = round(gap / 120 * 7, 1)
+            priority = "medium"
+            action = f"이미지 {gap}장 추가 (목표 근접)"
+            
+        elif image_count >= 60:
+            # 60-89장 (중상위)
+            gap = 120 - image_count
+            messages = [
+                f"네이버는 120장까지 직접 업로드할 수 있습니다. 현재 {image_count}장으로 잘 관리하고 계시네요! 목표까지 {gap}장을 더 추가해보세요. {product_type}, 외부 전경, 내부 전경, 메뉴판 및 강조하고 싶은 곳을 찍어서 업데이트합시다.",
+                f"좋은 수준입니다! 📸 현재 {image_count}장, 120장까지 {gap}장 남았습니다. 고품질 사진으로 우리 매장의 매력을 더 보여주세요.",
+                f"순조롭게 진행 중입니다! 💫 {gap}장을 더 추가하면 만점입니다. 시간대별(오전/오후), 계절별 사진도 다양하게 준비하세요."
+            ]
+            message = self._get_message_variant(place_id, "images_good", messages)
+            estimated_gain = round(gap / 120 * 7, 1)
+            priority = "medium"
+            action = f"이미지 {gap}장 추가 업로드"
+            
+        elif image_count >= 40:
+            # 40-59장 (중위권)
+            gap = 120 - image_count
+            messages = [
+                f"네이버는 120장까지 업로드 가능합니다. 우리 {product_type}, 외부 전경, 내부 전경, 메뉴판 및 강조하고 싶은 곳을 멋지게 찍어서 업데이트합시다. 현재 {image_count}장이니 {gap}장을 더 추가하면 만점입니다!",
+                f"이미지가 부족합니다. 현재 {image_count}장, 목표 120장의 절반 수준입니다. {example}, 인테리어 다양한 각도, 외부 전경, 주차장 등을 추가하세요.",
+                f"중간 수준입니다. {gap}장의 고품질 이미지가 더 필요합니다. 자연광을 활용하고, 고객의 시선을 사로잡을 사진을 준비하세요."
+            ]
+            message = self._get_message_variant(place_id, "images_mid", messages)
+            estimated_gain = round(gap / 120 * 7, 1)
+            priority = "high"
+            action = f"이미지 {gap}장 추가 업로드"
+            
+        else:
+            # 40장 미만 (초기 단계)
+            gap = 120 - image_count
+            messages = [
+                f"이미지는 고객의 첫인상을 결정합니다! 네이버는 120장까지 업로드 가능합니다. 현재 {image_count}장은 매우 부족합니다. {product_type}({example}), 외부 전경, 내부 전경, 메뉴판 등을 멋지게 찍어서 업데이트해봅시다. 자연광을 활용하고, 필요하면 전문 촬영도 고려하세요.",
+                f"이미지가 심각하게 부족합니다! 현재 {image_count}장으로는 고객 유입이 어렵습니다. 최소 60장 이상을 즉시 업로드하세요. {example} 위주로 시작하세요.",
+                f"이제 막 시작 단계입니다. {gap}장의 이미지가 필요합니다! 스마트폰으로도 충분하니, 다양한 각도에서 우리 매장의 매력을 담아내세요. 조명과 구도를 신경 쓰세요."
+            ]
+            message = self._get_message_variant(place_id, "images_start", messages)
+            estimated_gain = round(gap / 120 * 7, 1)
+            priority = "critical"
+            action = f"이미지 대폭 추가 (현재 {image_count}장 → 목표 120장)"
+        
+        recommendations.append({
+            "action": action,
+            "method": message,
+            "estimated_gain": estimated_gain,
+            "priority": priority,
+        })
         
         return {
             "score": round(score, 1),
@@ -292,6 +575,7 @@ class NaverPlaceDiagnosisEngine:
             "status": status,
             "evidence": {
                 "image_count": image_count,
+                "target": 120,
                 "quantity_score": round(quantity_score, 1),
                 "freshness_score": freshness_score,
                 "last_upload": "정보 없음",  # TODO
@@ -419,33 +703,87 @@ class NaverPlaceDiagnosisEngine:
         max_score = self.WEIGHTS["conveniences"]
         
         if count >= 6:
-            score = 6
+            score = 6.0
             status = "PASS"
         elif count >= 3:
-            score = 4
+            score = 4.0
             status = "WARN"
         elif count >= 1:
-            score = 2
+            score = 2.0
             status = "WARN"
         else:
             score = 0
             status = "FAIL"
         
         recommendations = []
-        if count < 6:
-            gap = 6 - count
-            available = ["주차", "무선 인터넷", "예약", "단체 이용 가능", "포장", "배달", "반려동물 동반"]
-            missing = [c for c in available if c not in conveniences][:gap]
+        place_id = data.get("place_id", "")
+        available = ["주차", "무선 인터넷", "예약", "단체 이용 가능", "포장", "배달", "반려동물 동반", "콘센트", "노키즈존", "룸", "개별룸", "단독 공간"]
+        missing = [c for c in available if c not in conveniences]
+        
+        # 점수 구간 세분화 및 메시지 다양화 (Hash 기반)
+        if count >= 6:
+            # 6개 이상 (만점)
+            messages = [
+                "편의시설 정보를 아주 잘 등록하고 계십니다! 👍 고객들이 방문 전에 필요한 정보를 충분히 확인할 수 있습니다. 계속 유지해주세요.",
+                "완벽합니다! 🌟 편의시설 정보가 풍부하여 고객 만족도가 높을 것입니다. 새로운 편의시설 추가 시 즉시 업데이트하세요.",
+                "최고 수준입니다! 🏆 편의시설 관리를 탁월하게 하고 계십니다. 이 수준을 계속 유지하세요."
+            ]
+            message = self._get_message_variant(place_id, "conveniences_perfect", messages)
+            estimated_gain = 0
+            priority = "low"
+            action = "편의시설 관리 우수"
             
-            recommendations.append({
-                "action": f"편의시설 {gap}개 추가 등록 (현재 {count}개 → 목표 6개)",
-                "method": f"가능한 항목: {', '.join(missing)}",
-                "estimated_gain": gap,
-                "priority": "medium",
-            })
+        elif count >= 4:
+            # 4-5개 (우수)
+            gap = 6 - count
+            missing_examples = missing[:3]
+            messages = [
+                f"잘 하고 계십니다! 혹시 빠뜨린 부분이 없는지 한번 더 확인해서 업체 정보를 업데이트해주세요. 예: {', '.join(missing_examples)} 등",
+                f"좋은 수준입니다! 💪 현재 {count}개 등록, 목표 6개까지 {gap}개만 더 확인하세요. 대부분의 업장에서 적용할 수 있는 옵션이 많습니다.",
+                f"거의 다 왔습니다! 🚀 {gap}개만 더 체크하면 만점입니다: {', '.join(missing_examples)} 등을 확인해보세요."
+            ]
+            message = self._get_message_variant(place_id, "conveniences_good", messages)
+            estimated_gain = float(gap)
+            priority = "medium"
+            action = f"편의시설 {gap}개 추가 확인"
+            
+        elif count >= 2:
+            # 2-3개 (중위권)
+            gap = 6 - count
+            missing_examples = missing[:4]
+            messages = [
+                f"혹시 빠뜨린 부분이 없는지 한번 더 확인해서 업체 정보를 업데이트해주세요. 대부분의 업장에서 적용할 수 있는 옵션들이 많습니다. 예: {', '.join(missing_examples)} 등",
+                f"편의시설 정보가 부족합니다. 현재 {count}개, 목표 6개까지 꼼꼼히 체크하세요: {', '.join(missing_examples)} 등",
+                f"중간 수준입니다. {gap}개의 편의시설을 추가 확인하세요. 고객들이 방문 전에 이 정보를 자주 확인합니다."
+            ]
+            message = self._get_message_variant(place_id, "conveniences_mid", messages)
+            estimated_gain = float(gap)
+            priority = "high"
+            action = f"편의시설 {gap}개 추가 확인"
+            
+        else:
+            # 0-1개 (초기 단계)
+            gap = 6 - count
+            missing_examples = missing[:5]
+            messages = [
+                f"편의시설 정보가 매우 부족합니다. 혹시 빠뜨린 부분이 없는지 한번 더 확인해서 업체 정보를 업데이트해주세요. 대부분의 업장에서 적용할 수 있는 옵션: {', '.join(missing_examples)} 등",
+                f"편의시설 등록이 거의 안 되어 있습니다! 현재 {count}개로는 고객이 방문을 망설일 수 있습니다. 즉시 체크하세요: {', '.join(missing_examples)} 등",
+                f"편의시설 정보를 즉시 업데이트하세요! {gap}개를 확인해야 합니다. 이 정보는 고객 전환율에 직접적인 영향을 줍니다."
+            ]
+            message = self._get_message_variant(place_id, "conveniences_start", messages)
+            estimated_gain = float(gap)
+            priority = "critical"
+            action = f"편의시설 정보 업데이트 필요 ({gap}개)"
+        
+        recommendations.append({
+            "action": action,
+            "method": message,
+            "estimated_gain": estimated_gain,
+            "priority": priority,
+        })
         
         return {
-            "score": score,
+            "score": round(score, 1),
             "max_score": max_score,
             "status": status,
             "evidence": {
@@ -481,13 +819,38 @@ class NaverPlaceDiagnosisEngine:
             grade = "D"  # ⭐ D등급
         
         recommendations = []
+        place_id = data.get("place_id", "")
+        
         if not has_naverpay_in_search:
+            # 네이버페이 미사용
+            messages = [
+                "네이버페이는 실제로 고객들이 우리 매장에 다녀갔다는 강한 신호를 주기 때문에 플레이스 점수에 긍정적인 영향을 줍니다. 또한 검색 결과에 네이버페이 아이콘이 표시되어 신뢰도가 높아지고, 네이버 플레이스 노출에도 우대 혜택이 있습니다.",
+                "네이버페이를 도입하세요! 고객 신뢰도가 높아지고, 검색 결과에 네이버페이 배지가 표시됩니다. 플레이스 점수와 노출 순위에도 긍정적인 영향을 줍니다.",
+                "네이버페이는 강력한 신뢰 신호입니다! 결제 데이터를 통해 실제 방문을 증명하므로 플레이스 알고리즘이 우리 매장을 더 신뢰합니다. 노출 우대 혜택도 있습니다."
+            ]
+            message = self._get_message_variant(place_id, "naverpay_none", messages)
+            
             recommendations.append({
                 "action": "네이버페이 결제 도입",
-                "method": "네이버페이 가맹점 신청 → POS 연동 또는 QR 결제 도입",
-                "estimated_gain": 6,
+                "method": f"{message}\n\n구체적 방법: 네이버페이 가맹점 신청 → POS 연동 또는 QR 결제 도입",
+                "estimated_gain": 6.0,
                 "priority": "high",
-                "note": "네이버 플레이스 노출 우대 혜택, 검색 결과에 네이버페이 아이콘 표시",
+                "note": "신뢰 신호 강화 + 노출 우대",
+            })
+        else:
+            # 네이버페이 사용 중
+            messages = [
+                "네이버페이를 이미 사용 중이시군요! 👍 이는 고객들에게 신뢰 신호를 주고, 플레이스 점수에도 긍정적인 영향을 줍니다.",
+                "완벽합니다! 🌟 네이버페이를 활용하고 계시네요. 고객 신뢰도와 플레이스 점수에 큰 도움이 됩니다.",
+                "훌륭합니다! 💪 네이버페이 사용으로 플레이스 알고리즘이 우리 매장을 더 신뢰합니다. 계속 활용하세요!"
+            ]
+            message = self._get_message_variant(place_id, "naverpay_using", messages)
+            
+            recommendations.append({
+                "action": "네이버페이 활용 중",
+                "method": message,
+                "estimated_gain": 0,
+                "priority": "low",
             })
         
         return {
@@ -545,7 +908,7 @@ class NaverPlaceDiagnosisEngine:
             })
         
         return {
-            "score": score,
+            "score": round(score, 1),
             "max_score": max_score,
             "status": status,
             "evidence": {
@@ -592,27 +955,81 @@ class NaverPlaceDiagnosisEngine:
         status = "PASS" if score >= 6 else ("WARN" if score >= 4 else "FAIL")
         
         recommendations = []
-        if recent_60d_count < 2:
-            gap = 2 - recent_60d_count
-            target_frequency = "월 1회 이상" if gap == 1 else "월 1-2회"
-            recommendations.append({
-                "action": f"공지사항 정기 업데이트 시작 (목표: {target_frequency})",
-                "method": "앞으로 신메뉴 출시, 이벤트, 시즌 프로모션 등 월 1-2회 공지 작성",
-                "copy_example": "🎉 신메뉴 출시! 여름 한정 시그니처 빙수 / 📢 8월 한 달간 전 메뉴 10% 할인",
-                "estimated_gain": gap * 4,
-                "priority": "high" if recent_60d_count == 0 else "medium",
-            })
+        place_id = data.get("place_id", "")
         
-        if latest_days_ago and latest_days_ago > 30:
+        # 점수 구간 세분화 및 메시지 다양화 (Hash 기반)
+        if recent_60d_count >= 4:
+            # 4개 이상 (탁월)
+            messages = [
+                "공지사항을 매우 활발하게 운영하고 계십니다! 🎉 주별 2개가 만점인데, 이를 훨씬 초과하고 있습니다. 공지사항은 플레이스 가시성이 높기 때문에 고객 전환에도 큰 도움이 됩니다. Keep it up!",
+                "완벽합니다! 🌟 공지사항 관리를 탁월하게 하고 계십니다. 매장의 활성도가 매우 높아 보입니다. 이 수준을 계속 유지하세요!",
+                "최고 수준입니다! 🏆 공지사항을 통해 고객과의 소통이 활발합니다. 플레이스 가시성도 높아 신규 고객 유입에 큰 도움이 될 것입니다."
+            ]
+            message = self._get_message_variant(place_id, "announcements_excellent", messages)
+            estimated_gain = 0.5
+            priority = "low"
+            action = "공지사항 관리 우수"
+            
+        elif recent_60d_count >= 2:
+            # 2-3개 (우수)
+            messages = [
+                "공지사항을 잘 운영하고 계십니다! 👍 주별 2개가 만점입니다. 1개도 나쁘지 않지만, 2개 이상을 넣으면 더 활성화된 매장으로 간주됩니다. 공지사항은 플레이스 가시성이 높기 때문에 고객 전환에도 큰 도움이 됩니다.",
+                f"좋습니다! 💪 현재 {recent_60d_count}개로 목표를 충족했습니다. 이 페이스를 유지하면서 월 1-2회 정기 업데이트를 계속하세요.",
+                "훌륭합니다! ✨ 공지사항 관리를 잘 하고 계십니다. 신메뉴, 이벤트, 휴무일 등을 꾸준히 공지하세요."
+            ]
+            message = self._get_message_variant(place_id, "announcements_good", messages)
+            estimated_gain = 1.0
+            priority = "low"
+            action = "공지사항 관리 양호"
+            
+        elif recent_60d_count == 1:
+            # 1개 (중위권)
+            messages = [
+                "공지사항이 1개 있습니다. 주별 2개가 만점입니다. 1개도 나쁘지 않지만, 2개 이상을 넣으면 더 활성화된 매장으로 간주됩니다. 공지사항은 플레이스 가시성이 높기 때문에 고객 전환에도 큰 도움이 됩니다.\n\n추천: 신메뉴 출시, 이벤트, 시즌 프로모션 등을 월 1-2회 공지로 작성하세요.\n예시: '🎉 신메뉴 출시! 여름 한정 시그니처 빙수' / '📢 8월 한 달간 전 메뉴 10% 할인'",
+                "공지사항 1개를 더 추가하면 만점입니다! 주별 2개가 목표입니다. 공지사항은 매장 활성도를 보여주고, 플레이스 가시성이 높아 신규 고객 전환에 큰 도움이 됩니다. 이번 주/월 소식을 공지하세요.",
+                "거의 다 왔습니다! 🚀 1개만 더 작성하면 목표 달성입니다. 영업시간 변경, 휴무일 안내, 이벤트 등 고객에게 유용한 정보를 공유하세요."
+            ]
+            message = self._get_message_variant(place_id, "announcements_one", messages)
+            estimated_gain = 4.0
+            priority = "medium"
+            action = "공지사항 1개 추가 권장"
+            
+        else:
+            # 0개 (초기 단계)
+            messages = [
+                "공지사항이 없습니다! 주별 2개가 만점입니다. 공지사항은 플레이스 가시성이 높기 때문에 고객 전환에 큰 도움이 됩니다. 지금 바로 시작하세요!\n\n추천: 신메뉴 출시, 이벤트, 시즌 프로모션 등을 월 1-2회 공지로 작성하세요.\n예시: '🎉 신메뉴 출시! 여름 한정 시그니처 빙수' / '📢 8월 한 달간 전 메뉴 10% 할인' / '⏰ 2월 설 연휴 영업시간 안내'",
+                "공지사항이 전혀 없습니다! 즉시 시작하세요. 공지사항은 매장의 활성도를 보여주고, 검색 결과에서 눈에 잘 띕니다. 신메뉴, 이벤트, 영업시간 등을 공지하세요.",
+                "공지사항을 활용하지 않고 있습니다! 이는 매우 아쉽습니다. 주별 2개 목표로 월 1-2회 정기 업데이트를 시작하세요. 고객 전환율이 크게 향상될 것입니다."
+            ]
+            message = self._get_message_variant(place_id, "announcements_none", messages)
+            estimated_gain = 8.0
+            priority = "critical"
+            action = "공지사항 정기 업데이트 시작"
+        
+        # 최신성 체크 (30일 넘으면 추가 권장)
+        if latest_days_ago and latest_days_ago > 30 and recent_60d_count < 4:
+            old_messages = [
+                "최근 30일 이내에 신규 공지가 없습니다. 공지사항은 매장의 활성도를 보여주는 지표입니다. 이번 주/월 이벤트, 신메뉴 안내, 영업시간 변경 등 최신 소식을 공유하세요.",
+                f"마지막 공지가 {latest_days_ago}일 전입니다. 너무 오래되었습니다! 최신 공지를 즉시 작성하세요. 매장이 활발히 운영 중임을 보여주는 것이 중요합니다.",
+                "공지사항이 오래되었습니다. 신선한 소식으로 고객의 관심을 끌어보세요. 시즌 메뉴, 할인 이벤트, 영업 안내 등을 업데이트하세요."
+            ]
+            old_message = self._get_message_variant(place_id, "announcements_old", old_messages)
             recommendations.append({
-                "action": "30일 이내 신규 공지 작성으로 매장 활성도 표시",
-                "method": "이번 주/월 이벤트, 신메뉴 안내, 영업시간 변경 등 최신 소식 공유",
-                "estimated_gain": 2,
+                "action": "최신 공지사항 작성",
+                "method": old_message,
+                "estimated_gain": 2.0,
                 "priority": "high",
+            })
+        else:
+            recommendations.append({
+                "action": action,
+                "method": message,
+                "estimated_gain": estimated_gain,
+                "priority": priority,
             })
         
         return {
-            "score": score,
+            "score": round(score, 1),
             "max_score": max_score,
             "status": status,
             "evidence": {
@@ -930,7 +1347,7 @@ class NaverPlaceDiagnosisEngine:
             })
         
         return {
-            "score": score,
+            "score": round(score, 1),
             "max_score": max_score,
             "status": status,
             "evidence": {
@@ -963,7 +1380,7 @@ class NaverPlaceDiagnosisEngine:
             })
         
         return {
-            "score": score,
+            "score": round(score, 1),
             "max_score": max_score,
             "status": status,
             "is_bonus": True,  # 보너스 항목 표시
@@ -984,17 +1401,42 @@ class NaverPlaceDiagnosisEngine:
         status = "PASS"  # 항상 PASS (보너스 항목)
         
         recommendations = []
+        place_id = data.get("place_id", "")
+        
         if not is_place_plus:
+            # 플레이스 플러스 미가입
+            messages = [
+                "최근 네이버에서는 플레이스 플러스를 사용하는 업장들에게 신뢰 있는 데이터를 통해서 더 많은 고객에게 노출을 해주는 움직임을 보입니다. 또한 쿠폰, 공지, 예약 등 다양한 관리 기능을 사용할 수 있습니다.\n\n구체적 방법: 네이버 플레이스 앱에서 사업자 인증 → 플러스 기능 활성화",
+                "플레이스 플러스를 가입하세요! 네이버는 플러스 업장에 더 많은 노출 기회를 제공합니다. 쿠폰, 공지, 예약 관리 등 강력한 기능도 사용할 수 있습니다.",
+                "플레이스 플러스 미가입 시 불이익이 있을 수 있습니다! 네이버는 플러스 업장을 우대합니다. 즉시 가입하여 노출 증가와 관리 기능을 활용하세요."
+            ]
+            message = self._get_message_variant(place_id, "place_plus_none", messages)
+            
             recommendations.append({
-                "action": "플레이스 플러스 가입으로 관리 기능 확대",
-                "method": "네이버 플레이스 앱에서 사업자 인증 → 플러스 기능 활성화",
-                "estimated_gain": 2,
+                "action": "플레이스 플러스 가입 권장",
+                "method": message,
+                "estimated_gain": 2.0,
                 "priority": "high",
-                "note": "보너스 점수 항목 - 쿠폰, 공지, 예약 등 관리 기능 확대",
+                "note": "보너스 점수 + 노출 증가 + 관리 기능 확대",
+            })
+        else:
+            # 플레이스 플러스 가입 중
+            messages = [
+                "플레이스 플러스를 사용 중이시군요! 👍 최근 네이버는 플레이스 플러스 업장에 더 많은 노출 기회를 주고 있습니다. 쿠폰, 공지, 예약 등 다양한 기능을 적극 활용하세요!",
+                "완벽합니다! 🌟 플레이스 플러스로 노출 우대를 받고 계십니다. 쿠폰과 공지사항 기능을 적극 활용하면 더 큰 효과를 볼 수 있습니다.",
+                "훌륭합니다! 💪 플레이스 플러스 가입으로 관리 기능을 최대한 활용하고 계시군요. 네이버의 노출 우대 혜택도 누리세요!"
+            ]
+            message = self._get_message_variant(place_id, "place_plus_using", messages)
+            
+            recommendations.append({
+                "action": "플레이스 플러스 활용 중",
+                "method": message,
+                "estimated_gain": 0,
+                "priority": "low",
             })
         
         return {
-            "score": score,
+            "score": round(score, 1),
             "max_score": max_score,
             "status": status,
             "is_bonus": True,  # 보너스 항목 표시
@@ -1016,17 +1458,42 @@ class NaverPlaceDiagnosisEngine:
         status = "PASS"  # 항상 PASS (보너스 항목)
         
         recommendations = []
+        place_id = data.get("place_id", "")
+        
         if not uses_smart_call:
+            # 스마트콜 미사용
+            messages = [
+                "네이버에서는 우리 매장이 얼마나 많은 스마트콜을 받고 있는지도 확인이 가능합니다. 스마트콜은 통화 자동 녹음, 예약 관리, 통계 제공 등 다양한 기능을 제공합니다. 최대한 스마트콜을 사용해주세요!\n\n구체적 방법: 네이버 스마트콜 신청 → 0507 번호 발급 → 통화 분석 및 예약 관리",
+                "스마트콜을 도입하세요! 네이버는 스마트콜 사용 업장을 긍정적으로 평가합니다. 통화 녹음, 예약 관리, 통화 통계 등 편리한 기능도 사용할 수 있습니다.",
+                "스마트콜 미사용은 아쉽습니다! 0507 번호를 발급받으면 네이버가 통화량을 확인하고, 예약 관리도 편리합니다. 적극 활용하세요!"
+            ]
+            message = self._get_message_variant(place_id, "smart_call_none", messages)
+            
             recommendations.append({
-                "action": "스마트콜 도입으로 통화 관리 기능 활용",
-                "method": "네이버 스마트콜 신청 → 0507 번호 발급 → 통화 분석 및 예약 관리",
-                "estimated_gain": 2,
+                "action": "스마트콜 도입 권장",
+                "method": message,
+                "estimated_gain": 2.0,
                 "priority": "medium",
-                "note": "보너스 점수 항목 - 통화 자동 녹음, 예약 관리, 통계 제공",
+                "note": "보너스 점수 + 통화 관리 + 통계 분석",
+            })
+        else:
+            # 스마트콜 사용 중
+            messages = [
+                "스마트콜을 사용 중이시군요! 👍 네이버는 스마트콜 사용 여부와 통화량도 확인합니다. 통화 분석과 예약 관리 기능을 적극 활용하세요!",
+                "완벽합니다! 🌟 스마트콜로 통화 관리를 효율적으로 하고 계시네요. 네이버도 이를 긍정적으로 평가합니다.",
+                "훌륭합니다! 💪 스마트콜 활용으로 예약 관리가 편리하고, 플레이스 점수에도 도움이 됩니다. 계속 사용하세요!"
+            ]
+            message = self._get_message_variant(place_id, "smart_call_using", messages)
+            
+            recommendations.append({
+                "action": "스마트콜 활용 중",
+                "method": message,
+                "estimated_gain": 0,
+                "priority": "low",
             })
         
         return {
-            "score": score,
+            "score": round(score, 1),
             "max_score": max_score,
             "status": status,
             "is_bonus": True,  # 보너스 항목 표시
@@ -1069,13 +1536,14 @@ class NaverPlaceDiagnosisEngine:
             return "D"
     
     def _generate_priority_actions(self, evaluations: Dict[str, Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """우선순위 액션 생성 - estimated_gain 큰 순 + 의존성 낮은 순"""
+        """우선순위 액션 생성 - category별 중복 방지 + estimated_gain 큰 순"""
         all_actions = []
         
         for category, eval_data in evaluations.items():
             for rec in eval_data.get("recommendations", []):
                 all_actions.append({
                     "category": category,
+                    "category_name": self.CATEGORY_NAMES.get(category, category),
                     "status": eval_data["status"],
                     **rec
                 })
@@ -1089,7 +1557,18 @@ class NaverPlaceDiagnosisEngine:
             )
         )
         
-        return all_actions
+        # 같은 category의 액션이 중복되지 않도록 필터링
+        # 각 category에서 가장 우선순위 높은 하나만 선택
+        seen_categories = set()
+        unique_actions = []
+        
+        for action in all_actions:
+            category = action["category"]
+            if category not in seen_categories:
+                seen_categories.add(category)
+                unique_actions.append(action)
+        
+        return unique_actions
 
 
 # 싱글톤 인스턴스
