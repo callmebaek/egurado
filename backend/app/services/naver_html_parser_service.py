@@ -409,14 +409,53 @@ class NaverHtmlParserService:
             return None
     
     def _extract_menus(self, apollo_state: Dict[str, Any], place_id: str) -> List[Dict[str, Any]]:
-        """메뉴 정보 추출"""
+        """메뉴 정보 추출 (Menu, Price, Service 등 다양한 키 패턴 분석)"""
         menus = []
         
         try:
             # Menu:place_id_* 형태의 키 찾기
             menu_keys = [k for k in apollo_state.keys() if k.startswith(f"Menu:{place_id}_")]
             
-            logger.info(f"[HTML Parser] 발견된 메뉴: {len(menu_keys)}개")
+            logger.info(f"[HTML Parser] place_id={place_id}, 발견된 메뉴 키: {len(menu_keys)}개")
+            
+            # 메뉴가 0개일 때 상세 분석 (다른 키 패턴 찾기)
+            if len(menu_keys) == 0:
+                logger.warning(f"[HTML Parser] ⚠️ place_id={place_id} 메뉴 0개! Apollo State 키 분석 시작")
+                logger.info(f"[HTML Parser] Apollo State 전체 키 개수: {len(apollo_state)}")
+                
+                # 다양한 패턴으로 메뉴 관련 키 검색
+                menu_related_keys = {
+                    "Menu_any": [k for k in apollo_state.keys() if "Menu:" in k or "menu" in k.lower()],
+                    "Price": [k for k in apollo_state.keys() if "Price" in k or "price" in k.lower()],
+                    "Service": [k for k in apollo_state.keys() if "Service" in k or "service" in k.lower()],
+                    "Product": [k for k in apollo_state.keys() if "Product" in k or "product" in k.lower()],
+                    "Item": [k for k in apollo_state.keys() if "Item" in k or "item" in k.lower()],
+                }
+                
+                for pattern, keys in menu_related_keys.items():
+                    if keys:
+                        logger.info(f"[HTML Parser] 패턴 '{pattern}' 발견: {len(keys)}개")
+                        # 상위 5개 키 샘플 출력
+                        for key in keys[:5]:
+                            value_type = type(apollo_state[key]).__name__
+                            if isinstance(apollo_state[key], dict):
+                                sample_keys = list(apollo_state[key].keys())[:5]
+                                logger.info(f"[HTML Parser]   - {key} (type={value_type}, keys={sample_keys})")
+                            else:
+                                logger.info(f"[HTML Parser]   - {key} (type={value_type})")
+                
+                # PlaceDetailBase 키 확인 (메뉴 정보가 여기 있을 수도)
+                place_detail_key = f"PlaceDetailBase:{place_id}"
+                if place_detail_key in apollo_state:
+                    place_detail = apollo_state[place_detail_key]
+                    if isinstance(place_detail, dict):
+                        menu_fields = [k for k in place_detail.keys() if "menu" in k.lower() or "price" in k.lower()]
+                        if menu_fields:
+                            logger.info(f"[HTML Parser] PlaceDetailBase에서 메뉴 관련 필드 발견: {menu_fields}")
+                
+                # 전체 키 샘플 출력 (디버깅용, 상위 20개)
+                all_keys = list(apollo_state.keys())[:20]
+                logger.info(f"[HTML Parser] Apollo State 키 샘플 (상위 20개): {all_keys}")
             
             for menu_key in menu_keys:
                 menu_data = apollo_state[menu_key]
@@ -454,10 +493,19 @@ class NaverHtmlParserService:
             
             menus.sort(key=get_price_for_sort)
             
+            if menus:
+                logger.info(f"[HTML Parser] ✅ place_id={place_id}, 메뉴 {len(menus)}개 추출 완료")
+            
             return menus
             
         except Exception as e:
-            logger.error(f"[HTML Parser] 메뉴 추출 실패: {str(e)}")
+            logger.error(f"[HTML Parser] ❌ place_id={place_id}, 메뉴 추출 실패: {str(e)}")
+            # 에러 시에도 Apollo State 키 샘플 출력
+            try:
+                all_keys = list(apollo_state.keys())[:10]
+                logger.error(f"[HTML Parser] Apollo State 키 샘플 (에러 시): {all_keys}")
+            except:
+                pass
             return []
 
 

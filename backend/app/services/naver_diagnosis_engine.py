@@ -587,15 +587,17 @@ class NaverPlaceDiagnosisEngine:
         """메뉴 평가 (12점) - 완성도(8점) + SEO(4점)"""
         menus = data.get("menus", []) or []
         menu_count = len(menus)
+        category = data.get("category", "")
         max_score = self.WEIGHTS["menus"]
         
+        # 업종 구분
+        is_food_cafe = self._is_food_cafe_category(category)
+        
         if menu_count == 0:
-            return {
-                "score": 0,
-                "max_score": max_score,
-                "status": "FAIL",
-                "evidence": {"menu_count": 0, "description_filled_rate": 0},
-                "recommendations": [
+            # 업종별 다른 가이드
+            if is_food_cafe:
+                # 식당/카페: 메뉴 등록 가이드
+                recommendations = [
                     {
                         "action": "메뉴 최소 5개 이상 등록",
                         "method": "대표메뉴, 시즌메뉴, 세트메뉴 포함하여 구성",
@@ -608,7 +610,30 @@ class NaverPlaceDiagnosisEngine:
                         "estimated_gain": 4,
                         "priority": "critical",
                     },
-                ],
+                ]
+            else:
+                # 기타 업종: 상품/서비스/가격표 등록 가이드
+                recommendations = [
+                    {
+                        "action": "상품/서비스 최소 5개 이상 등록",
+                        "method": "대표 상품, 인기 상품, 패키지 상품 포함하여 구성. 가격표가 있다면 네이버 플레이스 메뉴 섹션에 등록해주세요.",
+                        "estimated_gain": 8,
+                        "priority": "critical",
+                    },
+                    {
+                        "action": "상품/서비스별 상세 설명 작성",
+                        "method": "특징, 구성, 장점, 추천 대상 등 구체적으로 기술",
+                        "estimated_gain": 4,
+                        "priority": "critical",
+                    },
+                ]
+            
+            return {
+                "score": 0,
+                "max_score": max_score,
+                "status": "FAIL",
+                "evidence": {"menu_count": 0, "description_filled_rate": 0, "is_food_cafe": is_food_cafe},
+                "recommendations": recommendations,
             }
         
         # 완성도 평가 (설명 채움률)
@@ -666,10 +691,20 @@ class NaverPlaceDiagnosisEngine:
         recommendations = []
         if description_filled_rate < 1.0:
             gap = menu_count - described_count
+            
+            # 업종별 다른 가이드
+            if is_food_cafe:
+                # 식당/카페: 음식 관련 가이드
+                method_text = "재료, 조리법, 맛의 특징, 추천 상황 포함"
+                example_text = "💡 예시: 직접 만든 수제 소스로 맛을 낸 시그니처 파스타. 신선한 해산물과 크림의 조화가 일품입니다."
+            else:
+                # 기타 업종: 상품/서비스 관련 가이드
+                method_text = "상품/서비스 특징, 구성, 장점, 추천 대상 포함"
+                example_text = "💡 예시: 전문 장비로 촬영하는 프로필 사진. 자연스러운 표정과 배경 연출로 취업/입사에 최적화된 사진을 제공합니다."
+            
             recommendations.append({
                 "action": f"메뉴 설명 {gap}개 추가 작성 (완성도 {description_filled_rate*100:.0f}% → 100%)",
-                "method": "재료, 조리법, 맛의 특징, 추천 상황 포함",
-                "copy_example": "직접 만든 수제 소스로 맛을 낸 시그니처 파스타. 신선한 해산물과 크림의 조화가 일품입니다.",
+                "method": f"{method_text}\n\n{example_text}",
                 "estimated_gain": (1 - description_filled_rate) * 8,
                 "priority": "high" if description_filled_rate < 0.5 else "medium",
             })
@@ -1107,7 +1142,10 @@ class NaverPlaceDiagnosisEngine:
         
         # 소개글에 포함된 지역 키워드 카운트
         all_regions = regions + address_regions
-        found_regions = [r for r in all_regions if r in description]
+        # 중복 제거 + 최소 2자 이상 필터링 (1자 키워드는 너무 모호함)
+        found_regions = list(set([r for r in all_regions if r in description and len(r) >= 2]))
+        # 긴 것부터 정렬 (예: "성수동" > "성수")
+        found_regions.sort(key=len, reverse=True)
         region_count = len(found_regions)
         
         # 주소에서 추출한 지역 중 소개글에 없는 것
