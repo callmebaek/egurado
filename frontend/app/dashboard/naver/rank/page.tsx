@@ -846,62 +846,66 @@ export default function NaverRankPage() {
           
           {rankResult.found && rankResult.rank ? (
             <Stack gap="lg">
-              {/* 순위 결과 - Stripe 변경 전 원본 스타일 */}
-              <Card className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-center">
-                  {/* 순위 - 큰 원형 배지 */}
-                  <div className="flex flex-col items-center justify-center">
-                    <div 
-                      className="flex items-center justify-center w-24 h-24 rounded-full text-white font-bold text-4xl shadow-lg mb-3"
-                      style={{ backgroundColor: '#407645' }}
-                    >
-                      {rankResult.rank}
+              {/* 순위 및 리뷰 정보 한 줄로 표시 - Stripe 변경 전 원본 스타일 + 브랜드 컬러 */}
+              <div className="p-4 border rounded-lg" style={{ 
+                backgroundColor: 'rgba(64, 118, 69, 0.05)',
+                borderColor: '#407645'
+              }}>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                  {/* 순위 */}
+                  <div className="flex items-center gap-4">
+                    <div className="text-4xl font-bold whitespace-nowrap" style={{ color: '#407645' }}>
+                      {rankResult.rank}위
                     </div>
-                    <p className="text-lg font-semibold text-center">{selectedStore?.name}</p>
-                    <p className="text-sm text-muted-foreground text-center">
-                      {rankResult.total_count 
-                        ? `전체 ${rankResult.total_count}개 중` 
-                        : `상위 ${rankResult.total_results}개 중`}
-                    </p>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">{selectedStore?.name}</p>
+                      <p className="text-sm text-muted-foreground truncate">
+                        {rankResult.total_count 
+                          ? `전체 ${rankResult.total_count}개 중` 
+                          : `상위 ${rankResult.total_results}개 중`}
+                      </p>
+                    </div>
                   </div>
 
-                  {/* 방문자 리뷰 */}
-                  <div className="text-center p-4 rounded-lg border-2 border-gray-200 hover:border-[#635bff] transition-colors">
-                    <p className="text-sm text-muted-foreground mb-1">방문자 리뷰</p>
-                    <p className="text-3xl font-bold" style={{ color: '#635bff' }}>
-                      {(rankResult.visitor_review_count || 0).toLocaleString()}
-                    </p>
-                  </div>
+                  {/* 구분선 */}
+                  <div className="hidden sm:block w-px h-12" style={{ backgroundColor: '#407645', opacity: 0.3 }} />
 
-                  {/* 블로그 리뷰 */}
-                  <div className="text-center p-4 rounded-lg border-2 border-gray-200 hover:border-[#635bff] transition-colors">
-                    <p className="text-sm text-muted-foreground mb-1">블로그 리뷰</p>
-                    <p className="text-3xl font-bold" style={{ color: '#635bff' }}>
-                      {(rankResult.blog_review_count || 0).toLocaleString()}
-                    </p>
+                  {/* 리뷰수 정보 */}
+                  <div className="flex flex-wrap gap-4 sm:gap-6 items-center">
+                    {/* 방문자 리뷰 */}
+                    <div className="flex items-center gap-2">
+                      <div className="text-xs text-muted-foreground whitespace-nowrap">방문자 리뷰</div>
+                      <div className="text-xl font-bold whitespace-nowrap" style={{ color: '#635bff' }}>
+                        {(rankResult.visitor_review_count || 0).toLocaleString()}개
+                      </div>
+                    </div>
+
+                    {/* 블로그 리뷰 */}
+                    <div className="flex items-center gap-2">
+                      <div className="text-xs text-muted-foreground whitespace-nowrap">블로그 리뷰</div>
+                      <div className="text-xl font-bold whitespace-nowrap" style={{ color: '#635bff' }}>
+                        {(rankResult.blog_review_count || 0).toLocaleString()}개
+                      </div>
+                    </div>
                   </div>
 
                   {/* 순위 변동 */}
                   {rankResult.rank_change !== null && rankResult.rank_change !== 0 && (
-                    <div className="text-center p-4 rounded-lg border-2 border-gray-200 hover:border-[#407645] transition-colors">
-                      <p className="text-sm text-muted-foreground mb-1">순위 변동</p>
-                      <div className="flex items-center justify-center gap-2">
-                        {rankResult.rank_change > 0 ? (
-                          <TrendingUp className="w-6 h-6" style={{ color: '#407645' }} />
-                        ) : (
-                          <TrendingDown className="w-6 h-6 text-red-600" />
-                        )}
-                        <span 
-                          className="text-3xl font-bold" 
-                          style={{ color: rankResult.rank_change > 0 ? '#407645' : '#dc2626' }}
-                        >
-                          {Math.abs(rankResult.rank_change)}
-                        </span>
-                      </div>
+                    <div className="flex items-center gap-1 ml-auto" style={{
+                      color: rankResult.rank_change > 0 ? '#407645' : '#dc2626'
+                    }}>
+                      {rankResult.rank_change > 0 ? (
+                        <TrendingUp className="w-5 h-5" />
+                      ) : (
+                        <TrendingDown className="w-5 h-5" />
+                      )}
+                      <span className="font-semibold">
+                        {Math.abs(rankResult.rank_change)}
+                      </span>
                     </div>
                   )}
                 </div>
-              </Card>
+              </div>
 
               {/* 검색 결과 목록 - Stripe Style */}
               <div>
@@ -1075,94 +1079,96 @@ export default function NaverRankPage() {
               <Loader size="lg" color="brand" />
             </Center>
           ) : (
-            <Box style={{ overflowX: 'auto' }}>
-              <Table 
-                striped 
-                highlightOnHover 
-                withTableBorder
-                withColumnBorders
-                style={{
-                  borderRadius: 8,
-                  overflow: 'hidden'
-                }}
-              >
-                <Table.Thead style={{ background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)' }}>
-                  <Table.Tr>
-                    <Table.Th style={{ fontWeight: 600 }}>키워드</Table.Th>
-                    <Table.Th ta="center" style={{ fontWeight: 600 }}>현재 순위</Table.Th>
-                    <Table.Th ta="center" style={{ fontWeight: 600 }}>전체 업체 수</Table.Th>
-                    <Table.Th ta="center" style={{ fontWeight: 600 }}>최근 조회</Table.Th>
-                    <Table.Th ta="center" style={{ fontWeight: 600 }}>추적</Table.Th>
-                    <Table.Th ta="center" style={{ fontWeight: 600 }}>삭제</Table.Th>
-                  </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-3 px-4 font-semibold text-gray-700">키워드</th>
+                    <th className="text-center py-3 px-4 font-semibold text-gray-700">현재 순위</th>
+                    <th className="text-center py-3 px-4 font-semibold text-gray-700">전체 업체 수</th>
+                    <th className="text-center py-3 px-4 font-semibold text-gray-700">최근 조회</th>
+                    <th className="text-center py-3 px-4 font-semibold text-gray-700">추적</th>
+                    <th className="text-center py-3 px-4 font-semibold text-gray-700">삭제</th>
+                  </tr>
+                </thead>
+                <tbody>
                   {keywords.map((kw) => (
-                    <Table.Tr key={kw.id}>
-                      <Table.Td>
-                        <Text fw={600} size="sm">{kw.keyword}</Text>
-                      </Table.Td>
-                      <Table.Td ta="center">
-                        {kw.current_rank ? (
-                          <div 
-                            className="inline-flex items-center justify-center w-12 h-12 rounded-full text-white font-bold text-lg"
-                            style={{ backgroundColor: '#407645' }}
-                          >
-                            {kw.current_rank}
-                          </div>
-                        ) : (
-                          <span className="inline-block px-3 py-1 rounded-full bg-yellow-100 text-yellow-800 font-semibold text-sm border border-yellow-300">
-                            300위권 밖
-                          </span>
-                        )}
-                      </Table.Td>
-                      <Table.Td ta="center">
-                        <Text c="dimmed" size="sm">
-                          {kw.total_results && kw.total_results > 0 ? `${kw.total_results.toLocaleString()}개` : "-"}
-                        </Text>
-                      </Table.Td>
-                      <Table.Td ta="center">
-                        <Text c="dimmed" size="xs">
-                          {new Date(kw.last_checked_at).toLocaleDateString('ko-KR', {
-                            month: 'short',
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </Text>
-                      </Table.Td>
-                      <Table.Td ta="center">
+                    <tr 
+                      key={kw.id}
+                      className="border-b hover:bg-gray-50 transition-colors"
+                    >
+                      <td className="py-3 px-4">
+                        <div className="font-medium text-gray-800">{kw.keyword}</div>
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <span className="text-lg font-bold" style={{ color: '#407645' }}>
+                          {kw.current_rank ? `${kw.current_rank}위` : (
+                            <span className="text-sm text-yellow-600 font-medium">300위권 밖</span>
+                          )}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-center text-gray-600">
+                        {kw.total_results && kw.total_results > 0 ? `${kw.total_results.toLocaleString()}개` : "-"}
+                      </td>
+                      <td className="py-3 px-4 text-center text-sm text-gray-600">
+                        {new Date(kw.last_checked_at).toLocaleDateString('ko-KR', {
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </td>
+                      <td className="py-3 px-4 text-center">
                         {kw.is_tracked ? (
-                          <Badge size="md" color="green" variant="light">
+                          <span className="px-3 py-1.5 text-sm rounded-lg font-medium" style={{
+                            backgroundColor: 'rgba(64, 118, 69, 0.1)',
+                            color: '#407645'
+                          }}>
                             추적중
-                          </Badge>
+                          </span>
                         ) : (
-                          <Button
-                            size="xs"
-                            variant="light"
-                            color="brand"
+                          <button
                             onClick={() => handleAddTracking(kw)}
+                            className="px-3 py-1.5 text-sm rounded-lg transition-colors font-medium"
+                            style={{
+                              backgroundColor: 'rgba(99, 91, 255, 0.1)',
+                              color: '#635bff'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = 'rgba(99, 91, 255, 0.2)'
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = 'rgba(99, 91, 255, 0.1)'
+                            }}
                           >
                             추적하기
-                          </Button>
+                          </button>
                         )}
-                      </Table.Td>
-                      <Table.Td ta="center">
-                        <ActionIcon
-                          variant="light"
-                          color="red"
-                          size="md"
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <button
                           onClick={() => handleDeleteKeyword(kw.id, kw.keyword)}
+                          className="p-2 rounded-lg transition-colors"
+                          style={{
+                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                            color: '#dc2626'
+                          }}
                           title="키워드 삭제"
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.2)'
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)'
+                          }}
                         >
-                          <X size={16} />
-                        </ActionIcon>
-                      </Table.Td>
-                    </Table.Tr>
+                          <X className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
                   ))}
-                </Table.Tbody>
-              </Table>
-            </Box>
+                </tbody>
+              </table>
+            </div>
           )}
         </Paper>
       )}
