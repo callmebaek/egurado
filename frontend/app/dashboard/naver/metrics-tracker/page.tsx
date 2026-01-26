@@ -852,8 +852,8 @@ export default function MetricsTrackerPage() {
                                     {tracker.latest_rank ? tracker.latest_rank : '300위권 밖'}
                                   </span>
                                   {tracker.rank_change !== undefined && tracker.rank_change !== null && tracker.rank_change !== 0 ? (
-                                    <span className={`text-xs font-bold flex items-center gap-0.5 mt-1 ${tracker.rank_change > 0 ? 'text-red-600' : 'text-blue-600'}`}>
-                                      {tracker.rank_change > 0 ? <TrendingDown className="w-3 h-3" /> : <TrendingUp className="w-3 h-3" />}
+                                    <span className={`text-xs font-bold flex items-center gap-0.5 mt-1 ${tracker.rank_change > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                      {tracker.rank_change > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
                                       {Math.abs(tracker.rank_change)}
                                     </span>
                                   ) : (
