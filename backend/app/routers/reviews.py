@@ -329,6 +329,7 @@ async def analyze_store_reviews(request: AnalyzeReviewsRequest):
         # ⭐ RLS bypass 함수 호출
         stats_insert_result = supabase.rpc("insert_review_stats_bypass_rls", stats_data).execute()
         review_stats_id = stats_insert_result.data
+        logger.info(f"[DEBUG] RPC 반환값 타입: {type(review_stats_id)}, 값: {review_stats_id}")
         logger.info(f"통계 저장 완료: id={review_stats_id}")
         
         # 7-3. 개별 리뷰 저장
@@ -603,6 +604,8 @@ async def analyze_reviews_stream(store_id: str, start_date: str, end_date: str):
             # ⭐ RLS bypass 함수 호출
             stats_insert_result = supabase.rpc("insert_review_stats_bypass_rls", stats_data).execute()
             review_stats_id = stats_insert_result.data
+            print(f"[DEBUG] RPC 반환값 타입: {type(review_stats_id)}, 값: {review_stats_id}", flush=True)
+            print(f"[DEBUG] review_stats_id를 사용하여 리뷰 저장 시작: {len(analyzed_reviews)}개", flush=True)
             
             # 개별 리뷰 저장
             saved_count = 0
@@ -667,7 +670,9 @@ async def analyze_reviews_stream(store_id: str, start_date: str, end_date: str):
                             "comment_count": review.get("comment_count", 0),
                             "created_at": datetime.now(KST).isoformat()
                         }
+                        print(f"[DEBUG] 리뷰 INSERT 시도: naver_id={naver_review_id}, review_stats_id={review_stats_id}", flush=True)
                         supabase.table("reviews").insert(review_data).execute()
+                        print(f"[DEBUG] 리뷰 INSERT 성공: {idx}/{len(analyzed_reviews)}", flush=True)
                     
                     saved_count += 1
                 except Exception as insert_error:
