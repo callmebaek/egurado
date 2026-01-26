@@ -420,6 +420,39 @@ export default function AuditPage() {
     }
   }
 
+  // 진단 결과 셀 렌더링 (등급 + 개선사항)
+  const renderDiagnosisCell = (evaluationKey: string) => {
+    if (!diagnosisResult) {
+      return <Badge color="gray" size="sm">진단 전</Badge>
+    }
+
+    const evaluation = diagnosisResult.evaluations[evaluationKey]
+    if (!evaluation) {
+      return <Badge color="gray" size="sm">평가항목 아님</Badge>
+    }
+
+    return (
+      <Stack gap="xs">
+        <Badge color={getGradeColor(evaluation.grade)} size="lg">
+          {evaluation.grade}등급
+        </Badge>
+        {evaluation.recommendations && evaluation.recommendations.length > 0 && (
+          <Paper p="xs" style={{ backgroundColor: '#fff9f0', border: '1px dashed #ffa94d' }}>
+            <Text size="xs" fw={700} c="orange" mb="xs">📌 개선사항</Text>
+            {evaluation.recommendations.slice(0, 2).map((rec: any, idx: number) => (
+              <div key={idx} style={{ marginBottom: idx < evaluation.recommendations.slice(0, 2).length - 1 ? '8px' : '0' }}>
+                <Text size="xs" fw={600} mb="2px">{rec.action}</Text>
+                <Text size="xs" c="dimmed" style={{ whiteSpace: 'pre-line' }}>
+                  {rec.method}
+                </Text>
+              </div>
+            ))}
+          </Paper>
+        )}
+      </Stack>
+    )
+  }
+
   // 진단 결과가 있으면 결과 화면 표시
   if (placeDetails && selectedStore) {
     return (
@@ -735,12 +768,8 @@ export default function AuditPage() {
                     <Table.Td>
                       <Text fw={600}>{(placeDetails.visitor_review_count || 0).toLocaleString()}개</Text>
                     </Table.Td>
-                    <Table.Td style={{ textAlign: 'center' }}>
-                      {diagnosisResult?.evaluations.visitor_reviews && (
-                        <Badge color={getGradeColor(diagnosisResult.evaluations.visitor_reviews.grade)} size="lg">
-                          {diagnosisResult.evaluations.visitor_reviews.grade}등급
-                        </Badge>
-                      )}
+                    <Table.Td style={{ width: '320px' }}>
+                      {renderDiagnosisCell('visitor_reviews')}
                     </Table.Td>
                   </Table.Tr>
                   <Table.Tr>
@@ -748,12 +777,8 @@ export default function AuditPage() {
                     <Table.Td>
                       <Text fw={600}>{(placeDetails.blog_review_count || 0).toLocaleString()}개</Text>
                     </Table.Td>
-                    <Table.Td style={{ textAlign: 'center' }}>
-                      {diagnosisResult?.evaluations.blog_reviews && (
-                        <Badge color={getGradeColor(diagnosisResult.evaluations.blog_reviews.grade)} size="lg">
-                          {diagnosisResult.evaluations.blog_reviews.grade}등급
-                        </Badge>
-                      )}
+                    <Table.Td style={{ width: '320px' }}>
+                      {renderDiagnosisCell('blog_reviews')}
                     </Table.Td>
                   </Table.Tr>
                 </Table.Tbody>
@@ -782,12 +807,8 @@ export default function AuditPage() {
                         <Badge color="gray">없음</Badge>
                       )}
                     </Table.Td>
-                    <Table.Td style={{ width: '100px', textAlign: 'center' }} rowSpan={2}>
-                      {diagnosisResult?.evaluations.images && (
-                        <Badge color={getGradeColor(diagnosisResult.evaluations.images.grade)} size="lg">
-                          {diagnosisResult.evaluations.images.grade}등급
-                        </Badge>
-                      )}
+                    <Table.Td style={{ width: '320px' }} rowSpan={2}>
+                      {renderDiagnosisCell('images')}
                     </Table.Td>
                   </Table.Tr>
                   <Table.Tr>
@@ -835,12 +856,8 @@ export default function AuditPage() {
                         <Badge color="gray">등록된 메뉴 없음</Badge>
                       )}
                     </Table.Td>
-                    <Table.Td style={{ width: '100px', textAlign: 'center' }}>
-                      {diagnosisResult?.evaluations.menus && (
-                        <Badge color={getGradeColor(diagnosisResult.evaluations.menus.grade)} size="lg">
-                          {diagnosisResult.evaluations.menus.grade}등급
-                        </Badge>
-                      )}
+                    <Table.Td style={{ width: '320px' }}>
+                      {renderDiagnosisCell('menus')}
                     </Table.Td>
                   </Table.Tr>
                 </Table.Tbody>
@@ -873,12 +890,8 @@ export default function AuditPage() {
                         <Badge color="gray">정보 없음</Badge>
                       )}
                     </Table.Td>
-                    <Table.Td style={{ width: '100px', textAlign: 'center' }}>
-                      {diagnosisResult?.evaluations.conveniences && (
-                        <Badge color={getGradeColor(diagnosisResult.evaluations.conveniences.grade)} size="lg">
-                          {diagnosisResult.evaluations.conveniences.grade}등급
-                        </Badge>
-                      )}
+                    <Table.Td style={{ width: '320px' }}>
+                      {renderDiagnosisCell('conveniences')}
                     </Table.Td>
                   </Table.Tr>
                 </Table.Tbody>
@@ -976,12 +989,8 @@ export default function AuditPage() {
                         <Badge color="gray">없음</Badge>
                       )}
                     </Table.Td>
-                    <Table.Td style={{ width: '100px', textAlign: 'center' }}>
-                      {diagnosisResult?.evaluations.coupons && (
-                        <Badge color={getGradeColor(diagnosisResult.evaluations.coupons.grade)} size="lg">
-                          {diagnosisResult.evaluations.coupons.grade}등급
-                        </Badge>
-                      )}
+                    <Table.Td style={{ width: '320px' }}>
+                      {renderDiagnosisCell('coupons')}
                     </Table.Td>
                   </Table.Tr>
                 </Table.Tbody>
@@ -1014,12 +1023,8 @@ export default function AuditPage() {
                         <Badge color="gray">없음</Badge>
                       )}
                     </Table.Td>
-                    <Table.Td style={{ width: '100px', textAlign: 'center' }}>
-                      {diagnosisResult?.evaluations.announcements && (
-                        <Badge color={getGradeColor(diagnosisResult.evaluations.announcements.grade)} size="lg">
-                          {diagnosisResult.evaluations.announcements.grade}등급
-                        </Badge>
-                      )}
+                    <Table.Td style={{ width: '320px' }}>
+                      {renderDiagnosisCell('announcements')}
                     </Table.Td>
                   </Table.Tr>
                 </Table.Tbody>
@@ -1050,12 +1055,8 @@ export default function AuditPage() {
                         <Badge color="gray">업체가 등록하지 않음</Badge>
                       )}
                     </Table.Td>
-                    <Table.Td style={{ width: '100px', textAlign: 'center' }}>
-                      {diagnosisResult?.evaluations.description_seo && (
-                        <Badge color={getGradeColor(diagnosisResult.evaluations.description_seo.grade)} size="lg">
-                          {diagnosisResult.evaluations.description_seo.grade}등급
-                        </Badge>
-                      )}
+                    <Table.Td style={{ width: '320px' }}>
+                      {renderDiagnosisCell('description_seo')}
                     </Table.Td>
                   </Table.Tr>
                 </Table.Tbody>
@@ -1118,12 +1119,8 @@ export default function AuditPage() {
                         <Badge color="gray">정보 없음</Badge>
                       )}
                     </Table.Td>
-                    <Table.Td style={{ width: '100px', textAlign: 'center' }}>
-                      {diagnosisResult?.evaluations.directions_seo && (
-                        <Badge color={getGradeColor(diagnosisResult.evaluations.directions_seo.grade)} size="lg">
-                          {diagnosisResult.evaluations.directions_seo.grade}등급
-                        </Badge>
-                      )}
+                    <Table.Td style={{ width: '320px' }}>
+                      {renderDiagnosisCell('directions_seo')}
                     </Table.Td>
                   </Table.Tr>
                 </Table.Tbody>
@@ -1154,12 +1151,8 @@ export default function AuditPage() {
                         <Badge color="gray">등록되지 않음</Badge>
                       )}
                     </Table.Td>
-                    <Table.Td style={{ width: '100px', textAlign: 'center' }} rowSpan={3}>
-                      {diagnosisResult?.evaluations.sns_web && (
-                        <Badge color={getGradeColor(diagnosisResult.evaluations.sns_web.grade)} size="lg">
-                          {diagnosisResult.evaluations.sns_web.grade}등급
-                        </Badge>
-                      )}
+                    <Table.Td style={{ width: '320px' }} rowSpan={3}>
+                      {renderDiagnosisCell('sns_web')}
                     </Table.Td>
                   </Table.Tr>
                   <Table.Tr>
@@ -1212,12 +1205,8 @@ export default function AuditPage() {
                         <Badge color="gray">정보 없음</Badge>
                       )}
                     </Table.Td>
-                    <Table.Td style={{ width: '100px', textAlign: 'center' }}>
-                      {diagnosisResult?.evaluations.tv_program && (
-                        <Badge color={getGradeColor(diagnosisResult.evaluations.tv_program.grade)} size="lg">
-                          {diagnosisResult.evaluations.tv_program.grade}등급
-                        </Badge>
-                      )}
+                    <Table.Td style={{ width: '320px' }}>
+                      {renderDiagnosisCell('tv_program')}
                     </Table.Td>
                   </Table.Tr>
                 </Table.Tbody>
@@ -1246,12 +1235,8 @@ export default function AuditPage() {
                         <Badge color="gray" size="lg">미사용</Badge>
                       )}
                     </Table.Td>
-                    <Table.Td style={{ width: '100px', textAlign: 'center' }}>
-                      {diagnosisResult?.evaluations.place_plus && (
-                        <Badge color={getGradeColor(diagnosisResult.evaluations.place_plus.grade)} size="lg">
-                          {diagnosisResult.evaluations.place_plus.grade}등급
-                        </Badge>
-                      )}
+                    <Table.Td style={{ width: '320px' }}>
+                      {renderDiagnosisCell('place_plus')}
                     </Table.Td>
                   </Table.Tr>
                 </Table.Tbody>
@@ -1280,12 +1265,8 @@ export default function AuditPage() {
                         <Badge color="red" size="lg">미사용</Badge>
                       )}
                     </Table.Td>
-                    <Table.Td style={{ width: '100px', textAlign: 'center' }}>
-                      {diagnosisResult?.evaluations.naverpay && (
-                        <Badge color={getGradeColor(diagnosisResult.evaluations.naverpay.grade)} size="lg">
-                          {diagnosisResult.evaluations.naverpay.grade}등급
-                        </Badge>
-                      )}
+                    <Table.Td style={{ width: '320px' }}>
+                      {renderDiagnosisCell('naverpay')}
                     </Table.Td>
                   </Table.Tr>
                 </Table.Tbody>
@@ -1314,12 +1295,8 @@ export default function AuditPage() {
                         <Badge color="gray" size="lg">미사용 {placeDetails.phone_number ? `(${placeDetails.phone_number})` : ''}</Badge>
                       )}
                     </Table.Td>
-                    <Table.Td style={{ width: '100px', textAlign: 'center' }}>
-                      {diagnosisResult?.evaluations.smart_call && (
-                        <Badge color={getGradeColor(diagnosisResult.evaluations.smart_call.grade)} size="lg">
-                          {diagnosisResult.evaluations.smart_call.grade}등급
-                        </Badge>
-                      )}
+                    <Table.Td style={{ width: '320px' }}>
+                      {renderDiagnosisCell('smart_call')}
                     </Table.Td>
                   </Table.Tr>
                 </Table.Tbody>
