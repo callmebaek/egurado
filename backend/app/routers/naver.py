@@ -1231,8 +1231,8 @@ async def get_place_details(
                         "store_id": str(store_id),
                         "place_id": place_id,
                         "store_name": details.get("name", "Unknown"),
-                        "total_score": diagnosis_result["total_score"],
-                        "max_score": diagnosis_result["max_score"],
+                        "total_score": int(float(diagnosis_result["total_score"])),  # float을 int로 변환
+                        "max_score": int(float(diagnosis_result["max_score"])),      # float을 int로 변환
                         "grade": diagnosis_result["grade"],
                         "diagnosis_result": diagnosis_result,
                         "place_details": details
