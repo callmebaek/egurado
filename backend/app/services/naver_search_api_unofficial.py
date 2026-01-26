@@ -275,31 +275,45 @@ class NaverPlaceNewAPIService:
             
             # 네이버페이 정보는 JSON 데이터에 포함됨
             # 실제 패턴: "hasNPay":true 또는 "hasNPay":false
-            # 이전 HTML 패턴은 구식이므로 JSON 패턴 사용
-            
-            # place_id와 연결된 JSON 객체에서 hasNPay 찾기
             # JSON 형식: {"id":1132863024,"name":"...","hasNPay":true,...}
             
-            # 방법 1: place_id 주변에서 hasNPay 확인
-            has_npay_true = f'"hasNPay":true' in context
-            has_npay_false = f'"hasNPay":false' in context
+            # ⚠️ 중요: 해당 place_id의 JSON 객체만 정확히 파싱해야 함
+            # 인근 다른 매장의 hasNPay를 잘못 감지하는 것을 방지
             
-            # 방법 2: 더 넓은 범위에서 확인 (place_id와 hasNPay가 멀리 떨어져 있을 수 있음)
-            if not has_npay_true and not has_npay_false:
-                # place_id를 포함하는 JSON 객체 찾기
-                # {"id":1132863024 형태 찾기
-                json_pattern = f'"id":{place_id}'
-                if json_pattern in html:
-                    json_start = html.find(json_pattern)
-                    # 이 객체의 시작과 끝 찾기 (대략적으로 앞뒤 5000자)
-                    json_context_start = max(0, json_start - 1000)
-                    json_context_end = min(len(html), json_start + 5000)
-                    json_context = html[json_context_start:json_context_end]
-                    
-                    has_npay_true = '"hasNPay":true' in json_context
-                    has_npay_false = '"hasNPay":false' in json_context
-                    
-                    logger.info(f"[네이버페이 체크] JSON 객체에서 확인 - hasNPay:true={has_npay_true}, hasNPay:false={has_npay_false}")
+            # place_id를 포함하는 JSON 객체의 정확한 범위 찾기
+            json_pattern = f'"id":{place_id}'
+            if json_pattern in html:
+                json_start = html.find(json_pattern)
+                
+                # JSON 객체의 시작 { 찾기 (뒤에서 앞으로 검색)
+                obj_start = html.rfind('{', max(0, json_start - 1000), json_start)
+                if obj_start == -1:
+                    obj_start = max(0, json_start - 100)
+                
+                # JSON 객체의 끝 } 찾기 (앞에서 뒤로 검색, 첫 번째 }가 아니라 매칭되는 }를 찾아야 함)
+                # 간단한 방법: 다음 {"id": 패턴 직전까지 또는 최대 3000자
+                next_id_pattern = '{"id":'
+                next_id_idx = html.find(next_id_pattern, json_start + 10)
+                
+                if next_id_idx != -1:
+                    # 다음 객체가 있으면 그 직전까지
+                    obj_end = next_id_idx
+                else:
+                    # 없으면 최대 3000자까지
+                    obj_end = min(len(html), json_start + 3000)
+                
+                # 이 객체 내에서만 hasNPay 확인
+                json_object = html[obj_start:obj_end]
+                
+                has_npay_true = '"hasNPay":true' in json_object
+                has_npay_false = '"hasNPay":false' in json_object
+                
+                logger.info(f"[네이버페이 체크] JSON 객체 범위: {obj_start}~{obj_end} (길이: {len(json_object)}자)")
+                logger.info(f"[네이버페이 체크] hasNPay:true={has_npay_true}, hasNPay:false={has_npay_false}")
+            else:
+                logger.warning(f"[네이버페이 체크] JSON 패턴 '{json_pattern}'을 찾을 수 없음")
+                has_npay_true = False
+                has_npay_false = False
             
             has_naverpay = has_npay_true
             
