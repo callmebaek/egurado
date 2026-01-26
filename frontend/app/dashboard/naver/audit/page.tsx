@@ -137,6 +137,31 @@ interface DiagnosisResult {
   place_id: string
 }
 
+interface DiagnosisHistoryItem {
+  id: string
+  place_id: string
+  store_name: string
+  diagnosed_at: string
+  total_score: number
+  max_score: number
+  grade: string
+}
+
+interface DiagnosisHistoryDetail {
+  id: string
+  user_id: string
+  store_id: string
+  place_id: string
+  store_name: string
+  diagnosed_at: string
+  total_score: number
+  max_score: number
+  grade: string
+  diagnosis_result: DiagnosisResult
+  place_details: PlaceDetails
+  created_at: string
+}
+
 export default function AuditPage() {
   const { toast } = useToast()
   const { user, getToken } = useAuth()
@@ -147,6 +172,13 @@ export default function AuditPage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [placeDetails, setPlaceDetails] = useState<PlaceDetails | null>(null)
   const [diagnosisResult, setDiagnosisResult] = useState<DiagnosisResult | null>(null)
+  
+  // 진단 히스토리 관련 state
+  const [showHistoryModal, setShowHistoryModal] = useState(false)
+  const [diagnosisHistory, setDiagnosisHistory] = useState<DiagnosisHistoryItem[]>([])
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false)
+  const [selectedHistoryDetail, setSelectedHistoryDetail] = useState<DiagnosisHistoryDetail | null>(null)
+  const [isLoadingHistoryDetail, setIsLoadingHistoryDetail] = useState(false)
 
   // 등록된 매장 목록 가져오기
   useEffect(() => {
@@ -201,10 +233,14 @@ export default function AuditPage() {
 
     try {
       console.log("🔍 플레이스 진단 시작:", selectedStore.place_id, selectedStore.name)
-      const url = api.naver.analyzePlaceDetails(selectedStore.place_id, selectedStore.name)
+      const url = api.naver.analyzePlaceDetails(selectedStore.place_id, selectedStore.name, selectedStore.id)
       console.log("📡 API URL:", url)
       
-      const response = await fetch(url)
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+        }
+      })
       console.log("📥 Response status:", response.status)
 
       if (!response.ok) {
@@ -242,6 +278,91 @@ export default function AuditPage() {
     setSelectedStore(null)
     setPlaceDetails(null)
     setDiagnosisResult(null)
+  }
+
+  // 진단 히스토리 조회
+  const handleViewHistory = async (store: RegisteredStore) => {
+    setSelectedStore(store)
+    setShowHistoryModal(true)
+    setIsLoadingHistory(true)
+    setDiagnosisHistory([])
+    
+    try {
+      const token = (await supabase.auth.getSession()).data.session?.access_token
+      const url = api.naver.diagnosisHistory(store.id)
+      
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      
+      if (!response.ok) {
+        throw new Error("히스토리 조회에 실패했습니다.")
+      }
+      
+      const data = await response.json()
+      setDiagnosisHistory(data.history || [])
+      
+    } catch (error) {
+      console.error("Error loading history:", error)
+      toast({
+        variant: "destructive",
+        title: "❌ 히스토리 조회 실패",
+        description: error instanceof Error ? error.message : "히스토리 조회에 실패했습니다.",
+      })
+    } finally {
+      setIsLoadingHistory(false)
+    }
+  }
+
+  // 특정 히스토리 상세 보기
+  const handleViewHistoryDetail = async (historyId: string) => {
+    setIsLoadingHistoryDetail(true)
+    
+    try {
+      const token = (await supabase.auth.getSession()).data.session?.access_token
+      const url = api.naver.diagnosisHistoryDetail(historyId)
+      
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      
+      if (!response.ok) {
+        throw new Error("히스토리 상세 조회에 실패했습니다.")
+      }
+      
+      const data = await response.json()
+      const historyDetail = data.history
+      
+      // 과거 진단 결과를 현재 진단 결과처럼 표시
+      setPlaceDetails(historyDetail.place_details)
+      setDiagnosisResult(historyDetail.diagnosis_result)
+      setShowHistoryModal(false)
+      
+      toast({
+        title: "📜 과거 진단 결과",
+        description: `${new Date(historyDetail.diagnosed_at).toLocaleString('ko-KR')}의 진단 결과입니다.`,
+      })
+      
+    } catch (error) {
+      console.error("Error loading history detail:", error)
+      toast({
+        variant: "destructive",
+        title: "❌ 상세 조회 실패",
+        description: error instanceof Error ? error.message : "상세 조회에 실패했습니다.",
+      })
+    } finally {
+      setIsLoadingHistoryDetail(false)
+    }
+  }
+
+  const handleCloseHistoryModal = () => {
+    setShowHistoryModal(false)
+    setDiagnosisHistory([])
+    setSelectedHistoryDetail(null)
   }
 
   // 진단 평가 렌더링 헬퍼
@@ -992,10 +1113,28 @@ export default function AuditPage() {
                     </p>
                   </div>
 
-                  {/* 진단 버튼 */}
-                  <Button className="w-full">
-                    진단 시작하기
-                  </Button>
+                  {/* 버튼 그룹 */}
+                  <div className="w-full flex flex-col gap-2">
+                    <Button 
+                      className="w-full"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleStoreSelect(store)
+                      }}
+                    >
+                      진단 시작하기
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      className="w-full"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleViewHistory(store)
+                      }}
+                    >
+                      📜 과거 진단 보기
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -1041,6 +1180,96 @@ export default function AuditPage() {
                   바로 시작하기
                 </Button>
               </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* 히스토리 모달 */}
+      {showHistoryModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <Card className="w-full max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
+            <CardContent className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold">과거 진단 기록</h2>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {selectedStore?.name} - 최근 30개까지 저장됩니다
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleCloseHistoryModal}
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
+
+              {/* 로딩 상태 */}
+              {isLoadingHistory && (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              )}
+
+              {/* 히스토리 목록 */}
+              {!isLoadingHistory && diagnosisHistory.length === 0 && (
+                <div className="text-center py-12">
+                  <p className="text-muted-foreground">
+                    아직 진단 기록이 없습니다.
+                  </p>
+                </div>
+              )}
+
+              {!isLoadingHistory && diagnosisHistory.length > 0 && (
+                <div className="overflow-y-auto max-h-[calc(80vh-200px)]">
+                  <div className="space-y-3">
+                    {diagnosisHistory.map((history) => (
+                      <Card
+                        key={history.id}
+                        className="cursor-pointer hover:shadow-md transition-shadow"
+                        onClick={() => handleViewHistoryDetail(history.id)}
+                      >
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-3 mb-2">
+                                <p className="font-semibold text-lg">
+                                  {new Date(history.diagnosed_at).toLocaleDateString('ko-KR', {
+                                    year: 'numeric',
+                                    month: 'long',
+                                    day: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })}
+                                </p>
+                                <span
+                                  className={`px-3 py-1 rounded-full text-sm font-semibold ${
+                                    history.grade === 'S' ? 'bg-purple-100 text-purple-800' :
+                                    history.grade === 'A' ? 'bg-blue-100 text-blue-800' :
+                                    history.grade === 'B' ? 'bg-green-100 text-green-800' :
+                                    history.grade === 'C' ? 'bg-yellow-100 text-yellow-800' :
+                                    'bg-red-100 text-red-800'
+                                  }`}
+                                >
+                                  {history.grade}등급
+                                </span>
+                              </div>
+                              <p className="text-sm text-muted-foreground">
+                                점수: {history.total_score}점 / {history.max_score}점
+                              </p>
+                            </div>
+                            <Button variant="ghost" size="sm">
+                              자세히 보기 →
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

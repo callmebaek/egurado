@@ -68,9 +68,19 @@ export const api = {
     deleteKeyword: (keywordId: string) => api.url(`/api/v1/naver/keywords/${keywordId}`),
     trackKeyword: (keywordId: string) => api.url(`/api/v1/naver/keywords/${keywordId}/track`),
     analyzeMainKeywords: () => api.url('/api/v1/naver/analyze-main-keywords'),
-    analyzePlaceDetails: (placeId: string, storeName?: string) => {
-      const params = storeName ? `?store_name=${encodeURIComponent(storeName)}` : ''
-      return api.url(`/api/v1/naver/place-details/${placeId}${params}`)
+    analyzePlaceDetails: (placeId: string, storeName?: string, storeId?: string) => {
+      const params = new URLSearchParams()
+      if (storeName) params.append('store_name', storeName)
+      if (storeId) params.append('store_id', storeId)
+      const queryString = params.toString() ? `?${params.toString()}` : ''
+      return api.url(`/api/v1/naver/place-details/${placeId}${queryString}`)
+    },
+    diagnosisHistory: (storeId: string, limit?: number) => {
+      const params = limit ? `?limit=${limit}` : ''
+      return api.url(`/api/v1/naver/diagnosis-history/${storeId}${params}`)
+    },
+    diagnosisHistoryDetail: (historyId: string) => {
+      return api.url(`/api/v1/naver/diagnosis-history/detail/${historyId}`)
     },
   },
   

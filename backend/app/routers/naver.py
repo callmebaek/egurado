@@ -758,8 +758,8 @@ async def delete_keyword(keyword_id: UUID, current_user: dict = Depends(get_curr
             
             if response_data.get('status') == 'error':
                 logger.error(f"[Delete Keyword] RPC returned error: {response_data.get('message')}")
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
                     detail=response_data.get('message', '키워드를 찾을 수 없습니다.')
                 )
             
@@ -768,7 +768,7 @@ async def delete_keyword(keyword_id: UUID, current_user: dict = Depends(get_curr
             deleted_trackers = response_data.get('deleted_trackers', 0)
             deleted_history = response_data.get('deleted_history', 0)
             deleted_keywords = response_data.get('deleted_keywords', 0)
-            
+        
             logger.info(
                 f"[Delete Keyword] Successfully deleted: "
                 f"keyword='{keyword_name}', "
@@ -776,13 +776,13 @@ async def delete_keyword(keyword_id: UUID, current_user: dict = Depends(get_curr
                 f"history={deleted_history}, "
                 f"keywords={deleted_keywords}"
             )
-            
-            return {
-                "status": "success",
-                "message": f"키워드 '{keyword_name}'가 삭제되었습니다.",
-                "keyword_id": str(keyword_id),
-                "keyword": keyword_name
-            }
+        
+        return {
+            "status": "success",
+            "message": f"키워드 '{keyword_name}'가 삭제되었습니다.",
+            "keyword_id": str(keyword_id),
+            "keyword": keyword_name
+        }
         else:
             logger.error(f"[Delete Keyword] RPC returned empty data")
             raise HTTPException(
@@ -1158,7 +1158,13 @@ async def analyze_main_keywords(request: KeywordsAnalysisRequest):
 # ============================================
 
 @router.get("/place-details/{place_id}")
-async def get_place_details(place_id: str, mode: str = "complete", store_name: str = None):
+async def get_place_details(
+    place_id: str, 
+    mode: str = "complete", 
+    store_name: str = None,
+    store_id: Optional[UUID] = None,
+    current_user: dict = Depends(get_current_user)
+):
     """
     플레이스 상세 정보 조회 (진단용)
     
@@ -1169,6 +1175,7 @@ async def get_place_details(place_id: str, mode: str = "complete", store_name: s
             - "standard": 표준 진단 (GraphQL + HTML, 3-5초) - 미구현
             - "complete": 완전 진단 (모든 데이터, 5-10초)
         store_name: 매장명 (선택, 제공하면 검색 API 사용으로 정확도 향상)
+        store_id: 매장 ID (선택, 제공하면 진단 히스토리 저장)
     """
     try:
         logger.info(f"[플레이스 진단] 요청: place_id={place_id}, mode={mode}, store_name={store_name}")
@@ -1200,6 +1207,27 @@ async def get_place_details(place_id: str, mode: str = "complete", store_name: s
         logger.info(f"[플레이스 진단] 완료: {details['name']}")
         logger.info(f"[플레이스 진단] 채워진 정보: {filled_count}/{total_count} ({fill_rate:.1f}%)")
         logger.info(f"[플레이스 진단] 평가 점수: {diagnosis_result['total_score']}/{diagnosis_result['max_score']}점 ({diagnosis_result['grade']}등급)")
+        
+        # 진단 히스토리 저장 (store_id가 제공된 경우에만)
+        if store_id and current_user:
+            try:
+                supabase = get_supabase_client()
+                history_data = {
+                    "user_id": str(current_user["id"]),
+                    "store_id": str(store_id),
+                    "place_id": place_id,
+                    "store_name": details.get("name", "Unknown"),
+                    "total_score": diagnosis_result["total_score"],
+                    "max_score": diagnosis_result["max_score"],
+                    "grade": diagnosis_result["grade"],
+                    "diagnosis_result": diagnosis_result,
+                    "place_details": details
+                }
+                supabase.table("diagnosis_history").insert(history_data).execute()
+                logger.info(f"[진단 히스토리] 저장 완료: store_id={store_id}, user_id={current_user['id']}")
+            except Exception as e:
+                # 히스토리 저장 실패해도 진단 결과는 반환 (기존 기능에 영향 없음)
+                logger.error(f"[진단 히스토리] 저장 실패: {str(e)}")
         
         return {
             "status": "success",
@@ -1449,4 +1477,113 @@ async def analyze_single_competitor(place_id: str, rank: int = 0, store_name: st
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"매장 분석 중 오류가 발생했습니다: {str(e)}"
+        )
+
+
+# ============================================
+# 진단 히스토리 API
+# ============================================
+
+@router.get("/diagnosis-history/{store_id}")
+async def get_diagnosis_history(
+    store_id: UUID,
+    current_user: dict = Depends(get_current_user),
+    limit: int = Query(30, ge=1, le=100, description="조회할 히스토리 개수")
+):
+    """
+    매장의 진단 히스토리 목록 조회
+    
+    Args:
+        store_id: 매장 ID
+        limit: 조회할 개수 (기본 30개, 최대 100개)
+        
+    Returns:
+        진단 히스토리 목록 (최신순)
+    """
+    try:
+        supabase = get_supabase_client()
+        user_id = current_user["id"]
+        
+        logger.info(f"[진단 히스토리] 조회 시작: user_id={user_id}, store_id={store_id}, limit={limit}")
+        
+        # 히스토리 조회 (최신순, user_id와 store_id로 필터링)
+        result = supabase.table("diagnosis_history")\
+            .select("id, place_id, store_name, diagnosed_at, total_score, max_score, grade")\
+            .eq("user_id", str(user_id))\
+            .eq("store_id", str(store_id))\
+            .order("diagnosed_at", desc=True)\
+            .limit(limit)\
+            .execute()
+        
+        history_list = result.data if result.data else []
+        
+        logger.info(f"[진단 히스토리] 조회 완료: {len(history_list)}개")
+        
+        return {
+            "status": "success",
+            "store_id": str(store_id),
+            "total": len(history_list),
+            "history": history_list
+        }
+        
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        logger.error(f"[진단 히스토리] 조회 실패: {str(e)}\n{error_trace}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"진단 히스토리 조회 중 오류가 발생했습니다: {str(e)}"
+        )
+
+
+@router.get("/diagnosis-history/detail/{history_id}")
+async def get_diagnosis_history_detail(
+    history_id: UUID,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    특정 진단 히스토리의 상세 정보 조회
+    
+    Args:
+        history_id: 히스토리 ID
+        
+    Returns:
+        진단 히스토리 상세 정보 (전체 진단 결과 포함)
+    """
+    try:
+        supabase = get_supabase_client()
+        user_id = current_user["id"]
+        
+        logger.info(f"[진단 히스토리] 상세 조회: user_id={user_id}, history_id={history_id}")
+        
+        # 히스토리 상세 조회 (user_id 확인)
+        result = supabase.table("diagnosis_history")\
+            .select("*")\
+            .eq("id", str(history_id))\
+            .eq("user_id", str(user_id))\
+            .single()\
+            .execute()
+        
+        if not result.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="진단 히스토리를 찾을 수 없습니다."
+            )
+        
+        logger.info(f"[진단 히스토리] 상세 조회 완료: {result.data['store_name']}")
+        
+        return {
+            "status": "success",
+            "history": result.data
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        logger.error(f"[진단 히스토리] 상세 조회 실패: {str(e)}\n{error_trace}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"진단 히스토리 상세 조회 중 오류가 발생했습니다: {str(e)}"
         )
