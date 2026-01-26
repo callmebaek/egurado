@@ -44,6 +44,7 @@ import {
   Alert,
 } from '@mantine/core'
 import { Card as ShadcnCard } from "@/components/ui/card"
+import { Badge as ShadcnBadge } from "@/components/ui/badge"
 
 interface Store {
   id: string
@@ -847,70 +848,62 @@ export default function NaverRankPage() {
           
           {rankResult.found && rankResult.rank ? (
             <Stack gap="lg">
-              {/* 순위 및 리뷰 정보 - Premium Card */}
-              <ShadcnCard className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200">
-                <div className="p-6">
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                    {/* 순위 정보 - 이전 스타일 (더 직관적) */}
-                    <div className="md:col-span-1 flex items-center justify-center">
-                      <div className="text-center">
-                        <div className="inline-flex items-center justify-center w-28 h-28 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl shadow-lg mb-3">
-                          <span className="text-5xl font-bold text-white">
-                            {rankResult.rank}
-                          </span>
-                        </div>
-                        <p className="text-lg font-semibold text-green-900">{selectedStore?.name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {rankResult.total_count 
-                            ? `전체 ${rankResult.total_count}개 중` 
-                            : `상위 ${rankResult.total_results}개 중`}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="md:col-span-3 grid grid-cols-2 md:grid-cols-3 gap-4">
-                      {/* 방문자 리뷰 */}
-                      <ShadcnCard className="bg-white">
-                        <div className="p-4 text-center">
-                          <p className="text-xs text-muted-foreground mb-1">방문자 리뷰</p>
-                          <p className="text-2xl font-bold text-blue-600">
-                            {(rankResult.visitor_review_count || 0).toLocaleString()}
-                          </p>
-                        </div>
-                      </ShadcnCard>
-
-                      {/* 블로그 리뷰 */}
-                      <ShadcnCard className="bg-white">
-                        <div className="p-4 text-center">
-                          <p className="text-xs text-muted-foreground mb-1">블로그 리뷰</p>
-                          <p className="text-2xl font-bold text-purple-600">
-                            {(rankResult.blog_review_count || 0).toLocaleString()}
-                          </p>
-                        </div>
-                      </ShadcnCard>
-
-                      {/* 순위 변동 */}
-                      {rankResult.rank_change !== null && rankResult.rank_change !== 0 && (
-                        <ShadcnCard className={rankResult.rank_change > 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}>
-                          <div className="p-4 text-center">
-                            <p className="text-xs text-muted-foreground mb-1">순위 변동</p>
-                            <div className="flex items-center justify-center gap-2">
-                              {rankResult.rank_change > 0 ? (
-                                <TrendingUp className="w-6 h-6 text-green-600" />
-                              ) : (
-                                <TrendingDown className="w-6 h-6 text-red-600" />
-                              )}
-                              <span className={`text-2xl font-bold ${rankResult.rank_change > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                {Math.abs(rankResult.rank_change)}
-                              </span>
-                            </div>
-                          </div>
-                        </ShadcnCard>
-                      )}
-                    </div>
+              {/* 순위 및 리뷰 정보 - 기존 스타일 + 브랜딩 색상 */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                {/* 순위 정보 - 브랜딩 색상 적용 */}
+                <ShadcnCard className="md:col-span-1 flex items-center justify-center p-6">
+                  <div className="text-center">
+                    <ShadcnBadge 
+                      className="text-5xl font-bold px-8 py-6 mb-3" 
+                      style={{ backgroundColor: '#407645', color: 'white' }}
+                    >
+                      {rankResult.rank}위
+                    </ShadcnBadge>
+                    <p className="text-lg font-semibold mt-2">{selectedStore?.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {rankResult.total_count 
+                        ? `전체 ${rankResult.total_count}개 중` 
+                        : `상위 ${rankResult.total_results}개 중`}
+                    </p>
                   </div>
-                </div>
-              </ShadcnCard>
+                </ShadcnCard>
+
+                {/* 방문자 리뷰 */}
+                <ShadcnCard className="p-4 text-center">
+                  <p className="text-sm text-muted-foreground mb-2">방문자 리뷰</p>
+                  <p className="text-3xl font-bold" style={{ color: '#635bff' }}>
+                    {(rankResult.visitor_review_count || 0).toLocaleString()}
+                  </p>
+                </ShadcnCard>
+
+                {/* 블로그 리뷰 */}
+                <ShadcnCard className="p-4 text-center">
+                  <p className="text-sm text-muted-foreground mb-2">블로그 리뷰</p>
+                  <p className="text-3xl font-bold" style={{ color: '#635bff' }}>
+                    {(rankResult.blog_review_count || 0).toLocaleString()}
+                  </p>
+                </ShadcnCard>
+
+                {/* 순위 변동 */}
+                {rankResult.rank_change !== null && rankResult.rank_change !== 0 && (
+                  <ShadcnCard className="p-4 text-center">
+                    <p className="text-sm text-muted-foreground mb-2">순위 변동</p>
+                    <div className="flex items-center justify-center gap-2">
+                      {rankResult.rank_change > 0 ? (
+                        <TrendingUp className="w-6 h-6" style={{ color: '#407645' }} />
+                      ) : (
+                        <TrendingDown className="w-6 h-6 text-red-600" />
+                      )}
+                      <span 
+                        className="text-3xl font-bold" 
+                        style={{ color: rankResult.rank_change > 0 ? '#407645' : '#dc2626' }}
+                      >
+                        {Math.abs(rankResult.rank_change)}
+                      </span>
+                    </div>
+                  </ShadcnCard>
+                )}
+              </div>
 
               {/* 검색 결과 목록 - Stripe Style */}
               <div>
@@ -1118,13 +1111,19 @@ export default function NaverRankPage() {
                       </Table.Td>
                       <Table.Td ta="center">
                         {kw.current_rank ? (
-                          <span className="inline-flex items-center justify-center px-3 py-1 rounded-lg bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold text-lg shadow-sm">
+                          <ShadcnBadge 
+                            className="text-base font-bold px-3 py-1" 
+                            style={{ backgroundColor: '#407645', color: 'white' }}
+                          >
                             {kw.current_rank}위
-                          </span>
+                          </ShadcnBadge>
                         ) : (
-                          <span className="inline-flex items-center justify-center px-3 py-1 rounded-lg bg-yellow-100 text-yellow-800 font-semibold text-sm border border-yellow-300">
+                          <ShadcnBadge 
+                            variant="outline" 
+                            className="text-sm font-semibold px-3 py-1 bg-yellow-50 text-yellow-800 border-yellow-300"
+                          >
                             300위권 밖
-                          </span>
+                          </ShadcnBadge>
                         )}
                       </Table.Td>
                       <Table.Td ta="center">
