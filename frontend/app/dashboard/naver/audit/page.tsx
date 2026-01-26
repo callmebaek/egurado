@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Store, Loader2, CheckCircle2, AlertCircle, X, ExternalLink, TrendingUp, TrendingDown, Calendar, FileText } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { useAuth } from "@/lib/auth-context"
@@ -204,6 +204,9 @@ export default function AuditPage() {
   const [selectedHistoryDetail, setSelectedHistoryDetail] = useState<DiagnosisHistoryDetail | null>(null)
   const [isLoadingHistoryDetail, setIsLoadingHistoryDetail] = useState(false)
 
+  // 종합 요약 섹션 ref
+  const summaryRef = useRef<HTMLDivElement>(null)
+
   // 등록된 매장 목록 가져오기
   useEffect(() => {
     if (user) {
@@ -288,6 +291,14 @@ export default function AuditPage() {
         title: "✅ 진단 완료",
         description: `${selectedStore.name} 매장의 진단이 완료되었습니다.`,
       })
+
+      // 진단 완료 후 종합 요약 섹션으로 스크롤
+      setTimeout(() => {
+        summaryRef.current?.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'start' 
+        })
+      }, 100)
     } catch (error) {
       console.error("❌ Error analyzing place:", error)
       toast({
@@ -381,6 +392,14 @@ export default function AuditPage() {
         title: "📜 과거 진단 결과",
         description: `${new Date(historyDetail.diagnosed_at).toLocaleString('ko-KR')}의 진단 결과입니다.`,
       })
+
+      // 히스토리 조회 후에도 종합 요약 섹션으로 스크롤
+      setTimeout(() => {
+        summaryRef.current?.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'start' 
+        })
+      }, 100)
       
     } catch (error) {
       console.error("Error loading history detail:", error)
@@ -494,7 +513,7 @@ export default function AuditPage() {
 
         {/* 종합 요약 */}
         {diagnosisResult && (
-          <Paper shadow="md" p="xl" mb="xl" style={{ border: '2px solid #635bff' }}>
+          <Paper ref={summaryRef} shadow="md" p="xl" mb="xl" style={{ border: '2px solid #635bff' }}>
             <Title order={2} mb="xl" style={{ color: '#212529' }}>
               📊 종합 요약
             </Title>
