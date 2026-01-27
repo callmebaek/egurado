@@ -202,23 +202,24 @@ class NaverActivationServiceV2:
             last_7days_avg = self._calculate_daily_avg(data_points, now, 7)
             last_week_avg = self._calculate_daily_avg(data_points, now - timedelta(days=7), 7)  # 전주
             last_30days_avg = self._calculate_daily_avg(data_points, now, 30)
+            last_60days_avg = self._calculate_daily_avg(data_points, now, 60)
             last_90days_avg = self._calculate_daily_avg(data_points, now, 90)
             
             # 이번주 (오늘 제외) 일평균
             this_week_avg = self._calculate_this_week_avg(data_points, now)
             
-            # 비교 분석
+            # 비교 분석 (지난 7일 일평균 기준으로 비교)
             comparisons = {
-                'vs_last_7days': self._compare_values(this_week_avg, last_7days_avg),
-                'vs_last_week': self._compare_values(this_week_avg, last_week_avg),
-                'vs_last_30days': self._compare_values(this_week_avg, last_30days_avg),
-                'vs_last_90days': self._compare_values(this_week_avg, last_90days_avg),
+                'vs_last_7days': self._compare_values(last_7days_avg, last_7days_avg),  # 자기 자신
+                'vs_last_30days': self._compare_values(last_7days_avg, last_30days_avg),
+                'vs_last_60days': self._compare_values(last_7days_avg, last_60days_avg),
             }
             
             return {
                 'last_7days_avg': round(last_7days_avg, 2),
                 'last_week_avg': round(last_week_avg, 2),
                 'last_30days_avg': round(last_30days_avg, 2),
+                'last_60days_avg': round(last_60days_avg, 2),
                 'last_90days_avg': round(last_90days_avg, 2),
                 'this_week_avg': round(this_week_avg, 2),
                 'comparisons': comparisons
@@ -311,13 +312,13 @@ class NaverActivationServiceV2:
             'last_7days_avg': 0.0,
             'last_week_avg': 0.0,
             'last_30days_avg': 0.0,
+            'last_60days_avg': 0.0,
             'last_90days_avg': 0.0,
             'this_week_avg': 0.0,
             'comparisons': {
                 'vs_last_7days': {'direction': 'stable', 'change': 0.0},
-                'vs_last_week': {'direction': 'stable', 'change': 0.0},
                 'vs_last_30days': {'direction': 'stable', 'change': 0.0},
-                'vs_last_90days': {'direction': 'stable', 'change': 0.0},
+                'vs_last_60days': {'direction': 'stable', 'change': 0.0},
             }
         }
     
@@ -398,13 +399,15 @@ class NaverActivationServiceV2:
         """활성화 요약 카드 데이터 생성"""
         cards = []
         
-        # 1. 방문자 리뷰 카드
+        # 1. 방문자 리뷰 카드 (지난 7일 일평균을 주요 숫자로)
         cards.append({
             'type': 'visitor_review',
             'title': '방문자 리뷰',
-            'value': place_details.get('visitor_review_count', 0),
-            'daily_avg': visitor_trends.get('this_week_avg', 0),
-            'trend': self._get_overall_trend(visitor_trends.get('comparisons', {}))
+            'value': visitor_trends.get('last_7days_avg', 0),  # 주요 숫자: 지난 7일 일평균
+            'total_count': place_details.get('visitor_review_count', 0),  # 전체 리뷰 수
+            'last_30days_avg': visitor_trends.get('last_30days_avg', 0),  # 비교용
+            'last_60days_avg': visitor_trends.get('last_60days_avg', 0),  # 비교용
+            'comparisons': visitor_trends.get('comparisons', {})
         })
         
         # 2. 답글 대기 카드
@@ -416,13 +419,15 @@ class NaverActivationServiceV2:
             'reply_rate': pending_reply_info.get('reply_rate', 0)
         })
         
-        # 3. 블로그 리뷰 카드
+        # 3. 블로그 리뷰 카드 (지난 7일 일평균을 주요 숫자로)
         cards.append({
             'type': 'blog_review',
             'title': '블로그 리뷰',
-            'value': place_details.get('blog_review_count', 0),
-            'daily_avg': blog_trends.get('this_week_avg', 0),
-            'trend': self._get_overall_trend(blog_trends.get('comparisons', {}))
+            'value': blog_trends.get('last_7days_avg', 0),  # 주요 숫자: 지난 7일 일평균
+            'total_count': place_details.get('blog_review_count', 0),  # 전체 리뷰 수
+            'last_30days_avg': blog_trends.get('last_30days_avg', 0),  # 비교용
+            'last_60days_avg': blog_trends.get('last_60days_avg', 0),  # 비교용
+            'comparisons': blog_trends.get('comparisons', {})
         })
         
         # 4. 쿠폰 카드
@@ -433,12 +438,15 @@ class NaverActivationServiceV2:
             'has_active': promotion_info.get('has_promotion', False)
         })
         
-        # 5. 공지사항 카드
+        # 5. 공지사항 카드 (최근 7일 내 것만)
+        days_since_last = announcement_info.get('days_since_last', 999)
+        recent_count = announcement_info.get('count', 0) if days_since_last <= 7 else 0
+        
         cards.append({
             'type': 'announcement',
             'title': '공지사항',
-            'value': announcement_info.get('count', 0),
-            'days_since_last': announcement_info.get('days_since_last', 999)
+            'value': recent_count,  # 최근 7일 내 공지사항만 카운트
+            'days_since_last': days_since_last
         })
         
         return cards
@@ -459,25 +467,42 @@ class NaverActivationServiceV2:
             return 'stable'
     
     def _analyze_announcements(self, announcements: List[Any]) -> Dict[str, Any]:
-        """공지사항 분석"""
+        """공지사항 분석 (최근 7일 내 공지사항 카운트)"""
         if not announcements:
             return {
                 'has_announcement': False,
                 'count': 0
             }
         
-        count = len(announcements)
+        now = datetime.now(timezone.utc)
+        cutoff_date = now - timedelta(days=7)
         
+        # 최근 7일 내 공지사항 필터링
+        recent_announcements = []
+        
+        for announcement in announcements:
+            try:
+                date_str = announcement.get('created_at') or announcement.get('date')
+                if date_str:
+                    ann_date = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+                    if ann_date >= cutoff_date:
+                        recent_announcements.append(announcement)
+            except Exception as e:
+                logger.error(f"[공지사항 날짜 파싱] 오류: {str(e)}")
+        
+        count = len(recent_announcements)
+        
+        # 가장 최근 공지사항 날짜 계산
         try:
-            latest_announcement = announcements[0]
+            latest_announcement = announcements[0]  # 전체 중 최신
             last_date_str = latest_announcement.get('created_at') or latest_announcement.get('date')
             
             if last_date_str:
                 last_date = datetime.fromisoformat(last_date_str.replace('Z', '+00:00'))
-                days_since = (datetime.now(timezone.utc) - last_date).days
+                days_since = (now - last_date).days
                 
                 return {
-                    'has_announcement': True,
+                    'has_announcement': count > 0,
                     'count': count,
                     'last_date': last_date.strftime('%Y-%m-%d'),
                     'days_since_last': days_since
@@ -486,7 +511,7 @@ class NaverActivationServiceV2:
             logger.error(f"[공지사항 날짜 파싱] 오류: {str(e)}")
         
         return {
-            'has_announcement': True,
+            'has_announcement': count > 0,
             'count': count
         }
     

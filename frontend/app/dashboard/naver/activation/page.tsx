@@ -21,7 +21,8 @@ import {
   Box,
   SimpleGrid,
   ThemeIcon,
-  Progress
+  Progress,
+  Tooltip
 } from '@mantine/core'
 import { 
   Store, 
@@ -56,8 +57,10 @@ interface SummaryCard {
   type: string
   title: string
   value: number
-  daily_avg?: number
-  trend?: string
+  total_count?: number
+  last_30days_avg?: number
+  last_60days_avg?: number
+  comparisons?: any
   total?: number
   reply_rate?: number
   has_active?: boolean
@@ -226,43 +229,74 @@ export default function ActivationPage() {
           <Card key={card.type} shadow="sm" padding="lg" radius="md" withBorder>
             <Stack gap="xs">
               <Text size="sm" c="dimmed" fw={500}>{card.title}</Text>
-              <Text size="xl" fw={700}>{card.value.toLocaleString()}</Text>
               
               {card.type === 'visitor_review' || card.type === 'blog_review' ? (
                 <>
-                  <Text size="xs" c="dimmed">이번주 일평균: {card.daily_avg?.toFixed(2)}</Text>
-                  <Badge 
-                    color={getTrendColor(card.trend || 'stable')} 
-                    variant="light" 
-                    size="sm"
-                    leftSection={getTrendIcon(card.trend || 'stable')}
-                  >
-                    {card.trend === 'up' ? '상승' : card.trend === 'down' ? '하락' : '유지'}
-                  </Badge>
+                  <Text size="xl" fw={700}>{card.value.toFixed(2)}</Text>
+                  <Text size="xs" c="dimmed">지난 7일 일평균</Text>
+                  <Text size="xs" c="dimmed">전체: {card.total_count?.toLocaleString() || 0}개</Text>
+                  
+                  <Divider />
+                  
+                  <Stack gap={4}>
+                    <Group justify="space-between">
+                      <Text size="xs" c="dimmed">vs 지난 30일</Text>
+                      <Badge 
+                        color={getTrendColor(card.comparisons?.vs_last_30days?.direction || 'stable')} 
+                        variant="light" 
+                        size="xs"
+                        leftSection={getTrendIcon(card.comparisons?.vs_last_30days?.direction || 'stable')}
+                      >
+                        {card.comparisons?.vs_last_30days?.change?.toFixed(1) || 0}%
+                      </Badge>
+                    </Group>
+                    <Group justify="space-between">
+                      <Text size="xs" c="dimmed">vs 지난 60일</Text>
+                      <Badge 
+                        color={getTrendColor(card.comparisons?.vs_last_60days?.direction || 'stable')} 
+                        variant="light" 
+                        size="xs"
+                        leftSection={getTrendIcon(card.comparisons?.vs_last_60days?.direction || 'stable')}
+                      >
+                        {card.comparisons?.vs_last_60days?.change?.toFixed(1) || 0}%
+                      </Badge>
+                    </Group>
+                  </Stack>
                 </>
               ) : null}
               
               {card.type === 'pending_reply' ? (
-                <>
-                  <Progress value={card.reply_rate || 0} size="sm" color="blue" />
-                  <Text size="xs" c="dimmed">답글률: {card.reply_rate?.toFixed(1)}%</Text>
-                </>
+                <Tooltip label="최근 300개 리뷰만 분석한 수치입니다" position="top" withArrow>
+                  <Box>
+                    <Text size="xl" fw={700}>{card.value}개</Text>
+                    <Text size="xs" c="dimmed">답글 대기</Text>
+                    <Progress value={card.reply_rate || 0} size="sm" color="blue" mt="xs" />
+                    <Text size="xs" c="dimmed" mt={4}>답글률: {card.reply_rate?.toFixed(1)}%</Text>
+                  </Box>
+                </Tooltip>
               ) : null}
               
               {card.type === 'coupon' ? (
-                <Badge color={card.has_active ? 'green' : 'gray'} variant="light" size="sm">
-                  {card.has_active ? '활성' : '비활성'}
-                </Badge>
+                <>
+                  <Text size="xl" fw={700}>{card.value}개</Text>
+                  <Badge color={card.has_active ? 'green' : 'gray'} variant="light" size="sm">
+                    {card.has_active ? '활성' : '비활성'}
+                  </Badge>
+                </>
               ) : null}
               
               {card.type === 'announcement' ? (
-                <Badge 
-                  color={(card.days_since_last || 999) <= 7 ? 'green' : 'orange'} 
-                  variant="light" 
-                  size="sm"
-                >
-                  {(card.days_since_last || 999) <= 7 ? '최근 업데이트' : `${card.days_since_last}일 전`}
-                </Badge>
+                <>
+                  <Text size="xl" fw={700}>{card.value}개</Text>
+                  <Text size="xs" c="dimmed">최근 7일 내</Text>
+                  <Badge 
+                    color={card.value > 0 ? 'green' : 'orange'} 
+                    variant="light" 
+                    size="sm"
+                  >
+                    {card.value > 0 ? '최근 업데이트' : `${card.days_since_last}일 전`}
+                  </Badge>
+                </>
               ) : null}
             </Stack>
           </Card>
