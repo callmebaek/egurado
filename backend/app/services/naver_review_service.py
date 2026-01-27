@@ -1182,44 +1182,32 @@ class NaverReviewService:
             import json
             from bs4 import BeautifulSoup
             
+            # URL을 PostView.naver 형식으로 직접 변환
+            # https://blog.naver.com/username/postid → https://blog.naver.com/PostView.naver?blogId=username&logNo=postid
+            match = re.match(r'https://blog\.naver\.com/([^/]+)/(\d+)', blog_url)
+            if not match:
+                logger.info(f"[블로그 필터링] URL 패턴 불일치: {blog_url}")
+                return False
+            
+            username, post_id = match.groups()
+            postview_url = f"https://blog.naver.com/PostView.naver?blogId={username}&logNo={post_id}"
+            
+            logger.info(f"[블로그 필터링] PostView URL 변환: {blog_url} → {postview_url}")
+            
             async with httpx.AsyncClient(timeout=5.0) as client:
-                # 1단계: 외부 페이지에서 mainFrame iframe 찾기
-                response = await client.get(blog_url, headers=self.headers, follow_redirects=True)
+                # PostView URL로 직접 실제 컨텐츠 가져오기
+                response = await client.get(postview_url, headers=self.headers, follow_redirects=True)
                 
                 if response.status_code != 200:
-                    logger.info(f"[블로그 필터링] HTTP {response.status_code}: {blog_url}")
+                    logger.info(f"[블로그 필터링] HTTP {response.status_code}: {postview_url}")
                     return False
                 
-                outer_html = response.text
-                outer_soup = BeautifulSoup(outer_html, 'html.parser')
-                
-                # mainFrame iframe 찾기
-                main_frame = outer_soup.find('iframe', id='mainFrame')
-                if not main_frame:
-                    logger.info(f"[블로그 필터링] mainFrame 없음: {blog_url}")
-                    return False
-                
-                # mainFrame src 추출
-                main_frame_src = main_frame.get('src', '')
-                if not main_frame_src:
-                    logger.info(f"[블로그 필터링] mainFrame src 없음: {blog_url}")
-                    return False
-                
-                # 상대 경로면 절대 경로로 변환
-                if not main_frame_src.startswith('http'):
-                    main_frame_src = 'https://blog.naver.com' + main_frame_src
-                
-                # 2단계: mainFrame 컨텐츠 가져오기
-                frame_response = await client.get(main_frame_src, headers=self.headers, follow_redirects=True)
-                
-                if frame_response.status_code != 200:
-                    logger.info(f"[블로그 필터링] mainFrame HTTP {frame_response.status_code}: {blog_url}")
-                    return False
-                
-                frame_html = frame_response.text
+                frame_html = response.text
                 frame_soup = BeautifulSoup(frame_html, 'html.parser')
                 
-                # 3단계: mainFrame에서 placeId 검색
+                logger.info(f"[블로그 필터링] HTML 길이: {len(frame_html)} bytes")
+                
+                # placeId 검색
                 found_place_ids = []
                 
                 # 방법 1: data-linkdata 속성에서 placeId 추출
