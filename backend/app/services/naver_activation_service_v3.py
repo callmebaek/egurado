@@ -407,6 +407,7 @@ class NaverActivationServiceV3:
         # 블로그 리뷰 카드
         blog_7d_avg = blog_trends.get('last_7days_avg', 0)
         blog_30d_avg = blog_trends.get('last_30days_avg', 0)
+        blog_60d_avg = blog_trends.get('last_60days_avg', 0)
         blog_trend = self._get_trend_direction(blog_7d_avg, blog_30d_avg)
         
         cards = [
