@@ -207,8 +207,11 @@ class NaverActivationServiceV3:
                     continue
                 
                 try:
-                    # ISO 날짜 파싱 (예: "2024-01-27T10:30:00+09:00")
-                    review_date = datetime.fromisoformat(created_str.replace('Z', '+00:00'))
+                    # 날짜 파싱 (ISO 형식 또는 상대적 표기)
+                    review_date = self._parse_review_date(created_str)
+                    if not review_date:
+                        continue
+                    
                     days_ago = (now - review_date).days
                     
                     if days_ago <= 7:
@@ -567,6 +570,62 @@ class NaverActivationServiceV3:
             return "up"
         else:
             return "down"
+    
+    def _parse_review_date(self, date_str: str) -> Optional[datetime]:
+        """
+        리뷰 날짜 파싱 (ISO 형식 또는 상대적 표기)
+        
+        Args:
+            date_str: 날짜 문자열 (예: "2024-01-27T10:30:00+09:00" 또는 "1.27.전" 또는 "1.23.금")
+            
+        Returns:
+            datetime 객체 또는 None
+        """
+        try:
+            # 1. ISO 형식 시도
+            return datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+        except:
+            pass
+        
+        try:
+            # 2. 상대적 날짜 표기 파싱 (예: "1.27.전", "1.23.금")
+            import re
+            from datetime import timedelta
+            
+            # "M.D.전" 또는 "M.D.요일" 형식
+            match = re.match(r'(\d+)\.(\d+)\.', date_str)
+            if match:
+                month = int(match.group(1))
+                day = int(match.group(2))
+                current_date = datetime.now(timezone.utc)
+                
+                # 올해 날짜로 생성
+                try:
+                    review_date = datetime(current_date.year, month, day, tzinfo=timezone.utc)
+                    
+                    # 미래 날짜면 작년으로 조정
+                    if review_date > current_date:
+                        review_date = datetime(current_date.year - 1, month, day, tzinfo=timezone.utc)
+                    
+                    return review_date
+                except ValueError:
+                    pass
+            
+            # "X일 전", "X시간 전" 형식
+            if "일 전" in date_str:
+                days = int(date_str.split("일")[0].strip())
+                return datetime.now(timezone.utc) - timedelta(days=days)
+            elif "시간 전" in date_str:
+                hours = int(date_str.split("시간")[0].strip())
+                return datetime.now(timezone.utc) - timedelta(hours=hours)
+            elif "분 전" in date_str:
+                minutes = int(date_str.split("분")[0].strip())
+                return datetime.now(timezone.utc) - timedelta(minutes=minutes)
+            
+        except Exception as e:
+            logger.debug(f"[활성화-날짜파싱] 실패: {date_str}, {str(e)}")
+        
+        return None
     
     def _compare_values(self, current: float, baseline: float) -> Dict[str, Any]:
         """값 비교 분석"""
