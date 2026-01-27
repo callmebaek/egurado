@@ -33,12 +33,31 @@ class NaverActivationServiceV2:
             if not place_details:
                 raise Exception("플레이스 정보를 가져올 수 없습니다")
             
-            # 2. 리뷰 추이 분석 (새로운 로직)
-            visitor_review_trends = await self._analyze_review_trend_v2(store_id, 'visitor')
-            blog_review_trends = await self._analyze_review_trend_v2(store_id, 'blog')
+            # 2. 리뷰 추이 분석 (새로운 로직) - 에러 발생 시 기본값 사용
+            try:
+                visitor_review_trends = await self._analyze_review_trend_v2(store_id, 'visitor')
+            except Exception as e:
+                logger.error(f"[방문자 리뷰 추이 분석] 오류: {str(e)}")
+                visitor_review_trends = self._get_empty_trend()
             
-            # 3. 답글 대기 수 계산 (개선된 로직)
-            pending_reply_info = await self._get_pending_reply_count_v2(place_id)
+            try:
+                blog_review_trends = await self._analyze_review_trend_v2(store_id, 'blog')
+            except Exception as e:
+                logger.error(f"[블로그 리뷰 추이 분석] 오류: {str(e)}")
+                blog_review_trends = self._get_empty_trend()
+            
+            # 3. 답글 대기 수 계산 (개선된 로직) - 에러 발생 시 기본값 사용
+            try:
+                pending_reply_info = await self._get_pending_reply_count_v2(place_id)
+            except Exception as e:
+                logger.error(f"[답글 대기 수 계산] 오류: {str(e)}")
+                pending_reply_info = {
+                    'total_reviews': 0,
+                    'pending_count': 0,
+                    'replied_count': 0,
+                    'reply_rate': 0.0,
+                    'oldest_pending_date': None
+                }
             
             # 4. 공지사항 분석
             announcement_info = self._analyze_announcements(place_details.get('announcements', []))
@@ -341,7 +360,7 @@ class NaverActivationServiceV2:
             }
             
         except Exception as e:
-            logger.error(f"[답글 대기 수 계산 V2] 오류: {str(e)}")
+            logger.error(f"[답글 대기 수 계산 V2] 오류: {str(e)}", exc_info=True)
             return {
                 'total_reviews': 0,
                 'pending_count': 0,

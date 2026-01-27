@@ -397,7 +397,7 @@ export default function ActivationPage() {
   }
 
   const renderPendingReply = () => {
-    if (!activationData) return null
+    if (!activationData || !activationData.pending_reply_info) return null
 
     const { pending_reply_info } = activationData
 
@@ -414,26 +414,26 @@ export default function ActivationPage() {
           <Divider />
           
           <Alert icon={<AlertCircle className="w-4 h-4" />} color="orange" variant="light">
-            <Text size="sm" fw={600}>답글 대기중 리뷰 수: {pending_reply_info.pending_count}개</Text>
+            <Text size="sm" fw={600}>답글 대기중 리뷰 수: {pending_reply_info?.pending_count || 0}개</Text>
             <Text size="xs" c="dimmed" mt="xs">
-              최근 300개 리뷰 중 {pending_reply_info.pending_count}개의 리뷰에 답글이 필요합니다
+              최근 300개 리뷰 중 {pending_reply_info?.pending_count || 0}개의 리뷰에 답글이 필요합니다
             </Text>
           </Alert>
           
           <Group grow>
             <Box>
               <Text size="xs" c="dimmed">답글 완료</Text>
-              <Text fw={600} size="lg">{pending_reply_info.replied_count}개</Text>
+              <Text fw={600} size="lg">{pending_reply_info?.replied_count || 0}개</Text>
             </Box>
             <Box>
               <Text size="xs" c="dimmed">답글률</Text>
-              <Text fw={600} size="lg" c="blue">{pending_reply_info.reply_rate.toFixed(1)}%</Text>
+              <Text fw={600} size="lg" c="blue">{(pending_reply_info?.reply_rate || 0).toFixed(1)}%</Text>
             </Box>
           </Group>
           
-          <Progress value={pending_reply_info.reply_rate} size="lg" color="blue" />
+          <Progress value={pending_reply_info?.reply_rate || 0} size="lg" color="blue" />
           
-          {pending_reply_info.oldest_pending_date && (
+          {pending_reply_info?.oldest_pending_date && (
             <Text size="xs" c="dimmed">
               가장 오래된 답글 대기 리뷰: {new Date(pending_reply_info.oldest_pending_date).toLocaleDateString('ko-KR')}
             </Text>
@@ -692,9 +692,9 @@ export default function ActivationPage() {
               등록된 네이버 플레이스 매장이 없습니다. 먼저 매장을 등록해주세요.
             </Alert>
           ) : (
-            <Grid gutter="md">
+            <Grid gutter="xl">
               {stores.map((store) => (
-                <Grid.Col key={store.id} span={{ base: 12, sm: 6, md: 4 }}>
+                <Grid.Col key={store.id} span={{ base: 12, sm: 6, md: 4, lg: 3 }}>
                   <Card
                     shadow="sm"
                     padding="md"
@@ -703,9 +703,7 @@ export default function ActivationPage() {
                     style={{ 
                       height: '100%', 
                       cursor: 'pointer', 
-                      transition: 'transform 0.2s, box-shadow 0.2s',
-                      maxWidth: '320px',
-                      margin: '0 auto'
+                      transition: 'transform 0.2s, box-shadow 0.2s'
                     }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.transform = 'translateY(-4px)'
