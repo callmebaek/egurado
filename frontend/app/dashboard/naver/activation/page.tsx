@@ -269,7 +269,7 @@ export default function ActivationPage() {
   }
 
   const renderReviewTrends = () => {
-    if (!activationData) return null
+    if (!activationData || !activationData.visitor_review_trends || !activationData.blog_review_trends) return null
 
     return (
       <Grid gutter="md">
@@ -288,28 +288,28 @@ export default function ActivationPage() {
               <SimpleGrid cols={2} spacing="xs">
                 <Box>
                   <Text size="xs" c="dimmed">지난 7일 일평균</Text>
-                  <Text fw={600}>{activationData.visitor_review_trends.last_7days_avg.toFixed(2)}</Text>
+                  <Text fw={600}>{(activationData.visitor_review_trends?.last_7days_avg || 0).toFixed(2)}</Text>
                 </Box>
                 <Box>
                   <Text size="xs" c="dimmed">전주 일평균</Text>
-                  <Text fw={600}>{activationData.visitor_review_trends.last_week_avg.toFixed(2)}</Text>
+                  <Text fw={600}>{(activationData.visitor_review_trends?.last_week_avg || 0).toFixed(2)}</Text>
                 </Box>
                 <Box>
                   <Text size="xs" c="dimmed">지난 30일 일평균</Text>
-                  <Text fw={600}>{activationData.visitor_review_trends.last_30days_avg.toFixed(2)}</Text>
+                  <Text fw={600}>{(activationData.visitor_review_trends?.last_30days_avg || 0).toFixed(2)}</Text>
                 </Box>
                 <Box>
                   <Text size="xs" c="dimmed">지난 3개월 일평균</Text>
-                  <Text fw={600}>{activationData.visitor_review_trends.last_90days_avg.toFixed(2)}</Text>
+                  <Text fw={600}>{(activationData.visitor_review_trends?.last_90days_avg || 0).toFixed(2)}</Text>
                 </Box>
               </SimpleGrid>
               
               <Divider />
               
               <Box>
-                <Text size="sm" fw={600} mb="xs">이번주 일평균: {activationData.visitor_review_trends.this_week_avg.toFixed(2)}</Text>
+                <Text size="sm" fw={600} mb="xs">이번주 일평균: {(activationData.visitor_review_trends?.this_week_avg || 0).toFixed(2)}</Text>
                 <Stack gap="xs">
-                  {Object.entries(activationData.visitor_review_trends.comparisons).map(([key, comp]) => (
+                  {activationData.visitor_review_trends?.comparisons && Object.entries(activationData.visitor_review_trends.comparisons).map(([key, comp]) => (
                     <Group key={key} justify="space-between">
                       <Text size="xs" c="dimmed">
                         {key === 'vs_last_7days' ? '지난 7일 대비' :
@@ -348,28 +348,28 @@ export default function ActivationPage() {
               <SimpleGrid cols={2} spacing="xs">
                 <Box>
                   <Text size="xs" c="dimmed">지난 7일 일평균</Text>
-                  <Text fw={600}>{activationData.blog_review_trends.last_7days_avg.toFixed(2)}</Text>
+                  <Text fw={600}>{(activationData.blog_review_trends?.last_7days_avg || 0).toFixed(2)}</Text>
                 </Box>
                 <Box>
                   <Text size="xs" c="dimmed">전주 일평균</Text>
-                  <Text fw={600}>{activationData.blog_review_trends.last_week_avg.toFixed(2)}</Text>
+                  <Text fw={600}>{(activationData.blog_review_trends?.last_week_avg || 0).toFixed(2)}</Text>
                 </Box>
                 <Box>
                   <Text size="xs" c="dimmed">지난 30일 일평균</Text>
-                  <Text fw={600}>{activationData.blog_review_trends.last_30days_avg.toFixed(2)}</Text>
+                  <Text fw={600}>{(activationData.blog_review_trends?.last_30days_avg || 0).toFixed(2)}</Text>
                 </Box>
                 <Box>
                   <Text size="xs" c="dimmed">지난 3개월 일평균</Text>
-                  <Text fw={600}>{activationData.blog_review_trends.last_90days_avg.toFixed(2)}</Text>
+                  <Text fw={600}>{(activationData.blog_review_trends?.last_90days_avg || 0).toFixed(2)}</Text>
                 </Box>
               </SimpleGrid>
               
               <Divider />
               
               <Box>
-                <Text size="sm" fw={600} mb="xs">이번주 일평균: {activationData.blog_review_trends.this_week_avg.toFixed(2)}</Text>
+                <Text size="sm" fw={600} mb="xs">이번주 일평균: {(activationData.blog_review_trends?.this_week_avg || 0).toFixed(2)}</Text>
                 <Stack gap="xs">
-                  {Object.entries(activationData.blog_review_trends.comparisons).map(([key, comp]) => (
+                  {activationData.blog_review_trends?.comparisons && Object.entries(activationData.blog_review_trends.comparisons).map(([key, comp]) => (
                     <Group key={key} justify="space-between">
                       <Text size="xs" c="dimmed">
                         {key === 'vs_last_7days' ? '지난 7일 대비' :
@@ -692,7 +692,7 @@ export default function ActivationPage() {
               등록된 네이버 플레이스 매장이 없습니다. 먼저 매장을 등록해주세요.
             </Alert>
           ) : (
-            <Grid>
+            <Grid gutter="md">
               {stores.map((store) => (
                 <Grid.Col key={store.id} span={{ base: 12, sm: 6, md: 4 }}>
                   <Card
@@ -704,7 +704,7 @@ export default function ActivationPage() {
                       height: '100%', 
                       cursor: 'pointer', 
                       transition: 'transform 0.2s, box-shadow 0.2s',
-                      maxWidth: '300px',
+                      maxWidth: '320px',
                       margin: '0 auto'
                     }}
                     onMouseEnter={(e) => {
