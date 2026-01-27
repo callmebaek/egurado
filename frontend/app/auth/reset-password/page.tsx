@@ -141,7 +141,7 @@ export default function ResetPasswordPage() {
         <CardHeader className="space-y-1">
           <div className="flex justify-center mb-6">
             <Image
-              src="/whiplace-logo.png"
+              src="/whiplace-logo.svg"
               alt="WhiPlace"
               width={180}
               height={60}
