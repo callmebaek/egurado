@@ -81,7 +81,16 @@ class NaverActivationServiceV2:
                 announcement_info
             )
             
-            # 9. 결과 반환
+            # 9. 리뷰 추이가 비어있으면 현재 리뷰 수라도 표시
+            if visitor_review_trends.get('last_7days_avg', 0) == 0:
+                visitor_count = place_details.get('visitor_review_count', 0)
+                logger.warning(f"[플레이스 활성화 V2] 리뷰 추이 데이터 없음, 현재 방문자 리뷰 수: {visitor_count}")
+            
+            if blog_review_trends.get('last_7days_avg', 0) == 0:
+                blog_count = place_details.get('blog_review_count', 0)
+                logger.warning(f"[플레이스 활성화 V2] 블로그 추이 데이터 없음, 현재 블로그 리뷰 수: {blog_count}")
+            
+            # 10. 결과 반환
             result = {
                 'store_name': store_name,
                 'place_id': place_id,
@@ -94,8 +103,15 @@ class NaverActivationServiceV2:
                 'visitor_review_trends': visitor_review_trends,
                 'blog_review_trends': blog_review_trends,
                 
+                # 현재 리뷰 수 (추이 데이터가 없을 때를 위해)
+                'current_visitor_review_count': place_details.get('visitor_review_count', 0),
+                'current_blog_review_count': place_details.get('blog_review_count', 0),
+                
                 # 답글 대기 (개선된 정보)
                 'pending_reply_info': pending_reply_info,
+                
+                # 네이버 API 제한 여부
+                'naver_api_limited': pending_reply_info.get('total_reviews', 0) == 0 and place_details.get('visitor_review_count', 0) > 0,
                 
                 # 플레이스 정보
                 'has_promotion': promotion_info['has_promotion'],

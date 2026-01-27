@@ -93,7 +93,10 @@ interface ActivationData {
   summary_cards: SummaryCard[]
   visitor_review_trends: ReviewTrends
   blog_review_trends: ReviewTrends
+  current_visitor_review_count: number
+  current_blog_review_count: number
   pending_reply_info: PendingReplyInfo
+  naver_api_limited: boolean
   has_promotion: boolean
   promotion_count: number
   has_announcement: boolean
@@ -271,6 +274,11 @@ export default function ActivationPage() {
   const renderReviewTrends = () => {
     if (!activationData || !activationData.visitor_review_trends || !activationData.blog_review_trends) return null
 
+    const hasVisitorTrendData = activationData.visitor_review_trends.last_7days_avg > 0 || 
+                                 activationData.visitor_review_trends.this_week_avg > 0
+    const hasBlogTrendData = activationData.blog_review_trends.last_7days_avg > 0 || 
+                             activationData.blog_review_trends.this_week_avg > 0
+
     return (
       <Grid gutter="md">
         <Grid.Col span={{ base: 12, md: 6 }}>
@@ -285,7 +293,16 @@ export default function ActivationPage() {
               
               <Divider />
               
-              <SimpleGrid cols={2} spacing="xs">
+              {!hasVisitorTrendData ? (
+                <Alert icon={<AlertCircle className="w-4 h-4" />} color="yellow" variant="light">
+                  <Text size="sm" fw={600}>현재 방문자 리뷰: {activationData.current_visitor_review_count}개</Text>
+                  <Text size="xs" c="dimmed" mt="xs">
+                    추이 분석을 위해서는 진단 기록이 필요합니다. 매일 플레이스 진단을 실행하시면 추이 데이터가 쌓입니다.
+                  </Text>
+                </Alert>
+              ) : (
+                <>
+                  <SimpleGrid cols={2} spacing="xs">
                 <Box>
                   <Text size="xs" c="dimmed">지난 7일 일평균</Text>
                   <Text fw={600}>{(activationData.visitor_review_trends?.last_7days_avg || 0).toFixed(2)}</Text>
@@ -329,6 +346,8 @@ export default function ActivationPage() {
                   ))}
                 </Stack>
               </Box>
+                </>
+              )}
             </Stack>
           </Card>
         </Grid.Col>
@@ -345,7 +364,16 @@ export default function ActivationPage() {
               
               <Divider />
               
-              <SimpleGrid cols={2} spacing="xs">
+              {!hasBlogTrendData ? (
+                <Alert icon={<AlertCircle className="w-4 h-4" />} color="yellow" variant="light">
+                  <Text size="sm" fw={600}>현재 블로그 리뷰: {activationData.current_blog_review_count}개</Text>
+                  <Text size="xs" c="dimmed" mt="xs">
+                    추이 분석을 위해서는 진단 기록이 필요합니다. 매일 플레이스 진단을 실행하시면 추이 데이터가 쌓입니다.
+                  </Text>
+                </Alert>
+              ) : (
+                <>
+                  <SimpleGrid cols={2} spacing="xs">
                 <Box>
                   <Text size="xs" c="dimmed">지난 7일 일평균</Text>
                   <Text fw={600}>{(activationData.blog_review_trends?.last_7days_avg || 0).toFixed(2)}</Text>
@@ -389,6 +417,8 @@ export default function ActivationPage() {
                   ))}
                 </Stack>
               </Box>
+                </>
+              )}
             </Stack>
           </Card>
         </Grid.Col>
@@ -399,7 +429,7 @@ export default function ActivationPage() {
   const renderPendingReply = () => {
     if (!activationData || !activationData.pending_reply_info) return null
 
-    const { pending_reply_info } = activationData
+    const { pending_reply_info, naver_api_limited } = activationData
 
     return (
       <Card shadow="sm" padding="lg" radius="md" withBorder>
@@ -413,7 +443,25 @@ export default function ActivationPage() {
           
           <Divider />
           
-          <Alert icon={<AlertCircle className="w-4 h-4" />} color="orange" variant="light">
+          {naver_api_limited ? (
+            <Alert icon={<AlertCircle className="w-4 h-4" />} color="yellow" variant="light">
+              <Text size="sm" fw={600}>네이버 API 제한</Text>
+              <Text size="xs" c="dimmed" mt="xs">
+                현재 네이버 API 제한으로 리뷰 정보를 가져올 수 없습니다. "AI 리뷰답글" 메뉴에서 직접 확인해주세요.
+              </Text>
+              <Button
+                size="xs"
+                variant="light"
+                mt="xs"
+                component="a"
+                href="/dashboard/naver/reviews/ai-reply"
+              >
+                AI 리뷰답글 바로가기
+              </Button>
+            </Alert>
+          ) : (
+            <>
+              <Alert icon={<AlertCircle className="w-4 h-4" />} color="orange" variant="light">
             <Text size="sm" fw={600}>답글 대기중 리뷰 수: {pending_reply_info?.pending_count || 0}개</Text>
             <Text size="xs" c="dimmed" mt="xs">
               최근 300개 리뷰 중 {pending_reply_info?.pending_count || 0}개의 리뷰에 답글이 필요합니다
@@ -448,6 +496,8 @@ export default function ActivationPage() {
           >
             AI 답글생성으로 빠르게 업데이트하기
           </Button>
+            </>
+          )}
         </Stack>
       </Card>
     )
