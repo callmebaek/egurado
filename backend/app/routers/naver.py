@@ -1674,13 +1674,13 @@ async def get_activation_info(
             )
         
         # 3. 활성화 정보 조회
-        from app.services.naver_activation_service import activation_service
-        
-        activation_data = await activation_service.get_activation_info(
-            store_id=store_id,
-            place_id=place_id,
-            store_name=store_name
-        )
+    from app.services.naver_activation_service_v2 import activation_service_v2
+    
+    activation_data = await activation_service_v2.get_activation_info(
+        store_id=store_id,
+        place_id=place_id,
+        store_name=store_name
+    )
         
         logger.info(f"[플레이스 활성화] 완료: {len(activation_data.get('issues', []))}개 이슈")
         
