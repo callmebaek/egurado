@@ -667,7 +667,7 @@ class NaverActivationServiceV3:
             "has_instagram": bool(place_details.get("instagram")),
             "has_blog": bool(place_details.get("blog")),
             "has_homepage": bool(place_details.get("homepage")),
-            "has_talk": False  # 별도 API 필요
+            "has_talk": place_details.get("has_naver_talk", False)
         }
     
     def _create_summary_cards(

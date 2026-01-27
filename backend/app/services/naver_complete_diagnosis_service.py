@@ -246,6 +246,10 @@ class NaverCompleteDiagnosisService:
             
             # 새로오픈
             "is_new_business": False,
+            
+            # 네이버 서비스
+            "has_smart_call": False,
+            "has_naver_talk": False,
         }
         
         # 1. GraphQL 정보 (기본 정보)
@@ -346,6 +350,12 @@ class NaverCompleteDiagnosisService:
             ai_briefing = additional_info.get("ai_briefing", {})
             if ai_briefing and ai_briefing.get("description"):
                 result["ai_briefing"] = ai_briefing.get("description")
+            
+            # 네이버톡톡 정보 추출 (promotions에 포함되어 있음)
+            promotions = additional_info.get("promotions", {})
+            if isinstance(promotions, dict):
+                result["has_naver_talk"] = promotions.get("has_naver_talk", False)
+                logger.info(f"[완전진단] 네이버톡톡: {result['has_naver_talk']}")
         
         # 플레이스 플러스 (HTML의 APOLLO_STATE에서 가져온 정보 사용)
         if html_info and html_info.get("is_place_plus") == True:
@@ -358,6 +368,16 @@ class NaverCompleteDiagnosisService:
         
         # 예약 가능 여부 판단
         result["booking_available"] = bool(result["booking_url"])
+        
+        # 스마트콜 감지 (전화번호가 0507로 시작하는지 확인)
+        phone_number = result.get("phone_number", "")
+        if phone_number and isinstance(phone_number, str):
+            # 공백 및 하이픈 제거 후 확인
+            clean_phone = phone_number.replace(" ", "").replace("-", "")
+            result["has_smart_call"] = clean_phone.startswith("0507")
+            logger.info(f"[완전진단] 스마트콜: {result['has_smart_call']} (전화번호: {phone_number})")
+        else:
+            result["has_smart_call"] = False
         
         return result
     
