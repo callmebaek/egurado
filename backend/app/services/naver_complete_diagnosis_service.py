@@ -250,6 +250,7 @@ class NaverCompleteDiagnosisService:
             # 네이버 서비스
             "has_smart_call": False,
             "has_naver_talk": False,
+            "has_naver_order": False,
         }
         
         # 1. GraphQL 정보 (기본 정보)
@@ -340,6 +341,15 @@ class NaverCompleteDiagnosisService:
             
             if html_info.get("visitor_reviews_total") is not None:
                 result["visitor_review_count"] = html_info.get("visitor_reviews_total")
+            
+            # 네이버 서비스 (HTML에서 파싱)
+            if html_info.get("has_naver_talk") is not None:
+                result["has_naver_talk"] = html_info.get("has_naver_talk")
+                logger.info(f"[완전진단-HTML] 네이버톡톡: {result['has_naver_talk']}")
+            
+            if html_info.get("has_naver_order") is not None:
+                result["has_naver_order"] = html_info.get("has_naver_order")
+                logger.info(f"[완전진단-HTML] 네이버 주문: {result['has_naver_order']}")
         
         # 3. 추가 정보 (프로모션/공지/AI브리핑)
         if additional_info:
@@ -351,11 +361,14 @@ class NaverCompleteDiagnosisService:
             if ai_briefing and ai_briefing.get("description"):
                 result["ai_briefing"] = ai_briefing.get("description")
             
-            # 네이버톡톡 정보 추출 (promotions에 포함되어 있음)
-            promotions = additional_info.get("promotions", {})
-            if isinstance(promotions, dict):
-                result["has_naver_talk"] = promotions.get("has_naver_talk", False)
-                logger.info(f"[완전진단] 네이버톡톡: {result['has_naver_talk']}")
+            # 네이버톡톡 정보 추출 (HTML에서 못 가져왔을 경우 promotions에서 fallback)
+            if not result.get("has_naver_talk"):
+                promotions = additional_info.get("promotions", {})
+                if isinstance(promotions, dict):
+                    talk_from_api = promotions.get("has_naver_talk", False)
+                    if talk_from_api:
+                        result["has_naver_talk"] = talk_from_api
+                        logger.info(f"[완전진단-GraphQL] 네이버톡톡: {result['has_naver_talk']} (fallback)")
         
         # 플레이스 플러스 (HTML의 APOLLO_STATE에서 가져온 정보 사용)
         if html_info and html_info.get("is_place_plus") == True:

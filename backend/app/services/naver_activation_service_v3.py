@@ -119,6 +119,7 @@ class NaverActivationServiceV3:
                 "has_smart_call": place_details.get("has_smart_call", False),
                 "has_naver_pay": place_details.get("has_naverpay_in_search", False),
                 "has_naver_booking": place_details.get("booking_available", False),
+                "has_naver_order": place_details.get("has_naver_order", False),
                 "has_naver_talk": sns_info.get("has_talk", False),
                 "is_place_plus": place_details.get("is_place_plus", False),
             }
