@@ -1674,9 +1674,9 @@ async def get_activation_info(
             )
         
         # 3. 활성화 정보 조회
-        from app.services.naver_activation_service_v2 import activation_service_v2
+        from app.services.naver_activation_service_v3 import activation_service_v3
         
-        activation_data = await activation_service_v2.get_activation_info(
+        activation_data = await activation_service_v3.get_activation_info(
             store_id=store_id,
             place_id=place_id,
             store_name=store_name
