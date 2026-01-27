@@ -141,27 +141,67 @@ class NaverActivationServiceV3:
             리뷰 추이 정보 (7일, 30일, 60일 일평균)
         """
         try:
-            # 최근 100개 리뷰 가져오기 (실시간)
-            reviews_data = await naver_review_service.get_visitor_reviews(
-                place_id=place_id,
-                size=100,
-                sort="recent"
-            )
-            
-            if not reviews_data or not reviews_data.get("items"):
-                logger.warning(f"[활성화-실시간] 리뷰 API 실패, 추정값 사용 (전체: {total_visitor_review_count}개)")
-                # API 실패 시 전체 리뷰 수 기반 추정 (경쟁매장분석 로직)
-                return self._calculate_visitor_review_trends_estimated(total_visitor_review_count)
-            
-            items = reviews_data["items"]
+            # 네이버 API는 size=100을 제한하므로, size=20으로 페이징
+            all_reviews = []
+            cursor = None
+            max_pages = 15  # 최대 300개 (20 * 15)
             now = datetime.now(timezone.utc)
+            oldest_needed_days = 60  # 60일치 데이터만 필요
+            should_stop = False
+            
+            for page in range(max_pages):
+                reviews_data = await naver_review_service.get_visitor_reviews(
+                    place_id=place_id,
+                    size=20,
+                    after=cursor,
+                    sort="recent"
+                )
+                
+                if not reviews_data or not reviews_data.get("items"):
+                    logger.warning(f"[활성화-실시간] 리뷰 API 실패 (페이지 {page+1}), 추정값 사용 (전체: {total_visitor_review_count}개)")
+                    if page == 0:
+                        # 첫 페이지부터 실패하면 추정값 사용
+                        return self._calculate_visitor_review_trends_estimated(total_visitor_review_count)
+                    else:
+                        # 일부라도 가져왔으면 그것으로 계산
+                        break
+                
+                items = reviews_data["items"]
+                
+                # 60일보다 오래된 리뷰가 나오면 더 이상 페이징 불필요
+                for review in items:
+                    created_str = review.get("created")
+                    if created_str:
+                        try:
+                            review_date = datetime.fromisoformat(created_str.replace('Z', '+00:00'))
+                            days_ago = (now - review_date).days
+                            if days_ago > oldest_needed_days:
+                                should_stop = True
+                                break
+                        except:
+                            pass
+                    all_reviews.append(review)
+                
+                if should_stop:
+                    logger.info(f"[활성화-실시간] 60일 이상 리뷰 도달, 페이징 중단 (페이지 {page+1}, 총 {len(all_reviews)}개)")
+                    break
+                
+                # 다음 페이지 확인
+                cursor = reviews_data.get("nextCursor")
+                if not cursor or not reviews_data.get("hasMore", False):
+                    logger.info(f"[활성화-실시간] 모든 리뷰 조회 완료 (페이지 {page+1}, 총 {len(all_reviews)}개)")
+                    break
+            
+            if not all_reviews:
+                logger.warning(f"[활성화-실시간] 리뷰 없음, 추정값 사용 (전체: {total_visitor_review_count}개)")
+                return self._calculate_visitor_review_trends_estimated(total_visitor_review_count)
             
             # 기간별 리뷰 개수 계산
             count_7d = 0
             count_30d = 0
             count_60d = 0
             
-            for review in items:
+            for review in all_reviews:
                 created_str = review.get("created")
                 if not created_str:
                     continue
