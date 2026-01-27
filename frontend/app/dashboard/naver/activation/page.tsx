@@ -259,7 +259,13 @@ export default function ActivationPage() {
               
               {card.type === 'visitor_review' || card.type === 'blog_review' ? (
                 <>
-                  <Text size="xl" fw={700}>{card.value.toFixed(2)}</Text>
+                  <Group gap="xs" align="center">
+                    <Text size="xl" fw={700}>{card.value.toFixed(2)}</Text>
+                    <Text size="xl">
+                      {((card.vs_7d_pct || 0) + (card.vs_30d_pct || 0)) / 2 > 0 ? '👏' : 
+                       ((card.vs_7d_pct || 0) + (card.vs_30d_pct || 0)) / 2 < 0 ? '😢' : ''}
+                    </Text>
+                  </Group>
                   <Text size="xs" c="dimmed">지난 3일 일평균</Text>
                   
                   <Divider />
@@ -303,7 +309,13 @@ export default function ActivationPage() {
                       </>
                     ) : (
                       <>
-                        <Text size="xl" fw={700}>{card.value}개</Text>
+                        <Group gap="xs" align="center">
+                          <Text size="xl" fw={700}>{card.value}개</Text>
+                          <Text size="xl">
+                            {(card.reply_rate || 0) >= 90 ? '👏' : 
+                             (card.reply_rate || 0) >= 70 ? '💪' : '😢'}
+                          </Text>
+                        </Group>
                         <Text size="xs" c="dimmed">답글 대기</Text>
                         <Progress value={card.reply_rate || 0} size="sm" color="blue" mt="xs" />
                         <Text size="xs" c="dimmed" mt={4}>답글률: {card.reply_rate?.toFixed(1)}%</Text>
@@ -315,7 +327,10 @@ export default function ActivationPage() {
               
               {card.type === 'coupon' ? (
                 <>
-                  <Text size="xl" fw={700}>{card.value}개</Text>
+                  <Group gap="xs" align="center">
+                    <Text size="xl" fw={700}>{card.value}개</Text>
+                    <Text size="xl">{card.value >= 1 ? '👏' : '😢'}</Text>
+                  </Group>
                   <Badge color={card.has_active ? 'green' : 'gray'} variant="light" size="sm">
                     {card.has_active ? '활성' : '비활성'}
                   </Badge>
@@ -324,19 +339,32 @@ export default function ActivationPage() {
               
               {card.type === 'announcement' ? (
                 <>
-                  <Text size="xl" fw={700}>{card.value}개</Text>
-                  <Text size="xs" c="dimmed">최근 7일 내</Text>
-                  <Badge 
-                    color={card.value > 0 ? 'green' : 'orange'} 
-                    variant="light" 
-                    size="sm"
-                  >
-                    {card.days_since_last !== undefined && card.days_since_last !== null && card.days_since_last <= 7
-                      ? `${card.days_since_last}일 전` 
-                      : card.value > 0 
-                        ? '최근 업데이트' 
-                        : `${card.days_since_last || 999}일 전`}
-                  </Badge>
+                  {card.value === 0 ? (
+                    <>
+                      <Group gap="xs" align="center">
+                        <Text size="xl" fw={700}>0개</Text>
+                        <Text size="xl">😢</Text>
+                      </Group>
+                      <Text size="xs" c="dimmed">최근 7일동안 공지사항 없습니다</Text>
+                    </>
+                  ) : (
+                    <>
+                      <Group gap="xs" align="center">
+                        <Text size="xl" fw={700}>{card.value}개</Text>
+                        <Text size="xl">👏</Text>
+                      </Group>
+                      <Text size="xs" c="dimmed">최근 7일 내</Text>
+                      <Badge 
+                        color="green" 
+                        variant="light" 
+                        size="sm"
+                      >
+                        {card.days_since_last !== undefined && card.days_since_last !== null && card.days_since_last <= 7
+                          ? `${card.days_since_last}일 전` 
+                          : '최근 업데이트'}
+                      </Badge>
+                    </>
+                  )}
                 </>
               ) : null}
             </Stack>
@@ -393,39 +421,33 @@ export default function ActivationPage() {
                   <Group justify="space-between">
                     <Text size="xs" c="dimmed">vs 지난 7일 일평균</Text>
                     <Text size="sm" fw={600}>
-                      {(activationData.visitor_review_trends?.last_3days_avg || 0) - (activationData.visitor_review_trends?.last_7days_avg || 0) > 0 ? '📈 ' : 
-                       (activationData.visitor_review_trends?.last_3days_avg || 0) - (activationData.visitor_review_trends?.last_7days_avg || 0) < 0 ? '📉 ' : ''}
                       {Math.abs((activationData.visitor_review_trends?.last_3days_avg || 0) - (activationData.visitor_review_trends?.last_7days_avg || 0)).toFixed(2)} 
                       ({Math.abs(activationData.visitor_review_trends?.comparisons?.vs_last_7days?.change || 0).toFixed(1)}%) {
-                        (activationData.visitor_review_trends?.comparisons?.vs_last_7days?.direction === 'up') ? '높습니다' :
-                        (activationData.visitor_review_trends?.comparisons?.vs_last_7days?.direction === 'down') ? '낮습니다' :
-                        '동일합니다'
+                        (activationData.visitor_review_trends?.comparisons?.vs_last_7days?.direction === 'up') ? '👍 높습니다' :
+                        (activationData.visitor_review_trends?.comparisons?.vs_last_7days?.direction === 'down') ? '👎 낮습니다' :
+                        '➡️ 동일합니다'
                       }
                     </Text>
                   </Group>
                   <Group justify="space-between">
                     <Text size="xs" c="dimmed">vs 지난 30일 일평균</Text>
                     <Text size="sm" fw={600}>
-                      {(activationData.visitor_review_trends?.last_3days_avg || 0) - (activationData.visitor_review_trends?.last_30days_avg || 0) > 0 ? '📈 ' : 
-                       (activationData.visitor_review_trends?.last_3days_avg || 0) - (activationData.visitor_review_trends?.last_30days_avg || 0) < 0 ? '📉 ' : ''}
                       {Math.abs((activationData.visitor_review_trends?.last_3days_avg || 0) - (activationData.visitor_review_trends?.last_30days_avg || 0)).toFixed(2)} 
                       ({Math.abs(activationData.visitor_review_trends?.comparisons?.vs_last_30days?.change || 0).toFixed(1)}%) {
-                        (activationData.visitor_review_trends?.comparisons?.vs_last_30days?.direction === 'up') ? '높습니다' :
-                        (activationData.visitor_review_trends?.comparisons?.vs_last_30days?.direction === 'down') ? '낮습니다' :
-                        '동일합니다'
+                        (activationData.visitor_review_trends?.comparisons?.vs_last_30days?.direction === 'up') ? '👍 높습니다' :
+                        (activationData.visitor_review_trends?.comparisons?.vs_last_30days?.direction === 'down') ? '👎 낮습니다' :
+                        '➡️ 동일합니다'
                       }
                     </Text>
                   </Group>
                   <Group justify="space-between">
                     <Text size="xs" c="dimmed">vs 지난 60일 일평균</Text>
                     <Text size="sm" fw={600}>
-                      {(activationData.visitor_review_trends?.last_3days_avg || 0) - (activationData.visitor_review_trends?.last_60days_avg || 0) > 0 ? '📈 ' : 
-                       (activationData.visitor_review_trends?.last_3days_avg || 0) - (activationData.visitor_review_trends?.last_60days_avg || 0) < 0 ? '📉 ' : ''}
                       {Math.abs((activationData.visitor_review_trends?.last_3days_avg || 0) - (activationData.visitor_review_trends?.last_60days_avg || 0)).toFixed(2)} 
                       ({Math.abs(activationData.visitor_review_trends?.comparisons?.vs_last_60days?.change || 0).toFixed(1)}%) {
-                        (activationData.visitor_review_trends?.comparisons?.vs_last_60days?.direction === 'up') ? '높습니다' :
-                        (activationData.visitor_review_trends?.comparisons?.vs_last_60days?.direction === 'down') ? '낮습니다' :
-                        '동일합니다'
+                        (activationData.visitor_review_trends?.comparisons?.vs_last_60days?.direction === 'up') ? '👍 높습니다' :
+                        (activationData.visitor_review_trends?.comparisons?.vs_last_60days?.direction === 'down') ? '👎 낮습니다' :
+                        '➡️ 동일합니다'
                       }
                     </Text>
                   </Group>
@@ -474,39 +496,33 @@ export default function ActivationPage() {
                   <Group justify="space-between">
                     <Text size="xs" c="dimmed">vs 지난 7일 일평균</Text>
                     <Text size="sm" fw={600}>
-                      {(activationData.blog_review_trends?.last_3days_avg || 0) - (activationData.blog_review_trends?.last_7days_avg || 0) > 0 ? '📈 ' : 
-                       (activationData.blog_review_trends?.last_3days_avg || 0) - (activationData.blog_review_trends?.last_7days_avg || 0) < 0 ? '📉 ' : ''}
                       {Math.abs((activationData.blog_review_trends?.last_3days_avg || 0) - (activationData.blog_review_trends?.last_7days_avg || 0)).toFixed(2)} 
                       ({Math.abs(activationData.blog_review_trends?.comparisons?.vs_last_7days?.change || 0).toFixed(1)}%) {
-                        (activationData.blog_review_trends?.comparisons?.vs_last_7days?.direction === 'up') ? '높습니다' :
-                        (activationData.blog_review_trends?.comparisons?.vs_last_7days?.direction === 'down') ? '낮습니다' :
-                        '동일합니다'
+                        (activationData.blog_review_trends?.comparisons?.vs_last_7days?.direction === 'up') ? '👍 높습니다' :
+                        (activationData.blog_review_trends?.comparisons?.vs_last_7days?.direction === 'down') ? '👎 낮습니다' :
+                        '➡️ 동일합니다'
                       }
                     </Text>
                   </Group>
                   <Group justify="space-between">
                     <Text size="xs" c="dimmed">vs 지난 30일 일평균</Text>
                     <Text size="sm" fw={600}>
-                      {(activationData.blog_review_trends?.last_3days_avg || 0) - (activationData.blog_review_trends?.last_30days_avg || 0) > 0 ? '📈 ' : 
-                       (activationData.blog_review_trends?.last_3days_avg || 0) - (activationData.blog_review_trends?.last_30days_avg || 0) < 0 ? '📉 ' : ''}
                       {Math.abs((activationData.blog_review_trends?.last_3days_avg || 0) - (activationData.blog_review_trends?.last_30days_avg || 0)).toFixed(2)} 
                       ({Math.abs(activationData.blog_review_trends?.comparisons?.vs_last_30days?.change || 0).toFixed(1)}%) {
-                        (activationData.blog_review_trends?.comparisons?.vs_last_30days?.direction === 'up') ? '높습니다' :
-                        (activationData.blog_review_trends?.comparisons?.vs_last_30days?.direction === 'down') ? '낮습니다' :
-                        '동일합니다'
+                        (activationData.blog_review_trends?.comparisons?.vs_last_30days?.direction === 'up') ? '👍 높습니다' :
+                        (activationData.blog_review_trends?.comparisons?.vs_last_30days?.direction === 'down') ? '👎 낮습니다' :
+                        '➡️ 동일합니다'
                       }
                     </Text>
                   </Group>
                   <Group justify="space-between">
                     <Text size="xs" c="dimmed">vs 지난 60일 일평균</Text>
                     <Text size="sm" fw={600}>
-                      {(activationData.blog_review_trends?.last_3days_avg || 0) - (activationData.blog_review_trends?.last_60days_avg || 0) > 0 ? '📈 ' : 
-                       (activationData.blog_review_trends?.last_3days_avg || 0) - (activationData.blog_review_trends?.last_60days_avg || 0) < 0 ? '📉 ' : ''}
                       {Math.abs((activationData.blog_review_trends?.last_3days_avg || 0) - (activationData.blog_review_trends?.last_60days_avg || 0)).toFixed(2)} 
                       ({Math.abs(activationData.blog_review_trends?.comparisons?.vs_last_60days?.change || 0).toFixed(1)}%) {
-                        (activationData.blog_review_trends?.comparisons?.vs_last_60days?.direction === 'up') ? '높습니다' :
-                        (activationData.blog_review_trends?.comparisons?.vs_last_60days?.direction === 'down') ? '낮습니다' :
-                        '동일합니다'
+                        (activationData.blog_review_trends?.comparisons?.vs_last_60days?.direction === 'up') ? '👍 높습니다' :
+                        (activationData.blog_review_trends?.comparisons?.vs_last_60days?.direction === 'down') ? '👎 낮습니다' :
+                        '➡️ 동일합니다'
                       }
                     </Text>
                   </Group>
