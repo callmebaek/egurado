@@ -82,6 +82,9 @@ export const api = {
     diagnosisHistoryDetail: (historyId: string) => {
       return api.url(`/api/v1/naver/diagnosis-history/detail/${historyId}`)
     },
+    activation: (storeId: string) => api.url(`/api/v1/naver/activation/${storeId}`),
+    generateDescription: () => api.url('/api/v1/naver/activation/generate-description'),
+    generateDirections: () => api.url('/api/v1/naver/activation/generate-directions'),
   },
   
   /**

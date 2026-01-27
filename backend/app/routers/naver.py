@@ -1607,3 +1607,258 @@ async def get_diagnosis_history_detail(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"진단 히스토리 상세 조회 중 오류가 발생했습니다: {str(e)}"
         )
+
+
+# ==================== 플레이스 활성화 ====================
+
+class ActivationResponse(BaseModel):
+    """플레이스 활성화 정보 응답"""
+    status: str
+    data: Dict[str, Any]
+
+
+class GenerateTextRequest(BaseModel):
+    """텍스트 생성 요청"""
+    store_id: str
+    prompt: str
+
+
+class GenerateTextResponse(BaseModel):
+    """텍스트 생성 응답"""
+    status: str
+    generated_text: str
+
+
+@router.get("/activation/{store_id}", response_model=ActivationResponse)
+async def get_activation_info(
+    store_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    플레이스 활성화 정보 조회
+    
+    Args:
+        store_id: 매장 ID (UUID)
+        current_user: 현재 사용자 정보
+    """
+    try:
+        logger.info(f"[플레이스 활성화] 요청: store_id={store_id}, user_id={current_user['id']}")
+        
+        supabase = get_supabase_client()
+        
+        # 1. 매장 정보 조회
+        store_result = supabase.table("stores").select("*").eq("id", store_id).execute()
+        
+        if not store_result.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="매장을 찾을 수 없습니다"
+            )
+        
+        store = store_result.data[0]
+        
+        # 2. 권한 확인
+        if store.get("user_id") != current_user["id"]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="해당 매장에 접근할 권한이 없습니다"
+            )
+        
+        place_id = store.get("place_id")
+        store_name = store.get("store_name")
+        
+        if not place_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="네이버 플레이스 ID가 등록되지 않은 매장입니다"
+            )
+        
+        # 3. 활성화 정보 조회
+        from app.services.naver_activation_service import activation_service
+        
+        activation_data = await activation_service.get_activation_info(
+            store_id=store_id,
+            place_id=place_id,
+            store_name=store_name
+        )
+        
+        logger.info(f"[플레이스 활성화] 완료: {len(activation_data.get('issues', []))}개 이슈")
+        
+        return ActivationResponse(
+            status="success",
+            data=activation_data
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[플레이스 활성화] 오류: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"활성화 정보 조회 중 오류가 발생했습니다: {str(e)}"
+        )
+
+
+@router.post("/activation/generate-description", response_model=GenerateTextResponse)
+async def generate_description(
+    request: GenerateTextRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    업체소개글 SEO 최적화 생성
+    
+    Args:
+        request: 생성 요청 (store_id, prompt)
+        current_user: 현재 사용자 정보
+    """
+    try:
+        logger.info(f"[업체소개글 생성] 요청: store_id={request.store_id}")
+        
+        supabase = get_supabase_client()
+        
+        # 1. 매장 정보 조회 및 권한 확인
+        store_result = supabase.table("stores").select("*").eq("id", request.store_id).execute()
+        
+        if not store_result.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="매장을 찾을 수 없습니다"
+            )
+        
+        store = store_result.data[0]
+        
+        if store.get("user_id") != current_user["id"]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="해당 매장에 접근할 권한이 없습니다"
+            )
+        
+        # 2. LLM으로 업체소개글 생성
+        from app.services.llm_reply_service import llm_reply_service
+        
+        system_prompt = """당신은 네이버 플레이스 SEO 전문가입니다. 
+업체소개글을 작성할 때 다음 가이드라인을 따르세요:
+
+1. 핵심 키워드를 자연스럽게 포함 (지역명, 업종, 특징)
+2. 고객이 찾는 정보 우선 (메뉴, 가격대, 특색)
+3. 간결하고 읽기 쉬운 문장 (200-300자 권장)
+4. 차별화 포인트 강조
+5. 과장 표현 지양, 사실 기반 작성
+
+업체소개글만 출력하고, 추가 설명은 하지 마세요."""
+
+        user_message = f"""다음 정보를 바탕으로 네이버 플레이스 업체소개글을 작성해주세요:
+
+매장명: {store.get('store_name')}
+카테고리: {store.get('category', '정보 없음')}
+주소: {store.get('address', '정보 없음')}
+
+사용자 요청사항:
+{request.prompt}
+
+업체소개글:"""
+
+        generated_text = await llm_reply_service.generate_reply_with_llm(
+            system_prompt=system_prompt,
+            user_message=user_message,
+            temperature=0.7
+        )
+        
+        logger.info(f"[업체소개글 생성] 완료: {len(generated_text)}자")
+        
+        return GenerateTextResponse(
+            status="success",
+            generated_text=generated_text.strip()
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[업체소개글 생성] 오류: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"업체소개글 생성 중 오류가 발생했습니다: {str(e)}"
+        )
+
+
+@router.post("/activation/generate-directions", response_model=GenerateTextResponse)
+async def generate_directions(
+    request: GenerateTextRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    찾아오는길 SEO 최적화 생성
+    
+    Args:
+        request: 생성 요청 (store_id, prompt)
+        current_user: 현재 사용자 정보
+    """
+    try:
+        logger.info(f"[찾아오는길 생성] 요청: store_id={request.store_id}")
+        
+        supabase = get_supabase_client()
+        
+        # 1. 매장 정보 조회 및 권한 확인
+        store_result = supabase.table("stores").select("*").eq("id", request.store_id).execute()
+        
+        if not store_result.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="매장을 찾을 수 없습니다"
+            )
+        
+        store = store_result.data[0]
+        
+        if store.get("user_id") != current_user["id"]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="해당 매장에 접근할 권한이 없습니다"
+            )
+        
+        # 2. LLM으로 찾아오는길 생성
+        from app.services.llm_reply_service import llm_reply_service
+        
+        system_prompt = """당신은 네이버 플레이스 SEO 전문가입니다. 
+찾아오는길을 작성할 때 다음 가이드라인을 따르세요:
+
+1. 대중교통 정보 우선 (지하철역, 버스 정류장)
+2. 도보 소요 시간 명시
+3. 주차 정보 포함
+4. 주요 랜드마크 활용
+5. 명확하고 구체적인 방향 안내
+6. 150-250자 권장
+
+찾아오는길만 출력하고, 추가 설명은 하지 마세요."""
+
+        user_message = f"""다음 정보를 바탕으로 네이버 플레이스 찾아오는길을 작성해주세요:
+
+매장명: {store.get('store_name')}
+주소: {store.get('address', '정보 없음')}
+도로명 주소: {store.get('road_address', '정보 없음')}
+
+사용자 요청사항:
+{request.prompt}
+
+찾아오는길:"""
+
+        generated_text = await llm_reply_service.generate_reply_with_llm(
+            system_prompt=system_prompt,
+            user_message=user_message,
+            temperature=0.7
+        )
+        
+        logger.info(f"[찾아오는길 생성] 완료: {len(generated_text)}자")
+        
+        return GenerateTextResponse(
+            status="success",
+            generated_text=generated_text.strip()
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[찾아오는길 생성] 오류: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"찾아오는길 생성 중 오류가 발생했습니다: {str(e)}"
+        )

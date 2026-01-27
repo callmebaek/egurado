@@ -95,6 +95,11 @@ const navigation: NavItem[] = [
         icon: <Tag className="w-4 h-4" />,
       },
       {
+        title: '플레이스 활성화',
+        href: '/dashboard/naver/activation',
+        icon: <TrendingUp className="w-4 h-4" />,
+      },
+      {
         title: '플레이스 지수관리',
         icon: <BarChart3 className="w-4 h-4" />,
         badge: '준비중',
