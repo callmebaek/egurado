@@ -998,57 +998,58 @@ class NaverReviewService:
         soup = BeautifulSoup(html, 'html.parser')
         reviews = []
         
-        # 검색 결과 영역 찾기
-        content_area = soup.find('div', id='main_pack') or soup.find('div', class_='content_area')
-        if not content_area:
-            logger.warning("[블로그 검색] main_pack 영역을 찾을 수 없음")
-            return []
+        # 블로그 링크를 직접 찾기 (더 안정적인 방법)
+        blog_links = soup.find_all('a', href=re.compile(r'blog\.naver\.com/[^/]+/\d+'))
+        logger.info(f"[블로그 검색] 발견된 블로그 링크: {len(blog_links)}개")
         
-        # 블로그 아이템 찾기 - 다양한 선택자 시도
-        # 네이버 검색 결과는 동적 클래스명을 사용하므로 구조 기반으로 찾기
-        blog_items = content_area.find_all('div', class_='detail_box') or \
-                     content_area.find_all('li', class_='bx') or \
-                     content_area.find_all('div', class_='total_wrap')
+        processed_urls = set()  # 중복 방지
         
-        # 블로그 링크가 있는 아이템만 필터링
-        filtered_items = []
-        for item in blog_items:
-            # 블로그 포스트 링크가 있는지 확인
-            link = item.find('a', href=re.compile(r'blog\.naver\.com'))
-            if link:
-                filtered_items.append(item)
-        
-        logger.info(f"[블로그 검색] 필터링된 블로그 아이템: {len(filtered_items)}개")
-        
-        for idx, item in enumerate(filtered_items):
+        for idx, link in enumerate(blog_links):
             try:
-                # 제목 추출
-                title_tag = item.find('a', class_='title_link') or \
-                            item.find('a', href=re.compile(r'blog\.naver\.com'))
-                if not title_tag:
+                url = link.get('href', '')
+                if not url or url in processed_urls:
                     continue
                 
-                title = title_tag.get_text(strip=True)
-                url = title_tag.get('href', '')
+                processed_urls.add(url)
                 
-                # 날짜 추출 - "1일 전", "2일 전", "1주 전", "2025.12.05." 등
-                date_tag = item.find('span', class_='sub_time') or \
-                           item.find('span', class_='time') or \
-                           item.find('span', class_='date')
+                # 제목 추출
+                title = link.get_text(strip=True)
+                if not title or len(title) < 5:  # 너무 짧은 제목은 무시
+                    continue
                 
+                # 링크의 부모 요소에서 날짜와 작성자 찾기
+                # 부모를 여러 단계 올라가면서 찾기
                 date_str = None
+                author = ""
                 review_date = None
-                if date_tag:
-                    date_str = date_tag.get_text(strip=True)
-                    review_date = self._parse_naver_search_date(date_str)
                 
-                # 작성자 추출
-                author_tag = item.find('a', class_='name') or \
-                            item.find('span', class_='name')
-                author = author_tag.get_text(strip=True) if author_tag else ""
+                # 부모 요소 탐색 (최대 5단계)
+                parent = link.parent
+                for level in range(5):
+                    if not parent:
+                        break
+                    
+                    # 날짜 찾기
+                    if not date_str:
+                        # 다양한 패턴의 날짜 요소 찾기
+                        date_candidates = parent.find_all(['span', 'time', 'div'], limit=20)
+                        for candidate in date_candidates:
+                            text = candidate.get_text(strip=True)
+                            # "1일 전", "1주 전", "2025.12.05." 패턴 확인
+                            if text and (
+                                '전' in text or 
+                                '시간' in text or
+                                '분' in text or
+                                re.match(r'\d{2,4}\.\d{1,2}\.\d{1,2}', text)
+                            ):
+                                date_str = text
+                                review_date = self._parse_naver_search_date(date_str)
+                                break
+                    
+                    parent = parent.parent
                 
-                if idx < 5:  # 처음 5개만 로그
-                    logger.debug(f"[블로그 검색] 아이템 {idx}: title={title[:50]}, date_str={date_str}, author={author}")
+                if idx < 10:  # 처음 10개만 로그
+                    logger.debug(f"[블로그 검색] 아이템 {idx}: title={title[:50]}, date_str={date_str}, url={url[:60]}")
                 
                 reviews.append({
                     "date": review_date.isoformat() if review_date else None,
@@ -1059,7 +1060,8 @@ class NaverReviewService:
                 })
             
             except Exception as e:
-                logger.warning(f"[블로그 검색] 아이템 {idx} 파싱 중 오류: {str(e)}")
+                if idx < 10:  # 처음 10개만 로그
+                    logger.warning(f"[블로그 검색] 아이템 {idx} 파싱 중 오류: {str(e)}")
                 continue
         
         return reviews
