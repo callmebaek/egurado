@@ -210,6 +210,9 @@ export default function ActivationPage() {
       }
 
       const data = await response.json()
+      console.log('[활성화 디버그] API 응답:', data.data)
+      console.log('[활성화 디버그] summary_cards[0] (visitor):', data.data.summary_cards?.[0])
+      console.log('[활성화 디버그] visitor_review_trends:', data.data.visitor_review_trends)
       setActivationData(data.data) // API 응답의 data 필드만 추출
     } catch (error) {
       console.error("Error fetching activation data:", error)

@@ -77,6 +77,9 @@ class NaverActivationServiceV3:
             )
             
             # 9. 결과 조합
+            logger.info(f"[활성화-결과조합] visitor_review_trends.last_3days_avg: {visitor_review_trends.get('last_3days_avg', 0)}")
+            logger.info(f"[활성화-결과조합] summary_cards[0].value (visitor): {summary_cards[0]['value'] if summary_cards else 'N/A'}")
+            
             result = {
                 "store_name": store_name,
                 "place_id": place_id,
@@ -528,6 +531,9 @@ class NaverActivationServiceV3:
         # vs 7일/30일 비교 비율 계산
         blog_vs_7d_pct = ((blog_3d_avg - blog_7d_avg) / blog_7d_avg * 100) if blog_7d_avg > 0 else 0
         blog_vs_30d_pct = ((blog_3d_avg - blog_30d_avg) / blog_30d_avg * 100) if blog_30d_avg > 0 else 0
+        
+        logger.info(f"[활성화-카드생성] 방문자 리뷰 3일 일평균: {visitor_3d_avg}, 7일: {visitor_7d_avg}, 30일: {visitor_30d_avg}")
+        logger.info(f"[활성화-카드생성] 블로그 리뷰 3일 일평균: {blog_3d_avg}, 7일: {blog_7d_avg}, 30일: {blog_30d_avg}")
         
         cards = [
             {
