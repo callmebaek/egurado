@@ -934,6 +934,7 @@ class NaverReviewService:
         self,
         place_id: str,
         store_name: str,
+        road_address: str = None,
         max_pages: int = 15
     ) -> List[Dict[str, Any]]:
         """
@@ -942,6 +943,7 @@ class NaverReviewService:
         Args:
             place_id: 네이버 플레이스 ID (로깅용)
             store_name: 매장명 (검색 쿼리)
+            road_address: 도로명주소 (필터링용)
             max_pages: 사용 안 함 (호환성 유지)
         
         Returns:
@@ -973,32 +975,10 @@ class NaverReviewService:
                 html = response.text
                 logger.info(f"[블로그 검색] HTML 길이: {len(html)} bytes")
                 
-                # HTML 파싱하여 블로그 리뷰 추출
-                reviews = self._parse_naver_blog_search_html(html)
+                # HTML 파싱하여 블로그 리뷰 추출 (제목 기반 필터링)
+                reviews = self._parse_naver_blog_search_html(html, store_name, road_address)
                 
-                logger.info(f"[블로그 검색] 파싱 완료: {len(reviews)}개")
-                
-                # placeId 필터링 (병렬 처리)
-                if reviews:
-                    logger.info(f"[블로그 필터링] placeId 확인 시작: {place_id}")
-                    
-                    # 병렬로 각 블로그 포스트의 placeId 확인
-                    tasks = [
-                        self._extract_place_id_from_blog_post(review.get('url', ''), place_id)
-                        for review in reviews
-                        if review.get('url')
-                    ]
-                    
-                    results = await asyncio.gather(*tasks, return_exceptions=True)
-                    
-                    # placeId가 일치하는 리뷰만 필터링
-                    filtered_reviews = []
-                    for review, is_match in zip(reviews, results):
-                        if isinstance(is_match, bool) and is_match:
-                            filtered_reviews.append(review)
-                    
-                    logger.info(f"[블로그 필터링] 필터링 완료: {len(filtered_reviews)}개 / {len(reviews)}개")
-                    return filtered_reviews
+                logger.info(f"[블로그 검색] 파싱 및 필터링 완료: {len(reviews)}개")
                 
                 return reviews
             
@@ -1006,15 +986,22 @@ class NaverReviewService:
             logger.error(f"[블로그 검색] 예외 발생: {type(e).__name__} - {str(e)}", exc_info=True)
             return []
     
-    def _parse_naver_blog_search_html(self, html: str) -> List[Dict[str, Any]]:
+    def _parse_naver_blog_search_html(
+        self, 
+        html: str,
+        store_name: str,
+        road_address: str = None
+    ) -> List[Dict[str, Any]]:
         """
-        네이버 통합 검색 블로그 탭 HTML 파싱 (활성화 기능 전용)
+        네이버 통합 검색 블로그 탭 HTML 파싱 (제목 기반 필터링)
         
         Args:
             html: 네이버 검색 결과 HTML 문자열
+            store_name: 매장명 (필터링용)
+            road_address: 도로명주소 (필터링용)
         
         Returns:
-            List[Dict]: 파싱된 블로그 리뷰 목록
+            List[Dict]: 필터링된 블로그 리뷰 목록
         """
         from bs4 import BeautifulSoup
         from datetime import datetime, timedelta
@@ -1022,11 +1009,32 @@ class NaverReviewService:
         soup = BeautifulSoup(html, 'html.parser')
         reviews = []
         
-        # 블로그 링크를 직접 찾기 (더 안정적인 방법)
+        # 블로그 링크를 직접 찾기
         blog_links = soup.find_all('a', href=re.compile(r'blog\.naver\.com/[^/]+/\d+'))
         logger.info(f"[블로그 검색] 발견된 블로그 링크: {len(blog_links)}개")
         
+        # 필터링 조건 준비
+        # 1. 정확한 매장명
+        exact_store_name = store_name.strip()
+        
+        # 2. 띄어쓰기가 있으면 첫 단어만
+        first_word_store_name = exact_store_name.split()[0] if ' ' in exact_store_name else None
+        
+        # 3. 도로명주소에서 주요 키워드 추출 (예: "서울특별시 중랑구 면목동" -> "중랑구", "면목동")
+        address_keywords = []
+        if road_address:
+            # "시", "구", "동", "로", "길" 등이 포함된 단어 추출
+            parts = road_address.split()
+            for part in parts:
+                if any(suffix in part for suffix in ['구', '동', '로', '길']):
+                    address_keywords.append(part)
+        
+        logger.info(f"[블로그 필터링] 매장명: '{exact_store_name}', 첫 단어: '{first_word_store_name}', 주소 키워드: {address_keywords}")
+        
         processed_urls = set()  # 중복 방지
+        
+        matched_count = 0
+        filtered_count = 0
         
         for idx, link in enumerate(blog_links):
             try:
@@ -1040,6 +1048,36 @@ class NaverReviewService:
                 title = link.get_text(strip=True)
                 if not title or len(title) < 5:  # 너무 짧은 제목은 무시
                     continue
+                
+                # === 제목 기반 필터링 ===
+                is_match = False
+                match_reason = ""
+                
+                # 조건 1: 정확한 매장명 포함
+                if exact_store_name in title:
+                    is_match = True
+                    match_reason = "정확한 매장명"
+                
+                # 조건 2: 띄어쓰기 있으면 첫 단어만 체크
+                elif first_word_store_name and first_word_store_name in title:
+                    is_match = True
+                    match_reason = "첫 단어 매장명"
+                
+                # 조건 3: 매장명 + 주소 키워드 조합
+                elif address_keywords:
+                    # 매장명(전체 또는 첫 단어)과 주소 키워드 중 하나라도 함께 있으면 매칭
+                    has_store_name = (exact_store_name in title) or (first_word_store_name and first_word_store_name in title)
+                    has_address = any(keyword in title for keyword in address_keywords)
+                    
+                    if has_store_name and has_address:
+                        is_match = True
+                        match_reason = "매장명+주소"
+                
+                if not is_match:
+                    filtered_count += 1
+                    continue
+                
+                matched_count += 1
                 
                 # 링크의 부모 요소에서 날짜와 작성자 찾기
                 # 부모를 여러 단계 올라가면서 찾기
@@ -1082,8 +1120,8 @@ class NaverReviewService:
                     
                     parent = parent.parent
                 
-                if idx < 10:  # 처음 10개만 로그
-                    logger.debug(f"[블로그 검색] 아이템 {idx}: title={title[:50]}, date_str={date_str}, url={url[:60]}")
+                if matched_count <= 10:  # 처음 10개 매칭만 로그
+                    logger.info(f"[블로그 필터링] ✅ 매칭 #{matched_count}: '{title[:50]}' (이유: {match_reason})")
                 
                 reviews.append({
                     "date": review_date.isoformat() if review_date else None,
@@ -1097,6 +1135,8 @@ class NaverReviewService:
                 if idx < 10:  # 처음 10개만 로그
                     logger.warning(f"[블로그 검색] 아이템 {idx} 파싱 중 오류: {str(e)}")
                 continue
+        
+        logger.info(f"[블로그 필터링] 결과: 매칭={matched_count}개, 필터링={filtered_count}개, 총={len(blog_links)}개")
         
         return reviews
     

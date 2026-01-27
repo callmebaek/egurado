@@ -50,8 +50,9 @@ class NaverActivationServiceV3:
             
             # 3. 블로그 리뷰 실시간 분석
             blog_review_count = place_details.get("blog_review_count", 0)
+            road_address = place_details.get("road_address", "")
             logger.info(f"[플레이스 활성화 V3-독립] 블로그 리뷰 실시간 분석 시작: place_id={place_id}, store_name={store_name}, total_count={blog_review_count}")
-            blog_review_trends = await self._calculate_blog_review_trends_realtime(place_id, store_name, blog_review_count)
+            blog_review_trends = await self._calculate_blog_review_trends_realtime(place_id, store_name, road_address, blog_review_count)
             logger.info(f"[플레이스 활성화 V3-독립] 블로그 리뷰 완료: 3일={blog_review_trends['last_3days_avg']:.2f}, 7일={blog_review_trends['last_7days_avg']:.2f}, 30일={blog_review_trends['last_30days_avg']:.2f}")
             
             # 4. 답글 대기 수 계산 (최근 300개 리뷰 기준)
@@ -293,7 +294,8 @@ class NaverActivationServiceV3:
     async def _calculate_blog_review_trends_realtime(
         self, 
         place_id: str,
-        store_name: str, 
+        store_name: str,
+        road_address: str,
         total_blog_review_count: int
     ) -> Dict[str, Any]:
         """
@@ -301,7 +303,8 @@ class NaverActivationServiceV3:
         
         Args:
             place_id: 네이버 플레이스 ID (로깅용)
-            store_name: 매장명 (검색 쿼리)
+            store_name: 매장명 (검색 쿼리 및 필터링용)
+            road_address: 도로명주소 (필터링용)
             total_blog_review_count: 전체 블로그 리뷰 수 (API 실패 시 추정용)
             
         Returns:
@@ -309,10 +312,11 @@ class NaverActivationServiceV3:
         """
         logger.info(f"[활성화-블로그 실시간] 네이버 검색 시작: place_id={place_id}, store_name={store_name}, total={total_blog_review_count}")
         try:
-            # 네이버 통합 검색에서 블로그 리뷰 가져오기 (활성화 기능 전용)
+            # 네이버 통합 검색에서 블로그 리뷰 가져오기 (제목 기반 필터링)
             all_reviews = await naver_review_service.get_blog_reviews_html(
                 place_id=place_id,
                 store_name=store_name,
+                road_address=road_address,
                 max_pages=10  # 사용 안 함 (호환성)
             )
             
