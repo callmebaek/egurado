@@ -422,7 +422,7 @@ export default function ActivationPage() {
                     <Text size="xs" c="dimmed">vs 지난 7일 일평균</Text>
                     <Group gap={4}>
                       <Text size="sm" fw={600}>
-                        {Math.abs((activationData.visitor_review_trends?.last_3days_avg || 0) - (activationData.visitor_review_trends?.last_7days_avg || 0)).toFixed(2)} 
+                        {Math.abs((activationData.visitor_review_trends?.last_3days_avg || 0) - (activationData.visitor_review_trends?.last_7days_avg || 0)).toFixed(2)}개
                       </Text>
                       <Text 
                         size="sm" 
@@ -445,7 +445,7 @@ export default function ActivationPage() {
                     <Text size="xs" c="dimmed">vs 지난 30일 일평균</Text>
                     <Group gap={4}>
                       <Text size="sm" fw={600}>
-                        {Math.abs((activationData.visitor_review_trends?.last_3days_avg || 0) - (activationData.visitor_review_trends?.last_30days_avg || 0)).toFixed(2)} 
+                        {Math.abs((activationData.visitor_review_trends?.last_3days_avg || 0) - (activationData.visitor_review_trends?.last_30days_avg || 0)).toFixed(2)}개
                       </Text>
                       <Text 
                         size="sm" 
@@ -468,7 +468,7 @@ export default function ActivationPage() {
                     <Text size="xs" c="dimmed">vs 지난 60일 일평균</Text>
                     <Group gap={4}>
                       <Text size="sm" fw={600}>
-                        {Math.abs((activationData.visitor_review_trends?.last_3days_avg || 0) - (activationData.visitor_review_trends?.last_60days_avg || 0)).toFixed(2)} 
+                        {Math.abs((activationData.visitor_review_trends?.last_3days_avg || 0) - (activationData.visitor_review_trends?.last_60days_avg || 0)).toFixed(2)}개
                       </Text>
                       <Text 
                         size="sm" 
@@ -533,7 +533,7 @@ export default function ActivationPage() {
                     <Text size="xs" c="dimmed">vs 지난 7일 일평균</Text>
                     <Group gap={4}>
                       <Text size="sm" fw={600}>
-                        {Math.abs((activationData.blog_review_trends?.last_3days_avg || 0) - (activationData.blog_review_trends?.last_7days_avg || 0)).toFixed(2)} 
+                        {Math.abs((activationData.blog_review_trends?.last_3days_avg || 0) - (activationData.blog_review_trends?.last_7days_avg || 0)).toFixed(2)}개
                       </Text>
                       <Text 
                         size="sm" 
@@ -556,7 +556,7 @@ export default function ActivationPage() {
                     <Text size="xs" c="dimmed">vs 지난 30일 일평균</Text>
                     <Group gap={4}>
                       <Text size="sm" fw={600}>
-                        {Math.abs((activationData.blog_review_trends?.last_3days_avg || 0) - (activationData.blog_review_trends?.last_30days_avg || 0)).toFixed(2)} 
+                        {Math.abs((activationData.blog_review_trends?.last_3days_avg || 0) - (activationData.blog_review_trends?.last_30days_avg || 0)).toFixed(2)}개
                       </Text>
                       <Text 
                         size="sm" 
@@ -579,7 +579,7 @@ export default function ActivationPage() {
                     <Text size="xs" c="dimmed">vs 지난 60일 일평균</Text>
                     <Group gap={4}>
                       <Text size="sm" fw={600}>
-                        {Math.abs((activationData.blog_review_trends?.last_3days_avg || 0) - (activationData.blog_review_trends?.last_60days_avg || 0)).toFixed(2)} 
+                        {Math.abs((activationData.blog_review_trends?.last_3days_avg || 0) - (activationData.blog_review_trends?.last_60days_avg || 0)).toFixed(2)}개
                       </Text>
                       <Text 
                         size="sm" 

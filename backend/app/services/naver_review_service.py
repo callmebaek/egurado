@@ -194,10 +194,95 @@ class NaverReviewService:
                 "has_more": 다음 페이지 여부
             }
         """
-        # 네이버 GraphQL API에서 blogReviews 쿼리가 제거됨
-        # 추후 대체 방법 필요 (웹 스크래핑 등)
-        logger.warning(f"블로그 리뷰 조회: 현재 네이버 API에서 지원하지 않음 (place_id={place_id})")
-        return {"total": 0, "items": [], "page": page, "has_more": False}
+        # getFsasReviews GraphQL API 사용
+        query = """
+        query getFsasReviews($input: FsasReviewsInput) {
+            fsasReviews(input: $input) {
+                total
+                maxItemCount
+                items {
+                    id
+                    date
+                    createdString
+                    type
+                    typeName
+                    title
+                    contents
+                    url
+                    home
+                    authorName
+                    thumbnailUrl
+                    thumbnailCount
+                    reviewId
+                }
+            }
+        }
+        """
+        
+        variables = {
+            "input": {
+                "businessId": place_id,
+                "page": page,
+                "size": size,
+                "type": "all"  # blog, cafe, or all
+            }
+        }
+        
+        try:
+            async with httpx.AsyncClient(timeout=self.TIMEOUT) as client:
+                response = await client.post(
+                    self.GRAPHQL_URL,
+                    json=[{
+                        "operationName": "getFsasReviews",
+                        "variables": variables,
+                        "query": query
+                    }],
+                    headers=self.headers
+                )
+                response.raise_for_status()
+                
+                data = response.json()
+                logger.debug(f"[블로그 리뷰] GraphQL Response: {data}")
+                
+                # 응답은 배열로 오므로 첫 번째 요소를 사용
+                if isinstance(data, list) and len(data) > 0:
+                    data = data[0]
+                
+                # fsasReviews 데이터 추출
+                fsas_reviews = data.get("data", {}).get("fsasReviews")
+                if not fsas_reviews:
+                    logger.warning(f"블로그 리뷰 없음: place_id={place_id}")
+                    return {
+                        "total": 0,
+                        "items": [],
+                        "page": page,
+                        "has_more": False
+                    }
+                
+                total = fsas_reviews.get("total", 0)
+                max_item_count = fsas_reviews.get("maxItemCount", 0)
+                items = fsas_reviews.get("items", [])
+                
+                # has_more: 현재 페이지 * size < total
+                has_more = (page * size) < total
+                
+                logger.info(f"블로그 리뷰 조회 성공: place_id={place_id}, total={total}, max_item_count={max_item_count}, items_count={len(items)}, page={page}, has_more={has_more}")
+                
+                return {
+                    "total": total,
+                    "items": items,
+                    "page": page,
+                    "has_more": has_more
+                }
+                
+        except Exception as e:
+            logger.error(f"블로그 리뷰 조회 예외: {type(e).__name__} - {str(e)}")
+            return {
+                "total": 0,
+                "items": [],
+                "page": page,
+                "has_more": False
+            }
     
     async def get_all_today_visitor_reviews(
         self,
