@@ -519,18 +519,18 @@ class NaverActivationServiceV3:
         visitor_7d_avg = visitor_trends.get('last_7days_avg', 0)
         visitor_30d_avg = visitor_trends.get('last_30days_avg', 0)
         
-        # vs 7일/30일 비교 비율 계산
-        visitor_vs_7d_pct = ((visitor_3d_avg - visitor_7d_avg) / visitor_7d_avg * 100) if visitor_7d_avg > 0 else 0
-        visitor_vs_30d_pct = ((visitor_3d_avg - visitor_30d_avg) / visitor_30d_avg * 100) if visitor_30d_avg > 0 else 0
+        # vs 7일/30일 비교 비율 (추이 카드와 동일한 값 사용)
+        visitor_vs_7d_pct = visitor_trends.get('comparisons', {}).get('vs_last_7days', {}).get('change', 0.0)
+        visitor_vs_30d_pct = visitor_trends.get('comparisons', {}).get('vs_last_30days', {}).get('change', 0.0)
         
         # 블로그 리뷰 카드 (3일 일평균 메인)
         blog_3d_avg = blog_trends.get('last_3days_avg', 0)
         blog_7d_avg = blog_trends.get('last_7days_avg', 0)
         blog_30d_avg = blog_trends.get('last_30days_avg', 0)
         
-        # vs 7일/30일 비교 비율 계산
-        blog_vs_7d_pct = ((blog_3d_avg - blog_7d_avg) / blog_7d_avg * 100) if blog_7d_avg > 0 else 0
-        blog_vs_30d_pct = ((blog_3d_avg - blog_30d_avg) / blog_30d_avg * 100) if blog_30d_avg > 0 else 0
+        # vs 7일/30일 비교 비율 (추이 카드와 동일한 값 사용)
+        blog_vs_7d_pct = blog_trends.get('comparisons', {}).get('vs_last_7days', {}).get('change', 0.0)
+        blog_vs_30d_pct = blog_trends.get('comparisons', {}).get('vs_last_30days', {}).get('change', 0.0)
         
         logger.info(f"[활성화-카드생성] 방문자 리뷰 3일 일평균: {visitor_3d_avg}, 7일: {visitor_7d_avg}, 30일: {visitor_30d_avg}")
         logger.info(f"[활성화-카드생성] 블로그 리뷰 3일 일평균: {blog_3d_avg}, 7일: {blog_7d_avg}, 30일: {blog_30d_avg}")
