@@ -48,10 +48,11 @@ class NaverActivationServiceV3:
             )
             logger.info(f"[플레이스 활성화 V3-독립] 방문자 리뷰 추이: 7일={visitor_review_trends['last_7days_avg']:.2f}, 30일={visitor_review_trends['last_30days_avg']:.2f}, 60일={visitor_review_trends['last_60days_avg']:.2f}")
             
-            # 3. 블로그 리뷰 추정 분석 (API 미지원)
+            # 3. 블로그 리뷰 실시간 분석
             blog_review_count = place_details.get("blog_review_count", 0)
+            logger.info(f"[플레이스 활성화 V3-독립] 블로그 리뷰 실시간 분석 시작: place_id={place_id}, total_count={blog_review_count}")
             blog_review_trends = await self._calculate_blog_review_trends_realtime(place_id, blog_review_count)
-            logger.info(f"[플레이스 활성화 V3-독립] 블로그 리뷰 추정: 일평균={blog_review_trends['last_7days_avg']:.2f}")
+            logger.info(f"[플레이스 활성화 V3-독립] 블로그 리뷰 완료: 3일={blog_review_trends['last_3days_avg']:.2f}, 7일={blog_review_trends['last_7days_avg']:.2f}, 30일={blog_review_trends['last_30days_avg']:.2f}")
             
             # 4. 답글 대기 수 계산 (최근 300개 리뷰 기준)
             pending_reply_info = await self._get_pending_reply_count(place_id)
@@ -304,6 +305,7 @@ class NaverActivationServiceV3:
         Returns:
             리뷰 추이 정보 (7일, 30일, 60일 일평균)
         """
+        logger.info(f"[활성화-블로그 실시간] 메서드 시작: place_id={place_id}, total={total_blog_review_count}")
         try:
             # 페이지 기반 페이징으로 최대 300개 조회
             all_reviews = []
@@ -313,6 +315,7 @@ class NaverActivationServiceV3:
             oldest_needed_days = 60  # 60일치 데이터만 필요
             should_stop = False
             
+            logger.info(f"[활성화-블로그 실시간] 페이징 시작: max_pages={max_pages}")
             for page_num in range(1, max_pages + 1):
                 reviews_data = await naver_review_service.get_blog_reviews(
                     place_id=place_id,
