@@ -1108,10 +1108,10 @@ class NaverReviewService:
                         is_match = True
                         match_reason = f"매장명+지역구({district})"
                         if idx < 10:  # 처음 10개만 상세 로그
-                            logger.info(f"[블로그 필터링] ✅ 매칭 #{matched_count+1}: '{title[:50]}' (본문: {len(description)}자, 이유: {match_reason})")
+                            logger.info(f"[블로그 필터링] ✅ 매칭 #{matched_count+1}: '{title[:50]}' (본문: {len(description)}자)")
                     else:
                         if idx < 10:  # 처음 10개만 상세 로그
-                            logger.debug(f"[블로그 필터링] ❌ 불일치: '{title[:50]}' (매장={has_store}, 지역구={has_district})")
+                            logger.info(f"[블로그 필터링] ❌ 불일치 #{idx+1}: 제목='{title[:50]}', 본문길이={len(description)}자, 매장={has_store}, 지역구={has_district}")
                 else:
                     # 지역구가 없으면 필터링 불가 (매칭 실패)
                     logger.warning(f"[블로그 필터링] 지역구 정보 없음 - 필터링 불가")
