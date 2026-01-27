@@ -275,7 +275,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               width={500}
               height={160}
                 priority
-              className="w-[75%] h-auto max-w-full"
+              className="w-[67.5%] h-auto max-w-full"
               />
           </Link>
           
