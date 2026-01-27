@@ -6,6 +6,8 @@
 import httpx
 import logging
 import pytz
+import base64
+import json
 from typing import List, Dict, Optional, Any
 from datetime import datetime
 
@@ -16,15 +18,26 @@ class NaverReviewService:
     """네이버 플레이스 리뷰 조회 서비스"""
     
     GRAPHQL_URL = "https://api.place.naver.com/graphql"
+    PCMAP_GRAPHQL_URL = "https://pcmap-api.place.naver.com/graphql"
     TIMEOUT = 30.0
     
     def __init__(self):
+        # 모바일 API용 헤더 (방문자 리뷰)
         self.headers = {
             "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15",
             "Accept": "application/json",
             "Content-Type": "application/json",
             "Origin": "https://m.place.naver.com",
             "Referer": "https://m.place.naver.com/",
+        }
+        
+        # PC API용 헤더 (블로그 리뷰)
+        self.pc_headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36",
+            "Accept": "*/*",
+            "Content-Type": "application/json",
+            "Origin": "https://pcmap.place.naver.com",
+            "Referer": "https://pcmap.place.naver.com/",
         }
     
     async def get_visitor_reviews(
@@ -176,15 +189,17 @@ class NaverReviewService:
         self, 
         place_id: str,
         page: int = 1,
-        size: int = 20
+        size: int = 20,
+        use_pc_api: bool = False
     ) -> Dict[str, Any]:
         """
-        블로그 리뷰 조회 (현재 네이버 API에서 지원하지 않음)
+        블로그 리뷰 조회
         
         Args:
             place_id: 네이버 플레이스 ID
             page: 페이지 번호 (1부터 시작)
             size: 페이지당 리뷰 수
+            use_pc_api: PC API 사용 여부 (True: pcmap-api 사용, False: 기존 api 사용)
         
         Returns:
             {
@@ -227,16 +242,40 @@ class NaverReviewService:
             }
         }
         
+        # API URL과 헤더 선택
+        if use_pc_api:
+            # PC API 사용 (활성화 기능 전용)
+            api_url = self.PCMAP_GRAPHQL_URL
+            
+            # x-wtm-graphql 헤더 생성 (Base64 인코딩)
+            wtm_data = {
+                "arg": place_id,
+                "type": "restaurant",
+                "source": "place"
+            }
+            wtm_graphql_header = base64.b64encode(json.dumps(wtm_data).encode()).decode()
+            
+            # PC API용 헤더 복사 및 x-wtm-graphql 추가
+            headers = self.pc_headers.copy()
+            headers["x-wtm-graphql"] = wtm_graphql_header
+            headers["Referer"] = f"https://pcmap.place.naver.com/restaurant/{place_id}/review/ugc"
+            logger.info(f"[블로그 리뷰] PC API 사용: place_id={place_id}, page={page}")
+        else:
+            # 기존 모바일 API 사용 (기존 기능 유지)
+            api_url = self.GRAPHQL_URL
+            headers = self.headers
+            logger.info(f"[블로그 리뷰] 모바일 API 사용: place_id={place_id}, page={page}")
+        
         try:
             async with httpx.AsyncClient(timeout=self.TIMEOUT) as client:
                 response = await client.post(
-                    self.GRAPHQL_URL,
+                    api_url,
                     json=[{
                         "operationName": "getFsasReviews",
                         "variables": variables,
                         "query": query
                     }],
-                    headers=self.headers
+                    headers=headers
                 )
                 response.raise_for_status()
                 

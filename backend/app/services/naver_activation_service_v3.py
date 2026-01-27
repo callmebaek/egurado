@@ -319,7 +319,8 @@ class NaverActivationServiceV3:
             for page_num in range(1, max_pages + 1):
                 reviews_data = await naver_review_service.get_blog_reviews(
                     place_id=place_id,
-                    page=page_num
+                    page=page_num,
+                    use_pc_api=True  # 활성화 기능에서는 PC API 사용
                 )
                 
                 if not reviews_data or not reviews_data.get("items"):
