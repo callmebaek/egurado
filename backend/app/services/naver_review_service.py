@@ -1048,17 +1048,11 @@ class NaverReviewService:
         blog_links = soup.find_all('a', href=re.compile(r'blog\.naver\.com/[^/]+/\d+'))
         logger.info(f"[블로그 검색] 발견된 블로그 링크: {len(blog_links)}개")
         
-        # 필터링 조건 준비
-        # 1. 정확한 매장명
+        # 필터링 조건: 매장명 AND 지역구 (둘 다 필수)
         exact_store_name = store_name.strip()
-        
-        # 2. 띄어쓰기가 있으면 첫 단어만
-        first_word_store_name = exact_store_name.split()[0] if ' ' in exact_store_name else None
-        
-        # 3. 지역구 이름 추출 (예: "서울특별시 중랑구 면목천로6길 22" -> "중랑구")
         district = self._extract_district_from_address(road_address) if road_address else None
         
-        logger.info(f"[블로그 필터링] 매장명: '{exact_store_name}', 첫 단어: '{first_word_store_name}', 지역구: '{district}'")
+        logger.info(f"[블로그 필터링] 매장명: '{exact_store_name}', 지역구: '{district}'")
         
         processed_urls = set()  # 중복 방지
         
@@ -1078,34 +1072,49 @@ class NaverReviewService:
                 if not title or len(title) < 5:  # 너무 짧은 제목은 무시
                     continue
                 
-                # === 제목 기반 필터링 (대소문자 무시, 공백 제거) ===
-                title_lower = title.lower().replace(' ', '')
-                store_lower = exact_store_name.lower().replace(' ', '')
-                first_word_lower = first_word_store_name.lower().replace(' ', '') if first_word_store_name else None
+                # 본문 내용(미리보기) 추출
+                description = ""
+                # 제목 링크의 부모 요소에서 본문 찾기
+                parent = link.parent
+                for level in range(5):  # 최대 5단계 부모까지 탐색
+                    if not parent:
+                        break
+                    
+                    # 본문은 보통 'dsc_link', 'total_tit', 'desc', 'api_txt_lines' 등의 클래스명 사용
+                    desc_element = parent.find(['div', 'p', 'span'], class_=re.compile(r'(dsc|desc|api_txt|total_txt|cont)'))
+                    if desc_element:
+                        description = desc_element.get_text(strip=True)
+                        if len(description) > 10:  # 최소 10자 이상이어야 유효
+                            break
+                    
+                    parent = parent.parent
                 
+                # 제목 + 본문을 합쳐서 검색 대상으로 사용
+                content = f"{title} {description}"
+                content_lower = content.lower().replace(' ', '')
+                
+                # === 조건 3만 사용: 매장명 AND 지역구 (둘 다 필수) ===
                 is_match = False
                 match_reason = ""
                 
-                # 조건 1: 정확한 매장명 포함
-                if store_lower in title_lower:
-                    is_match = True
-                    match_reason = "정확한 매장명"
-                
-                # 조건 2: 띄어쓰기 있으면 첫 단어만 체크
-                elif first_word_lower and first_word_lower in title_lower:
-                    is_match = True
-                    match_reason = "첫 단어 매장명"
-                
-                # 조건 3: 매장명 + 지역구 조합
-                elif district:
-                    # 매장명(전체 또는 첫 단어)과 지역구가 함께 있으면 매칭
-                    has_store_name = (store_lower in title_lower) or (first_word_lower and first_word_lower in title_lower)
+                if district:
+                    store_lower = exact_store_name.lower().replace(' ', '')
                     district_lower = district.lower().replace(' ', '')
-                    has_district = district_lower in title_lower
                     
-                    if has_store_name and has_district:
+                    has_store = store_lower in content_lower
+                    has_district = district_lower in content_lower
+                    
+                    if has_store and has_district:
                         is_match = True
                         match_reason = f"매장명+지역구({district})"
+                        if idx < 10:  # 처음 10개만 상세 로그
+                            logger.info(f"[블로그 필터링] ✅ 매칭 #{matched_count+1}: '{title[:50]}' (본문: {len(description)}자, 이유: {match_reason})")
+                    else:
+                        if idx < 10:  # 처음 10개만 상세 로그
+                            logger.debug(f"[블로그 필터링] ❌ 불일치: '{title[:50]}' (매장={has_store}, 지역구={has_district})")
+                else:
+                    # 지역구가 없으면 필터링 불가 (매칭 실패)
+                    logger.warning(f"[블로그 필터링] 지역구 정보 없음 - 필터링 불가")
                 
                 if not is_match:
                     filtered_count += 1
@@ -1153,9 +1162,6 @@ class NaverReviewService:
                                     break
                     
                     parent = parent.parent
-                
-                if matched_count <= 10:  # 처음 10개 매칭만 로그
-                    logger.info(f"[블로그 필터링] ✅ 매칭 #{matched_count}: '{title[:50]}' (이유: {match_reason})")
                 
                 reviews.append({
                     "date": review_date.isoformat() if review_date else None,
