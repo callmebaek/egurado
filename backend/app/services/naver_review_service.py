@@ -952,10 +952,20 @@ class NaverReviewService:
         try:
             # 네이버 통합 검색 URL 생성 (블로그 탭, 최신순)
             from urllib.parse import quote
-            query = quote(store_name)
+            
+            # 지역구 추출
+            district = self._extract_district_from_address(road_address) if road_address else None
+            
+            # 검색어: "매장명 + 지역구"
+            if district:
+                search_query = f"{store_name} {district}"
+            else:
+                search_query = store_name
+            
+            query = quote(search_query)
             url = f"https://search.naver.com/search.naver?ssc=tab.blog.all&query={query}&sm=tab_opt&nso=so:dd,p:all"
             logger.info(f"[블로그 검색] HTTP 요청 시작: {url}")
-            logger.info(f"[블로그 검색] 매장명: {store_name}, Place ID: {place_id}")
+            logger.info(f"[블로그 검색] 검색어: '{search_query}', Place ID: {place_id}")
             
             # 네이버 검색 페이지용 헤더
             search_headers = {
@@ -975,10 +985,10 @@ class NaverReviewService:
                 html = response.text
                 logger.info(f"[블로그 검색] HTML 길이: {len(html)} bytes")
                 
-                # HTML 파싱하여 블로그 리뷰 추출 (제목 기반 필터링)
-                reviews = self._parse_naver_blog_search_html(html, store_name, road_address)
+                # HTML 파싱하여 블로그 리뷰 추출 (검색 결과 그대로 사용, 필터링 없음)
+                reviews = self._parse_naver_blog_search_html(html)
                 
-                logger.info(f"[블로그 검색] 파싱 및 필터링 완료: {len(reviews)}개")
+                logger.info(f"[블로그 검색] 파싱 완료: {len(reviews)}개")
                 
                 return reviews
             
@@ -1023,20 +1033,16 @@ class NaverReviewService:
     
     def _parse_naver_blog_search_html(
         self, 
-        html: str,
-        store_name: str,
-        road_address: str = None
+        html: str
     ) -> List[Dict[str, Any]]:
         """
-        네이버 통합 검색 블로그 탭 HTML 파싱 (제목 기반 필터링)
+        네이버 통합 검색 블로그 탭 HTML 파싱 (검색 결과 그대로 사용)
         
         Args:
             html: 네이버 검색 결과 HTML 문자열
-            store_name: 매장명 (필터링용)
-            road_address: 도로명주소 (필터링용)
         
         Returns:
-            List[Dict]: 필터링된 블로그 리뷰 목록
+            List[Dict]: 파싱된 블로그 리뷰 목록
         """
         from bs4 import BeautifulSoup
         from datetime import datetime, timedelta
@@ -1048,16 +1054,7 @@ class NaverReviewService:
         blog_links = soup.find_all('a', href=re.compile(r'blog\.naver\.com/[^/]+/\d+'))
         logger.info(f"[블로그 검색] 발견된 블로그 링크: {len(blog_links)}개")
         
-        # 필터링 조건: 매장명 AND 지역구 (둘 다 필수)
-        exact_store_name = store_name.strip()
-        district = self._extract_district_from_address(road_address) if road_address else None
-        
-        logger.info(f"[블로그 필터링] 매장명: '{exact_store_name}', 지역구: '{district}'")
-        
         processed_urls = set()  # 중복 방지
-        
-        matched_count = 0
-        filtered_count = 0
         
         for idx, link in enumerate(blog_links):
             try:
@@ -1072,55 +1069,8 @@ class NaverReviewService:
                 if not title or len(title) < 5:  # 너무 짧은 제목은 무시
                     continue
                 
-                # 본문 내용(미리보기) 추출
-                description = ""
-                # 제목 링크의 부모 요소에서 본문 찾기
-                parent = link.parent
-                for level in range(5):  # 최대 5단계 부모까지 탐색
-                    if not parent:
-                        break
-                    
-                    # 본문은 보통 'dsc_link', 'total_tit', 'desc', 'api_txt_lines' 등의 클래스명 사용
-                    desc_element = parent.find(['div', 'p', 'span'], class_=re.compile(r'(dsc|desc|api_txt|total_txt|cont)'))
-                    if desc_element:
-                        description = desc_element.get_text(strip=True)
-                        if len(description) > 10:  # 최소 10자 이상이어야 유효
-                            break
-                    
-                    parent = parent.parent
-                
-                # 제목 + 본문을 합쳐서 검색 대상으로 사용
-                content = f"{title} {description}"
-                content_lower = content.lower().replace(' ', '')
-                
-                # === 조건 3만 사용: 매장명 AND 지역구 (둘 다 필수) ===
-                is_match = False
-                match_reason = ""
-                
-                if district:
-                    store_lower = exact_store_name.lower().replace(' ', '')
-                    district_lower = district.lower().replace(' ', '')
-                    
-                    has_store = store_lower in content_lower
-                    has_district = district_lower in content_lower
-                    
-                    if has_store and has_district:
-                        is_match = True
-                        match_reason = f"매장명+지역구({district})"
-                        if idx < 10:  # 처음 10개만 상세 로그
-                            logger.info(f"[블로그 필터링] ✅ 매칭 #{matched_count+1}: '{title[:50]}' (본문: {len(description)}자)")
-                    else:
-                        if idx < 10:  # 처음 10개만 상세 로그
-                            logger.info(f"[블로그 필터링] ❌ 불일치 #{idx+1}: 제목='{title[:50]}', 본문길이={len(description)}자, 매장={has_store}, 지역구={has_district}")
-                else:
-                    # 지역구가 없으면 필터링 불가 (매칭 실패)
-                    logger.warning(f"[블로그 필터링] 지역구 정보 없음 - 필터링 불가")
-                
-                if not is_match:
-                    filtered_count += 1
-                    continue
-                
-                matched_count += 1
+                if idx < 10:  # 처음 10개만 로그
+                    logger.info(f"[블로그 파싱] #{idx+1}: '{title[:60]}'")
                 
                 # 링크의 부모 요소에서 날짜와 작성자 찾기
                 # 부모를 여러 단계 올라가면서 찾기
@@ -1176,7 +1126,7 @@ class NaverReviewService:
                     logger.warning(f"[블로그 검색] 아이템 {idx} 파싱 중 오류: {str(e)}")
                 continue
         
-        logger.info(f"[블로그 필터링] 결과: 매칭={matched_count}개, 필터링={filtered_count}개, 총={len(blog_links)}개")
+        logger.info(f"[블로그 파싱] 완료: {len(reviews)}개 (전체 링크: {len(blog_links)}개)")
         
         return reviews
     
