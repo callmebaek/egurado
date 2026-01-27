@@ -1,15 +1,17 @@
 """
 네이버 플레이스 리뷰 조회 서비스
 - 방문자 리뷰 (GraphQL API)
-- 블로그 리뷰 (GraphQL API)
+- 블로그 리뷰 (GraphQL API + HTML 파싱)
 """
 import httpx
 import logging
 import pytz
 import base64
 import json
+import re
 from typing import List, Dict, Optional, Any
 from datetime import datetime
+from playwright.async_api import Page
 
 logger = logging.getLogger(__name__)
 
@@ -925,6 +927,159 @@ class NaverReviewService:
                 
         except Exception as e:
             logger.error(f"매장 정보 조회 예외: {type(e).__name__} - {str(e)}")
+            return None
+    
+    async def get_blog_reviews_html(
+        self,
+        place_id: str,
+        max_pages: int = 15
+    ) -> List[Dict[str, Any]]:
+        """
+        Playwright로 블로그 리뷰 HTML 파싱 (429 Too Many Requests 회피)
+        
+        Args:
+            place_id: 네이버 플레이스 ID
+            max_pages: 스크롤할 최대 페이지 수
+        
+        Returns:
+            List[Dict]: 블로그 리뷰 목록 (date, title, author 등)
+        """
+        from app.core.browser import get_browser_manager
+        
+        reviews = []
+        browser_manager = await get_browser_manager()
+        context = await browser_manager.create_korean_context()
+        
+        try:
+            page = await context.new_page()
+            
+            # 블로그 리뷰 페이지로 이동
+            url = f"https://m.place.naver.com/restaurant/{place_id}/review/ugc"
+            logger.info(f"[블로그 HTML] 페이지 이동: {url}")
+            await page.goto(url, timeout=30000, wait_until="networkidle")
+            await page.wait_for_timeout(2000)
+            
+            # 블로그 리뷰 탭 클릭
+            try:
+                blog_tab = page.locator("button:has-text('블로그 리뷰')")
+                if await blog_tab.count() > 0:
+                    await blog_tab.first.click()
+                    await page.wait_for_timeout(2000)
+                    logger.info(f"[블로그 HTML] 블로그 탭 클릭 완료")
+            except Exception as e:
+                logger.warning(f"[블로그 HTML] 블로그 탭 클릭 실패: {e}")
+            
+            # 스크롤하여 더 많은 리뷰 로드
+            for i in range(max_pages):
+                await page.mouse.wheel(0, 1000)
+                await page.wait_for_timeout(1500)
+                logger.debug(f"[블로그 HTML] 스크롤 {i+1}/{max_pages}")
+                
+                # 더보기 버튼이 있으면 클릭
+                try:
+                    more_button = page.locator("button:has-text('더보기'), a:has-text('더보기')")
+                    if await more_button.count() > 0:
+                        await more_button.first.click()
+                        await page.wait_for_timeout(2000)
+                except:
+                    pass
+            
+            # HTML 파싱
+            html = await page.content()
+            reviews = self._parse_blog_reviews_from_html(html)
+            logger.info(f"[블로그 HTML] 파싱 완료: {len(reviews)}개")
+            
+            await page.close()
+            await context.close()
+            
+            return reviews
+            
+        except Exception as e:
+            logger.error(f"[블로그 HTML] 예외 발생: {type(e).__name__} - {str(e)}")
+            try:
+                await context.close()
+            except:
+                pass
+            return []
+    
+    def _parse_blog_reviews_from_html(self, html: str) -> List[Dict[str, Any]]:
+        """
+        HTML에서 블로그 리뷰 파싱
+        
+        Args:
+            html: HTML 문자열
+        
+        Returns:
+            List[Dict]: 파싱된 리뷰 목록
+        """
+        from bs4 import BeautifulSoup
+        
+        soup = BeautifulSoup(html, 'html.parser')
+        reviews = []
+        
+        # listitem 요소 찾기 (블로그 리뷰 아이템)
+        list_items = soup.find_all('li', role='listitem')
+        
+        for item in list_items:
+            try:
+                # time 태그에서 날짜 추출 (예: "24.7.17.수")
+                time_tag = item.find('time')
+                if not time_tag:
+                    continue
+                
+                date_str = time_tag.get_text(strip=True)
+                
+                # 날짜 파싱 (YY.M.D.요일 형식)
+                review_date = self._parse_blog_review_date_from_text(date_str)
+                if not review_date:
+                    continue
+                
+                # 제목 추출 (첫 번째 generic 태그)
+                title_elem = item.select_one('div > div')
+                title = title_elem.get_text(strip=True) if title_elem else ""
+                
+                # 작성자 추출
+                author_elem = item.select_one('img[alt="프로필"] + div > div:first-child')
+                author = author_elem.get_text(strip=True) if author_elem else ""
+                
+                reviews.append({
+                    "date": review_date.isoformat(),
+                    "dateString": date_str,
+                    "title": title,
+                    "author": author
+                })
+                
+            except Exception as e:
+                logger.debug(f"[블로그 HTML] 아이템 파싱 실패: {e}")
+                continue
+        
+        return reviews
+    
+    def _parse_blog_review_date_from_text(self, date_str: str) -> Optional[datetime]:
+        """
+        블로그 리뷰 날짜 문자열 파싱 (YY.M.D.요일 형식)
+        
+        Args:
+            date_str: 날짜 문자열 (예: "24.7.17.수", "26.1.1.목")
+        
+        Returns:
+            datetime 객체 또는 None
+        """
+        try:
+            # 정규식으로 숫자 추출
+            match = re.match(r'(\d{2})\.(\d{1,2})\.(\d{1,2})', date_str)
+            if not match:
+                return None
+            
+            year_short, month, day = match.groups()
+            
+            # 2000년대로 변환 (예: 24 -> 2024, 26 -> 2026)
+            year = 2000 + int(year_short)
+            
+            return datetime(year, int(month), int(day))
+            
+        except Exception as e:
+            logger.warning(f"[블로그 HTML] 날짜 파싱 실패: {date_str}, {e}")
             return None
 
 

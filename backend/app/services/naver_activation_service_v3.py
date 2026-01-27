@@ -305,64 +305,24 @@ class NaverActivationServiceV3:
         Returns:
             리뷰 추이 정보 (7일, 30일, 60일 일평균)
         """
-        logger.info(f"[활성화-블로그 실시간] 메서드 시작: place_id={place_id}, total={total_blog_review_count}")
+        logger.info(f"[활성화-블로그 실시간] HTML 파싱 시작: place_id={place_id}, total={total_blog_review_count}")
         try:
-            # 페이지 기반 페이징으로 최대 300개 조회
-            all_reviews = []
-            page = 1
-            max_pages = 15  # 최대 300개 (20 * 15)
-            now = datetime.now(timezone.utc)
-            oldest_needed_days = 60  # 60일치 데이터만 필요
-            should_stop = False
-            
-            logger.info(f"[활성화-블로그 실시간] 페이징 시작: max_pages={max_pages}")
-            for page_num in range(1, max_pages + 1):
-                reviews_data = await naver_review_service.get_blog_reviews(
-                    place_id=place_id,
-                    page=page_num,
-                    use_pc_api=True  # 활성화 기능에서는 PC API 사용
-                )
-                
-                if not reviews_data or not reviews_data.get("items"):
-                    logger.warning(f"[활성화-블로그 실시간] 리뷰 API 실패 (페이지 {page_num}), 추정값 사용 (전체: {total_blog_review_count}개)")
-                    if page_num == 1:
-                        # 첫 페이지부터 실패하면 추정값 사용
-                        return self._calculate_blog_review_trends_estimated(total_blog_review_count)
-                    else:
-                        # 일부라도 가져왔으면 그것으로 계산
-                        break
-                
-                items = reviews_data["items"]
-                
-                # 60일보다 오래된 리뷰가 나오면 더 이상 페이징 불필요
-                for review in items:
-                    date_str = review.get("date") or review.get("createdString")
-                    if date_str:
-                        try:
-                            # "2025.09.30." 형식 또는 "25.9.30.화" 형식 파싱
-                            review_date = self._parse_blog_review_date(date_str)
-                            if review_date:
-                                days_ago = (now - review_date).days
-                                if days_ago > oldest_needed_days:
-                                    should_stop = True
-                                    break
-                        except:
-                            pass
-                    all_reviews.append(review)
-                
-                if should_stop:
-                    logger.info(f"[활성화-블로그 실시간] 60일 이상 리뷰 도달, 페이징 중단 (페이지 {page_num}, 총 {len(all_reviews)}개)")
-                    break
-                
-                # 다음 페이지 확인 (총 개수가 충분한지 확인)
-                total = reviews_data.get("total", 0)
-                if not reviews_data.get("has_more", False) or len(all_reviews) >= min(300, total):
-                    logger.info(f"[활성화-블로그 실시간] 모든 리뷰 조회 완료 (페이지 {page_num}, 총 {len(all_reviews)}개)")
-                    break
+            # HTML 파싱으로 블로그 리뷰 가져오기 (429 에러 회피)
+            all_reviews = await naver_review_service.get_blog_reviews_html(
+                place_id=place_id,
+                max_pages=10  # 스크롤 10번
+            )
             
             if not all_reviews:
-                logger.warning(f"[활성화-블로그 실시간] 리뷰 없음, 추정값 사용 (전체: {total_blog_review_count}개)")
+                logger.warning(f"[활성화-블로그 HTML] 리뷰 파싱 실패, 추정값 사용 (전체: {total_blog_review_count}개)")
                 return self._calculate_blog_review_trends_estimated(total_blog_review_count)
+            
+            logger.info(f"[활성화-블로그 HTML] 파싱 완료: {len(all_reviews)}개")
+            
+            # 날짜 기준으로 정렬 (최신순)
+            all_reviews.sort(key=lambda x: x.get("date", ""), reverse=True)
+            
+            now = datetime.now(timezone.utc)
             
             # 기간별 리뷰 개수 계산
             count_3d = 0
@@ -371,14 +331,15 @@ class NaverActivationServiceV3:
             count_60d = 0
             
             for review in all_reviews:
-                date_str = review.get("date") or review.get("createdString")
+                date_str = review.get("date")  # ISO 형식 문자열
                 if not date_str:
                     continue
                 
                 try:
-                    review_date = self._parse_blog_review_date(date_str)
-                    if not review_date:
-                        continue
+                    # ISO 형식 날짜 파싱
+                    review_date = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+                    if review_date.tzinfo is None:
+                        review_date = review_date.replace(tzinfo=timezone.utc)
                     
                     days_ago = (now - review_date).days
                     
@@ -391,7 +352,7 @@ class NaverActivationServiceV3:
                     if days_ago <= 60:
                         count_60d += 1
                 except Exception as e:
-                    logger.warning(f"[활성화-블로그 실시간] 날짜 파싱 실패: {date_str}, {str(e)}")
+                    logger.warning(f"[활성화-블로그 HTML] 날짜 파싱 실패: {date_str}, {str(e)}")
                     continue
             
             # 일평균 계산
@@ -407,7 +368,7 @@ class NaverActivationServiceV3:
                 'vs_last_60days': self._compare_values(avg_3d, avg_60d),
             }
             
-            logger.info(f"[활성화-블로그 실시간] 블로그 리뷰: 3일={count_3d}개({avg_3d:.2f}/일), 7일={count_7d}개({avg_7d:.2f}/일), 30일={count_30d}개({avg_30d:.2f}/일), 60일={count_60d}개({avg_60d:.2f}/일)")
+            logger.info(f"[활성화-블로그 HTML] 블로그 리뷰: 3일={count_3d}개({avg_3d:.2f}/일), 7일={count_7d}개({avg_7d:.2f}/일), 30일={count_30d}개({avg_30d:.2f}/일), 60일={count_60d}개({avg_60d:.2f}/일)")
             
             return {
                 'last_3days_avg': round(avg_3d, 2),
@@ -418,7 +379,7 @@ class NaverActivationServiceV3:
             }
             
         except Exception as e:
-            logger.error(f"[활성화-블로그 실시간] 블로그 리뷰 추이 계산 실패: {str(e)}", exc_info=True)
+            logger.error(f"[활성화-블로그 HTML] 블로그 리뷰 추이 계산 실패: {str(e)}", exc_info=True)
             return self._calculate_blog_review_trends_estimated(total_blog_review_count)
     
     def _parse_blog_review_date(self, date_str: str) -> Optional[datetime]:
