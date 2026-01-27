@@ -10,7 +10,7 @@ import base64
 import json
 import re
 from typing import List, Dict, Optional, Any
-from datetime import datetime
+from datetime import datetime, timedelta
 from playwright.async_api import Page
 
 logger = logging.getLogger(__name__)
@@ -932,50 +932,208 @@ class NaverReviewService:
     async def get_blog_reviews_html(
         self,
         place_id: str,
+        store_name: str,
         max_pages: int = 15
     ) -> List[Dict[str, Any]]:
         """
-        httpx로 블로그 리뷰 HTML 파싱 (빠른 방법)
+        네이버 통합 검색 블로그 탭에서 HTML 파싱 (활성화 기능 전용)
         
         Args:
-            place_id: 네이버 플레이스 ID
+            place_id: 네이버 플레이스 ID (로깅용)
+            store_name: 매장명 (검색 쿼리)
             max_pages: 사용 안 함 (호환성 유지)
         
         Returns:
             List[Dict]: 블로그 리뷰 목록 (date, title, author 등)
         """
         try:
-            # httpx로 직접 HTML 가져오기 (빠른 방법)
-            url = f"https://m.place.naver.com/restaurant/{place_id}/review/ugc"
-            logger.info(f"[블로그 HTML-Fast] HTTP 요청 시작: {url}")
+            # 네이버 통합 검색 URL 생성 (블로그 탭, 최신순)
+            from urllib.parse import quote
+            query = quote(store_name)
+            url = f"https://search.naver.com/search.naver?ssc=tab.blog.all&query={query}&sm=tab_opt&nso=so:dd,p:all"
+            logger.info(f"[블로그 검색] HTTP 요청 시작: {url}")
+            logger.info(f"[블로그 검색] 매장명: {store_name}, Place ID: {place_id}")
+            
+            # 네이버 검색 페이지용 헤더
+            search_headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+                "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
+                "Referer": "https://www.naver.com/",
+            }
             
             async with httpx.AsyncClient(timeout=10.0) as client:
-                response = await client.get(url, headers=self.headers, follow_redirects=True)
+                response = await client.get(url, headers=search_headers, follow_redirects=True)
                 
                 if response.status_code != 200:
-                    logger.warning(f"[블로그 HTML-Fast] HTTP {response.status_code}")
+                    logger.warning(f"[블로그 검색] HTTP {response.status_code}")
                     return []
                 
                 html = response.text
-                logger.info(f"[블로그 HTML-Fast] HTML 길이: {len(html)} bytes")
+                logger.info(f"[블로그 검색] HTML 길이: {len(html)} bytes")
                 
-                # HTML에서 __APOLLO_STATE__ 추출 시도
-                reviews = self._extract_blog_reviews_from_apollo_state(html, place_id)
+                # HTML 파싱하여 블로그 리뷰 추출
+                reviews = self._parse_naver_blog_search_html(html)
                 
-                if not reviews:
-                    # Apollo State에 없으면 HTML 파싱 시도
-                    reviews = self._parse_blog_reviews_from_html(html)
-                
-                logger.info(f"[블로그 HTML-Fast] 파싱 완료: {len(reviews)}개")
+                logger.info(f"[블로그 검색] 파싱 완료: {len(reviews)}개")
                 return reviews
             
         except Exception as e:
-            logger.error(f"[블로그 HTML-Fast] 예외 발생: {type(e).__name__} - {str(e)}")
+            logger.error(f"[블로그 검색] 예외 발생: {type(e).__name__} - {str(e)}", exc_info=True)
             return []
+    
+    def _parse_naver_blog_search_html(self, html: str) -> List[Dict[str, Any]]:
+        """
+        네이버 통합 검색 블로그 탭 HTML 파싱 (활성화 기능 전용)
+        
+        Args:
+            html: 네이버 검색 결과 HTML 문자열
+        
+        Returns:
+            List[Dict]: 파싱된 블로그 리뷰 목록
+        """
+        from bs4 import BeautifulSoup
+        from datetime import datetime, timedelta
+        
+        soup = BeautifulSoup(html, 'html.parser')
+        reviews = []
+        
+        # 검색 결과 영역 찾기
+        content_area = soup.find('div', id='main_pack') or soup.find('div', class_='content_area')
+        if not content_area:
+            logger.warning("[블로그 검색] main_pack 영역을 찾을 수 없음")
+            return []
+        
+        # 블로그 아이템 찾기 - 다양한 선택자 시도
+        # 네이버 검색 결과는 동적 클래스명을 사용하므로 구조 기반으로 찾기
+        blog_items = content_area.find_all('div', class_='detail_box') or \
+                     content_area.find_all('li', class_='bx') or \
+                     content_area.find_all('div', class_='total_wrap')
+        
+        # 블로그 링크가 있는 아이템만 필터링
+        filtered_items = []
+        for item in blog_items:
+            # 블로그 포스트 링크가 있는지 확인
+            link = item.find('a', href=re.compile(r'blog\.naver\.com'))
+            if link:
+                filtered_items.append(item)
+        
+        logger.info(f"[블로그 검색] 필터링된 블로그 아이템: {len(filtered_items)}개")
+        
+        for idx, item in enumerate(filtered_items):
+            try:
+                # 제목 추출
+                title_tag = item.find('a', class_='title_link') or \
+                            item.find('a', href=re.compile(r'blog\.naver\.com'))
+                if not title_tag:
+                    continue
+                
+                title = title_tag.get_text(strip=True)
+                url = title_tag.get('href', '')
+                
+                # 날짜 추출 - "1일 전", "2일 전", "1주 전", "2025.12.05." 등
+                date_tag = item.find('span', class_='sub_time') or \
+                           item.find('span', class_='time') or \
+                           item.find('span', class_='date')
+                
+                date_str = None
+                review_date = None
+                if date_tag:
+                    date_str = date_tag.get_text(strip=True)
+                    review_date = self._parse_naver_search_date(date_str)
+                
+                # 작성자 추출
+                author_tag = item.find('a', class_='name') or \
+                            item.find('span', class_='name')
+                author = author_tag.get_text(strip=True) if author_tag else ""
+                
+                if idx < 5:  # 처음 5개만 로그
+                    logger.debug(f"[블로그 검색] 아이템 {idx}: title={title[:50]}, date_str={date_str}, author={author}")
+                
+                reviews.append({
+                    "date": review_date.isoformat() if review_date else None,
+                    "dateString": date_str,
+                    "title": title,
+                    "author": author,
+                    "url": url
+                })
+            
+            except Exception as e:
+                logger.warning(f"[블로그 검색] 아이템 {idx} 파싱 중 오류: {str(e)}")
+                continue
+        
+        return reviews
+    
+    def _parse_naver_search_date(self, date_str: str) -> Optional[datetime]:
+        """
+        네이버 검색 결과의 날짜 파싱
+        
+        형식:
+        - "1일 전", "2일 전" → 상대 날짜
+        - "1주 전", "2주 전" → 상대 주
+        - "1시간 전", "2시간 전" → 상대 시간
+        - "2025.12.05.", "2025.12.5." → 절대 날짜
+        - "25.12.05.", "25.12.5." → 절대 날짜 (20xx년 가정)
+        """
+        if not date_str:
+            return None
+        
+        KST = pytz.timezone('Asia/Seoul')
+        now = datetime.now(KST)
+        
+        try:
+            # "N일 전"
+            if "일 전" in date_str or "일전" in date_str:
+                match = re.search(r'(\d+)일\s*전', date_str)
+                if match:
+                    days = int(match.group(1))
+                    return now - timedelta(days=days)
+            
+            # "N주 전"
+            if "주 전" in date_str or "주전" in date_str:
+                match = re.search(r'(\d+)주\s*전', date_str)
+                if match:
+                    weeks = int(match.group(1))
+                    return now - timedelta(weeks=weeks)
+            
+            # "N시간 전"
+            if "시간 전" in date_str or "시간전" in date_str:
+                match = re.search(r'(\d+)시간\s*전', date_str)
+                if match:
+                    hours = int(match.group(1))
+                    return now - timedelta(hours=hours)
+            
+            # "N분 전"
+            if "분 전" in date_str or "분전" in date_str:
+                match = re.search(r'(\d+)분\s*전', date_str)
+                if match:
+                    minutes = int(match.group(1))
+                    return now - timedelta(minutes=minutes)
+            
+            # "YYYY.MM.DD." 또는 "YYYY.M.D."
+            match = re.match(r'(\d{4})\.(\d{1,2})\.(\d{1,2})\.?', date_str)
+            if match:
+                year, month, day = int(match.group(1)), int(match.group(2)), int(match.group(3))
+                return datetime(year, month, day, tzinfo=KST)
+            
+            # "YY.MM.DD." 또는 "YY.M.D." (20xx년 가정)
+            match = re.match(r'(\d{2})\.(\d{1,2})\.(\d{1,2})\.?', date_str)
+            if match:
+                year_short = int(match.group(1))
+                year = 2000 + year_short if year_short < 50 else 1900 + year_short
+                month, day = int(match.group(2)), int(match.group(3))
+                return datetime(year, month, day, tzinfo=KST)
+            
+            logger.warning(f"[블로그 검색] 알 수 없는 날짜 형식: {date_str}")
+            return None
+        
+        except Exception as e:
+            logger.error(f"[블로그 검색] 날짜 파싱 오류: {date_str}, {str(e)}")
+            return None
     
     def _parse_blog_reviews_from_html(self, html: str) -> List[Dict[str, Any]]:
         """
-        HTML에서 블로그 리뷰 파싱
+        HTML에서 블로그 리뷰 파싱 (구버전, 호환성 유지)
         
         Args:
             html: HTML 문자열

@@ -50,8 +50,8 @@ class NaverActivationServiceV3:
             
             # 3. 블로그 리뷰 실시간 분석
             blog_review_count = place_details.get("blog_review_count", 0)
-            logger.info(f"[플레이스 활성화 V3-독립] 블로그 리뷰 실시간 분석 시작: place_id={place_id}, total_count={blog_review_count}")
-            blog_review_trends = await self._calculate_blog_review_trends_realtime(place_id, blog_review_count)
+            logger.info(f"[플레이스 활성화 V3-독립] 블로그 리뷰 실시간 분석 시작: place_id={place_id}, store_name={store_name}, total_count={blog_review_count}")
+            blog_review_trends = await self._calculate_blog_review_trends_realtime(place_id, store_name, blog_review_count)
             logger.info(f"[플레이스 활성화 V3-독립] 블로그 리뷰 완료: 3일={blog_review_trends['last_3days_avg']:.2f}, 7일={blog_review_trends['last_7days_avg']:.2f}, 30일={blog_review_trends['last_30days_avg']:.2f}")
             
             # 4. 답글 대기 수 계산 (최근 300개 리뷰 기준)
@@ -292,25 +292,28 @@ class NaverActivationServiceV3:
     
     async def _calculate_blog_review_trends_realtime(
         self, 
-        place_id: str, 
+        place_id: str,
+        store_name: str, 
         total_blog_review_count: int
     ) -> Dict[str, Any]:
         """
-        블로그 리뷰 추이 실시간 계산 (getFsasReviews GraphQL API 사용)
+        블로그 리뷰 추이 실시간 계산 (네이버 통합 검색 HTML 파싱 사용 - 활성화 전용)
         
         Args:
-            place_id: 네이버 플레이스 ID
+            place_id: 네이버 플레이스 ID (로깅용)
+            store_name: 매장명 (검색 쿼리)
             total_blog_review_count: 전체 블로그 리뷰 수 (API 실패 시 추정용)
             
         Returns:
             리뷰 추이 정보 (7일, 30일, 60일 일평균)
         """
-        logger.info(f"[활성화-블로그 실시간] HTML 파싱 시작: place_id={place_id}, total={total_blog_review_count}")
+        logger.info(f"[활성화-블로그 실시간] 네이버 검색 시작: place_id={place_id}, store_name={store_name}, total={total_blog_review_count}")
         try:
-            # HTML 파싱으로 블로그 리뷰 가져오기 (429 에러 회피)
+            # 네이버 통합 검색에서 블로그 리뷰 가져오기 (활성화 기능 전용)
             all_reviews = await naver_review_service.get_blog_reviews_html(
                 place_id=place_id,
-                max_pages=10  # 스크롤 10번
+                store_name=store_name,
+                max_pages=10  # 사용 안 함 (호환성)
             )
             
             if not all_reviews:
