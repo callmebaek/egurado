@@ -197,6 +197,7 @@ class NaverActivationServiceV3:
                 return self._calculate_visitor_review_trends_estimated(total_visitor_review_count)
             
             # 기간별 리뷰 개수 계산
+            count_3d = 0
             count_7d = 0
             count_30d = 0
             count_60d = 0
@@ -214,6 +215,8 @@ class NaverActivationServiceV3:
                     
                     days_ago = (now - review_date).days
                     
+                    if days_ago <= 3:
+                        count_3d += 1
                     if days_ago <= 7:
                         count_7d += 1
                     if days_ago <= 30:
@@ -225,20 +228,22 @@ class NaverActivationServiceV3:
                     continue
             
             # 일평균 계산
+            avg_3d = count_3d / 3 if count_3d > 0 else 0.0
             avg_7d = count_7d / 7 if count_7d > 0 else 0.0
             avg_30d = count_30d / 30 if count_30d > 0 else 0.0
             avg_60d = count_60d / 60 if count_60d > 0 else 0.0
             
-            # 비교 분석 (7일 일평균 기준)
+            # 비교 분석 (3일 일평균 기준)
             comparisons = {
-                'vs_last_7days': self._compare_values(avg_7d, avg_7d),
-                'vs_last_30days': self._compare_values(avg_7d, avg_30d),
-                'vs_last_60days': self._compare_values(avg_7d, avg_60d),
+                'vs_last_7days': self._compare_values(avg_3d, avg_7d),
+                'vs_last_30days': self._compare_values(avg_3d, avg_30d),
+                'vs_last_60days': self._compare_values(avg_3d, avg_60d),
             }
             
-            logger.info(f"[활성화-실시간] 방문자 리뷰: 7일={count_7d}개({avg_7d:.2f}/일), 30일={count_30d}개({avg_30d:.2f}/일), 60일={count_60d}개({avg_60d:.2f}/일)")
+            logger.info(f"[활성화-실시간] 방문자 리뷰: 3일={count_3d}개({avg_3d:.2f}/일), 7일={count_7d}개({avg_7d:.2f}/일), 30일={count_30d}개({avg_30d:.2f}/일), 60일={count_60d}개({avg_60d:.2f}/일)")
             
             return {
+                'last_3days_avg': round(avg_3d, 2),
                 'last_7days_avg': round(avg_7d, 2),
                 'last_30days_avg': round(avg_30d, 2),
                 'last_60days_avg': round(avg_60d, 2),
@@ -262,6 +267,7 @@ class NaverActivationServiceV3:
         # 전체 방문자 리뷰 수 기반 추정 (1년 기준으로 균등 분포 가정)
         estimated_daily_avg = total_visitor_count / 365 if total_visitor_count > 0 else 0.0
         
+        avg_3d = estimated_daily_avg
         avg_7d = estimated_daily_avg
         avg_30d = estimated_daily_avg
         avg_60d = estimated_daily_avg
@@ -269,6 +275,7 @@ class NaverActivationServiceV3:
         logger.info(f"[활성화-추정] 방문자 리뷰: 총 {total_visitor_count}개, 추정 일평균={estimated_daily_avg:.2f}")
         
         return {
+            'last_3days_avg': round(avg_3d, 2),
             'last_7days_avg': round(avg_7d, 2),
             'last_30days_avg': round(avg_30d, 2),
             'last_60days_avg': round(avg_60d, 2),
@@ -292,6 +299,7 @@ class NaverActivationServiceV3:
         # 전체 블로그 리뷰 수 기반 추정 (1년 기준으로 균등 분포 가정)
         estimated_daily_avg = total_blog_count / 365 if total_blog_count > 0 else 0.0
         
+        avg_3d = estimated_daily_avg
         avg_7d = estimated_daily_avg
         avg_30d = estimated_daily_avg
         avg_60d = estimated_daily_avg
@@ -299,6 +307,7 @@ class NaverActivationServiceV3:
         logger.info(f"[활성화-추정] 블로그 리뷰: 총 {total_blog_count}개, 추정 일평균={estimated_daily_avg:.2f}")
         
         return {
+            'last_3days_avg': round(avg_3d, 2),
             'last_7days_avg': round(avg_7d, 2),
             'last_30days_avg': round(avg_30d, 2),
             'last_60days_avg': round(avg_60d, 2),
@@ -502,27 +511,34 @@ class NaverActivationServiceV3:
     ) -> List[Dict[str, Any]]:
         """활성화 요약 카드 생성"""
         
-        # 방문자 리뷰 카드
+        # 방문자 리뷰 카드 (3일 일평균 메인)
+        visitor_3d_avg = visitor_trends.get('last_3days_avg', 0)
         visitor_7d_avg = visitor_trends.get('last_7days_avg', 0)
         visitor_30d_avg = visitor_trends.get('last_30days_avg', 0)
-        visitor_60d_avg = visitor_trends.get('last_60days_avg', 0)
-        visitor_trend = self._get_trend_direction(visitor_7d_avg, visitor_30d_avg)
         
-        # 블로그 리뷰 카드
+        # vs 7일/30일 비교 비율 계산
+        visitor_vs_7d_pct = ((visitor_3d_avg - visitor_7d_avg) / visitor_7d_avg * 100) if visitor_7d_avg > 0 else 0
+        visitor_vs_30d_pct = ((visitor_3d_avg - visitor_30d_avg) / visitor_30d_avg * 100) if visitor_30d_avg > 0 else 0
+        
+        # 블로그 리뷰 카드 (3일 일평균 메인)
+        blog_3d_avg = blog_trends.get('last_3days_avg', 0)
         blog_7d_avg = blog_trends.get('last_7days_avg', 0)
         blog_30d_avg = blog_trends.get('last_30days_avg', 0)
-        blog_60d_avg = blog_trends.get('last_60days_avg', 0)
-        blog_trend = self._get_trend_direction(blog_7d_avg, blog_30d_avg)
+        
+        # vs 7일/30일 비교 비율 계산
+        blog_vs_7d_pct = ((blog_3d_avg - blog_7d_avg) / blog_7d_avg * 100) if blog_7d_avg > 0 else 0
+        blog_vs_30d_pct = ((blog_3d_avg - blog_30d_avg) / blog_30d_avg * 100) if blog_30d_avg > 0 else 0
         
         cards = [
             {
                 "type": "visitor_review",
                 "title": "방문자 리뷰",
-                "value": visitor_7d_avg,
-                "daily_avg": visitor_7d_avg,
-                "trend": visitor_trend,
-                "comparison_30d": visitor_30d_avg,
-                "comparison_60d": visitor_60d_avg
+                "value": visitor_3d_avg,  # 3일 일평균
+                "daily_avg": visitor_3d_avg,
+                "vs_7d_pct": round(visitor_vs_7d_pct, 2),
+                "vs_30d_pct": round(visitor_vs_30d_pct, 2),
+                "avg_7d": visitor_7d_avg,
+                "avg_30d": visitor_30d_avg
             },
             {
                 "type": "pending_reply",
@@ -534,11 +550,12 @@ class NaverActivationServiceV3:
             {
                 "type": "blog_review",
                 "title": "블로그 리뷰",
-                "value": blog_7d_avg,
-                "daily_avg": blog_7d_avg,
-                "trend": blog_trend,
-                "comparison_30d": blog_30d_avg,
-                "comparison_60d": blog_60d_avg
+                "value": blog_3d_avg,  # 3일 일평균
+                "daily_avg": blog_3d_avg,
+                "vs_7d_pct": round(blog_vs_7d_pct, 2),
+                "vs_30d_pct": round(blog_vs_30d_pct, 2),
+                "avg_7d": blog_7d_avg,
+                "avg_30d": blog_30d_avg
             },
             {
                 "type": "coupon",

@@ -57,10 +57,11 @@ interface SummaryCard {
   type: string
   title: string
   value: number
-  total_count?: number
-  last_30days_avg?: number
-  last_60days_avg?: number
-  comparisons?: any
+  daily_avg?: number
+  vs_7d_pct?: number
+  vs_30d_pct?: number
+  avg_7d?: number
+  avg_30d?: number
   total?: number
   reply_rate?: number
   has_active?: boolean
@@ -68,16 +69,14 @@ interface SummaryCard {
 }
 
 interface ReviewTrends {
+  last_3days_avg: number
   last_7days_avg: number
-  last_week_avg: number
   last_30days_avg: number
-  last_90days_avg: number
-  this_week_avg: number
+  last_60days_avg: number
   comparisons: {
     vs_last_7days: { direction: string; change: number }
-    vs_last_week: { direction: string; change: number }
     vs_last_30days: { direction: string; change: number }
-    vs_last_90days: { direction: string; change: number }
+    vs_last_60days: { direction: string; change: number }
   }
 }
 
@@ -249,32 +248,31 @@ export default function ActivationPage() {
               {card.type === 'visitor_review' || card.type === 'blog_review' ? (
                 <>
                   <Text size="xl" fw={700}>{card.value.toFixed(2)}</Text>
-                  <Text size="xs" c="dimmed">지난 7일 일평균</Text>
-                  <Text size="xs" c="dimmed">전체: {card.total_count?.toLocaleString() || 0}개</Text>
+                  <Text size="xs" c="dimmed">지난 3일 일평균</Text>
                   
                   <Divider />
                   
                   <Stack gap={4}>
                     <Group justify="space-between">
-                      <Text size="xs" c="dimmed">vs 지난 30일</Text>
+                      <Text size="xs" c="dimmed">vs 지난 7일</Text>
                       <Badge 
-                        color={getTrendColor(card.comparisons?.vs_last_30days?.direction || 'stable')} 
+                        color={(card.vs_7d_pct || 0) > 0 ? 'red' : (card.vs_7d_pct || 0) < 0 ? 'blue' : 'gray'} 
                         variant="light" 
                         size="xs"
-                        leftSection={getTrendIcon(card.comparisons?.vs_last_30days?.direction || 'stable')}
+                        leftSection={(card.vs_7d_pct || 0) > 0 ? <ArrowUp size={12} /> : (card.vs_7d_pct || 0) < 0 ? <ArrowDown size={12} /> : <Minus size={12} />}
                       >
-                        {card.comparisons?.vs_last_30days?.change?.toFixed(1) || 0}%
+                        {Math.abs(card.vs_7d_pct || 0).toFixed(1)}%
                       </Badge>
                     </Group>
                     <Group justify="space-between">
-                      <Text size="xs" c="dimmed">vs 지난 60일</Text>
+                      <Text size="xs" c="dimmed">vs 지난 30일</Text>
                       <Badge 
-                        color={getTrendColor(card.comparisons?.vs_last_60days?.direction || 'stable')} 
+                        color={(card.vs_30d_pct || 0) > 0 ? 'red' : (card.vs_30d_pct || 0) < 0 ? 'blue' : 'gray'} 
                         variant="light" 
                         size="xs"
-                        leftSection={getTrendIcon(card.comparisons?.vs_last_60days?.direction || 'stable')}
+                        leftSection={(card.vs_30d_pct || 0) > 0 ? <ArrowUp size={12} /> : (card.vs_30d_pct || 0) < 0 ? <ArrowDown size={12} /> : <Minus size={12} />}
                       >
-                        {card.comparisons?.vs_last_60days?.change?.toFixed(1) || 0}%
+                        {Math.abs(card.vs_30d_pct || 0).toFixed(1)}%
                       </Badge>
                     </Group>
                   </Stack>
@@ -339,10 +337,8 @@ export default function ActivationPage() {
   const renderReviewTrends = () => {
     if (!activationData || !activationData.visitor_review_trends || !activationData.blog_review_trends) return null
 
-    const hasVisitorTrendData = activationData.visitor_review_trends.last_7days_avg > 0 || 
-                                 activationData.visitor_review_trends.this_week_avg > 0
-    const hasBlogTrendData = activationData.blog_review_trends.last_7days_avg > 0 || 
-                             activationData.blog_review_trends.this_week_avg > 0
+    const hasVisitorTrendData = activationData.visitor_review_trends.last_3days_avg > 0
+    const hasBlogTrendData = activationData.blog_review_trends.last_3days_avg > 0
 
     return (
       <Grid gutter="md">
@@ -358,61 +354,62 @@ export default function ActivationPage() {
               
               <Divider />
               
-              {!hasVisitorTrendData ? (
-                <Alert icon={<AlertCircle className="w-4 h-4" />} color="yellow" variant="light">
-                  <Text size="sm" fw={600}>현재 방문자 리뷰: {activationData.current_visitor_review_count}개</Text>
-                  <Text size="xs" c="dimmed" mt="xs">
-                    추이 분석을 위해서는 진단 기록이 필요합니다. 매일 플레이스 진단을 실행하시면 추이 데이터가 쌓입니다.
-                  </Text>
-                </Alert>
-              ) : (
-                <>
-                  <SimpleGrid cols={2} spacing="xs">
+              <SimpleGrid cols={2} spacing="xs">
+                <Box>
+                  <Text size="xs" c="dimmed">지난 3일 일평균</Text>
+                  <Text fw={700} size="lg">{(activationData.visitor_review_trends?.last_3days_avg || 0).toFixed(2)}</Text>
+                </Box>
                 <Box>
                   <Text size="xs" c="dimmed">지난 7일 일평균</Text>
                   <Text fw={600}>{(activationData.visitor_review_trends?.last_7days_avg || 0).toFixed(2)}</Text>
-                </Box>
-                <Box>
-                  <Text size="xs" c="dimmed">전주 일평균</Text>
-                  <Text fw={600}>{(activationData.visitor_review_trends?.last_week_avg || 0).toFixed(2)}</Text>
                 </Box>
                 <Box>
                   <Text size="xs" c="dimmed">지난 30일 일평균</Text>
                   <Text fw={600}>{(activationData.visitor_review_trends?.last_30days_avg || 0).toFixed(2)}</Text>
                 </Box>
                 <Box>
-                  <Text size="xs" c="dimmed">지난 3개월 일평균</Text>
-                  <Text fw={600}>{(activationData.visitor_review_trends?.last_90days_avg || 0).toFixed(2)}</Text>
+                  <Text size="xs" c="dimmed">지난 60일 일평균</Text>
+                  <Text fw={600}>{(activationData.visitor_review_trends?.last_60days_avg || 0).toFixed(2)}</Text>
                 </Box>
               </SimpleGrid>
               
               <Divider />
               
               <Box>
-                <Text size="sm" fw={600} mb="xs">이번주 일평균: {(activationData.visitor_review_trends?.this_week_avg || 0).toFixed(2)}</Text>
+                <Text size="sm" fw={600} mb="xs">지난 3일 일평균 비교</Text>
                 <Stack gap="xs">
-                  {activationData.visitor_review_trends?.comparisons && Object.entries(activationData.visitor_review_trends.comparisons).map(([key, comp]) => (
-                    <Group key={key} justify="space-between">
-                      <Text size="xs" c="dimmed">
-                        {key === 'vs_last_7days' ? '지난 7일 대비' :
-                         key === 'vs_last_week' ? '전주 대비' :
-                         key === 'vs_last_30days' ? '지난 30일 대비' :
-                         '지난 3개월 대비'}
-                      </Text>
-                      <Badge 
-                        color={getTrendColor(comp.direction)} 
-                        variant="light" 
-                        size="sm"
-                        leftSection={getTrendIcon(comp.direction)}
-                      >
-                        {comp.change > 0 ? '+' : ''}{comp.change.toFixed(1)}%
-                      </Badge>
-                    </Group>
-                  ))}
+                  <Group justify="space-between">
+                    <Text size="xs" c="dimmed">지난 7일 일평균 대비</Text>
+                    <Text size="sm" fw={600}>
+                      {activationData.visitor_review_trends?.comparisons?.vs_last_7days?.change.toFixed(2) || '0.00'} ({activationData.visitor_review_trends?.comparisons?.vs_last_7days?.change.toFixed(1) || '0.0'}%) {
+                        (activationData.visitor_review_trends?.comparisons?.vs_last_7days?.direction === 'up') ? '높습니다' :
+                        (activationData.visitor_review_trends?.comparisons?.vs_last_7days?.direction === 'down') ? '낮습니다' :
+                        '동일합니다'
+                      }
+                    </Text>
+                  </Group>
+                  <Group justify="space-between">
+                    <Text size="xs" c="dimmed">지난 30일 일평균 대비</Text>
+                    <Text size="sm" fw={600}>
+                      {activationData.visitor_review_trends?.comparisons?.vs_last_30days?.change.toFixed(2) || '0.00'} ({activationData.visitor_review_trends?.comparisons?.vs_last_30days?.change.toFixed(1) || '0.0'}%) {
+                        (activationData.visitor_review_trends?.comparisons?.vs_last_30days?.direction === 'up') ? '높습니다' :
+                        (activationData.visitor_review_trends?.comparisons?.vs_last_30days?.direction === 'down') ? '낮습니다' :
+                        '동일합니다'
+                      }
+                    </Text>
+                  </Group>
+                  <Group justify="space-between">
+                    <Text size="xs" c="dimmed">지난 60일 일평균 대비</Text>
+                    <Text size="sm" fw={600}>
+                      {activationData.visitor_review_trends?.comparisons?.vs_last_60days?.change.toFixed(2) || '0.00'} ({activationData.visitor_review_trends?.comparisons?.vs_last_60days?.change.toFixed(1) || '0.0'}%) {
+                        (activationData.visitor_review_trends?.comparisons?.vs_last_60days?.direction === 'up') ? '높습니다' :
+                        (activationData.visitor_review_trends?.comparisons?.vs_last_60days?.direction === 'down') ? '낮습니다' :
+                        '동일합니다'
+                      }
+                    </Text>
+                  </Group>
                 </Stack>
               </Box>
-                </>
-              )}
             </Stack>
           </Card>
         </Grid.Col>
@@ -429,61 +426,62 @@ export default function ActivationPage() {
               
               <Divider />
               
-              {!hasBlogTrendData ? (
-                <Alert icon={<AlertCircle className="w-4 h-4" />} color="yellow" variant="light">
-                  <Text size="sm" fw={600}>현재 블로그 리뷰: {activationData.current_blog_review_count}개</Text>
-                  <Text size="xs" c="dimmed" mt="xs">
-                    추이 분석을 위해서는 진단 기록이 필요합니다. 매일 플레이스 진단을 실행하시면 추이 데이터가 쌓입니다.
-                  </Text>
-                </Alert>
-              ) : (
-                <>
-                  <SimpleGrid cols={2} spacing="xs">
+              <SimpleGrid cols={2} spacing="xs">
+                <Box>
+                  <Text size="xs" c="dimmed">지난 3일 일평균</Text>
+                  <Text fw={700} size="lg">{(activationData.blog_review_trends?.last_3days_avg || 0).toFixed(2)}</Text>
+                </Box>
                 <Box>
                   <Text size="xs" c="dimmed">지난 7일 일평균</Text>
                   <Text fw={600}>{(activationData.blog_review_trends?.last_7days_avg || 0).toFixed(2)}</Text>
-                </Box>
-                <Box>
-                  <Text size="xs" c="dimmed">전주 일평균</Text>
-                  <Text fw={600}>{(activationData.blog_review_trends?.last_week_avg || 0).toFixed(2)}</Text>
                 </Box>
                 <Box>
                   <Text size="xs" c="dimmed">지난 30일 일평균</Text>
                   <Text fw={600}>{(activationData.blog_review_trends?.last_30days_avg || 0).toFixed(2)}</Text>
                 </Box>
                 <Box>
-                  <Text size="xs" c="dimmed">지난 3개월 일평균</Text>
-                  <Text fw={600}>{(activationData.blog_review_trends?.last_90days_avg || 0).toFixed(2)}</Text>
+                  <Text size="xs" c="dimmed">지난 60일 일평균</Text>
+                  <Text fw={600}>{(activationData.blog_review_trends?.last_60days_avg || 0).toFixed(2)}</Text>
                 </Box>
               </SimpleGrid>
               
               <Divider />
               
               <Box>
-                <Text size="sm" fw={600} mb="xs">이번주 일평균: {(activationData.blog_review_trends?.this_week_avg || 0).toFixed(2)}</Text>
+                <Text size="sm" fw={600} mb="xs">지난 3일 일평균 비교</Text>
                 <Stack gap="xs">
-                  {activationData.blog_review_trends?.comparisons && Object.entries(activationData.blog_review_trends.comparisons).map(([key, comp]) => (
-                    <Group key={key} justify="space-between">
-                      <Text size="xs" c="dimmed">
-                        {key === 'vs_last_7days' ? '지난 7일 대비' :
-                         key === 'vs_last_week' ? '전주 대비' :
-                         key === 'vs_last_30days' ? '지난 30일 대비' :
-                         '지난 3개월 대비'}
-                      </Text>
-                      <Badge 
-                        color={getTrendColor(comp.direction)} 
-                        variant="light" 
-                        size="sm"
-                        leftSection={getTrendIcon(comp.direction)}
-                      >
-                        {comp.change > 0 ? '+' : ''}{comp.change.toFixed(1)}%
-                      </Badge>
-                    </Group>
-                  ))}
+                  <Group justify="space-between">
+                    <Text size="xs" c="dimmed">지난 7일 일평균 대비</Text>
+                    <Text size="sm" fw={600}>
+                      {activationData.blog_review_trends?.comparisons?.vs_last_7days?.change.toFixed(2) || '0.00'} ({activationData.blog_review_trends?.comparisons?.vs_last_7days?.change.toFixed(1) || '0.0'}%) {
+                        (activationData.blog_review_trends?.comparisons?.vs_last_7days?.direction === 'up') ? '높습니다' :
+                        (activationData.blog_review_trends?.comparisons?.vs_last_7days?.direction === 'down') ? '낮습니다' :
+                        '동일합니다'
+                      }
+                    </Text>
+                  </Group>
+                  <Group justify="space-between">
+                    <Text size="xs" c="dimmed">지난 30일 일평균 대비</Text>
+                    <Text size="sm" fw={600}>
+                      {activationData.blog_review_trends?.comparisons?.vs_last_30days?.change.toFixed(2) || '0.00'} ({activationData.blog_review_trends?.comparisons?.vs_last_30days?.change.toFixed(1) || '0.0'}%) {
+                        (activationData.blog_review_trends?.comparisons?.vs_last_30days?.direction === 'up') ? '높습니다' :
+                        (activationData.blog_review_trends?.comparisons?.vs_last_30days?.direction === 'down') ? '낮습니다' :
+                        '동일합니다'
+                      }
+                    </Text>
+                  </Group>
+                  <Group justify="space-between">
+                    <Text size="xs" c="dimmed">지난 60일 일평균 대비</Text>
+                    <Text size="sm" fw={600}>
+                      {activationData.blog_review_trends?.comparisons?.vs_last_60days?.change.toFixed(2) || '0.00'} ({activationData.blog_review_trends?.comparisons?.vs_last_60days?.change.toFixed(1) || '0.0'}%) {
+                        (activationData.blog_review_trends?.comparisons?.vs_last_60days?.direction === 'up') ? '높습니다' :
+                        (activationData.blog_review_trends?.comparisons?.vs_last_60days?.direction === 'down') ? '낮습니다' :
+                        '동일합니다'
+                      }
+                    </Text>
+                  </Group>
                 </Stack>
               </Box>
-                </>
-              )}
             </Stack>
           </Card>
         </Grid.Col>
