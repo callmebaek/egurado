@@ -222,9 +222,8 @@ class NaverReviewService:
         variables = {
             "input": {
                 "businessId": place_id,
-                "page": page,
-                "size": size,
-                "type": "all"  # blog, cafe, or all
+                "page": page
+                # FsasReviewsInput은 size와 type 필드를 지원하지 않음
             }
         }
         
@@ -242,21 +241,16 @@ class NaverReviewService:
                 response.raise_for_status()
                 
                 data = response.json()
-                logger.info(f"[블로그 리뷰] GraphQL Response type: {type(data)}, data: {str(data)[:500]}...")
+                logger.debug(f"[블로그 리뷰] GraphQL Response: {data}")
                 
                 # 응답은 배열로 오므로 첫 번째 요소를 사용
                 if isinstance(data, list) and len(data) > 0:
-                    logger.info(f"[블로그 리뷰] Response is list, extracting first element")
                     data = data[0]
-                
-                logger.info(f"[블로그 리뷰] After extraction - data keys: {data.keys() if isinstance(data, dict) else 'not a dict'}")
                 
                 # fsasReviews 데이터 추출
                 fsas_reviews = data.get("data", {}).get("fsasReviews")
-                logger.info(f"[블로그 리뷰] fsas_reviews: {fsas_reviews is not None}, type: {type(fsas_reviews)}")
-                
                 if not fsas_reviews:
-                    logger.warning(f"블로그 리뷰 없음: place_id={place_id}, data structure: {str(data)[:200]}")
+                    logger.warning(f"블로그 리뷰 없음: place_id={place_id}")
                     return {
                         "total": 0,
                         "items": [],
@@ -268,8 +262,9 @@ class NaverReviewService:
                 max_item_count = fsas_reviews.get("maxItemCount", 0)
                 items = fsas_reviews.get("items", [])
                 
-                # has_more: 현재 페이지 * size < total
-                has_more = (page * size) < total
+                # has_more: items가 있고 아직 전체 total에 도달하지 않았는지 확인
+                # 각 페이지가 몇 개를 반환하는지 알 수 없으므로 items 개수로 판단
+                has_more = len(items) > 0 and total > (page * len(items))
                 
                 logger.info(f"블로그 리뷰 조회 성공: place_id={place_id}, total={total}, max_item_count={max_item_count}, items_count={len(items)}, page={page}, has_more={has_more}")
                 

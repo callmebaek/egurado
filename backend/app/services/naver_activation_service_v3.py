@@ -316,8 +316,7 @@ class NaverActivationServiceV3:
             for page_num in range(1, max_pages + 1):
                 reviews_data = await naver_review_service.get_blog_reviews(
                     place_id=place_id,
-                    page=page_num,
-                    size=20
+                    page=page_num
                 )
                 
                 if not reviews_data or not reviews_data.get("items"):
@@ -351,8 +350,9 @@ class NaverActivationServiceV3:
                     logger.info(f"[활성화-블로그 실시간] 60일 이상 리뷰 도달, 페이징 중단 (페이지 {page_num}, 총 {len(all_reviews)}개)")
                     break
                 
-                # 다음 페이지 확인
-                if not reviews_data.get("has_more", False):
+                # 다음 페이지 확인 (총 개수가 충분한지 확인)
+                total = reviews_data.get("total", 0)
+                if not reviews_data.get("has_more", False) or len(all_reviews) >= min(300, total):
                     logger.info(f"[활성화-블로그 실시간] 모든 리뷰 조회 완료 (페이지 {page_num}, 총 {len(all_reviews)}개)")
                     break
             
