@@ -37,7 +37,16 @@ import {
   CheckCircle,
   ArrowUp,
   ArrowDown,
-  ExternalLink
+  ExternalLink,
+  Globe,
+  Instagram,
+  Facebook,
+  BookOpen,
+  Phone,
+  CreditCard,
+  Calendar,
+  MessageCircle,
+  Award
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/components/ui/use-toast'
@@ -382,9 +391,12 @@ export default function ActivationPage() {
                 <Text size="sm" fw={600} mb="xs">지난 3일 일평균 비교</Text>
                 <Stack gap="xs">
                   <Group justify="space-between">
-                    <Text size="xs" c="dimmed">지난 7일 일평균 대비</Text>
+                    <Text size="xs" c="dimmed">vs 지난 7일 일평균</Text>
                     <Text size="sm" fw={600}>
-                      {activationData.visitor_review_trends?.comparisons?.vs_last_7days?.change.toFixed(2) || '0.00'} ({activationData.visitor_review_trends?.comparisons?.vs_last_7days?.change.toFixed(1) || '0.0'}%) {
+                      {(activationData.visitor_review_trends?.last_3days_avg || 0) - (activationData.visitor_review_trends?.last_7days_avg || 0) > 0 ? '📈 ' : 
+                       (activationData.visitor_review_trends?.last_3days_avg || 0) - (activationData.visitor_review_trends?.last_7days_avg || 0) < 0 ? '📉 ' : ''}
+                      {Math.abs((activationData.visitor_review_trends?.last_3days_avg || 0) - (activationData.visitor_review_trends?.last_7days_avg || 0)).toFixed(2)} 
+                      ({Math.abs(activationData.visitor_review_trends?.comparisons?.vs_last_7days?.change || 0).toFixed(1)}%) {
                         (activationData.visitor_review_trends?.comparisons?.vs_last_7days?.direction === 'up') ? '높습니다' :
                         (activationData.visitor_review_trends?.comparisons?.vs_last_7days?.direction === 'down') ? '낮습니다' :
                         '동일합니다'
@@ -392,9 +404,12 @@ export default function ActivationPage() {
                     </Text>
                   </Group>
                   <Group justify="space-between">
-                    <Text size="xs" c="dimmed">지난 30일 일평균 대비</Text>
+                    <Text size="xs" c="dimmed">vs 지난 30일 일평균</Text>
                     <Text size="sm" fw={600}>
-                      {activationData.visitor_review_trends?.comparisons?.vs_last_30days?.change.toFixed(2) || '0.00'} ({activationData.visitor_review_trends?.comparisons?.vs_last_30days?.change.toFixed(1) || '0.0'}%) {
+                      {(activationData.visitor_review_trends?.last_3days_avg || 0) - (activationData.visitor_review_trends?.last_30days_avg || 0) > 0 ? '📈 ' : 
+                       (activationData.visitor_review_trends?.last_3days_avg || 0) - (activationData.visitor_review_trends?.last_30days_avg || 0) < 0 ? '📉 ' : ''}
+                      {Math.abs((activationData.visitor_review_trends?.last_3days_avg || 0) - (activationData.visitor_review_trends?.last_30days_avg || 0)).toFixed(2)} 
+                      ({Math.abs(activationData.visitor_review_trends?.comparisons?.vs_last_30days?.change || 0).toFixed(1)}%) {
                         (activationData.visitor_review_trends?.comparisons?.vs_last_30days?.direction === 'up') ? '높습니다' :
                         (activationData.visitor_review_trends?.comparisons?.vs_last_30days?.direction === 'down') ? '낮습니다' :
                         '동일합니다'
@@ -402,9 +417,12 @@ export default function ActivationPage() {
                     </Text>
                   </Group>
                   <Group justify="space-between">
-                    <Text size="xs" c="dimmed">지난 60일 일평균 대비</Text>
+                    <Text size="xs" c="dimmed">vs 지난 60일 일평균</Text>
                     <Text size="sm" fw={600}>
-                      {activationData.visitor_review_trends?.comparisons?.vs_last_60days?.change.toFixed(2) || '0.00'} ({activationData.visitor_review_trends?.comparisons?.vs_last_60days?.change.toFixed(1) || '0.0'}%) {
+                      {(activationData.visitor_review_trends?.last_3days_avg || 0) - (activationData.visitor_review_trends?.last_60days_avg || 0) > 0 ? '📈 ' : 
+                       (activationData.visitor_review_trends?.last_3days_avg || 0) - (activationData.visitor_review_trends?.last_60days_avg || 0) < 0 ? '📉 ' : ''}
+                      {Math.abs((activationData.visitor_review_trends?.last_3days_avg || 0) - (activationData.visitor_review_trends?.last_60days_avg || 0)).toFixed(2)} 
+                      ({Math.abs(activationData.visitor_review_trends?.comparisons?.vs_last_60days?.change || 0).toFixed(1)}%) {
                         (activationData.visitor_review_trends?.comparisons?.vs_last_60days?.direction === 'up') ? '높습니다' :
                         (activationData.visitor_review_trends?.comparisons?.vs_last_60days?.direction === 'down') ? '낮습니다' :
                         '동일합니다'
@@ -454,9 +472,12 @@ export default function ActivationPage() {
                 <Text size="sm" fw={600} mb="xs">지난 3일 일평균 비교</Text>
                 <Stack gap="xs">
                   <Group justify="space-between">
-                    <Text size="xs" c="dimmed">지난 7일 일평균 대비</Text>
+                    <Text size="xs" c="dimmed">vs 지난 7일 일평균</Text>
                     <Text size="sm" fw={600}>
-                      {activationData.blog_review_trends?.comparisons?.vs_last_7days?.change.toFixed(2) || '0.00'} ({activationData.blog_review_trends?.comparisons?.vs_last_7days?.change.toFixed(1) || '0.0'}%) {
+                      {(activationData.blog_review_trends?.last_3days_avg || 0) - (activationData.blog_review_trends?.last_7days_avg || 0) > 0 ? '📈 ' : 
+                       (activationData.blog_review_trends?.last_3days_avg || 0) - (activationData.blog_review_trends?.last_7days_avg || 0) < 0 ? '📉 ' : ''}
+                      {Math.abs((activationData.blog_review_trends?.last_3days_avg || 0) - (activationData.blog_review_trends?.last_7days_avg || 0)).toFixed(2)} 
+                      ({Math.abs(activationData.blog_review_trends?.comparisons?.vs_last_7days?.change || 0).toFixed(1)}%) {
                         (activationData.blog_review_trends?.comparisons?.vs_last_7days?.direction === 'up') ? '높습니다' :
                         (activationData.blog_review_trends?.comparisons?.vs_last_7days?.direction === 'down') ? '낮습니다' :
                         '동일합니다'
@@ -464,9 +485,12 @@ export default function ActivationPage() {
                     </Text>
                   </Group>
                   <Group justify="space-between">
-                    <Text size="xs" c="dimmed">지난 30일 일평균 대비</Text>
+                    <Text size="xs" c="dimmed">vs 지난 30일 일평균</Text>
                     <Text size="sm" fw={600}>
-                      {activationData.blog_review_trends?.comparisons?.vs_last_30days?.change.toFixed(2) || '0.00'} ({activationData.blog_review_trends?.comparisons?.vs_last_30days?.change.toFixed(1) || '0.0'}%) {
+                      {(activationData.blog_review_trends?.last_3days_avg || 0) - (activationData.blog_review_trends?.last_30days_avg || 0) > 0 ? '📈 ' : 
+                       (activationData.blog_review_trends?.last_3days_avg || 0) - (activationData.blog_review_trends?.last_30days_avg || 0) < 0 ? '📉 ' : ''}
+                      {Math.abs((activationData.blog_review_trends?.last_3days_avg || 0) - (activationData.blog_review_trends?.last_30days_avg || 0)).toFixed(2)} 
+                      ({Math.abs(activationData.blog_review_trends?.comparisons?.vs_last_30days?.change || 0).toFixed(1)}%) {
                         (activationData.blog_review_trends?.comparisons?.vs_last_30days?.direction === 'up') ? '높습니다' :
                         (activationData.blog_review_trends?.comparisons?.vs_last_30days?.direction === 'down') ? '낮습니다' :
                         '동일합니다'
@@ -474,9 +498,12 @@ export default function ActivationPage() {
                     </Text>
                   </Group>
                   <Group justify="space-between">
-                    <Text size="xs" c="dimmed">지난 60일 일평균 대비</Text>
+                    <Text size="xs" c="dimmed">vs 지난 60일 일평균</Text>
                     <Text size="sm" fw={600}>
-                      {activationData.blog_review_trends?.comparisons?.vs_last_60days?.change.toFixed(2) || '0.00'} ({activationData.blog_review_trends?.comparisons?.vs_last_60days?.change.toFixed(1) || '0.0'}%) {
+                      {(activationData.blog_review_trends?.last_3days_avg || 0) - (activationData.blog_review_trends?.last_60days_avg || 0) > 0 ? '📈 ' : 
+                       (activationData.blog_review_trends?.last_3days_avg || 0) - (activationData.blog_review_trends?.last_60days_avg || 0) < 0 ? '📉 ' : ''}
+                      {Math.abs((activationData.blog_review_trends?.last_3days_avg || 0) - (activationData.blog_review_trends?.last_60days_avg || 0)).toFixed(2)} 
+                      ({Math.abs(activationData.blog_review_trends?.comparisons?.vs_last_60days?.change || 0).toFixed(1)}%) {
                         (activationData.blog_review_trends?.comparisons?.vs_last_60days?.direction === 'up') ? '높습니다' :
                         (activationData.blog_review_trends?.comparisons?.vs_last_60days?.direction === 'down') ? '낮습니다' :
                         '동일합니다'
@@ -725,10 +752,15 @@ export default function ActivationPage() {
             <SimpleGrid cols={2} spacing="md">
               <Paper p="sm" withBorder>
                 <Group justify="space-between">
-                  <Box style={{ flex: 1 }}>
-                    <Text size="xs" c="dimmed">홈페이지</Text>
-                    <Text size="sm" lineClamp={1}>{activationData.homepage || '미등록'}</Text>
-                  </Box>
+                  <Group gap="xs" style={{ flex: 1 }}>
+                    <ThemeIcon variant="light" size="sm" color="blue">
+                      <Globe className="w-3 h-3" />
+                    </ThemeIcon>
+                    <Box style={{ flex: 1 }}>
+                      <Text size="xs" c="dimmed">홈페이지</Text>
+                      <Text size="sm" lineClamp={1}>{activationData.homepage || '미등록'}</Text>
+                    </Box>
+                  </Group>
                   {activationData.homepage ? (
                     <Badge color="green" variant="light" leftSection={<CheckCircle className="w-3 h-3" />}>
                       등록
@@ -742,10 +774,15 @@ export default function ActivationPage() {
               </Paper>
               <Paper p="sm" withBorder>
                 <Group justify="space-between">
-                  <Box style={{ flex: 1 }}>
-                    <Text size="xs" c="dimmed">인스타그램</Text>
-                    <Text size="sm" lineClamp={1}>{activationData.instagram || '미등록'}</Text>
-                  </Box>
+                  <Group gap="xs" style={{ flex: 1 }}>
+                    <ThemeIcon variant="light" size="sm" color="pink">
+                      <Instagram className="w-3 h-3" />
+                    </ThemeIcon>
+                    <Box style={{ flex: 1 }}>
+                      <Text size="xs" c="dimmed">인스타그램</Text>
+                      <Text size="sm" lineClamp={1}>{activationData.instagram || '미등록'}</Text>
+                    </Box>
+                  </Group>
                   {activationData.instagram ? (
                     <Badge color="green" variant="light" leftSection={<CheckCircle className="w-3 h-3" />}>
                       등록
@@ -759,10 +796,15 @@ export default function ActivationPage() {
               </Paper>
               <Paper p="sm" withBorder>
                 <Group justify="space-between">
-                  <Box style={{ flex: 1 }}>
-                    <Text size="xs" c="dimmed">페이스북</Text>
-                    <Text size="sm" lineClamp={1}>{activationData.facebook || '미등록'}</Text>
-                  </Box>
+                  <Group gap="xs" style={{ flex: 1 }}>
+                    <ThemeIcon variant="light" size="sm" color="indigo">
+                      <Facebook className="w-3 h-3" />
+                    </ThemeIcon>
+                    <Box style={{ flex: 1 }}>
+                      <Text size="xs" c="dimmed">페이스북</Text>
+                      <Text size="sm" lineClamp={1}>{activationData.facebook || '미등록'}</Text>
+                    </Box>
+                  </Group>
                   {activationData.facebook ? (
                     <Badge color="green" variant="light" leftSection={<CheckCircle className="w-3 h-3" />}>
                       등록
@@ -776,10 +818,15 @@ export default function ActivationPage() {
               </Paper>
               <Paper p="sm" withBorder>
                 <Group justify="space-between">
-                  <Box style={{ flex: 1 }}>
-                    <Text size="xs" c="dimmed">블로그</Text>
-                    <Text size="sm" lineClamp={1}>{activationData.blog || '미등록'}</Text>
-                  </Box>
+                  <Group gap="xs" style={{ flex: 1 }}>
+                    <ThemeIcon variant="light" size="sm" color="green">
+                      <BookOpen className="w-3 h-3" />
+                    </ThemeIcon>
+                    <Box style={{ flex: 1 }}>
+                      <Text size="xs" c="dimmed">블로그</Text>
+                      <Text size="sm" lineClamp={1}>{activationData.blog || '미등록'}</Text>
+                    </Box>
+                  </Group>
                   {activationData.blog ? (
                     <Badge color="green" variant="light" leftSection={<CheckCircle className="w-3 h-3" />}>
                       등록
@@ -814,7 +861,12 @@ export default function ActivationPage() {
             <SimpleGrid cols={2} spacing="md">
               <Paper p="sm" withBorder>
                 <Group justify="space-between">
-                  <Text size="sm">플레이스 플러스</Text>
+                  <Group gap="xs">
+                    <ThemeIcon variant="light" size="sm" color="yellow">
+                      <Award className="w-3 h-3" />
+                    </ThemeIcon>
+                    <Text size="sm">플레이스 플러스</Text>
+                  </Group>
                   {activationData.is_place_plus ? (
                     <Badge color="green" variant="light" leftSection={<CheckCircle className="w-3 h-3" />}>
                       사용중
@@ -828,7 +880,12 @@ export default function ActivationPage() {
               </Paper>
               <Paper p="sm" withBorder>
                 <Group justify="space-between">
-                  <Text size="sm">스마트콜</Text>
+                  <Group gap="xs">
+                    <ThemeIcon variant="light" size="sm" color="blue">
+                      <Phone className="w-3 h-3" />
+                    </ThemeIcon>
+                    <Text size="sm">스마트콜</Text>
+                  </Group>
                   {activationData.has_smart_call ? (
                     <Badge color="green" variant="light" leftSection={<CheckCircle className="w-3 h-3" />}>
                       사용중
@@ -842,7 +899,12 @@ export default function ActivationPage() {
               </Paper>
               <Paper p="sm" withBorder>
                 <Group justify="space-between">
-                  <Text size="sm">네이버페이</Text>
+                  <Group gap="xs">
+                    <ThemeIcon variant="light" size="sm" color="green">
+                      <CreditCard className="w-3 h-3" />
+                    </ThemeIcon>
+                    <Text size="sm">네이버페이</Text>
+                  </Group>
                   {activationData.has_naver_pay ? (
                     <Badge color="green" variant="light" leftSection={<CheckCircle className="w-3 h-3" />}>
                       사용중
@@ -856,7 +918,12 @@ export default function ActivationPage() {
               </Paper>
               <Paper p="sm" withBorder>
                 <Group justify="space-between">
-                  <Text size="sm">네이버예약</Text>
+                  <Group gap="xs">
+                    <ThemeIcon variant="light" size="sm" color="teal">
+                      <Calendar className="w-3 h-3" />
+                    </ThemeIcon>
+                    <Text size="sm">네이버예약</Text>
+                  </Group>
                   {activationData.has_naver_booking ? (
                     <Badge color="green" variant="light" leftSection={<CheckCircle className="w-3 h-3" />}>
                       사용중
@@ -870,7 +937,12 @@ export default function ActivationPage() {
               </Paper>
               <Paper p="sm" withBorder>
                 <Group justify="space-between">
-                  <Text size="sm">네이버톡톡</Text>
+                  <Group gap="xs">
+                    <ThemeIcon variant="light" size="sm" color="violet">
+                      <MessageCircle className="w-3 h-3" />
+                    </ThemeIcon>
+                    <Text size="sm">네이버톡톡</Text>
+                  </Group>
                   {activationData.has_naver_talk ? (
                     <Badge color="green" variant="light" leftSection={<CheckCircle className="w-3 h-3" />}>
                       사용중
