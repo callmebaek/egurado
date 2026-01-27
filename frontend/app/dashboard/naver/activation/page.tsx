@@ -420,36 +420,72 @@ export default function ActivationPage() {
                 <Stack gap="xs">
                   <Group justify="space-between">
                     <Text size="xs" c="dimmed">vs 지난 7일 일평균</Text>
-                    <Text size="sm" fw={600}>
-                      {Math.abs((activationData.visitor_review_trends?.last_3days_avg || 0) - (activationData.visitor_review_trends?.last_7days_avg || 0)).toFixed(2)} 
-                      ({Math.abs(activationData.visitor_review_trends?.comparisons?.vs_last_7days?.change || 0).toFixed(1)}%) {
-                        (activationData.visitor_review_trends?.comparisons?.vs_last_7days?.direction === 'up') ? '👍 높습니다' :
-                        (activationData.visitor_review_trends?.comparisons?.vs_last_7days?.direction === 'down') ? '👎 낮습니다' :
-                        '➡️ 동일합니다'
-                      }
-                    </Text>
+                    <Group gap={4}>
+                      <Text size="sm" fw={600}>
+                        {Math.abs((activationData.visitor_review_trends?.last_3days_avg || 0) - (activationData.visitor_review_trends?.last_7days_avg || 0)).toFixed(2)} 
+                      </Text>
+                      <Text 
+                        size="sm" 
+                        fw={600}
+                        c={
+                          (activationData.visitor_review_trends?.comparisons?.vs_last_7days?.change || 0) > 0 ? 'red' :
+                          (activationData.visitor_review_trends?.comparisons?.vs_last_7days?.change || 0) < 0 ? 'blue' : 'dimmed'
+                        }
+                      >
+                        ({Math.abs(activationData.visitor_review_trends?.comparisons?.vs_last_7days?.change || 0).toFixed(1)}%)
+                      </Text>
+                      <Text size="sm" fw={600}>
+                        {(activationData.visitor_review_trends?.comparisons?.vs_last_7days?.direction === 'up') ? '👍 높습니다' :
+                         (activationData.visitor_review_trends?.comparisons?.vs_last_7days?.direction === 'down') ? '👎 낮습니다' :
+                         '➡️ 동일합니다'}
+                      </Text>
+                    </Group>
                   </Group>
                   <Group justify="space-between">
                     <Text size="xs" c="dimmed">vs 지난 30일 일평균</Text>
-                    <Text size="sm" fw={600}>
-                      {Math.abs((activationData.visitor_review_trends?.last_3days_avg || 0) - (activationData.visitor_review_trends?.last_30days_avg || 0)).toFixed(2)} 
-                      ({Math.abs(activationData.visitor_review_trends?.comparisons?.vs_last_30days?.change || 0).toFixed(1)}%) {
-                        (activationData.visitor_review_trends?.comparisons?.vs_last_30days?.direction === 'up') ? '👍 높습니다' :
-                        (activationData.visitor_review_trends?.comparisons?.vs_last_30days?.direction === 'down') ? '👎 낮습니다' :
-                        '➡️ 동일합니다'
-                      }
-                    </Text>
+                    <Group gap={4}>
+                      <Text size="sm" fw={600}>
+                        {Math.abs((activationData.visitor_review_trends?.last_3days_avg || 0) - (activationData.visitor_review_trends?.last_30days_avg || 0)).toFixed(2)} 
+                      </Text>
+                      <Text 
+                        size="sm" 
+                        fw={600}
+                        c={
+                          (activationData.visitor_review_trends?.comparisons?.vs_last_30days?.change || 0) > 0 ? 'red' :
+                          (activationData.visitor_review_trends?.comparisons?.vs_last_30days?.change || 0) < 0 ? 'blue' : 'dimmed'
+                        }
+                      >
+                        ({Math.abs(activationData.visitor_review_trends?.comparisons?.vs_last_30days?.change || 0).toFixed(1)}%)
+                      </Text>
+                      <Text size="sm" fw={600}>
+                        {(activationData.visitor_review_trends?.comparisons?.vs_last_30days?.direction === 'up') ? '👍 높습니다' :
+                         (activationData.visitor_review_trends?.comparisons?.vs_last_30days?.direction === 'down') ? '👎 낮습니다' :
+                         '➡️ 동일합니다'}
+                      </Text>
+                    </Group>
                   </Group>
                   <Group justify="space-between">
                     <Text size="xs" c="dimmed">vs 지난 60일 일평균</Text>
-                    <Text size="sm" fw={600}>
-                      {Math.abs((activationData.visitor_review_trends?.last_3days_avg || 0) - (activationData.visitor_review_trends?.last_60days_avg || 0)).toFixed(2)} 
-                      ({Math.abs(activationData.visitor_review_trends?.comparisons?.vs_last_60days?.change || 0).toFixed(1)}%) {
-                        (activationData.visitor_review_trends?.comparisons?.vs_last_60days?.direction === 'up') ? '👍 높습니다' :
-                        (activationData.visitor_review_trends?.comparisons?.vs_last_60days?.direction === 'down') ? '👎 낮습니다' :
-                        '➡️ 동일합니다'
-                      }
-                    </Text>
+                    <Group gap={4}>
+                      <Text size="sm" fw={600}>
+                        {Math.abs((activationData.visitor_review_trends?.last_3days_avg || 0) - (activationData.visitor_review_trends?.last_60days_avg || 0)).toFixed(2)} 
+                      </Text>
+                      <Text 
+                        size="sm" 
+                        fw={600}
+                        c={
+                          (activationData.visitor_review_trends?.comparisons?.vs_last_60days?.change || 0) > 0 ? 'red' :
+                          (activationData.visitor_review_trends?.comparisons?.vs_last_60days?.change || 0) < 0 ? 'blue' : 'dimmed'
+                        }
+                      >
+                        ({Math.abs(activationData.visitor_review_trends?.comparisons?.vs_last_60days?.change || 0).toFixed(1)}%)
+                      </Text>
+                      <Text size="sm" fw={600}>
+                        {(activationData.visitor_review_trends?.comparisons?.vs_last_60days?.direction === 'up') ? '👍 높습니다' :
+                         (activationData.visitor_review_trends?.comparisons?.vs_last_60days?.direction === 'down') ? '👎 낮습니다' :
+                         '➡️ 동일합니다'}
+                      </Text>
+                    </Group>
                   </Group>
                 </Stack>
               </Box>
@@ -495,36 +531,72 @@ export default function ActivationPage() {
                 <Stack gap="xs">
                   <Group justify="space-between">
                     <Text size="xs" c="dimmed">vs 지난 7일 일평균</Text>
-                    <Text size="sm" fw={600}>
-                      {Math.abs((activationData.blog_review_trends?.last_3days_avg || 0) - (activationData.blog_review_trends?.last_7days_avg || 0)).toFixed(2)} 
-                      ({Math.abs(activationData.blog_review_trends?.comparisons?.vs_last_7days?.change || 0).toFixed(1)}%) {
-                        (activationData.blog_review_trends?.comparisons?.vs_last_7days?.direction === 'up') ? '👍 높습니다' :
-                        (activationData.blog_review_trends?.comparisons?.vs_last_7days?.direction === 'down') ? '👎 낮습니다' :
-                        '➡️ 동일합니다'
-                      }
-                    </Text>
+                    <Group gap={4}>
+                      <Text size="sm" fw={600}>
+                        {Math.abs((activationData.blog_review_trends?.last_3days_avg || 0) - (activationData.blog_review_trends?.last_7days_avg || 0)).toFixed(2)} 
+                      </Text>
+                      <Text 
+                        size="sm" 
+                        fw={600}
+                        c={
+                          (activationData.blog_review_trends?.comparisons?.vs_last_7days?.change || 0) > 0 ? 'red' :
+                          (activationData.blog_review_trends?.comparisons?.vs_last_7days?.change || 0) < 0 ? 'blue' : 'dimmed'
+                        }
+                      >
+                        ({Math.abs(activationData.blog_review_trends?.comparisons?.vs_last_7days?.change || 0).toFixed(1)}%)
+                      </Text>
+                      <Text size="sm" fw={600}>
+                        {(activationData.blog_review_trends?.comparisons?.vs_last_7days?.direction === 'up') ? '👍 높습니다' :
+                         (activationData.blog_review_trends?.comparisons?.vs_last_7days?.direction === 'down') ? '👎 낮습니다' :
+                         '➡️ 동일합니다'}
+                      </Text>
+                    </Group>
                   </Group>
                   <Group justify="space-between">
                     <Text size="xs" c="dimmed">vs 지난 30일 일평균</Text>
-                    <Text size="sm" fw={600}>
-                      {Math.abs((activationData.blog_review_trends?.last_3days_avg || 0) - (activationData.blog_review_trends?.last_30days_avg || 0)).toFixed(2)} 
-                      ({Math.abs(activationData.blog_review_trends?.comparisons?.vs_last_30days?.change || 0).toFixed(1)}%) {
-                        (activationData.blog_review_trends?.comparisons?.vs_last_30days?.direction === 'up') ? '👍 높습니다' :
-                        (activationData.blog_review_trends?.comparisons?.vs_last_30days?.direction === 'down') ? '👎 낮습니다' :
-                        '➡️ 동일합니다'
-                      }
-                    </Text>
+                    <Group gap={4}>
+                      <Text size="sm" fw={600}>
+                        {Math.abs((activationData.blog_review_trends?.last_3days_avg || 0) - (activationData.blog_review_trends?.last_30days_avg || 0)).toFixed(2)} 
+                      </Text>
+                      <Text 
+                        size="sm" 
+                        fw={600}
+                        c={
+                          (activationData.blog_review_trends?.comparisons?.vs_last_30days?.change || 0) > 0 ? 'red' :
+                          (activationData.blog_review_trends?.comparisons?.vs_last_30days?.change || 0) < 0 ? 'blue' : 'dimmed'
+                        }
+                      >
+                        ({Math.abs(activationData.blog_review_trends?.comparisons?.vs_last_30days?.change || 0).toFixed(1)}%)
+                      </Text>
+                      <Text size="sm" fw={600}>
+                        {(activationData.blog_review_trends?.comparisons?.vs_last_30days?.direction === 'up') ? '👍 높습니다' :
+                         (activationData.blog_review_trends?.comparisons?.vs_last_30days?.direction === 'down') ? '👎 낮습니다' :
+                         '➡️ 동일합니다'}
+                      </Text>
+                    </Group>
                   </Group>
                   <Group justify="space-between">
                     <Text size="xs" c="dimmed">vs 지난 60일 일평균</Text>
-                    <Text size="sm" fw={600}>
-                      {Math.abs((activationData.blog_review_trends?.last_3days_avg || 0) - (activationData.blog_review_trends?.last_60days_avg || 0)).toFixed(2)} 
-                      ({Math.abs(activationData.blog_review_trends?.comparisons?.vs_last_60days?.change || 0).toFixed(1)}%) {
-                        (activationData.blog_review_trends?.comparisons?.vs_last_60days?.direction === 'up') ? '👍 높습니다' :
-                        (activationData.blog_review_trends?.comparisons?.vs_last_60days?.direction === 'down') ? '👎 낮습니다' :
-                        '➡️ 동일합니다'
-                      }
-                    </Text>
+                    <Group gap={4}>
+                      <Text size="sm" fw={600}>
+                        {Math.abs((activationData.blog_review_trends?.last_3days_avg || 0) - (activationData.blog_review_trends?.last_60days_avg || 0)).toFixed(2)} 
+                      </Text>
+                      <Text 
+                        size="sm" 
+                        fw={600}
+                        c={
+                          (activationData.blog_review_trends?.comparisons?.vs_last_60days?.change || 0) > 0 ? 'red' :
+                          (activationData.blog_review_trends?.comparisons?.vs_last_60days?.change || 0) < 0 ? 'blue' : 'dimmed'
+                        }
+                      >
+                        ({Math.abs(activationData.blog_review_trends?.comparisons?.vs_last_60days?.change || 0).toFixed(1)}%)
+                      </Text>
+                      <Text size="sm" fw={600}>
+                        {(activationData.blog_review_trends?.comparisons?.vs_last_60days?.direction === 'up') ? '👍 높습니다' :
+                         (activationData.blog_review_trends?.comparisons?.vs_last_60days?.direction === 'down') ? '👎 낮습니다' :
+                         '➡️ 동일합니다'}
+                      </Text>
+                    </Group>
                   </Group>
                 </Stack>
               </Box>

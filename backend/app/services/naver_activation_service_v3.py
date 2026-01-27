@@ -667,7 +667,7 @@ class NaverActivationServiceV3:
         
         return {
             "direction": direction,
-            "change": round(change_rate, 1)
+            "change": round(change_rate, 2)  # 활성화 요약 카드와 동일한 정밀도
         }
     
     def _get_empty_trend(self) -> Dict[str, Any]:
