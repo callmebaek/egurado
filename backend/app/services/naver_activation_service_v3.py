@@ -322,8 +322,18 @@ class NaverActivationServiceV3:
             
             logger.info(f"[활성화-블로그 HTML] 파싱 완료: {len(all_reviews)}개")
             
+            # 날짜가 있는 리뷰만 필터링
+            reviews_with_date = [r for r in all_reviews if r.get("date")]
+            logger.info(f"[활성화-블로그 HTML] 날짜 있는 리뷰: {len(reviews_with_date)}개 / {len(all_reviews)}개")
+            
+            # 날짜가 너무 적으면 추정값 사용
+            if len(reviews_with_date) < 5:
+                logger.warning(f"[활성화-블로그 HTML] 날짜 있는 리뷰가 너무 적음 ({len(reviews_with_date)}개), 추정값 사용")
+                return self._calculate_blog_review_trends_estimated(total_blog_review_count)
+            
             # 날짜 기준으로 정렬 (최신순)
-            all_reviews.sort(key=lambda x: x.get("date", ""), reverse=True)
+            reviews_with_date.sort(key=lambda x: x.get("date", ""), reverse=True)
+            all_reviews = reviews_with_date  # 날짜 있는 리뷰만 사용
             
             now = datetime.now(timezone.utc)
             

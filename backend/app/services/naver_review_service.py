@@ -1035,16 +1035,26 @@ class NaverReviewService:
                         date_candidates = parent.find_all(['span', 'time', 'div'], limit=20)
                         for candidate in date_candidates:
                             text = candidate.get_text(strip=True)
-                            # "1일 전", "1주 전", "2025.12.05." 패턴 확인
-                            if text and (
-                                '전' in text or 
-                                '시간' in text or
-                                '분' in text or
-                                re.match(r'\d{2,4}\.\d{1,2}\.\d{1,2}', text)
-                            ):
+                            
+                            # 날짜는 보통 짧음 (20자 이내)
+                            if not text or len(text) > 20:
+                                continue
+                            
+                            # 엄격한 날짜 패턴 확인
+                            is_date = False
+                            
+                            # "N일 전", "N주 전", "N시간 전", "N분 전" (숫자가 앞에 와야 함)
+                            if re.match(r'^\d+\s*(일|주|시간|분)\s*전', text):
+                                is_date = True
+                            # "YYYY.MM.DD." 또는 "YY.MM.DD." 형식
+                            elif re.match(r'^\d{2,4}\.\d{1,2}\.\d{1,2}\.?', text):
+                                is_date = True
+                            
+                            if is_date:
                                 date_str = text
                                 review_date = self._parse_naver_search_date(date_str)
-                                break
+                                if review_date:  # 파싱 성공한 경우만
+                                    break
                     
                     parent = parent.parent
                 
