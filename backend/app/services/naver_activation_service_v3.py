@@ -41,7 +41,11 @@ class NaverActivationServiceV3:
                 raise Exception("플레이스 정보를 가져올 수 없습니다")
             
             # 2. 방문자 리뷰 실시간 분석 (독립적)
-            visitor_review_trends = await self._calculate_visitor_review_trends_realtime(place_id)
+            visitor_review_count = place_details.get("visitor_review_count", 0)
+            visitor_review_trends = await self._calculate_visitor_review_trends_realtime(
+                place_id, 
+                visitor_review_count
+            )
             logger.info(f"[플레이스 활성화 V3-독립] 방문자 리뷰 추이: 7일={visitor_review_trends['last_7days_avg']:.2f}, 30일={visitor_review_trends['last_30days_avg']:.2f}, 60일={visitor_review_trends['last_60days_avg']:.2f}")
             
             # 3. 블로그 리뷰 추정 분석 (API 미지원)
@@ -93,8 +97,10 @@ class NaverActivationServiceV3:
                 # 프로모션/공지
                 "has_promotion": promotion_info["has_active"],
                 "promotion_count": promotion_info["count"],
+                "promotion_items": promotion_info["items"],
                 "has_announcement": announcement_info["count"] > 0,
                 "announcement_count": announcement_info["count"],
+                "announcement_items": announcement_info["items"],
                 "last_announcement_date": announcement_info.get("last_date"),
                 "days_since_last_announcement": announcement_info.get("days_since_last"),
                 
@@ -109,6 +115,7 @@ class NaverActivationServiceV3:
                 "has_naver_pay": place_details.get("has_naverpay_in_search", False),
                 "has_naver_booking": place_details.get("booking_available", False),
                 "has_naver_talk": sns_info.get("has_talk", False),
+                "is_place_plus": place_details.get("is_place_plus", False),
             }
             
             logger.info(f"[플레이스 활성화 V3-독립] 완료")
@@ -118,12 +125,17 @@ class NaverActivationServiceV3:
             logger.error(f"[플레이스 활성화 V3-독립] 오류: {str(e)}", exc_info=True)
             raise
     
-    async def _calculate_visitor_review_trends_realtime(self, place_id: str) -> Dict[str, Any]:
+    async def _calculate_visitor_review_trends_realtime(
+        self, 
+        place_id: str,
+        total_visitor_review_count: int = 0
+    ) -> Dict[str, Any]:
         """
         실시간으로 방문자 리뷰를 가져와서 일평균 계산 (완전 독립적)
         
         Args:
             place_id: 네이버 플레이스 ID
+            total_visitor_review_count: 전체 방문자 리뷰 수 (API 실패 시 추정용)
             
         Returns:
             리뷰 추이 정보 (7일, 30일, 60일 일평균)
@@ -137,8 +149,9 @@ class NaverActivationServiceV3:
             )
             
             if not reviews_data or not reviews_data.get("items"):
-                logger.warning(f"[활성화-실시간] 리뷰 데이터 없음")
-                return self._get_empty_trend()
+                logger.warning(f"[활성화-실시간] 리뷰 API 실패, 추정값 사용 (전체: {total_visitor_review_count}개)")
+                # API 실패 시 전체 리뷰 수 기반 추정 (경쟁매장분석 로직)
+                return self._calculate_visitor_review_trends_estimated(total_visitor_review_count)
             
             items = reviews_data["items"]
             now = datetime.now(timezone.utc)
@@ -192,6 +205,36 @@ class NaverActivationServiceV3:
         except Exception as e:
             logger.error(f"[활성화-실시간] 방문자 리뷰 추이 계산 실패: {str(e)}", exc_info=True)
             return self._get_empty_trend()
+    
+    def _calculate_visitor_review_trends_estimated(self, total_visitor_count: int) -> Dict[str, Any]:
+        """
+        방문자 리뷰 추정 (네이버 API 제한 시 사용)
+        
+        Args:
+            total_visitor_count: 전체 방문자 리뷰 수
+            
+        Returns:
+            리뷰 추이 정보 (추정값)
+        """
+        # 전체 방문자 리뷰 수 기반 추정 (1년 기준으로 균등 분포 가정)
+        estimated_daily_avg = total_visitor_count / 365 if total_visitor_count > 0 else 0.0
+        
+        avg_7d = estimated_daily_avg
+        avg_30d = estimated_daily_avg
+        avg_60d = estimated_daily_avg
+        
+        logger.info(f"[활성화-추정] 방문자 리뷰: 총 {total_visitor_count}개, 추정 일평균={estimated_daily_avg:.2f}")
+        
+        return {
+            'last_7days_avg': round(avg_7d, 2),
+            'last_30days_avg': round(avg_30d, 2),
+            'last_60days_avg': round(avg_60d, 2),
+            'comparisons': {
+                'vs_last_7days': {'direction': 'stable', 'change': 0.0},
+                'vs_last_30days': {'direction': 'stable', 'change': 0.0},
+                'vs_last_60days': {'direction': 'stable', 'change': 0.0},
+            }
+        }
     
     def _calculate_blog_review_trends_estimated(self, total_blog_count: int) -> Dict[str, Any]:
         """
@@ -325,16 +368,16 @@ class NaverActivationServiceV3:
             place_id: 네이버 플레이스 ID
             
         Returns:
-            공지사항 정보 (개수, 마지막 날짜)
+            공지사항 정보 (개수, 마지막 날짜, 내용 리스트)
         """
         try:
             announcements = await additional_info_service.get_announcements(place_id)
             
             if not announcements:
-                return {"count": 0, "last_date": None, "days_since_last": 999}
+                return {"count": 0, "last_date": None, "days_since_last": 999, "items": []}
             
             now = datetime.now()
-            recent_count = 0
+            recent_items = []
             latest_days = 999
             latest_date = None
             
@@ -346,7 +389,12 @@ class NaverActivationServiceV3:
                         days_ago = int(relative.split("일")[0].strip())
                         
                         if days_ago <= 7:
-                            recent_count += 1
+                            recent_items.append({
+                                "title": ann.get("title", ""),
+                                "content": ann.get("content", ""),
+                                "days_ago": days_ago,
+                                "relative": relative
+                            })
                         
                         if days_ago < latest_days:
                             latest_days = days_ago
@@ -354,29 +402,42 @@ class NaverActivationServiceV3:
                     except:
                         pass
             
-            logger.info(f"[활성화-공지] 최근 7일 내 {recent_count}개, 최신은 {latest_days}일 전")
+            logger.info(f"[활성화-공지] 최근 7일 내 {len(recent_items)}개, 최신은 {latest_days}일 전")
             
             return {
-                "count": recent_count,
+                "count": len(recent_items),
                 "last_date": latest_date,
-                "days_since_last": latest_days
+                "days_since_last": latest_days,
+                "items": recent_items
             }
             
         except Exception as e:
             logger.error(f"[활성화-공지] 분석 실패: {str(e)}", exc_info=True)
-            return {"count": 0, "last_date": None, "days_since_last": 999}
+            return {"count": 0, "last_date": None, "days_since_last": 999, "items": []}
     
     def _analyze_promotions(self, promotions: Dict[str, Any]) -> Dict[str, Any]:
         """프로모션 분석"""
         if not promotions or not isinstance(promotions, dict):
-            return {"has_active": False, "count": 0}
+            return {"has_active": False, "count": 0, "items": []}
         
         coupons = promotions.get("coupons", [])
         count = len(coupons) if coupons else 0
         
+        # 쿠폰 정보 추출
+        coupon_items = []
+        if coupons:
+            for coupon in coupons:
+                if isinstance(coupon, dict):
+                    coupon_items.append({
+                        "title": coupon.get("title", ""),
+                        "description": coupon.get("description", ""),
+                        "discount": coupon.get("discount", "")
+                    })
+        
         return {
             "has_active": count > 0,
-            "count": count
+            "count": count,
+            "items": coupon_items
         }
     
     def _analyze_sns(self, place_details: Dict[str, Any]) -> Dict[str, Any]:

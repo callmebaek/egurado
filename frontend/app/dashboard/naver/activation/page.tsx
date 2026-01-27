@@ -89,6 +89,19 @@ interface PendingReplyInfo {
   oldest_pending_date: string | null
 }
 
+interface PromotionItem {
+  title: string
+  description: string
+  discount: string
+}
+
+interface AnnouncementItem {
+  title: string
+  content: string
+  days_ago: number
+  relative: string
+}
+
 interface ActivationData {
   store_name: string
   place_id: string
@@ -98,6 +111,9 @@ interface ActivationData {
   blog_review_trends: ReviewTrends
   current_visitor_review_count: number
   current_blog_review_count: number
+  promotion_items: PromotionItem[]
+  announcement_items: AnnouncementItem[]
+  is_place_plus: boolean
   pending_reply_info: PendingReplyInfo
   naver_api_limited: boolean
   has_promotion: boolean
@@ -268,10 +284,21 @@ export default function ActivationPage() {
               {card.type === 'pending_reply' ? (
                 <Tooltip label="최근 300개 리뷰만 분석한 수치입니다" position="top" withArrow>
                   <Box>
-                    <Text size="xl" fw={700}>{card.value}개</Text>
-                    <Text size="xs" c="dimmed">답글 대기</Text>
-                    <Progress value={card.reply_rate || 0} size="sm" color="blue" mt="xs" />
-                    <Text size="xs" c="dimmed" mt={4}>답글률: {card.reply_rate?.toFixed(1)}%</Text>
+                    {card.value === 0 ? (
+                      <>
+                        <Text size="xl" fw={700}>없음 👏</Text>
+                        <Text size="xs" c="dimmed">답글 대기</Text>
+                        <Progress value={100} size="sm" color="green" mt="xs" />
+                        <Text size="xs" c="green" mt={4}>답글률: 100%</Text>
+                      </>
+                    ) : (
+                      <>
+                        <Text size="xl" fw={700}>{card.value}개</Text>
+                        <Text size="xs" c="dimmed">답글 대기</Text>
+                        <Progress value={card.reply_rate || 0} size="sm" color="blue" mt="xs" />
+                        <Text size="xs" c="dimmed" mt={4}>답글률: {card.reply_rate?.toFixed(1)}%</Text>
+                      </>
+                    )}
                   </Box>
                 </Tooltip>
               ) : null}
@@ -499,12 +526,21 @@ export default function ActivationPage() {
             </Alert>
           ) : (
             <>
-              <Alert icon={<AlertCircle className="w-4 h-4" />} color="orange" variant="light">
-            <Text size="sm" fw={600}>답글 대기중 리뷰 수: {pending_reply_info?.pending_count || 0}개</Text>
-            <Text size="xs" c="dimmed" mt="xs">
-              최근 300개 리뷰 중 {pending_reply_info?.pending_count || 0}개의 리뷰에 답글이 필요합니다
-            </Text>
-          </Alert>
+              {(pending_reply_info?.pending_count || 0) === 0 ? (
+                <Alert icon={<CheckCircle className="w-4 h-4" />} color="green" variant="light">
+                  <Text size="sm" fw={600}>답글 대기중 리뷰: 없음 👏</Text>
+                  <Text size="xs" c="dimmed" mt="xs">
+                    모든 리뷰에 답글을 완료했습니다! 훌륭합니다!
+                  </Text>
+                </Alert>
+              ) : (
+                <Alert icon={<AlertCircle className="w-4 h-4" />} color="orange" variant="light">
+                  <Text size="sm" fw={600}>답글 대기중 리뷰 수: {pending_reply_info?.pending_count || 0}개</Text>
+                  <Text size="xs" c="dimmed" mt="xs">
+                    최근 300개 리뷰 중 {pending_reply_info?.pending_count || 0}개의 리뷰에 답글이 필요합니다
+                  </Text>
+                </Alert>
+              )}
           
           <Group grow>
             <Box>
@@ -555,7 +591,22 @@ export default function ActivationPage() {
                 {activationData.has_promotion ? `${activationData.promotion_count}개 활성` : '비활성'}
               </Badge>
             </Group>
-            {!activationData.has_promotion && (
+            
+            {activationData.has_promotion && activationData.promotion_items && activationData.promotion_items.length > 0 ? (
+              <Stack gap="xs">
+                {activationData.promotion_items.map((item, index) => (
+                  <Paper key={index} p="sm" withBorder>
+                    <Text size="sm" fw={600}>{item.title}</Text>
+                    {item.description && <Text size="xs" c="dimmed" mt={4}>{item.description}</Text>}
+                    {item.discount && (
+                      <Badge color="red" variant="light" size="sm" mt={4}>
+                        {item.discount}
+                      </Badge>
+                    )}
+                  </Paper>
+                ))}
+              </Stack>
+            ) : (
               <Alert icon={<AlertCircle className="w-4 h-4" />} color="yellow" variant="light">
                 <Text size="sm">쿠폰을 등록하여 고객 유입을 늘려보세요!</Text>
                 <Button
@@ -586,7 +637,26 @@ export default function ActivationPage() {
                 {activationData.has_announcement ? `${activationData.announcement_count}개` : '없음'}
               </Badge>
             </Group>
-            {activationData.days_since_last_announcement && activationData.days_since_last_announcement > 7 && (
+            
+            {activationData.has_announcement && activationData.announcement_items && activationData.announcement_items.length > 0 ? (
+              <Stack gap="xs">
+                {activationData.announcement_items.map((item, index) => (
+                  <Paper key={index} p="sm" withBorder>
+                    <Group justify="space-between" mb={4}>
+                      <Text size="sm" fw={600}>{item.title}</Text>
+                      <Badge color="green" variant="light" size="sm">
+                        {item.days_ago}일 전
+                      </Badge>
+                    </Group>
+                    {item.content && (
+                      <Text size="xs" c="dimmed" style={{ whiteSpace: 'pre-wrap' }}>
+                        {item.content}
+                      </Text>
+                    )}
+                  </Paper>
+                ))}
+              </Stack>
+            ) : (
               <Alert icon={<AlertCircle className="w-4 h-4" />} color="yellow" variant="light">
                 <Text size="sm">지난 7일간 공지사항이 없습니다. 새로운 소식을 공유해보세요!</Text>
                 <Button
@@ -610,7 +680,9 @@ export default function ActivationPage() {
           <Stack gap="md">
             <Text fw={600}>업체소개글</Text>
             {activationData.description ? (
-              <Text size="sm" c="dimmed" lineClamp={3}>{activationData.description}</Text>
+              <Paper p="sm" withBorder bg="gray.0">
+                <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>{activationData.description}</Text>
+              </Paper>
             ) : (
               <Text size="sm" c="dimmed">등록된 업체소개글이 없습니다.</Text>
             )}
@@ -629,7 +701,9 @@ export default function ActivationPage() {
           <Stack gap="md">
             <Text fw={600}>찾아오는길</Text>
             {activationData.directions ? (
-              <Text size="sm" c="dimmed" lineClamp={3}>{activationData.directions}</Text>
+              <Paper p="sm" withBorder bg="gray.0">
+                <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>{activationData.directions}</Text>
+              </Paper>
             ) : (
               <Text size="sm" c="dimmed">등록된 찾아오는길 정보가 없습니다.</Text>
             )}
@@ -647,23 +721,75 @@ export default function ActivationPage() {
         <Card shadow="sm" padding="lg" radius="md" withBorder>
           <Stack gap="md">
             <Text fw={600}>SNS 및 웹사이트</Text>
-            <SimpleGrid cols={2} spacing="xs">
-              <Box>
-                <Text size="xs" c="dimmed">홈페이지</Text>
-                <Text size="sm">{activationData.homepage || '미등록'}</Text>
-              </Box>
-              <Box>
-                <Text size="xs" c="dimmed">인스타그램</Text>
-                <Text size="sm">{activationData.instagram || '미등록'}</Text>
-              </Box>
-              <Box>
-                <Text size="xs" c="dimmed">페이스북</Text>
-                <Text size="sm">{activationData.facebook || '미등록'}</Text>
-              </Box>
-              <Box>
-                <Text size="xs" c="dimmed">블로그</Text>
-                <Text size="sm">{activationData.blog || '미등록'}</Text>
-              </Box>
+            <SimpleGrid cols={2} spacing="md">
+              <Paper p="sm" withBorder>
+                <Group justify="space-between">
+                  <Box style={{ flex: 1 }}>
+                    <Text size="xs" c="dimmed">홈페이지</Text>
+                    <Text size="sm" lineClamp={1}>{activationData.homepage || '미등록'}</Text>
+                  </Box>
+                  {activationData.homepage ? (
+                    <Badge color="green" variant="light" leftSection={<CheckCircle className="w-3 h-3" />}>
+                      등록
+                    </Badge>
+                  ) : (
+                    <Badge color="gray" variant="light">
+                      미등록
+                    </Badge>
+                  )}
+                </Group>
+              </Paper>
+              <Paper p="sm" withBorder>
+                <Group justify="space-between">
+                  <Box style={{ flex: 1 }}>
+                    <Text size="xs" c="dimmed">인스타그램</Text>
+                    <Text size="sm" lineClamp={1}>{activationData.instagram || '미등록'}</Text>
+                  </Box>
+                  {activationData.instagram ? (
+                    <Badge color="green" variant="light" leftSection={<CheckCircle className="w-3 h-3" />}>
+                      등록
+                    </Badge>
+                  ) : (
+                    <Badge color="gray" variant="light">
+                      미등록
+                    </Badge>
+                  )}
+                </Group>
+              </Paper>
+              <Paper p="sm" withBorder>
+                <Group justify="space-between">
+                  <Box style={{ flex: 1 }}>
+                    <Text size="xs" c="dimmed">페이스북</Text>
+                    <Text size="sm" lineClamp={1}>{activationData.facebook || '미등록'}</Text>
+                  </Box>
+                  {activationData.facebook ? (
+                    <Badge color="green" variant="light" leftSection={<CheckCircle className="w-3 h-3" />}>
+                      등록
+                    </Badge>
+                  ) : (
+                    <Badge color="gray" variant="light">
+                      미등록
+                    </Badge>
+                  )}
+                </Group>
+              </Paper>
+              <Paper p="sm" withBorder>
+                <Group justify="space-between">
+                  <Box style={{ flex: 1 }}>
+                    <Text size="xs" c="dimmed">블로그</Text>
+                    <Text size="sm" lineClamp={1}>{activationData.blog || '미등록'}</Text>
+                  </Box>
+                  {activationData.blog ? (
+                    <Badge color="green" variant="light" leftSection={<CheckCircle className="w-3 h-3" />}>
+                      등록
+                    </Badge>
+                  ) : (
+                    <Badge color="gray" variant="light">
+                      미등록
+                    </Badge>
+                  )}
+                </Group>
+              </Paper>
             </SimpleGrid>
             
             {!activationData.instagram && (
@@ -685,38 +811,76 @@ export default function ActivationPage() {
           <Stack gap="md">
             <Text fw={600}>네이버 서비스</Text>
             <SimpleGrid cols={2} spacing="md">
-              <Group>
-                {activationData.has_smart_call ? (
-                  <CheckCircle className="w-4 h-4 text-green-600" />
-                ) : (
-                  <AlertCircle className="w-4 h-4 text-gray-400" />
-                )}
-                <Text size="sm">스마트콜</Text>
-              </Group>
-              <Group>
-                {activationData.has_naver_pay ? (
-                  <CheckCircle className="w-4 h-4 text-green-600" />
-                ) : (
-                  <AlertCircle className="w-4 h-4 text-gray-400" />
-                )}
-                <Text size="sm">네이버페이</Text>
-              </Group>
-              <Group>
-                {activationData.has_naver_booking ? (
-                  <CheckCircle className="w-4 h-4 text-green-600" />
-                ) : (
-                  <AlertCircle className="w-4 h-4 text-gray-400" />
-                )}
-                <Text size="sm">네이버예약</Text>
-              </Group>
-              <Group>
-                {activationData.has_naver_talk ? (
-                  <CheckCircle className="w-4 h-4 text-green-600" />
-                ) : (
-                  <AlertCircle className="w-4 h-4 text-gray-400" />
-                )}
-                <Text size="sm">네이버톡톡</Text>
-              </Group>
+              <Paper p="sm" withBorder>
+                <Group justify="space-between">
+                  <Text size="sm">플레이스 플러스</Text>
+                  {activationData.is_place_plus ? (
+                    <Badge color="green" variant="light" leftSection={<CheckCircle className="w-3 h-3" />}>
+                      사용중
+                    </Badge>
+                  ) : (
+                    <Badge color="gray" variant="light">
+                      미사용
+                    </Badge>
+                  )}
+                </Group>
+              </Paper>
+              <Paper p="sm" withBorder>
+                <Group justify="space-between">
+                  <Text size="sm">스마트콜</Text>
+                  {activationData.has_smart_call ? (
+                    <Badge color="green" variant="light" leftSection={<CheckCircle className="w-3 h-3" />}>
+                      사용중
+                    </Badge>
+                  ) : (
+                    <Badge color="gray" variant="light">
+                      미사용
+                    </Badge>
+                  )}
+                </Group>
+              </Paper>
+              <Paper p="sm" withBorder>
+                <Group justify="space-between">
+                  <Text size="sm">네이버페이</Text>
+                  {activationData.has_naver_pay ? (
+                    <Badge color="green" variant="light" leftSection={<CheckCircle className="w-3 h-3" />}>
+                      사용중
+                    </Badge>
+                  ) : (
+                    <Badge color="gray" variant="light">
+                      미사용
+                    </Badge>
+                  )}
+                </Group>
+              </Paper>
+              <Paper p="sm" withBorder>
+                <Group justify="space-between">
+                  <Text size="sm">네이버예약</Text>
+                  {activationData.has_naver_booking ? (
+                    <Badge color="green" variant="light" leftSection={<CheckCircle className="w-3 h-3" />}>
+                      사용중
+                    </Badge>
+                  ) : (
+                    <Badge color="gray" variant="light">
+                      미사용
+                    </Badge>
+                  )}
+                </Group>
+              </Paper>
+              <Paper p="sm" withBorder>
+                <Group justify="space-between">
+                  <Text size="sm">네이버톡톡</Text>
+                  {activationData.has_naver_talk ? (
+                    <Badge color="green" variant="light" leftSection={<CheckCircle className="w-3 h-3" />}>
+                      사용중
+                    </Badge>
+                  ) : (
+                    <Badge color="gray" variant="light">
+                      미사용
+                    </Badge>
+                  )}
+                </Group>
+              </Paper>
             </SimpleGrid>
             
             {(!activationData.has_smart_call || !activationData.has_naver_pay || 
