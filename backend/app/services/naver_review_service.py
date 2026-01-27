@@ -957,35 +957,47 @@ class NaverReviewService:
             url = f"https://m.place.naver.com/restaurant/{place_id}/review/ugc"
             logger.info(f"[블로그 HTML] 페이지 이동: {url}")
             await page.goto(url, timeout=30000, wait_until="networkidle")
-            await page.wait_for_timeout(2000)
+            await page.wait_for_timeout(3000)
+            logger.info(f"[블로그 HTML] 초기 페이지 로딩 완료")
             
             # 블로그 리뷰 탭 클릭
             try:
                 blog_tab = page.locator("button:has-text('블로그 리뷰')")
-                if await blog_tab.count() > 0:
+                tab_count = await blog_tab.count()
+                logger.info(f"[블로그 HTML] 블로그 탭 개수: {tab_count}")
+                
+                if tab_count > 0:
                     await blog_tab.first.click()
-                    await page.wait_for_timeout(2000)
+                    await page.wait_for_timeout(3000)
                     logger.info(f"[블로그 HTML] 블로그 탭 클릭 완료")
+                else:
+                    logger.warning(f"[블로그 HTML] 블로그 탭을 찾을 수 없음")
             except Exception as e:
-                logger.warning(f"[블로그 HTML] 블로그 탭 클릭 실패: {e}")
+                logger.error(f"[블로그 HTML] 블로그 탭 클릭 예외: {e}", exc_info=True)
             
             # 스크롤하여 더 많은 리뷰 로드
+            logger.info(f"[블로그 HTML] 스크롤 시작: max_pages={max_pages}")
             for i in range(max_pages):
                 await page.mouse.wheel(0, 1000)
                 await page.wait_for_timeout(1500)
-                logger.debug(f"[블로그 HTML] 스크롤 {i+1}/{max_pages}")
+                logger.info(f"[블로그 HTML] 스크롤 {i+1}/{max_pages} 완료")
                 
                 # 더보기 버튼이 있으면 클릭
                 try:
                     more_button = page.locator("button:has-text('더보기'), a:has-text('더보기')")
-                    if await more_button.count() > 0:
+                    button_count = await more_button.count()
+                    if button_count > 0:
                         await more_button.first.click()
                         await page.wait_for_timeout(2000)
+                        logger.info(f"[블로그 HTML] 더보기 버튼 클릭")
                 except:
                     pass
             
             # HTML 파싱
+            logger.info(f"[블로그 HTML] HTML 콘텐츠 추출 시작")
             html = await page.content()
+            logger.info(f"[블로그 HTML] HTML 길이: {len(html)} bytes")
+            
             reviews = self._parse_blog_reviews_from_html(html)
             logger.info(f"[블로그 HTML] 파싱 완료: {len(reviews)}개")
             
@@ -1019,19 +1031,26 @@ class NaverReviewService:
         
         # listitem 요소 찾기 (블로그 리뷰 아이템)
         list_items = soup.find_all('li', role='listitem')
+        logger.info(f"[블로그 HTML] listitem 개수: {len(list_items)}")
         
-        for item in list_items:
+        for idx, item in enumerate(list_items):
             try:
                 # time 태그에서 날짜 추출 (예: "24.7.17.수")
                 time_tag = item.find('time')
                 if not time_tag:
+                    if idx < 3:  # 처음 3개만 로그
+                        logger.debug(f"[블로그 HTML] 아이템 {idx}: time 태그 없음")
                     continue
                 
                 date_str = time_tag.get_text(strip=True)
+                if idx < 3:
+                    logger.debug(f"[블로그 HTML] 아이템 {idx}: date_str={date_str}")
                 
                 # 날짜 파싱 (YY.M.D.요일 형식)
                 review_date = self._parse_blog_review_date_from_text(date_str)
                 if not review_date:
+                    if idx < 3:
+                        logger.debug(f"[블로그 HTML] 아이템 {idx}: 날짜 파싱 실패")
                     continue
                 
                 # 제목 추출 (첫 번째 generic 태그)
@@ -1042,6 +1061,9 @@ class NaverReviewService:
                 author_elem = item.select_one('img[alt="프로필"] + div > div:first-child')
                 author = author_elem.get_text(strip=True) if author_elem else ""
                 
+                if idx < 3:
+                    logger.debug(f"[블로그 HTML] 아이템 {idx}: title={title[:30]}..., author={author}")
+                
                 reviews.append({
                     "date": review_date.isoformat(),
                     "dateString": date_str,
@@ -1050,9 +1072,11 @@ class NaverReviewService:
                 })
                 
             except Exception as e:
-                logger.debug(f"[블로그 HTML] 아이템 파싱 실패: {e}")
+                if idx < 3:
+                    logger.warning(f"[블로그 HTML] 아이템 {idx} 파싱 예외: {e}")
                 continue
         
+        logger.info(f"[블로그 HTML] 최종 파싱 결과: {len(reviews)}개")
         return reviews
     
     def _parse_blog_review_date_from_text(self, date_str: str) -> Optional[datetime]:
