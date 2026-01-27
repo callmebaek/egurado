@@ -294,7 +294,11 @@ export default function ActivationPage() {
                     variant="light" 
                     size="sm"
                   >
-                    {card.value > 0 ? '최근 업데이트' : `${card.days_since_last}일 전`}
+                    {card.days_since_last !== undefined && card.days_since_last !== null && card.days_since_last <= 7
+                      ? `${card.days_since_last}일 전` 
+                      : card.value > 0 
+                        ? '최근 업데이트' 
+                        : `${card.days_since_last || 999}일 전`}
                   </Badge>
                 </>
               ) : null}
