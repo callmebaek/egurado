@@ -242,16 +242,21 @@ class NaverReviewService:
                 response.raise_for_status()
                 
                 data = response.json()
-                logger.debug(f"[블로그 리뷰] GraphQL Response: {data}")
+                logger.info(f"[블로그 리뷰] GraphQL Response type: {type(data)}, data: {str(data)[:500]}...")
                 
                 # 응답은 배열로 오므로 첫 번째 요소를 사용
                 if isinstance(data, list) and len(data) > 0:
+                    logger.info(f"[블로그 리뷰] Response is list, extracting first element")
                     data = data[0]
+                
+                logger.info(f"[블로그 리뷰] After extraction - data keys: {data.keys() if isinstance(data, dict) else 'not a dict'}")
                 
                 # fsasReviews 데이터 추출
                 fsas_reviews = data.get("data", {}).get("fsasReviews")
+                logger.info(f"[블로그 리뷰] fsas_reviews: {fsas_reviews is not None}, type: {type(fsas_reviews)}")
+                
                 if not fsas_reviews:
-                    logger.warning(f"블로그 리뷰 없음: place_id={place_id}")
+                    logger.warning(f"블로그 리뷰 없음: place_id={place_id}, data structure: {str(data)[:200]}")
                     return {
                         "total": 0,
                         "items": [],
