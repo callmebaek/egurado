@@ -192,7 +192,7 @@ export default function ActivationPage() {
       }
 
       const data = await response.json()
-      setActivationData(data)
+      setActivationData(data.data) // API 응답의 data 필드만 추출
     } catch (error) {
       console.error("Error fetching activation data:", error)
       toast({
