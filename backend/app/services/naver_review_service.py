@@ -935,98 +935,42 @@ class NaverReviewService:
         max_pages: int = 15
     ) -> List[Dict[str, Any]]:
         """
-        Playwright로 블로그 리뷰 HTML 파싱 (429 Too Many Requests 회피)
+        httpx로 블로그 리뷰 HTML 파싱 (빠른 방법)
         
         Args:
             place_id: 네이버 플레이스 ID
-            max_pages: 스크롤할 최대 페이지 수
+            max_pages: 사용 안 함 (호환성 유지)
         
         Returns:
             List[Dict]: 블로그 리뷰 목록 (date, title, author 등)
         """
-        from app.core.browser import get_browser_manager
-        
-        reviews = []
-        browser_manager = await get_browser_manager()
-        context = await browser_manager.create_korean_context()
-        
         try:
-            page = await context.new_page()
-            
-            # 블로그 리뷰 페이지로 이동
+            # httpx로 직접 HTML 가져오기 (빠른 방법)
             url = f"https://m.place.naver.com/restaurant/{place_id}/review/ugc"
-            logger.info(f"[블로그 HTML] 페이지 이동: {url}")
-            await page.goto(url, timeout=30000, wait_until="networkidle")
-            await page.wait_for_timeout(3000)
-            logger.info(f"[블로그 HTML] 초기 페이지 로딩 완료")
+            logger.info(f"[블로그 HTML-Fast] HTTP 요청 시작: {url}")
             
-            # 블로그 리뷰 탭 클릭
-            try:
-                blog_tab = page.locator("button:has-text('블로그 리뷰')")
-                tab_count = await blog_tab.count()
-                logger.info(f"[블로그 HTML] 블로그 탭 개수: {tab_count}")
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.get(url, headers=self.headers, follow_redirects=True)
                 
-                if tab_count > 0:
-                    await blog_tab.first.click()
-                    await page.wait_for_timeout(3000)
-                    logger.info(f"[블로그 HTML] 블로그 탭 클릭 완료")
-                else:
-                    logger.warning(f"[블로그 HTML] 블로그 탭을 찾을 수 없음")
-            except Exception as e:
-                logger.error(f"[블로그 HTML] 블로그 탭 클릭 예외: {e}", exc_info=True)
-            
-            # 스크롤하여 더 많은 리뷰 로드
-            logger.info(f"[블로그 HTML] 스크롤 시작: max_pages={max_pages}")
-            for i in range(max_pages):
-                await page.mouse.wheel(0, 1000)
-                await page.wait_for_timeout(1500)
-                logger.info(f"[블로그 HTML] 스크롤 {i+1}/{max_pages} 완료")
+                if response.status_code != 200:
+                    logger.warning(f"[블로그 HTML-Fast] HTTP {response.status_code}")
+                    return []
                 
-                # 더보기 버튼이 있으면 클릭
-                try:
-                    more_button = page.locator("button:has-text('더보기'), a:has-text('더보기')")
-                    button_count = await more_button.count()
-                    if button_count > 0:
-                        await more_button.first.click()
-                        await page.wait_for_timeout(2000)
-                        logger.info(f"[블로그 HTML] 더보기 버튼 클릭")
-                except:
-                    pass
-            
-            # 스크린샷 저장 (디버깅용)
-            try:
-                await page.screenshot(path="/tmp/blog_review_debug.png", full_page=True)
-                logger.info(f"[블로그 HTML] 스크린샷 저장: /tmp/blog_review_debug.png")
-            except Exception as ss_e:
-                logger.warning(f"[블로그 HTML] 스크린샷 실패: {ss_e}")
-            
-            # HTML 파싱
-            logger.info(f"[블로그 HTML] HTML 콘텐츠 추출 시작")
-            html = await page.content()
-            logger.info(f"[블로그 HTML] HTML 길이: {len(html)} bytes")
-            
-            # HTML 일부 저장 (디버깅용)
-            try:
-                with open("/tmp/blog_review_debug.html", "w", encoding="utf-8") as f:
-                    f.write(html[:50000])  # 처음 50KB만
-                logger.info(f"[블로그 HTML] HTML 일부 저장: /tmp/blog_review_debug.html")
-            except Exception as html_e:
-                logger.warning(f"[블로그 HTML] HTML 저장 실패: {html_e}")
-            
-            reviews = self._parse_blog_reviews_from_html(html)
-            logger.info(f"[블로그 HTML] 파싱 완료: {len(reviews)}개")
-            
-            await page.close()
-            await context.close()
-            
-            return reviews
+                html = response.text
+                logger.info(f"[블로그 HTML-Fast] HTML 길이: {len(html)} bytes")
+                
+                # HTML에서 __APOLLO_STATE__ 추출 시도
+                reviews = self._extract_blog_reviews_from_apollo_state(html, place_id)
+                
+                if not reviews:
+                    # Apollo State에 없으면 HTML 파싱 시도
+                    reviews = self._parse_blog_reviews_from_html(html)
+                
+                logger.info(f"[블로그 HTML-Fast] 파싱 완료: {len(reviews)}개")
+                return reviews
             
         except Exception as e:
-            logger.error(f"[블로그 HTML] 예외 발생: {type(e).__name__} - {str(e)}")
-            try:
-                await context.close()
-            except:
-                pass
+            logger.error(f"[블로그 HTML-Fast] 예외 발생: {type(e).__name__} - {str(e)}")
             return []
     
     def _parse_blog_reviews_from_html(self, html: str) -> List[Dict[str, Any]]:
@@ -1094,31 +1038,94 @@ class NaverReviewService:
         logger.info(f"[블로그 HTML] 최종 파싱 결과: {len(reviews)}개")
         return reviews
     
-    def _parse_blog_review_date_from_text(self, date_str: str) -> Optional[datetime]:
+    def _extract_blog_reviews_from_apollo_state(self, html: str, place_id: str) -> List[Dict[str, Any]]:
         """
-        블로그 리뷰 날짜 문자열 파싱 (YY.M.D.요일 형식)
+        HTML에서 __APOLLO_STATE__ 추출하여 블로그 리뷰 가져오기
         
         Args:
-            date_str: 날짜 문자열 (예: "24.7.17.수", "26.1.1.목")
+            html: HTML 문자열
+            place_id: 네이버 플레이스 ID
+        
+        Returns:
+            List[Dict]: 블로그 리뷰 목록
+        """
+        try:
+            # __APOLLO_STATE__ 찾기
+            match = re.search(r'window\.__APOLLO_STATE__\s*=\s*({.+?});', html, re.DOTALL)
+            if not match:
+                logger.debug(f"[블로그 HTML-Fast] __APOLLO_STATE__ 없음")
+                return []
+            
+            apollo_state = json.loads(match.group(1))
+            reviews = []
+            
+            # fsasReviews 키 찾기
+            for key, value in apollo_state.items():
+                if 'fsasReviews' in key and isinstance(value, dict):
+                    items = value.get('items', [])
+                    if isinstance(items, list):
+                        for item in items:
+                            if isinstance(item, dict):
+                                # 날짜 파싱
+                                date_str = item.get('date') or item.get('createdString', '')
+                                if date_str:
+                                    review_date = self._parse_blog_review_date_from_text(date_str)
+                                    if review_date:
+                                        reviews.append({
+                                            'date': review_date.isoformat(),
+                                            'dateString': date_str,
+                                            'title': item.get('title', ''),
+                                            'author': item.get('authorName', '')
+                                        })
+            
+            logger.info(f"[블로그 HTML-Fast] Apollo State에서 {len(reviews)}개 추출")
+            return reviews
+            
+        except Exception as e:
+            logger.warning(f"[블로그 HTML-Fast] Apollo State 파싱 실패: {e}")
+            return []
+    
+    def _parse_blog_review_date_from_text(self, date_str: str) -> Optional[datetime]:
+        """
+        블로그 리뷰 날짜 문자열 파싱
+        
+        지원 형식:
+        - "24.7.17.수", "26.1.1.목" (YY.M.D.요일)
+        - "2025.09.30." (YYYY.MM.DD.)
+        - ISO 형식
+        
+        Args:
+            date_str: 날짜 문자열
         
         Returns:
             datetime 객체 또는 None
         """
         try:
-            # 정규식으로 숫자 추출
+            # 1. ISO 형식 시도
+            if 'T' in date_str or '-' in date_str:
+                try:
+                    dt = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+                    return dt.replace(tzinfo=None)  # naive datetime으로 변환
+                except:
+                    pass
+            
+            # 2. YYYY.MM.DD. 형식 (예: "2025.09.30.")
+            match = re.match(r'(\d{4})\.(\d{1,2})\.(\d{1,2})', date_str)
+            if match:
+                year, month, day = match.groups()
+                return datetime(int(year), int(month), int(day))
+            
+            # 3. YY.M.D.요일 형식 (예: "24.7.17.수")
             match = re.match(r'(\d{2})\.(\d{1,2})\.(\d{1,2})', date_str)
-            if not match:
-                return None
+            if match:
+                year_short, month, day = match.groups()
+                year = 2000 + int(year_short)
+                return datetime(year, int(month), int(day))
             
-            year_short, month, day = match.groups()
-            
-            # 2000년대로 변환 (예: 24 -> 2024, 26 -> 2026)
-            year = 2000 + int(year_short)
-            
-            return datetime(year, int(month), int(day))
+            return None
             
         except Exception as e:
-            logger.warning(f"[블로그 HTML] 날짜 파싱 실패: {date_str}, {e}")
+            logger.debug(f"[블로그 HTML-Fast] 날짜 파싱 실패: {date_str}, {e}")
             return None
 
 
