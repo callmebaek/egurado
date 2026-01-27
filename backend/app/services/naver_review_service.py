@@ -1187,7 +1187,7 @@ class NaverReviewService:
                 response = await client.get(blog_url, headers=self.headers, follow_redirects=True)
                 
                 if response.status_code != 200:
-                    logger.debug(f"[블로그 필터링] HTTP {response.status_code}: {blog_url}")
+                    logger.info(f"[블로그 필터링] HTTP {response.status_code}: {blog_url}")
                     return False
                 
                 html = response.text
@@ -1195,31 +1195,40 @@ class NaverReviewService:
                 
                 # 방법 1: data-linkdata 속성에서 placeId 추출
                 map_links = soup.find_all('a', attrs={'data-linkdata': True})
+                logger.info(f"[블로그 필터링] data-linkdata 링크 {len(map_links)}개 발견: {blog_url}")
+                
+                found_place_ids = []
                 for link in map_links:
                     try:
                         link_data = json.loads(link['data-linkdata'])
                         post_place_id = str(link_data.get('placeId', ''))
+                        if post_place_id:
+                            found_place_ids.append(post_place_id)
                         if post_place_id == place_id:
-                            logger.debug(f"[블로그 필터링] ✅ placeId 일치: {blog_url}")
+                            logger.info(f"[블로그 필터링] ✅ placeId 일치 (data-linkdata): {blog_url}")
                             return True
                     except (json.JSONDecodeError, KeyError):
                         continue
                 
                 # 방법 2: iframe src에서 placeId 추출
                 iframes = soup.find_all('iframe', src=re.compile(r'place\.naver\.com'))
+                logger.info(f"[블로그 필터링] iframe {len(iframes)}개 발견: {blog_url}")
+                
                 for iframe in iframes:
                     src = iframe.get('src', '')
                     if place_id in src:
-                        logger.debug(f"[블로그 필터링] ✅ iframe에서 placeId 일치: {blog_url}")
+                        logger.info(f"[블로그 필터링] ✅ placeId 일치 (iframe): {blog_url}")
                         return True
                 
                 # 방법 3: 직접 링크에서 placeId 확인
                 place_links = soup.find_all('a', href=re.compile(rf'place\.naver\.com.*/place/{place_id}'))
+                logger.info(f"[블로그 필터링] place 링크 {len(place_links)}개 발견: {blog_url}")
+                
                 if place_links:
-                    logger.debug(f"[블로그 필터링] ✅ 링크에서 placeId 일치: {blog_url}")
+                    logger.info(f"[블로그 필터링] ✅ placeId 일치 (링크): {blog_url}")
                     return True
                 
-                logger.debug(f"[블로그 필터링] ❌ placeId 불일치: {blog_url}")
+                logger.info(f"[블로그 필터링] ❌ placeId 불일치 (찾은 placeId: {found_place_ids[:3]}...): {blog_url}")
                 return False
                 
         except asyncio.TimeoutError:
