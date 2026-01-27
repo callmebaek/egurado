@@ -241,16 +241,29 @@ class NaverReviewService:
                 response.raise_for_status()
                 
                 data = response.json()
+                logger.info(f"[블로그 리뷰] API 호출 성공: place_id={place_id}, page={page}")
                 logger.debug(f"[블로그 리뷰] GraphQL Response: {data}")
                 
                 # 응답은 배열로 오므로 첫 번째 요소를 사용
                 if isinstance(data, list) and len(data) > 0:
                     data = data[0]
                 
+                logger.info(f"[블로그 리뷰] 응답 구조 확인: has_data={data.get('data') is not None}, has_errors={data.get('errors') is not None}")
+                
+                # 에러 체크
+                if data.get("errors"):
+                    logger.error(f"[블로그 리뷰] GraphQL 에러: {data.get('errors')}")
+                    return {
+                        "total": 0,
+                        "items": [],
+                        "page": page,
+                        "has_more": False
+                    }
+                
                 # fsasReviews 데이터 추출
                 fsas_reviews = data.get("data", {}).get("fsasReviews")
                 if not fsas_reviews:
-                    logger.warning(f"블로그 리뷰 없음: place_id={place_id}")
+                    logger.warning(f"[블로그 리뷰] fsasReviews 없음: place_id={place_id}, data keys={list(data.keys())}")
                     return {
                         "total": 0,
                         "items": [],
