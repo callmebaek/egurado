@@ -3,6 +3,7 @@
 - 방문자 리뷰 (GraphQL API)
 - 블로그 리뷰 (GraphQL API + HTML 파싱)
 """
+import asyncio
 import httpx
 import logging
 import pytz
@@ -976,6 +977,29 @@ class NaverReviewService:
                 reviews = self._parse_naver_blog_search_html(html)
                 
                 logger.info(f"[블로그 검색] 파싱 완료: {len(reviews)}개")
+                
+                # placeId 필터링 (병렬 처리)
+                if reviews:
+                    logger.info(f"[블로그 필터링] placeId 확인 시작: {place_id}")
+                    
+                    # 병렬로 각 블로그 포스트의 placeId 확인
+                    tasks = [
+                        self._extract_place_id_from_blog_post(review.get('url', ''), place_id)
+                        for review in reviews
+                        if review.get('url')
+                    ]
+                    
+                    results = await asyncio.gather(*tasks, return_exceptions=True)
+                    
+                    # placeId가 일치하는 리뷰만 필터링
+                    filtered_reviews = []
+                    for review, is_match in zip(reviews, results):
+                        if isinstance(is_match, bool) and is_match:
+                            filtered_reviews.append(review)
+                    
+                    logger.info(f"[블로그 필터링] 필터링 완료: {len(filtered_reviews)}개 / {len(reviews)}개")
+                    return filtered_reviews
+                
                 return reviews
             
         except Exception as e:
@@ -1142,6 +1166,68 @@ class NaverReviewService:
         except Exception as e:
             logger.error(f"[블로그 검색] 날짜 파싱 오류: {date_str}, {str(e)}")
             return None
+    
+    async def _extract_place_id_from_blog_post(self, blog_url: str, place_id: str) -> bool:
+        """
+        블로그 포스트에서 placeId 추출하여 일치 여부 확인 (병렬 처리용)
+        
+        Args:
+            blog_url: 블로그 포스트 URL
+            place_id: 확인할 placeId
+        
+        Returns:
+            bool: placeId가 일치하면 True, 아니면 False
+        """
+        try:
+            import json
+            from bs4 import BeautifulSoup
+            
+            # 블로그 포스트 HTML 가져오기
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                response = await client.get(blog_url, headers=self.headers, follow_redirects=True)
+                
+                if response.status_code != 200:
+                    logger.debug(f"[블로그 필터링] HTTP {response.status_code}: {blog_url}")
+                    return False
+                
+                html = response.text
+                soup = BeautifulSoup(html, 'html.parser')
+                
+                # 방법 1: data-linkdata 속성에서 placeId 추출
+                map_links = soup.find_all('a', attrs={'data-linkdata': True})
+                for link in map_links:
+                    try:
+                        link_data = json.loads(link['data-linkdata'])
+                        post_place_id = str(link_data.get('placeId', ''))
+                        if post_place_id == place_id:
+                            logger.debug(f"[블로그 필터링] ✅ placeId 일치: {blog_url}")
+                            return True
+                    except (json.JSONDecodeError, KeyError):
+                        continue
+                
+                # 방법 2: iframe src에서 placeId 추출
+                iframes = soup.find_all('iframe', src=re.compile(r'place\.naver\.com'))
+                for iframe in iframes:
+                    src = iframe.get('src', '')
+                    if place_id in src:
+                        logger.debug(f"[블로그 필터링] ✅ iframe에서 placeId 일치: {blog_url}")
+                        return True
+                
+                # 방법 3: 직접 링크에서 placeId 확인
+                place_links = soup.find_all('a', href=re.compile(rf'place\.naver\.com.*/place/{place_id}'))
+                if place_links:
+                    logger.debug(f"[블로그 필터링] ✅ 링크에서 placeId 일치: {blog_url}")
+                    return True
+                
+                logger.debug(f"[블로그 필터링] ❌ placeId 불일치: {blog_url}")
+                return False
+                
+        except asyncio.TimeoutError:
+            logger.debug(f"[블로그 필터링] Timeout: {blog_url}")
+            return False
+        except Exception as e:
+            logger.debug(f"[블로그 필터링] 예외 {type(e).__name__}: {blog_url}")
+            return False
     
     def _parse_blog_reviews_from_html(self, html: str) -> List[Dict[str, Any]]:
         """
