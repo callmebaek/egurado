@@ -242,7 +242,7 @@ class NaverReviewService:
                 
                 data = response.json()
                 logger.info(f"[블로그 리뷰] API 호출 성공: place_id={place_id}, page={page}")
-                logger.debug(f"[블로그 리뷰] GraphQL Response: {data}")
+                logger.info(f"[블로그 리뷰] ✅ RAW Response: {data}")
                 
                 # 응답은 배열로 오므로 첫 번째 요소를 사용
                 if isinstance(data, list) and len(data) > 0:
@@ -262,6 +262,7 @@ class NaverReviewService:
                 
                 # fsasReviews 데이터 추출
                 fsas_reviews = data.get("data", {}).get("fsasReviews")
+                logger.info(f"[블로그 리뷰] 🔍 fsasReviews 객체: {fsas_reviews}")
                 if not fsas_reviews:
                     logger.warning(f"[블로그 리뷰] fsasReviews 없음: place_id={place_id}, data keys={list(data.keys())}")
                     return {
