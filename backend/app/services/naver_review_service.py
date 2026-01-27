@@ -993,10 +993,25 @@ class NaverReviewService:
                 except:
                     pass
             
+            # 스크린샷 저장 (디버깅용)
+            try:
+                await page.screenshot(path="/tmp/blog_review_debug.png", full_page=True)
+                logger.info(f"[블로그 HTML] 스크린샷 저장: /tmp/blog_review_debug.png")
+            except Exception as ss_e:
+                logger.warning(f"[블로그 HTML] 스크린샷 실패: {ss_e}")
+            
             # HTML 파싱
             logger.info(f"[블로그 HTML] HTML 콘텐츠 추출 시작")
             html = await page.content()
             logger.info(f"[블로그 HTML] HTML 길이: {len(html)} bytes")
+            
+            # HTML 일부 저장 (디버깅용)
+            try:
+                with open("/tmp/blog_review_debug.html", "w", encoding="utf-8") as f:
+                    f.write(html[:50000])  # 처음 50KB만
+                logger.info(f"[블로그 HTML] HTML 일부 저장: /tmp/blog_review_debug.html")
+            except Exception as html_e:
+                logger.warning(f"[블로그 HTML] HTML 저장 실패: {html_e}")
             
             reviews = self._parse_blog_reviews_from_html(html)
             logger.info(f"[블로그 HTML] 파싱 완료: {len(reviews)}개")
