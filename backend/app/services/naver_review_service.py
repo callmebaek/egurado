@@ -1049,25 +1049,29 @@ class NaverReviewService:
                 if not title or len(title) < 5:  # 너무 짧은 제목은 무시
                     continue
                 
-                # === 제목 기반 필터링 ===
+                # === 제목 기반 필터링 (대소문자 무시, 공백 제거) ===
+                title_lower = title.lower().replace(' ', '')
+                store_lower = exact_store_name.lower().replace(' ', '')
+                first_word_lower = first_word_store_name.lower().replace(' ', '') if first_word_store_name else None
+                
                 is_match = False
                 match_reason = ""
                 
                 # 조건 1: 정확한 매장명 포함
-                if exact_store_name in title:
+                if store_lower in title_lower:
                     is_match = True
                     match_reason = "정확한 매장명"
                 
                 # 조건 2: 띄어쓰기 있으면 첫 단어만 체크
-                elif first_word_store_name and first_word_store_name in title:
+                elif first_word_lower and first_word_lower in title_lower:
                     is_match = True
                     match_reason = "첫 단어 매장명"
                 
                 # 조건 3: 매장명 + 주소 키워드 조합
                 elif address_keywords:
                     # 매장명(전체 또는 첫 단어)과 주소 키워드 중 하나라도 함께 있으면 매칭
-                    has_store_name = (exact_store_name in title) or (first_word_store_name and first_word_store_name in title)
-                    has_address = any(keyword in title for keyword in address_keywords)
+                    has_store_name = (store_lower in title_lower) or (first_word_lower and first_word_lower in title_lower)
+                    has_address = any(keyword.lower().replace(' ', '') in title_lower for keyword in address_keywords)
                     
                     if has_store_name and has_address:
                         is_match = True
