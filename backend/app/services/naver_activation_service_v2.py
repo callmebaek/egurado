@@ -123,6 +123,7 @@ class NaverActivationServiceV2:
             }
             
             logger.info(f"[플레이스 활성화 V2] 완료")
+            logger.info(f"[플레이스 활성화 V2] 응답 데이터: visitor_trends={visitor_review_trends is not None}, blog_trends={blog_review_trends is not None}, pending_reply={pending_reply_info is not None}, summary_cards={len(summary_cards) if summary_cards else 0}")
             return result
             
         except Exception as e:
