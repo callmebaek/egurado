@@ -1182,25 +1182,54 @@ class NaverReviewService:
             import json
             from bs4 import BeautifulSoup
             
-            # 블로그 포스트 HTML 가져오기
             async with httpx.AsyncClient(timeout=5.0) as client:
+                # 1단계: 외부 페이지에서 mainFrame iframe 찾기
                 response = await client.get(blog_url, headers=self.headers, follow_redirects=True)
                 
                 if response.status_code != 200:
                     logger.info(f"[블로그 필터링] HTTP {response.status_code}: {blog_url}")
                     return False
                 
-                html = response.text
-                soup = BeautifulSoup(html, 'html.parser')
+                outer_html = response.text
+                outer_soup = BeautifulSoup(outer_html, 'html.parser')
+                
+                # mainFrame iframe 찾기
+                main_frame = outer_soup.find('iframe', id='mainFrame')
+                if not main_frame:
+                    logger.info(f"[블로그 필터링] mainFrame 없음: {blog_url}")
+                    return False
+                
+                # mainFrame src 추출
+                main_frame_src = main_frame.get('src', '')
+                if not main_frame_src:
+                    logger.info(f"[블로그 필터링] mainFrame src 없음: {blog_url}")
+                    return False
+                
+                # 상대 경로면 절대 경로로 변환
+                if not main_frame_src.startswith('http'):
+                    main_frame_src = 'https://blog.naver.com' + main_frame_src
+                
+                # 2단계: mainFrame 컨텐츠 가져오기
+                frame_response = await client.get(main_frame_src, headers=self.headers, follow_redirects=True)
+                
+                if frame_response.status_code != 200:
+                    logger.info(f"[블로그 필터링] mainFrame HTTP {frame_response.status_code}: {blog_url}")
+                    return False
+                
+                frame_html = frame_response.text
+                frame_soup = BeautifulSoup(frame_html, 'html.parser')
+                
+                # 3단계: mainFrame에서 placeId 검색
+                found_place_ids = []
                 
                 # 방법 1: data-linkdata 속성에서 placeId 추출
-                map_links = soup.find_all('a', attrs={'data-linkdata': True})
+                map_links = frame_soup.find_all('a', attrs={'data-linkdata': True})
                 logger.info(f"[블로그 필터링] data-linkdata 링크 {len(map_links)}개 발견: {blog_url}")
                 
-                found_place_ids = []
                 for link in map_links:
                     try:
-                        link_data = json.loads(link['data-linkdata'])
+                        link_data_str = link['data-linkdata'].replace('&quot;', '"')
+                        link_data = json.loads(link_data_str)
                         post_place_id = str(link_data.get('placeId', ''))
                         if post_place_id:
                             found_place_ids.append(post_place_id)
@@ -1211,7 +1240,7 @@ class NaverReviewService:
                         continue
                 
                 # 방법 2: iframe src에서 placeId 추출
-                iframes = soup.find_all('iframe', src=re.compile(r'place\.naver\.com'))
+                iframes = frame_soup.find_all('iframe', src=re.compile(r'place\.naver\.com'))
                 logger.info(f"[블로그 필터링] iframe {len(iframes)}개 발견: {blog_url}")
                 
                 for iframe in iframes:
@@ -1221,7 +1250,7 @@ class NaverReviewService:
                         return True
                 
                 # 방법 3: 직접 링크에서 placeId 확인
-                place_links = soup.find_all('a', href=re.compile(rf'place\.naver\.com.*/place/{place_id}'))
+                place_links = frame_soup.find_all('a', href=re.compile(rf'place\.naver\.com.*/place/{place_id}'))
                 logger.info(f"[블로그 필터링] place 링크 {len(place_links)}개 발견: {blog_url}")
                 
                 if place_links:
