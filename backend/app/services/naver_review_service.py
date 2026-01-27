@@ -986,6 +986,41 @@ class NaverReviewService:
             logger.error(f"[블로그 검색] 예외 발생: {type(e).__name__} - {str(e)}", exc_info=True)
             return []
     
+    def _extract_district_from_address(self, address: str) -> Optional[str]:
+        """
+        주소에서 지역구 이름 추출
+        
+        Args:
+            address: 도로명주소 (예: "서울특별시 중랑구 면목천로6길 22")
+        
+        Returns:
+            Optional[str]: 지역구 이름 (예: "중랑구") 또는 None
+        """
+        if not address:
+            return None
+        
+        try:
+            # "구"로 끝나는 단어 찾기 (예: 중랑구, 강남구, 분당구)
+            match = re.search(r'(\S+구)', address)
+            if match:
+                district = match.group(1)
+                logger.debug(f"[주소 파싱] 지역구 추출 성공: '{address}' → '{district}'")
+                return district
+            
+            # "구"가 없으면 "군" 찾기 (예: 양평군, 가평군)
+            match = re.search(r'(\S+군)', address)
+            if match:
+                district = match.group(1)
+                logger.debug(f"[주소 파싱] 지역구 추출 성공 (군): '{address}' → '{district}'")
+                return district
+            
+            logger.debug(f"[주소 파싱] 지역구 추출 실패: '{address}'")
+            return None
+        
+        except Exception as e:
+            logger.warning(f"[주소 파싱] 예외 발생: {str(e)}")
+            return None
+    
     def _parse_naver_blog_search_html(
         self, 
         html: str,
@@ -1020,16 +1055,10 @@ class NaverReviewService:
         # 2. 띄어쓰기가 있으면 첫 단어만
         first_word_store_name = exact_store_name.split()[0] if ' ' in exact_store_name else None
         
-        # 3. 도로명주소에서 주요 키워드 추출 (예: "서울특별시 중랑구 면목동" -> "중랑구", "면목동")
-        address_keywords = []
-        if road_address:
-            # "시", "구", "동", "로", "길" 등이 포함된 단어 추출
-            parts = road_address.split()
-            for part in parts:
-                if any(suffix in part for suffix in ['구', '동', '로', '길']):
-                    address_keywords.append(part)
+        # 3. 지역구 이름 추출 (예: "서울특별시 중랑구 면목천로6길 22" -> "중랑구")
+        district = self._extract_district_from_address(road_address) if road_address else None
         
-        logger.info(f"[블로그 필터링] 매장명: '{exact_store_name}', 첫 단어: '{first_word_store_name}', 주소 키워드: {address_keywords}")
+        logger.info(f"[블로그 필터링] 매장명: '{exact_store_name}', 첫 단어: '{first_word_store_name}', 지역구: '{district}'")
         
         processed_urls = set()  # 중복 방지
         
@@ -1067,15 +1096,16 @@ class NaverReviewService:
                     is_match = True
                     match_reason = "첫 단어 매장명"
                 
-                # 조건 3: 매장명 + 주소 키워드 조합
-                elif address_keywords:
-                    # 매장명(전체 또는 첫 단어)과 주소 키워드 중 하나라도 함께 있으면 매칭
+                # 조건 3: 매장명 + 지역구 조합
+                elif district:
+                    # 매장명(전체 또는 첫 단어)과 지역구가 함께 있으면 매칭
                     has_store_name = (store_lower in title_lower) or (first_word_lower and first_word_lower in title_lower)
-                    has_address = any(keyword.lower().replace(' ', '') in title_lower for keyword in address_keywords)
+                    district_lower = district.lower().replace(' ', '')
+                    has_district = district_lower in title_lower
                     
-                    if has_store_name and has_address:
+                    if has_store_name and has_district:
                         is_match = True
-                        match_reason = "매장명+주소"
+                        match_reason = f"매장명+지역구({district})"
                 
                 if not is_match:
                     filtered_count += 1
