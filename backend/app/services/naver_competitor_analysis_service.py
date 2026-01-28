@@ -230,8 +230,12 @@ class NaverCompetitorAnalysisService:
                 logger.warning(f"[경쟁분석] 순위 {idx} 매장 ID 없음")
                 continue
             
-            # 분석 실행
-            result = await self.analyze_competitor(place_id, idx)
+            # 분석 실행 (store_name 전달)
+            result = await self.analyze_competitor(
+                place_id=place_id,
+                rank=idx,
+                store_name=store.get("name", "")
+            )
             
             if result:
                 analyzed_stores.append(result)
@@ -652,10 +656,9 @@ class NaverCompetitorAnalysisService:
                 if not reviews_data or not reviews_data.get("items"):
                     logger.warning(f"[경쟁분석] 리뷰 API 실패 (페이지 {page+1})")
                     if page == 0:
-                        # 첫 페이지부터 실패하면 추정값 사용
-                        estimated = (total_visitor_review_count / 365 * 7) if total_visitor_review_count > 0 else 0
-                        logger.info(f"[경쟁분석] 방문자리뷰 7일 추정값 사용: {estimated:.1f}개")
-                        return estimated
+                        # 첫 페이지부터 실패하면 0 반환
+                        logger.info(f"[경쟁분석] 방문자리뷰 7일: 0개 (API 실패)")
+                        return 0.0
                     else:
                         break
                 
@@ -688,9 +691,8 @@ class NaverCompetitorAnalysisService:
                     break
             
             if not all_reviews:
-                logger.warning(f"[경쟁분석] 리뷰 없음, 추정값 사용")
-                estimated = (total_visitor_review_count / 365 * 7) if total_visitor_review_count > 0 else 0
-                return estimated
+                logger.warning(f"[경쟁분석] 리뷰 없음, 0으로 처리")
+                return 0.0
             
             # 7일 이내 리뷰 개수 계산
             count_7d = 0
@@ -722,8 +724,9 @@ class NaverCompetitorAnalysisService:
             
         except Exception as e:
             logger.error(f"[경쟁분석] 방문자리뷰 계산 실패: {str(e)}")
-            estimated = (total_visitor_review_count / 365 * 7) if total_visitor_review_count > 0 else 0
-            return estimated
+            import traceback
+            logger.error(f"[경쟁분석] Traceback:\n{traceback.format_exc()}")
+            return 0.0
     
     async def _calculate_blog_reviews_accurate(
         self,
@@ -745,6 +748,8 @@ class NaverCompetitorAnalysisService:
             7일간 리뷰 수
         """
         try:
+            logger.info(f"[경쟁분석] 블로그 리뷰 계산 시작 - place_id={place_id}, store_name={store_name}, road_address={road_address}")
+            
             # HTML 파싱으로 블로그 리뷰 가져오기 (7일치만 필요하므로 조기 종료 활용)
             all_reviews = await self.review_service.get_blog_reviews_html(
                 place_id=place_id,
@@ -753,6 +758,8 @@ class NaverCompetitorAnalysisService:
                 max_pages=3,  # 7일치는 보통 1-2페이지에 있음 (속도 최적화)
                 target_days=7  # 7일 이전 블로그 발견 시 조기 종료
             )
+            
+            logger.info(f"[경쟁분석] 블로그 리뷰 HTML 파싱 결과: {len(all_reviews) if all_reviews else 0}개")
             
             if not all_reviews:
                 logger.warning(f"[경쟁분석] 블로그 리뷰 파싱 실패, 0으로 처리")
