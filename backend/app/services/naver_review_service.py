@@ -1018,9 +1018,10 @@ class NaverReviewService:
                         oldest_date_in_page = None
                         checked_dates = 0
                         
-                        # 페이지 내 모든 블로그 링크의 날짜를 확인 (최대 30개)
+                        # 페이지 내 일부 블로그 링크의 날짜만 샘플링 확인 (속도 최적화)
+                        # 최대 5개만 확인하여 빠르게 60일 기준 확인
                         for link_idx, link in enumerate(blog_links_in_page):
-                            if link_idx >= 30:  # 최대 30개까지 (한 페이지당 약 30개 블로그)
+                            if link_idx >= 5:  # 최대 5개까지 샘플링 (속도 최적화)
                                 break
                             
                             try:
@@ -1052,11 +1053,21 @@ class NaverReviewService:
                                                 if oldest_date_in_page is None or parsed_date < oldest_date_in_page:
                                                     oldest_date_in_page = parsed_date
                                                 date_found_for_link = True  # 이 링크의 날짜를 찾았음
+                                                
+                                                # 조기 종료: 60일 이전 날짜 발견 시 더 이상 확인 안 함
+                                                if parsed_date <= cutoff_date:
+                                                    logger.debug(f"[블로그 검색] 조기 발견: {(datetime.now(timezone.utc) - parsed_date).days}일 전 블로그 (샘플 {link_idx+1}번째)")
+                                                    break  # 이 링크의 다른 날짜는 확인하지 않음
                                                 break  # 이 링크의 다른 날짜는 확인하지 않음
                                     
                                     if date_found_for_link:
                                         break  # 이 링크의 부모를 더 탐색하지 않음
                                     parent = parent.parent
+                                
+                                # 60일 이전 날짜를 이미 찾았으면 다음 링크 확인 불필요
+                                if oldest_date_in_page and oldest_date_in_page <= cutoff_date:
+                                    break
+                                    
                             except:
                                 continue
                         
