@@ -250,7 +250,7 @@ export function RankTrackingModal({ opened, onClose, onComplete }: RankTrackingM
 
     // Step 6: 완료 - 키워드 순위 추적 페이지로 이동
     if (currentStep === 6) {
-      router.push('/dashboard/naver/rank')
+      router.push('/dashboard/naver/metrics-tracker')
       handleClose()
       return
     }
