@@ -1,6 +1,20 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import {
+  Modal,
+  Stack,
+  Text,
+  Button,
+  Paper,
+  Group,
+  Progress,
+  Alert,
+  ThemeIcon,
+  Grid,
+  Center,
+  Loader,
+} from '@mantine/core';
 import { 
   Store, 
   Loader2, 
@@ -14,7 +28,6 @@ import {
   ChevronRight,
   TrendingUp
 } from 'lucide-react';
-import OnboardingModal from './OnboardingModal';
 import { api } from '@/lib/config';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
@@ -248,255 +261,264 @@ export default function ReviewAnalysisModal({
 
   // Step 1: 매장 선택
   const renderStep1 = () => (
-    <div className="space-y-4">
-      <div className="text-center mb-6">
-        <MessageSquare className="w-16 h-16 text-blue-600 mx-auto mb-4" />
-        <h3 className="text-xl font-bold text-gray-900 mb-2">
-          어떤 매장의 리뷰를 분석할까요?
-        </h3>
-        <p className="text-sm text-gray-600">
-          AI가 고객 리뷰를 분석하여 긍정/부정 감성과 핵심 인사이트를 도출해드려요
-        </p>
-      </div>
+    <Stack gap="md">
+      <Text size="lg" fw={600} ta="center">
+        어떤 매장의 리뷰를 분석할까요?
+      </Text>
+      <Text size="sm" c="dimmed" ta="center">
+        AI가 고객 리뷰를 분석하여 긍정/부정 감성과 핵심 인사이트를 도출해드려요
+      </Text>
 
       {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-        </div>
+        <Center style={{ minHeight: 200 }}>
+          <Loader size="lg" />
+        </Center>
       ) : stores.length === 0 ? (
-        <div className="text-center py-8">
-          <Store className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <p className="text-gray-600">{error || '등록된 매장이 없습니다'}</p>
-        </div>
+        <Alert color="yellow" title="등록된 매장이 없습니다">
+          먼저 네이버 플레이스 매장을 등록해주세요
+        </Alert>
       ) : (
-        <div className="space-y-3 max-h-96 overflow-y-auto">
+        <Grid gutter="md">
           {stores.map((store) => (
-            <button
-              key={store.id}
-              onClick={() => setSelectedStore(store)}
-              className={`
-                w-full p-4 border-2 rounded-lg text-left transition-all
-                ${selectedStore?.id === store.id
-                  ? 'border-blue-500 bg-blue-50'
-                  : 'border-gray-200 hover:border-blue-300 bg-white'
-                }
-              `}
-            >
-              <div className="flex items-center gap-3">
-                {store.thumbnail ? (
-                  <img 
-                    src={store.thumbnail} 
-                    alt={store.name}
-                    className="w-12 h-12 rounded object-cover"
-                  />
-                ) : (
-                  <div className="w-12 h-12 rounded bg-blue-100 flex items-center justify-center">
-                    <Store className="w-6 h-6 text-blue-600" />
+            <Grid.Col key={store.id} span={{ base: 12, sm: 6 }}>
+              <Paper
+                p="md"
+                radius="md"
+                style={{
+                  cursor: 'pointer',
+                  border: selectedStore?.id === store.id ? '2px solid #635bff' : '1px solid #e0e7ff',
+                  background: selectedStore?.id === store.id ? 'linear-gradient(135deg, #f0f4ff 0%, #e8eeff 100%)' : '#ffffff',
+                  transition: 'all 0.2s'
+                }}
+                onClick={() => setSelectedStore(store)}
+              >
+                <Group gap="md">
+                  {store.thumbnail ? (
+                    <img 
+                      src={store.thumbnail} 
+                      alt={store.name}
+                      style={{ width: 48, height: 48, borderRadius: 8, objectFit: 'cover' }}
+                    />
+                  ) : (
+                    <ThemeIcon size={48} radius="md" variant="light" color="brand">
+                      <Store size={24} />
+                    </ThemeIcon>
+                  )}
+                  <div style={{ flex: 1 }}>
+                    <Text fw={600} size="sm">{store.name}</Text>
+                    <Text size="xs" c="dimmed">{store.address}</Text>
                   </div>
-                )}
-                <div className="flex-1">
-                  <div className="font-semibold text-gray-900">{store.name}</div>
-                  <div className="text-xs text-gray-500 mt-0.5">{store.address}</div>
-                </div>
-                {selectedStore?.id === store.id && (
-                  <CheckCircle2 className="w-6 h-6 text-blue-600 flex-shrink-0" />
-                )}
-              </div>
-            </button>
+                  {selectedStore?.id === store.id && (
+                    <ThemeIcon size={32} radius="xl" color="brand">
+                      <CheckCircle2 size={20} />
+                    </ThemeIcon>
+                  )}
+                </Group>
+              </Paper>
+            </Grid.Col>
           ))}
-        </div>
+        </Grid>
       )}
 
-      {error && stores.length > 0 && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-lg mt-4">
-          <p className="text-sm text-red-600 font-semibold">{error}</p>
-        </div>
+      {error && (
+        <Alert color="red" title="오류">
+          {error}
+        </Alert>
       )}
-    </div>
+    </Stack>
   );
 
   // Step 2: 기간 선택
   const renderStep2 = () => (
-    <div className="space-y-4">
-      <div className="text-center mb-6">
-        <Calendar className="w-16 h-16 text-purple-600 mx-auto mb-4" />
-        <h3 className="text-xl font-bold text-gray-900 mb-2">
-          어느 기간의 리뷰를 분석할까요?
-        </h3>
-        <p className="text-sm text-gray-600">
-          기간이 짧을수록 더 빨리 결과를 확인할 수 있어요
-        </p>
-      </div>
+    <Stack gap="md">
+      <Text size="lg" fw={600} ta="center">
+        어느 기간의 리뷰를 분석할까요?
+      </Text>
+      <Text size="sm" c="dimmed" ta="center">
+        기간이 짧을수록 더 빨리 결과를 확인할 수 있어요
+      </Text>
 
-      <div className="space-y-3">
+      <Stack gap="xs">
         {['today', 'yesterday', 'last7days', 'last30days'].map((period) => (
-          <button
+          <Paper
             key={period}
+            p="md"
+            radius="md"
+            style={{
+              cursor: 'pointer',
+              border: datePeriod === period ? '2px solid #635bff' : '1px solid #e0e7ff',
+              background: datePeriod === period ? 'linear-gradient(135deg, #f0f4ff 0%, #e8eeff 100%)' : '#ffffff',
+              transition: 'all 0.2s'
+            }}
             onClick={() => setDatePeriod(period)}
-            className={`
-              w-full p-4 border-2 rounded-lg text-left transition-all
-              ${datePeriod === period
-                ? 'border-purple-500 bg-purple-50'
-                : 'border-gray-200 hover:border-purple-300 bg-white'
-              }
-            `}
           >
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <div className="font-semibold text-gray-900 mb-1">
+            <Group justify="space-between">
+              <div style={{ flex: 1 }}>
+                <Text fw={600} mb={4}>
                   {getPeriodLabel(period)}
-                </div>
-                <div className="text-xs text-gray-500">
+                </Text>
+                <Text size="xs" c="dimmed">
                   {getPeriodDescription(period)}
-                </div>
+                </Text>
               </div>
               {datePeriod === period && (
-                <CheckCircle2 className="w-6 h-6 text-purple-600 flex-shrink-0 ml-3" />
+                <ThemeIcon size={28} radius="xl" color="brand">
+                  <CheckCircle2 size={18} />
+                </ThemeIcon>
               )}
-            </div>
-          </button>
+            </Group>
+          </Paper>
         ))}
-      </div>
+      </Stack>
 
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
-        <p className="text-sm text-blue-800">
-          💡 <strong>Tip:</strong> 짧은 기간을 선택하면 빠르게 최신 트렌드를 파악할 수 있어요!
-        </p>
-      </div>
+      <Alert color="blue" title="💡 입력 팁">
+        <Text size="xs">
+          짧은 기간을 선택하면 빠르게 최신 트렌드를 파악할 수 있어요!
+        </Text>
+      </Alert>
 
       {error && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-lg mt-4">
-          <p className="text-sm text-red-600 font-semibold">{error}</p>
-        </div>
+        <Alert color="red" title="오류">
+          {error}
+        </Alert>
       )}
-    </div>
+    </Stack>
   );
 
   // Step 3: 리뷰 추출 중
   const renderStep3 = () => (
-    <div className="flex flex-col items-center justify-center py-12 space-y-6">
-      <div className="relative">
-        <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center">
-          <Loader2 className="w-12 h-12 text-blue-600 animate-spin" />
-        </div>
-      </div>
+    <Stack gap="xl" align="center">
+      <ThemeIcon size={80} radius="xl" color="brand" variant="light">
+        <Loader2 size={40} className="animate-spin" />
+      </ThemeIcon>
       
-      <div className="text-center">
-        <h3 className="text-xl font-bold text-gray-900 mb-2">
+      <div style={{ textAlign: 'center' }}>
+        <Text size="xl" fw={700} mb="xs">
           리뷰를 추출하고 있어요
-        </h3>
-        <p className="text-sm text-gray-600">
+        </Text>
+        <Text size="sm" c="dimmed">
           선택한 기간의 리뷰를 정확하게 가져오는 중입니다...
-        </p>
+        </Text>
       </div>
 
-      <div className="text-xs text-gray-400">
+      <Text size="xs" c="dimmed">
         기간: {getPeriodLabel(datePeriod)}
-      </div>
-    </div>
+      </Text>
+    </Stack>
   );
 
   // Step 4: 결과 미리보기
   const renderStep4 = () => (
-    <div className="space-y-6">
-      <div className="text-center">
-        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-green-100 to-blue-100 flex items-center justify-center mx-auto mb-4">
-          <CheckCircle2 className="w-8 h-8 text-green-600" />
-        </div>
-        <h3 className="text-xl font-bold text-gray-900 mb-2">
+    <Stack gap="md">
+      <div style={{ textAlign: 'center' }}>
+        <ThemeIcon size={60} radius="xl" color="brand" variant="light" style={{ margin: '0 auto 1rem' }}>
+          <CheckCircle2 size={30} />
+        </ThemeIcon>
+        <Text size="xl" fw={700} mb="xs">
           리뷰를 추출했어요! 🎉
-        </h3>
-        <p className="text-sm text-gray-600">
+        </Text>
+        <Text size="sm" c="dimmed">
           기본 통계를 확인하고, AI 분석을 시작하세요
-        </p>
+        </Text>
       </div>
 
       {/* 통계 카드 */}
-      <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl p-6 border border-blue-200">
-        <div className="grid grid-cols-4 gap-4">
-          {/* 전체 리뷰 */}
-          <div className="text-center p-4 bg-white rounded-lg shadow-sm">
-            <MessageSquare className="w-6 h-6 text-blue-600 mx-auto mb-2" />
-            <div className="text-2xl font-bold text-gray-900">{reviewStats?.total || 0}</div>
-            <div className="text-xs text-gray-600 mt-1">전체</div>
-          </div>
+      <Paper p="lg" radius="md" style={{ 
+        border: '1px solid #e0e7ff',
+        background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)'
+      }}>
+        <Group grow>
+          <Paper p="md" radius="md" style={{ textAlign: 'center' }}>
+            <ThemeIcon size={32} radius="md" variant="light" color="blue" style={{ margin: '0 auto 0.5rem' }}>
+              <MessageSquare size={18} />
+            </ThemeIcon>
+            <Text size="xl" fw={700}>{reviewStats?.total || 0}</Text>
+            <Text size="xs" c="dimmed" mt={4}>전체</Text>
+          </Paper>
           
-          {/* 긍정 리뷰 */}
-          <div className="text-center p-4 bg-white rounded-lg shadow-sm border border-green-200">
-            <ThumbsUp className="w-6 h-6 text-green-600 mx-auto mb-2" />
-            <div className="text-2xl font-bold text-green-600">{reviewStats?.positive || 0}</div>
-            <div className="text-xs text-gray-600 mt-1">긍정</div>
-          </div>
+          <Paper p="md" radius="md" style={{ textAlign: 'center', border: '1px solid #d1fae5' }}>
+            <ThemeIcon size={32} radius="md" variant="light" color="green" style={{ margin: '0 auto 0.5rem' }}>
+              <ThumbsUp size={18} />
+            </ThemeIcon>
+            <Text size="xl" fw={700} c="green">{reviewStats?.positive || 0}</Text>
+            <Text size="xs" c="dimmed" mt={4}>긍정</Text>
+          </Paper>
           
-          {/* 중립 리뷰 */}
-          <div className="text-center p-4 bg-white rounded-lg shadow-sm border border-gray-200">
-            <Minus className="w-6 h-6 text-gray-600 mx-auto mb-2" />
-            <div className="text-2xl font-bold text-gray-600">{reviewStats?.neutral || 0}</div>
-            <div className="text-xs text-gray-600 mt-1">중립</div>
-          </div>
+          <Paper p="md" radius="md" style={{ textAlign: 'center' }}>
+            <ThemeIcon size={32} radius="md" variant="light" color="gray" style={{ margin: '0 auto 0.5rem' }}>
+              <Minus size={18} />
+            </ThemeIcon>
+            <Text size="xl" fw={700} c="gray">{reviewStats?.neutral || 0}</Text>
+            <Text size="xs" c="dimmed" mt={4}>중립</Text>
+          </Paper>
           
-          {/* 부정 리뷰 */}
-          <div className="text-center p-4 bg-white rounded-lg shadow-sm border border-red-200">
-            <ThumbsDown className="w-6 h-6 text-red-600 mx-auto mb-2" />
-            <div className="text-2xl font-bold text-red-600">{reviewStats?.negative || 0}</div>
-            <div className="text-xs text-gray-600 mt-1">부정</div>
-          </div>
-        </div>
-      </div>
+          <Paper p="md" radius="md" style={{ textAlign: 'center', border: '1px solid #fecaca' }}>
+            <ThemeIcon size={32} radius="md" variant="light" color="red" style={{ margin: '0 auto 0.5rem' }}>
+              <ThumbsDown size={18} />
+            </ThemeIcon>
+            <Text size="xl" fw={700} c="red">{reviewStats?.negative || 0}</Text>
+            <Text size="xs" c="dimmed" mt={4}>부정</Text>
+          </Paper>
+        </Group>
+      </Paper>
 
       {/* 안내 메시지 */}
-      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-        <div className="flex items-start gap-3">
-          <Sparkles className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-          <div>
-            <p className="text-sm text-yellow-800 font-medium mb-1">
-              AI 분석이 필요해요
-            </p>
-            <p className="text-xs text-yellow-700">
-              리뷰 온도, 감성 분석, 핵심 키워드 추출 등 상세한 분석은 "리뷰 분석하기" 버튼을 눌러 시작할 수 있어요.
-            </p>
-          </div>
-        </div>
-      </div>
+      <Alert color="yellow" title="AI 분석이 필요해요">
+        <Text size="sm">
+          리뷰 온도, 감성 분석, 핵심 키워드 추출 등 상세한 분석은 "리뷰 분석하기" 버튼을 눌러 시작할 수 있어요.
+        </Text>
+      </Alert>
 
       {/* 선택된 정보 요약 */}
-      <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-        <div className="text-xs text-gray-600 space-y-2">
-          <div className="flex items-center justify-between">
-            <span>매장</span>
-            <span className="font-medium text-gray-900">{selectedStore?.name}</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span>기간</span>
-            <span className="font-medium text-gray-900">{getPeriodLabel(datePeriod)}</span>
-          </div>
-        </div>
-      </div>
-    </div>
+      <Paper p="md" radius="md" style={{ background: '#f9fafb' }}>
+        <Stack gap="xs">
+          <Group justify="space-between">
+            <Text size="sm" c="dimmed">매장</Text>
+            <Text size="sm" fw={600}>{selectedStore?.name}</Text>
+          </Group>
+          <Group justify="space-between">
+            <Text size="sm" c="dimmed">기간</Text>
+            <Text size="sm" fw={600}>{getPeriodLabel(datePeriod)}</Text>
+          </Group>
+        </Stack>
+      </Paper>
+    </Stack>
   );
 
   return (
-    <OnboardingModal isOpen={isOpen} onClose={handleClose}>
-      <div className="p-6 space-y-6">
-        {/* 진행률 */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="text-sm font-semibold text-gray-700">
-            {currentStep < 3 ? `${currentStep} / ${totalSteps - 1} 단계` : currentStep === 3 ? '추출 중' : '완료'}
-          </div>
-          <div className="text-xs text-gray-500">
-            {Math.round((currentStep / totalSteps) * 100)}%
-          </div>
-        </div>
-        
-        <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-          <div 
-            className="bg-gradient-to-r from-blue-500 to-purple-600 h-2 rounded-full transition-all duration-500"
-            style={{ width: `${(currentStep / totalSteps) * 100}%` }}
+    <Modal
+      opened={isOpen}
+      onClose={handleClose}
+      size="lg"
+      centered
+      withCloseButton={false}
+      styles={{
+        header: {
+          background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+        }
+      }}
+    >
+      <Stack gap="xl" p="md">
+        {/* 진행률 표시 */}
+        <div>
+          <Group justify="space-between" mb="xs">
+            <Text size="sm" fw={600} c="brand">
+              {currentStep < 3 ? `${currentStep} / ${totalSteps - 1} 단계` : currentStep === 3 ? '추출 중' : '완료'}
+            </Text>
+            <Text size="sm" c="dimmed">
+              {Math.round((currentStep / totalSteps) * 100)}%
+            </Text>
+          </Group>
+          <Progress 
+            value={(currentStep / totalSteps) * 100} 
+            color="brand"
+            size="sm"
+            radius="xl"
           />
         </div>
 
         {/* 단계별 콘텐츠 */}
-        <div className="min-h-[400px]">
+        <div style={{ minHeight: 400 }}>
           {currentStep === 1 && renderStep1()}
           {currentStep === 2 && renderStep2()}
           {currentStep === 3 && renderStep3()}
@@ -505,44 +527,32 @@ export default function ReviewAnalysisModal({
 
         {/* 버튼 */}
         {currentStep !== 3 && (
-          <div className="flex items-center justify-between pt-4 border-t">
+          <Group justify="space-between">
             {currentStep > 1 && currentStep < 4 ? (
-              <button
+              <Button 
+                variant="light" 
+                color="gray"
                 onClick={handleBack}
-                className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
               >
                 이전
-              </button>
+              </Button>
             ) : (
               <div />
             )}
-
-            <button
+            
+            <Button
+              variant="gradient"
+              gradient={{ from: 'brand', to: 'brand.7', deg: 135 }}
               onClick={handleNext}
               disabled={loading || extracting || (currentStep === 1 && !selectedStore)}
-              className={`
-                px-6 py-2.5 rounded-lg font-medium transition-all flex items-center gap-2
-                ${loading || extracting || (currentStep === 1 && !selectedStore)
-                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700'
-                }
-              `}
+              rightSection={currentStep < 4 ? <ChevronRight size={16} /> : <TrendingUp size={16} />}
+              style={{ minWidth: 120 }}
             >
-              {currentStep === 4 ? (
-                <>
-                  <TrendingUp className="w-4 h-4" />
-                  리뷰 분석하기
-                </>
-              ) : (
-                <>
-                  다음
-                  <ChevronRight className="w-4 h-4" />
-                </>
-              )}
-            </button>
-          </div>
+              {currentStep === 4 ? '리뷰 분석하기' : '다음'}
+            </Button>
+          </Group>
         )}
-      </div>
-    </OnboardingModal>
+      </Stack>
+    </Modal>
   );
 }
