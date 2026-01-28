@@ -11,13 +11,6 @@ import { Loader2 } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { useAuth } from "@/lib/auth-context"
 import { startKakaoLogin, startNaverLogin } from "@/lib/social-login"
-import { Noto_Serif_KR } from 'next/font/google'
-
-const notoSerifKR = Noto_Serif_KR({ 
-  subsets: ['latin'],
-  weight: ['400', '700'],
-  display: 'swap',
-})
 
 // 동적 렌더링 강제
 export const dynamic = 'force-dynamic'
@@ -130,7 +123,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-white p-4">
-      <div className="w-full max-w-md space-y-6">
+      <div className="w-full max-w-md">
         <Card className="w-full">
           <CardHeader className="space-y-1">
             <div className="flex justify-center mb-6">
@@ -142,6 +135,20 @@ export default function LoginPage() {
                 priority
                 className="w-full max-w-xs h-auto"
               />
+            </div>
+            
+            {/* 명언 */}
+            <div className="text-center px-2 pb-4">
+              <p 
+                className={`text-sm text-gray-500 leading-relaxed transition-opacity duration-500 ${
+                  fadeIn ? 'opacity-100' : 'opacity-0'
+                }`}
+                style={{ 
+                  minHeight: '2.5rem'
+                }}
+              >
+                {currentQuote}
+              </p>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -257,20 +264,6 @@ export default function LoginPage() {
           </div>
         </CardContent>
       </Card>
-
-      {/* 명언 */}
-      <div className="text-center px-4">
-        <p 
-          className={`${notoSerifKR.className} text-lg sm:text-xl text-gray-700 leading-relaxed transition-opacity duration-500 ${
-            fadeIn ? 'opacity-100' : 'opacity-0'
-          }`}
-          style={{ 
-            minHeight: '3rem'
-          }}
-        >
-          &ldquo;{currentQuote}&rdquo;
-        </p>
-      </div>
       </div>
     </div>
   )
