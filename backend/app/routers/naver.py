@@ -1741,7 +1741,8 @@ async def generate_description(
             )
         
         # 2. LLM으로 업체소개글 생성
-        from app.services.llm_reply_service import llm_reply_service
+        from app.services.llm_reply_service import LLMReplyService
+        llm_service = LLMReplyService()
         
         # 새로운 필드가 제공된 경우 SEO 최적화 프롬프트 사용
         if request.region_keyword or request.landmark_keywords or request.business_type_keyword:
@@ -1859,7 +1860,7 @@ async def generate_description(
 
 업체소개글:"""
 
-        generated_text = await llm_reply_service.generate_reply_with_llm(
+        generated_text = await llm_service.generate_reply_with_llm(
             system_prompt=system_prompt,
             user_message=user_message,
             temperature=0.7
@@ -1917,7 +1918,8 @@ async def generate_directions(
             )
         
         # 2. LLM으로 찾아오는길 생성
-        from app.services.llm_reply_service import llm_reply_service
+        from app.services.llm_reply_service import LLMReplyService
+        llm_service = LLMReplyService()
         
         system_prompt = """당신은 네이버 플레이스 SEO 전문가입니다. 
 찾아오는길을 작성할 때 다음 가이드라인을 따르세요:
@@ -1942,7 +1944,7 @@ async def generate_directions(
 
 찾아오는길:"""
 
-        generated_text = await llm_reply_service.generate_reply_with_llm(
+        generated_text = await llm_service.generate_reply_with_llm(
             system_prompt=system_prompt,
             user_message=user_message,
             temperature=0.7

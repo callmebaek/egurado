@@ -47,7 +47,8 @@ import {
   CreditCard,
   Calendar,
   MessageCircle,
-  Award
+  Award,
+  Copy
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/components/ui/use-toast'
@@ -1379,20 +1380,39 @@ export default function ActivationPage() {
           
           {generatedText && (
             <Paper p="md" withBorder bg="gray.0">
-              <Stack gap="xs">
-                <Group justify="space-between">
+              <Stack gap="md">
+                <Group justify="space-between" align="flex-start">
                   <Text size="sm" fw={600}>생성된 업체소개글:</Text>
-                  <Badge color="blue" variant="light">
-                    {generatedText.length}자
-                  </Badge>
+                  <Group gap="xs">
+                    <Badge color="blue" variant="light">
+                      {generatedText.length}자
+                    </Badge>
+                    <Button
+                      variant="subtle"
+                      size="xs"
+                      leftSection={<Copy className="w-3 h-3" />}
+                      onClick={() => {
+                        navigator.clipboard.writeText(generatedText)
+                        toast({
+                          title: "✅ 복사 완료",
+                          description: "클립보드에 복사되었습니다!",
+                        })
+                      }}
+                    >
+                      복사
+                    </Button>
+                  </Group>
                 </Group>
                 <Divider />
-                <Text size="sm" style={{ whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>
-                  {generatedText}
-                </Text>
+                <Paper p="sm" withBorder bg="white">
+                  <Text size="sm" style={{ whiteSpace: 'pre-wrap', lineHeight: 1.8 }}>
+                    {generatedText}
+                  </Text>
+                </Paper>
                 <Button
-                  variant="light"
-                  size="xs"
+                  fullWidth
+                  size="md"
+                  leftSection={<Copy className="w-4 h-4" />}
                   onClick={() => {
                     navigator.clipboard.writeText(generatedText)
                     toast({
@@ -1401,7 +1421,7 @@ export default function ActivationPage() {
                     })
                   }}
                 >
-                  클립보드에 복사
+                  클립보드에 복사하기
                 </Button>
               </Stack>
             </Paper>
