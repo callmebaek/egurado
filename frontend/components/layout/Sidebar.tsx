@@ -216,7 +216,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   }
 
   const renderNavItem = (item: NavItem, level: number = 0) => {
-    const isActive = item.href && pathname === item.href
+    // 투표 페이지는 active 표시 안 함 (여러 메뉴에서 링크되므로)
+    const isActive = item.href && pathname === item.href && item.href !== '/dashboard/feature-voting'
     const hasChildren = item.children && item.children.length > 0
     const isOpen = openItems.includes(item.title)
     const isVoting = item.badge === '투표'
