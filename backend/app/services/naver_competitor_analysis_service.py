@@ -627,17 +627,28 @@ class NaverCompetitorAnalysisService:
             7일간 리뷰 수
         """
         if not recent_visitor_reviews:
+            logger.warning(f"[경쟁분석] 방문자리뷰 데이터 없음")
             return 0.0
+        
+        logger.info(f"[경쟁분석] 방문자리뷰 총 {len(recent_visitor_reviews)}개 확인 중...")
         
         cutoff_date = datetime.now() - timedelta(days=7)
         recent_count = 0
+        parsed_count = 0
         
-        for review in recent_visitor_reviews:
-            review_date = self._parse_review_date(review.get("visited") or review.get("date", ""))
+        for idx, review in enumerate(recent_visitor_reviews):
+            # 방문일 또는 작성일 확인 (visited, date, reviewDate 등 다양한 필드명 지원)
+            date_str = review.get("visited") or review.get("date") or review.get("reviewDate") or review.get("visitDate") or ""
+            
+            if idx < 3:  # 처음 3개만 로그
+                logger.info(f"[경쟁분석-DEBUG] 리뷰 #{idx+1} 날짜: '{date_str}'")
+            
+            review_date = self._parse_review_date_enhanced(date_str)
             if review_date and review_date >= cutoff_date:
                 recent_count += 1
+                parsed_count += 1
         
-        logger.info(f"[경쟁분석] 방문자리뷰 7일: {recent_count}개")
+        logger.info(f"[경쟁분석] 방문자리뷰 7일: {recent_count}개 (전체: {len(recent_visitor_reviews)}개, 파싱 성공: {parsed_count}개)")
         return float(recent_count)
     
     async def _calculate_blog_reviews_accurate(
@@ -691,6 +702,57 @@ class NaverCompetitorAnalysisService:
             logger.error(f"[경쟁분석] 블로그 리뷰 계산 실패: {str(e)}")
             estimated_daily_avg = total_blog_review_count / 365 if total_blog_review_count > 0 else 0
             return estimated_daily_avg * 7
+    
+    def _parse_review_date_enhanced(self, date_str: str) -> Optional[datetime]:
+        """
+        방문자 리뷰 날짜 파싱 (다양한 형식 지원)
+        
+        지원 형식:
+        - ISO 8601: "2025-01-28T12:30:45" 또는 "2025-01-28"
+        - 한국어: "3일 전", "1주일 전", "2개월 전"
+        - 점 형식: "2025.01.28"
+        """
+        if not date_str:
+            return None
+        
+        try:
+            # ISO 8601 형식 (T 포함)
+            if "T" in date_str:
+                # "2025-01-28T12:30:45" 또는 "2025-01-28T12:30:45.123Z"
+                date_str_clean = date_str.split(".")[0].replace("Z", "")  # Z와 밀리초 제거
+                return datetime.fromisoformat(date_str_clean)
+            
+            # ISO 날짜만 (YYYY-MM-DD)
+            if "-" in date_str and len(date_str) >= 10:
+                return datetime.strptime(date_str[:10], "%Y-%m-%d")
+            
+            # "N일 전", "N주일 전", "N개월 전" 형식
+            if "전" in date_str:
+                if "시간" in date_str or "분" in date_str:
+                    return datetime.now()
+                elif "일" in date_str:
+                    days = int(re.search(r'\d+', date_str).group())
+                    return datetime.now() - timedelta(days=days)
+                elif "주" in date_str:
+                    weeks = int(re.search(r'\d+', date_str).group())
+                    return datetime.now() - timedelta(weeks=weeks)
+                elif "개월" in date_str:
+                    months = int(re.search(r'\d+', date_str).group())
+                    return datetime.now() - timedelta(days=months * 30)
+            
+            # "YYYY.MM.DD" 형식
+            if "." in date_str:
+                date_str_clean = date_str.replace(".", "").strip()
+                if len(date_str_clean) == 8:  # YYYYMMDD
+                    return datetime.strptime(date_str_clean, "%Y%m%d")
+                elif len(date_str_clean) == 6:  # YYMMDD
+                    return datetime.strptime(date_str_clean, "%y%m%d")
+            
+            return None
+            
+        except Exception as e:
+            logger.debug(f"[경쟁분석] 날짜 파싱 실패: '{date_str}' - {str(e)}")
+            return None
     
     def _parse_blog_review_date(self, date_str: str) -> Optional[datetime]:
         """
