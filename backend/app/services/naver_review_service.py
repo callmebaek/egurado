@@ -1002,37 +1002,69 @@ class NaverReviewService:
                         if page == 0:
                             logger.info(f"[블로그 검색] HTML 길이: {len(html)} bytes")
                         
+                        # HTML에서 모든 블로그의 날짜 확인 (매칭 여부와 무관하게 early stopping 판단용)
+                        from bs4 import BeautifulSoup
+                        import re
+                        
+                        soup = BeautifulSoup(html, 'html.parser')
+                        blog_links_in_page = soup.find_all('a', href=re.compile(r'blog\.naver\.com/[^/]+/\d+'))
+                        
+                        # HTML에 블로그 링크가 아예 없으면 진짜 페이지 끝
+                        if len(blog_links_in_page) == 0:
+                            logger.info(f"[블로그 검색] 페이지 {page+1}: HTML에 블로그 링크 없음 (페이지 종료)")
+                            break
+                        
+                        # 이 페이지의 모든 블로그 중 가장 오래된 날짜 찾기 (매칭 여부 무관)
+                        oldest_date_in_page = None
+                        checked_dates = 0
+                        
+                        for link in blog_links_in_page[:10]:  # 처음 10개만 확인 (대표성)
+                            try:
+                                # 날짜 요소 찾기
+                                parent = link.parent
+                                for level in range(5):
+                                    if not parent:
+                                        break
+                                    
+                                    date_candidates = parent.find_all(['span', 'time', 'div'], limit=20)
+                                    for candidate in date_candidates:
+                                        text = candidate.get_text(strip=True)
+                                        
+                                        if not text or len(text) > 20:
+                                            continue
+                                        
+                                        # 날짜 패턴 확인
+                                        if re.match(r'^\d+\s*(일|주|시간|분)\s*전', text) or re.match(r'^\d{2,4}\.\d{1,2}\.\d{1,2}\.?', text):
+                                            parsed_date = self._parse_naver_search_date(text)
+                                            if parsed_date:
+                                                checked_dates += 1
+                                                if oldest_date_in_page is None or parsed_date < oldest_date_in_page:
+                                                    oldest_date_in_page = parsed_date
+                                                break
+                                    
+                                    if oldest_date_in_page:
+                                        break
+                                    parent = parent.parent
+                            except:
+                                continue
+                        
                         # HTML 파싱하여 블로그 리뷰 추출 (매장명 필터링 적용)
                         page_reviews = self._parse_naver_blog_search_html(html, store_name)
                         all_reviews.extend(page_reviews)
                         
-                        # 리뷰가 없으면 더 이상 페이지가 없는 것
-                        if len(page_reviews) == 0:
-                            logger.info(f"[블로그 검색] 페이지 {page+1}: 리뷰 없음 (페이지 종료)")
-                            break
-                        
-                        # 이 페이지에서 60일 이전 블로그를 찾았는지 확인
-                        oldest_in_page = None
-                        for review in page_reviews:
-                            if review.get("date"):
-                                try:
-                                    review_date = datetime.fromisoformat(review["date"].replace('Z', '+00:00'))
-                                    if oldest_in_page is None or review_date < oldest_in_page:
-                                        oldest_in_page = review_date
-                                except:
-                                    continue
-                        
-                        if oldest_in_page:
-                            days_old = (datetime.now(timezone.utc) - oldest_in_page).days
-                            logger.info(f"[블로그 검색] 페이지 {page+1}/{max_pages}: {len(page_reviews)}개 (누적: {len(all_reviews)}개), 가장 오래된: {days_old}일 전")
+                        # Early stopping 판단: 이 페이지의 가장 오래된 블로그가 60일 이전인지 확인
+                        if oldest_date_in_page:
+                            days_old = (datetime.now(timezone.utc) - oldest_date_in_page).days
+                            logger.info(f"[블로그 검색] 페이지 {page+1}/{max_pages}: 매칭 {len(page_reviews)}개 (누적: {len(all_reviews)}개), 페이지 가장 오래된: {days_old}일 전 (확인: {checked_dates}개)")
                             
-                            # 60일 이전 블로그를 찾았으면 종료 (early stopping)
-                            if oldest_in_page <= cutoff_date:
+                            # 60일 이전 블로그 발견 → 조기 종료
+                            if oldest_date_in_page <= cutoff_date:
                                 found_old_enough = True
                                 logger.info(f"[블로그 검색] ✓ {target_days}일 이전 블로그 발견 (조기 종료)")
                                 break
                         else:
-                            logger.info(f"[블로그 검색] 페이지 {page+1}/{max_pages}: {len(page_reviews)}개 (누적: {len(all_reviews)}개), 날짜 없음")
+                            logger.info(f"[블로그 검색] 페이지 {page+1}/{max_pages}: 매칭 {len(page_reviews)}개 (누적: {len(all_reviews)}개), 날짜 파싱 실패")
+                        
                         
                         # 페이지 간 딜레이 (bot 감지 방지)
                         if page < max_pages - 1:
