@@ -47,6 +47,7 @@ export default function TargetKeywordsModal({
   const [error, setError] = useState('');
   const [analysisSuccess, setAnalysisSuccess] = useState(false);
   const [totalKeywords, setTotalKeywords] = useState(0);
+  const [extractedKeywords, setExtractedKeywords] = useState<Array<{keyword: string, volume: number}>>([]);
   const [historyId, setHistoryId] = useState<string | null>(null);
 
   const totalSteps = 8;
@@ -184,7 +185,16 @@ export default function TargetKeywordsModal({
       console.log('[타겟 키워드] 분석 완료:', result);
       
       if (result.status === 'success' && result.data) {
-        setTotalKeywords(result.data.top_keywords?.length || 0);
+        const keywords = result.data.top_keywords || [];
+        setTotalKeywords(keywords.length);
+        
+        // 추출된 키워드 목록 저장 (상위 10개만)
+        const keywordList = keywords.slice(0, 10).map((kw: any) => ({
+          keyword: kw.keyword,
+          volume: kw.total_volume || 0
+        }));
+        setExtractedKeywords(keywordList);
+        
         setAnalysisSuccess(true);
         
         // 히스토리 ID 저장
@@ -731,6 +741,38 @@ export default function TargetKeywordsModal({
         </div>
       </div>
 
+      {/* 추출된 키워드 미리보기 (상위 10개) */}
+      {extractedKeywords.length > 0 && (
+        <div className="bg-white rounded-lg p-5 border-2 border-indigo-200">
+          <div className="flex items-center gap-2 mb-3">
+            <Target className="w-5 h-5 text-indigo-600" />
+            <h4 className="text-sm font-bold text-gray-900">
+              추출된 키워드 (상위 10개)
+            </h4>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {extractedKeywords.map((kw, idx) => (
+              <div
+                key={idx}
+                className="inline-flex items-center gap-2 px-3 py-2 bg-gradient-to-br from-indigo-50 to-blue-50 rounded-lg border border-indigo-200"
+              >
+                <span className="text-sm font-semibold text-gray-900">
+                  {kw.keyword}
+                </span>
+                <span className="text-xs text-indigo-600 font-medium">
+                  {kw.volume.toLocaleString()}
+                </span>
+              </div>
+            ))}
+          </div>
+          {totalKeywords > 10 && (
+            <p className="text-xs text-indigo-600 mt-3 text-center font-medium">
+              나머지 {totalKeywords - 10}개 키워드는 상세 페이지에서 확인하세요 →
+            </p>
+          )}
+        </div>
+      )}
+
       <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
         <p className="text-sm font-semibold text-gray-900 mb-2">
           상세 페이지에서 확인하실 수 있어요:
@@ -739,6 +781,7 @@ export default function TargetKeywordsModal({
           <li>• 검색량 기준 상위 20개 타겟 키워드</li>
           <li>• 키워드별 PC/모바일 검색량</li>
           <li>• 경쟁도 분석</li>
+          <li>• 키워드별 플레이스 순위</li>
           <li>• 플레이스 SEO 최적화 상태</li>
           <li>• 개선 제안</li>
         </ul>

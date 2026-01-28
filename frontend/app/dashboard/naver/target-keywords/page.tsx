@@ -457,6 +457,109 @@ export default function TargetKeywordsPage() {
         </AlertDescription>
       </Alert>
 
+      {/* 과거 추출된 키워드 보기 */}
+      {selectedStore && histories.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <History className="h-5 w-5 text-blue-600" />
+              과거 추출된 키워드 보기
+            </CardTitle>
+            <CardDescription>
+              이 매장의 최근 {histories.length}개 키워드 추출 히스토리 (최신순)
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[150px]">추출 날짜</TableHead>
+                    <TableHead>입력 키워드</TableHead>
+                    <TableHead className="text-center w-[120px]">추출된 키워드</TableHead>
+                    <TableHead className="text-center w-[100px]">액션</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {histories.map((history) => {
+                    const isCurrentHistory = currentHistoryId === history.id
+                    const allInputKeywords = [
+                      ...(history.regions || []),
+                      ...(history.landmarks || []),
+                      ...(history.menus || []),
+                      ...(history.industries || []),
+                      ...(history.other_keywords || [])
+                    ]
+                    
+                    return (
+                      <TableRow 
+                        key={history.id} 
+                        className={isCurrentHistory ? "bg-blue-50" : ""}
+                      >
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4 text-gray-500" />
+                            <span className="text-sm">
+                              {new Date(history.created_at).toLocaleDateString('ko-KR', {
+                                year: 'numeric',
+                                month: '2-digit',
+                                day: '2-digit',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap gap-1">
+                            {allInputKeywords.slice(0, 5).map((keyword, idx) => (
+                              <Badge key={idx} variant="secondary" className="text-xs">
+                                {keyword}
+                              </Badge>
+                            ))}
+                            {allInputKeywords.length > 5 && (
+                              <Badge variant="outline" className="text-xs">
+                                +{allInputKeywords.length - 5}개
+                              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant="default" className="font-bold">
+                            {history.total_keywords}개
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Button
+                            size="sm"
+                            variant={isCurrentHistory ? "default" : "outline"}
+                            onClick={() => loadHistoryDetail(history.id)}
+                            disabled={isLoadingHistory}
+                            className="w-full"
+                          >
+                            {isCurrentHistory ? (
+                              <>
+                                <CheckCircle2 className="h-4 w-4 mr-1" />
+                                현재
+                              </>
+                            ) : (
+                              <>
+                                <Eye className="h-4 w-4 mr-1" />
+                                보기
+                              </>
+                            )}
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* 입력 폼 */}
       <Card>
         <CardHeader>
@@ -872,109 +975,6 @@ export default function TargetKeywordsPage() {
             </AlertDescription>
           </Alert>
         </div>
-      )}
-
-      {/* 과거 추출된 키워드 보기 */}
-      {selectedStore && histories.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <History className="h-5 w-5 text-blue-600" />
-              과거 추출된 키워드 보기
-            </CardTitle>
-            <CardDescription>
-              이 매장의 최근 {histories.length}개 키워드 추출 히스토리 (최신순)
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[150px]">추출 날짜</TableHead>
-                    <TableHead>입력 키워드</TableHead>
-                    <TableHead className="text-center w-[120px]">추출된 키워드</TableHead>
-                    <TableHead className="text-center w-[100px]">액션</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {histories.map((history) => {
-                    const isCurrentHistory = currentHistoryId === history.id
-                    const allInputKeywords = [
-                      ...(history.regions || []),
-                      ...(history.landmarks || []),
-                      ...(history.menus || []),
-                      ...(history.industries || []),
-                      ...(history.other_keywords || [])
-                    ]
-                    
-                    return (
-                      <TableRow 
-                        key={history.id} 
-                        className={isCurrentHistory ? "bg-blue-50" : ""}
-                      >
-                        <TableCell className="font-medium">
-                          <div className="flex items-center gap-2">
-                            <Calendar className="h-4 w-4 text-gray-500" />
-                            <span className="text-sm">
-                              {new Date(history.created_at).toLocaleDateString('ko-KR', {
-                                year: 'numeric',
-                                month: '2-digit',
-                                day: '2-digit',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex flex-wrap gap-1">
-                            {allInputKeywords.slice(0, 5).map((keyword, idx) => (
-                              <Badge key={idx} variant="secondary" className="text-xs">
-                                {keyword}
-                              </Badge>
-                            ))}
-                            {allInputKeywords.length > 5 && (
-                              <Badge variant="outline" className="text-xs">
-                                +{allInputKeywords.length - 5}개
-                              </Badge>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <Badge variant="default" className="font-bold">
-                            {history.total_keywords}개
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <Button
-                            size="sm"
-                            variant={isCurrentHistory ? "default" : "outline"}
-                            onClick={() => loadHistoryDetail(history.id)}
-                            disabled={isLoadingHistory}
-                            className="w-full"
-                          >
-                            {isCurrentHistory ? (
-                              <>
-                                <CheckCircle2 className="h-4 w-4 mr-1" />
-                                현재
-                              </>
-                            ) : (
-                              <>
-                                <Eye className="h-4 w-4 mr-1" />
-                                보기
-                              </>
-                            )}
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
       )}
     </div>
   )
