@@ -11,7 +11,7 @@ import StoreRegisterModal from './modals/StoreRegisterModal';
 import GenericActionModal from './modals/GenericActionModal';
 
 export default function OnboardingSection() {
-  const { user, getAccessToken } = useAuth();
+  const { user, getToken } = useAuth();
   const [progress, setProgress] = useState<OnboardingProgress>({});
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -39,7 +39,9 @@ export default function OnboardingSection() {
     
     const loadProgress = async () => {
       try {
-        const token = await getAccessToken();
+        const token = getToken();
+        if (!token) return;
+        
         const response = await fetch(api.onboarding.progress(), {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -59,7 +61,7 @@ export default function OnboardingSection() {
     };
 
     loadProgress();
-  }, [user, getAccessToken]);
+  }, [user, getToken]);
 
   // 접어두기 토글
   const toggleCollapse = async () => {
@@ -69,7 +71,8 @@ export default function OnboardingSection() {
     setIsCollapsed(newCollapsed);
     
     try {
-      const token = await getAccessToken();
+      const token = getToken();
+      if (!token) return;
       
       await fetch(api.onboarding.preferences(), {
         method: 'PUT',
@@ -250,7 +253,8 @@ export default function OnboardingSection() {
   // 액션 완료 처리
   const markActionComplete = async (actionKey: string) => {
     try {
-      const token = await getAccessToken();
+      const token = getToken();
+      if (!token) return;
       const response = await fetch(api.onboarding.updateAction(actionKey), {
         method: 'POST',
         headers: {

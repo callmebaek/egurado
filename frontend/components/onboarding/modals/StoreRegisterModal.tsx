@@ -26,7 +26,7 @@ export default function StoreRegisterModal({
   onClose,
   onComplete,
 }: StoreRegisterModalProps) {
-  const { getAccessToken } = useAuth();
+  const { getToken } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [storeName, setStoreName] = useState('');
   const [searchResults, setSearchResults] = useState<StoreSearchResult[]>([]);
@@ -47,12 +47,8 @@ export default function StoreRegisterModal({
     setError('');
 
     try {
-      const token = await getAccessToken();
-      const response = await fetch(api.naver.searchStores(storeName), {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+      // 검색은 인증 불필요
+      const response = await fetch(api.naver.searchStores(storeName));
 
       if (!response.ok) {
         throw new Error('매장 검색에 실패했습니다.');
@@ -84,7 +80,11 @@ export default function StoreRegisterModal({
     setError('');
 
     try {
-      const token = await getAccessToken();
+      const token = getToken();
+      if (!token) {
+        setError('로그인이 필요합니다.');
+        return;
+      }
       const response = await fetch(api.stores.create(), {
         method: 'POST',
         headers: {
