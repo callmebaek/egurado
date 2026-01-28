@@ -152,10 +152,11 @@ export default function TargetKeywordsPage() {
     const params = new URLSearchParams(window.location.search)
     const historyId = params.get("historyId")
     
-    if (historyId && histories.length > 0) {
-      loadHistoryDetail(historyId)
+    if (historyId && registeredStores.length > 0) {
+      // URL 파라미터로 들어온 경우 매장 자동 선택
+      loadHistoryDetail(historyId, true)
     }
-  }, [histories])
+  }, [registeredStores])
 
   const fetchRegisteredStores = async () => {
     try {
@@ -209,9 +210,9 @@ export default function TargetKeywordsPage() {
     }
   }
 
-  const loadHistoryDetail = async (historyId: string) => {
+  const loadHistoryDetail = async (historyId: string, autoSelectStore: boolean = false) => {
     // 이미 펼쳐진 히스토리를 다시 클릭하면 접기
-    if (expandedHistoryId === historyId) {
+    if (expandedHistoryId === historyId && !autoSelectStore) {
       setExpandedHistoryId(null)
       setExpandedHistoryData(null)
       return
@@ -237,6 +238,12 @@ export default function TargetKeywordsPage() {
       if (!history) throw new Error("히스토리 데이터 없음")
       
       console.log("[타겟 키워드] 히스토리 로드:", history)
+      
+      // 매장 자동 선택 (URL 파라미터로 들어왔을 때)
+      if (autoSelectStore && history.store_id) {
+        setSelectedStore(history.store_id)
+        console.log("[타겟 키워드] 매장 자동 선택:", history.store_id)
+      }
       
       // 히스토리 데이터 설정 (펼쳐서 표시용)
       setExpandedHistoryId(historyId)
