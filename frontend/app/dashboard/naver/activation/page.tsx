@@ -1080,25 +1080,6 @@ export default function ActivationPage() {
                   )}
                 </Group>
               </Paper>
-              <Paper p="sm" withBorder>
-                <Group justify="space-between">
-                  <Group gap="xs">
-                    <ThemeIcon variant="light" size="sm" color="violet">
-                      <MessageCircle className="w-3 h-3" />
-                    </ThemeIcon>
-                    <Text size="sm">네이버톡톡</Text>
-                  </Group>
-                  {activationData.has_naver_talk ? (
-                    <Badge color="green" variant="light" leftSection={<CheckCircle className="w-3 h-3" />}>
-                      사용중
-                    </Badge>
-                  ) : (
-                    <Badge color="gray" variant="light">
-                      미사용
-                    </Badge>
-                  )}
-                </Group>
-              </Paper>
             </SimpleGrid>
             
             {(!activationData.has_smart_call || !activationData.has_naver_pay || 

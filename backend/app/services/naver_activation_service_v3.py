@@ -348,6 +348,13 @@ class NaverActivationServiceV3:
             count_30d = 0
             count_60d = 0
             
+            # 디버깅용: 처음 10개 리뷰의 날짜 출력
+            for idx, review in enumerate(all_reviews[:10]):
+                date_str = review.get("date")
+                date_string = review.get("dateString", "N/A")
+                title = review.get("title", "N/A")[:50]
+                logger.info(f"[블로그 리뷰 #{idx+1}] 날짜: {date_str}, 원본: {date_string}, 제목: {title}")
+            
             for review in all_reviews:
                 date_str = review.get("date")  # ISO 형식 문자열
                 if not date_str:
