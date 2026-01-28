@@ -75,16 +75,21 @@ async def analyze_target_keywords(request: TargetKeywordAnalysisRequest):
             supabase = get_supabase_client()
             data = result.get("data", {})
             store_info = data.get("store_info", {})
+            rank_data = data.get("rank_data", {})
             
-            # 추출된 키워드들
-            extracted_keywords = [
-                {
-                    "keyword": kw.get("keyword"),
+            # 추출된 키워드들 (순위 정보 포함)
+            extracted_keywords = []
+            for kw in data.get("top_keywords", []):
+                keyword_text = kw.get("keyword")
+                rank_info = rank_data.get(keyword_text, {})
+                
+                extracted_keywords.append({
+                    "keyword": keyword_text,
                     "total_volume": kw.get("total_volume"),
-                    "comp_idx": kw.get("comp_idx")
-                }
-                for kw in data.get("top_keywords", [])
-            ]
+                    "comp_idx": kw.get("comp_idx"),
+                    "rank": rank_info.get("rank", 0),
+                    "total_count": rank_info.get("total_count", 0)
+                })
             
             # 히스토리 데이터 구성
             history_data = {

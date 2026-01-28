@@ -13,7 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/components/ui/use-toast"
-import { Loader2, Search, Target, TrendingUp, Plus, X, AlertCircle, CheckCircle2, Info } from "lucide-react"
+import { Loader2, Search, Target, TrendingUp, Plus, X, AlertCircle, CheckCircle2, Info, History, Calendar, Eye } from "lucide-react"
 import { api } from "@/lib/config"
 import {
   Select,
@@ -86,6 +86,7 @@ interface AnalysisResult {
   }
   total_combinations: number
   top_keywords: KeywordData[]
+  rank_data?: Record<string, { rank: number; total_count: number }>
   seo_analysis: SEOAnalysis
   place_details: any
 }
@@ -118,6 +119,8 @@ export default function TargetKeywordsPage() {
   
   // 히스토리 관련 상태
   const [isLoadingHistory, setIsLoadingHistory] = useState(false)
+  const [histories, setHistories] = useState<any[]>([])
+  const [currentHistoryId, setCurrentHistoryId] = useState<string | null>(null)
 
   // 등록된 매장 불러오기
   useEffect(() => {
@@ -126,7 +129,7 @@ export default function TargetKeywordsPage() {
     }
   }, [userId])
 
-  // 매장 선택 시 주소 자동 입력
+  // 매장 선택 시 주소 자동 입력 및 히스토리 로드
   useEffect(() => {
     if (selectedStore) {
       const store = registeredStores.find(s => s.id === selectedStore)
@@ -135,6 +138,10 @@ export default function TargetKeywordsPage() {
         // 주소에서 구, 동 자동 추출
         autoExtractRegions(store.address)
       }
+      // 매장 히스토리 로드
+      loadStoreHistories(selectedStore)
+    } else {
+      setHistories([])
     }
   }, [selectedStore, registeredStores])
 
@@ -144,6 +151,7 @@ export default function TargetKeywordsPage() {
     const historyId = params.get("historyId")
     
     if (historyId) {
+      setCurrentHistoryId(historyId)
       loadHistoryDetail(historyId)
     }
   }, [])
@@ -178,8 +186,32 @@ export default function TargetKeywordsPage() {
     }
   }
 
+  const loadStoreHistories = async (storeId: string) => {
+    try {
+      const token = getToken()
+      if (!token) return
+      
+      const response = await fetch(`${api.baseUrl}/api/v1/target-keywords/history/${storeId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      
+      if (!response.ok) throw new Error("히스토리 조회 실패")
+      
+      const result = await response.json()
+      setHistories(result.histories || [])
+      console.log(`[타겟 키워드] 히스토리 ${result.histories?.length || 0}개 로드 완료`)
+    } catch (error) {
+      console.error("히스토리 조회 에러:", error)
+      setHistories([])
+    }
+  }
+
   const loadHistoryDetail = async (historyId: string) => {
     setIsLoadingHistory(true)
+    setCurrentHistoryId(historyId)
+    
     try {
       const token = getToken()
       if (!token) throw new Error("인증 토큰 없음")
@@ -208,7 +240,27 @@ export default function TargetKeywordsPage() {
       setOthers(history.other_keywords || [])
       
       // 추출된 키워드로 분석 결과 재구성
-      // 간단하게 extracted_keywords만 표시
+      // rank_data도 함께 재구성
+      const rank_data: Record<string, { rank: number; total_count: number }> = {}
+      
+      const top_keywords = history.extracted_keywords.map((kw: any) => {
+        // rank_data 재구성 (기존 히스토리 호환성 위해 null 체크)
+        rank_data[kw.keyword] = {
+          rank: kw.rank || 0,
+          total_count: kw.total_count || 0
+        }
+        
+        return {
+          keyword: kw.keyword,
+          type: "",
+          components: {},
+          monthly_pc_qc_cnt: 0,
+          monthly_mobile_qc_cnt: 0,
+          total_volume: kw.total_volume || 0,
+          comp_idx: kw.comp_idx || "-"
+        }
+      })
+      
       const mockAnalysisResult: AnalysisResult = {
         store_info: {
           store_id: history.store_id,
@@ -224,15 +276,8 @@ export default function TargetKeywordsPage() {
           others: history.other_keywords || []
         },
         total_combinations: 0,
-        top_keywords: history.extracted_keywords.map((kw: any, idx: number) => ({
-          keyword: kw.keyword,
-          type: "",
-          components: {},
-          monthly_pc_qc_cnt: 0,
-          monthly_mobile_qc_cnt: 0,
-          total_volume: kw.total_volume || 0,
-          comp_idx: kw.comp_idx || "-"
-        })),
+        top_keywords: top_keywords,
+        rank_data: rank_data, // rank_data 추가
         seo_analysis: {
           field_analysis: {},
           keyword_total_counts: {},
@@ -243,6 +288,10 @@ export default function TargetKeywordsPage() {
       }
       
       setAnalysisResult(mockAnalysisResult)
+      
+      // URL 업데이트
+      const newUrl = `${window.location.pathname}?historyId=${historyId}`
+      window.history.pushState({}, '', newUrl)
       
       toast({
         title: "히스토리 로드 완료",
@@ -333,11 +382,17 @@ export default function TargetKeywordsPage() {
       if (result.status === "success") {
         setAnalysisResult(result.data)
         
-        // 히스토리 ID가 있으면 URL 업데이트
+        // 히스토리 ID가 있으면 URL 업데이트 및 현재 히스토리 ID 설정
         if (result.history_id) {
+          setCurrentHistoryId(result.history_id)
           const newUrl = `${window.location.pathname}?historyId=${result.history_id}`
           window.history.pushState({}, '', newUrl)
           console.log("[타겟 키워드] 히스토리 ID 저장:", result.history_id)
+          
+          // 히스토리 목록 새로고침
+          if (selectedStore) {
+            loadStoreHistories(selectedStore)
+          }
         }
         
         toast({
@@ -817,6 +872,109 @@ export default function TargetKeywordsPage() {
             </AlertDescription>
           </Alert>
         </div>
+      )}
+
+      {/* 과거 추출된 키워드 보기 */}
+      {selectedStore && histories.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <History className="h-5 w-5 text-blue-600" />
+              과거 추출된 키워드 보기
+            </CardTitle>
+            <CardDescription>
+              이 매장의 최근 {histories.length}개 키워드 추출 히스토리 (최신순)
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[150px]">추출 날짜</TableHead>
+                    <TableHead>입력 키워드</TableHead>
+                    <TableHead className="text-center w-[120px]">추출된 키워드</TableHead>
+                    <TableHead className="text-center w-[100px]">액션</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {histories.map((history) => {
+                    const isCurrentHistory = currentHistoryId === history.id
+                    const allInputKeywords = [
+                      ...(history.regions || []),
+                      ...(history.landmarks || []),
+                      ...(history.menus || []),
+                      ...(history.industries || []),
+                      ...(history.other_keywords || [])
+                    ]
+                    
+                    return (
+                      <TableRow 
+                        key={history.id} 
+                        className={isCurrentHistory ? "bg-blue-50" : ""}
+                      >
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4 text-gray-500" />
+                            <span className="text-sm">
+                              {new Date(history.created_at).toLocaleDateString('ko-KR', {
+                                year: 'numeric',
+                                month: '2-digit',
+                                day: '2-digit',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap gap-1">
+                            {allInputKeywords.slice(0, 5).map((keyword, idx) => (
+                              <Badge key={idx} variant="secondary" className="text-xs">
+                                {keyword}
+                              </Badge>
+                            ))}
+                            {allInputKeywords.length > 5 && (
+                              <Badge variant="outline" className="text-xs">
+                                +{allInputKeywords.length - 5}개
+                              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant="default" className="font-bold">
+                            {history.total_keywords}개
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Button
+                            size="sm"
+                            variant={isCurrentHistory ? "default" : "outline"}
+                            onClick={() => loadHistoryDetail(history.id)}
+                            disabled={isLoadingHistory}
+                            className="w-full"
+                          >
+                            {isCurrentHistory ? (
+                              <>
+                                <CheckCircle2 className="h-4 w-4 mr-1" />
+                                현재
+                              </>
+                            ) : (
+                              <>
+                                <Eye className="h-4 w-4 mr-1" />
+                                보기
+                              </>
+                            )}
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   )
