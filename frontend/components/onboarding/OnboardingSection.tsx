@@ -63,11 +63,15 @@ export default function OnboardingSection() {
 
   // 접어두기 토글
   const toggleCollapse = async () => {
+    const newCollapsed = !isCollapsed;
+    
+    // 즉시 UI 업데이트
+    setIsCollapsed(newCollapsed);
+    
     try {
       const token = await getAccessToken();
-      const newCollapsed = !isCollapsed;
       
-      const response = await fetch(api.onboarding.preferences(), {
+      await fetch(api.onboarding.preferences(), {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -75,12 +79,10 @@ export default function OnboardingSection() {
         },
         body: JSON.stringify({ is_collapsed: newCollapsed }),
       });
-
-      if (response.ok) {
-        setIsCollapsed(newCollapsed);
-      }
     } catch (error) {
       console.error('[Onboarding] 접어두기 상태 업데이트 실패:', error);
+      // 에러 발생 시 롤백
+      setIsCollapsed(!newCollapsed);
     }
   };
 
@@ -305,32 +307,35 @@ export default function OnboardingSection() {
           </button>
         </div>
 
-        {/* 단계별 카드 */}
+        {/* 단계별 카드 - 그룹화된 컨테이너 */}
         {!isCollapsed && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {ONBOARDING_STEPS.map((step) => {
-              const completedCount = step.actions.filter(
-                (action) => progress[action.key]?.completed
-              ).length;
+          <div className="bg-gradient-to-br from-purple-500 to-indigo-600 rounded-2xl p-6 shadow-lg">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {ONBOARDING_STEPS.map((step) => {
+                const completedCount = step.actions.filter(
+                  (action) => progress[action.key]?.completed
+                ).length;
 
-              return (
-                <StepCard
-                  key={step.title}
-                  title={step.title}
-                  completedCount={completedCount}
-                  totalCount={step.actions.length}
-                >
-                  {step.actions.map((action) => (
-                    <ActionItem
-                      key={action.key}
-                      title={action.title}
-                      completed={progress[action.key]?.completed || false}
-                      onClick={() => handleActionClick(action.key)}
-                    />
-                  ))}
-                </StepCard>
-              );
-            })}
+                return (
+                  <StepCard
+                    key={step.title}
+                    title={step.title}
+                    icon={step.icon}
+                    completedCount={completedCount}
+                    totalCount={step.actions.length}
+                  >
+                    {step.actions.map((action) => (
+                      <ActionItem
+                        key={action.key}
+                        title={action.title}
+                        completed={progress[action.key]?.completed || false}
+                        onClick={() => handleActionClick(action.key)}
+                      />
+                    ))}
+                  </StepCard>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>

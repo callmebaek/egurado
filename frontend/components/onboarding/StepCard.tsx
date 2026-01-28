@@ -4,20 +4,24 @@ import { ReactNode } from 'react';
 
 interface StepCardProps {
   title: string;
+  icon: string;
   completedCount: number;
   totalCount: number;
   children: ReactNode;
 }
 
-export default function StepCard({ title, completedCount, totalCount, children }: StepCardProps) {
+export default function StepCard({ title, icon, completedCount, totalCount, children }: StepCardProps) {
   const progressPercentage = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+    <div className="bg-white rounded-xl shadow-sm overflow-hidden">
       {/* 헤더 */}
       <div className="p-6 pb-4">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold text-gray-900">{title}</h3>
+          <div className="flex items-center gap-2">
+            <span className="text-2xl">{icon}</span>
+            <h3 className="text-lg font-bold text-gray-900">{title}</h3>
+          </div>
           <span className="text-sm text-gray-500">
             {completedCount}/{totalCount}개 완료
           </span>

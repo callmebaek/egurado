@@ -23,6 +23,7 @@ export interface Action {
 
 export interface Step {
   title: string;
+  icon: string;
   actions: Action[];
 }
 
@@ -64,6 +65,7 @@ export const ACTION_KEYS = {
 export const ONBOARDING_STEPS: Step[] = [
   {
     title: '기본설정',
+    icon: '🎯',
     actions: [
       { key: ACTION_KEYS.STORE_REGISTER, title: '매장 등록하기' },
       { key: ACTION_KEYS.PLACE_DIAGNOSIS, title: '플레이스 진단하기' },
@@ -73,29 +75,30 @@ export const ONBOARDING_STEPS: Step[] = [
   },
   {
     title: '관리하기',
+    icon: '⚙️',
     actions: [
       { key: ACTION_KEYS.RANK_ALERTS, title: '순위추적 알림설정하기' },
       { key: ACTION_KEYS.INTRO_AI, title: '업체소개글 ai로 작성하기' },
       { key: ACTION_KEYS.DIRECTIONS_AI, title: '찾아오는길 ai로 작성하기' },
-      { key: ACTION_KEYS.MAIN_KEYWORDS, title: '대표키워드 설정하기' },
       { key: ACTION_KEYS.REVIEW_ANALYSIS, title: '리뷰 현황 분석하기' },
-      { key: ACTION_KEYS.METRICS_VIEW, title: '지표현황 보기' },
     ],
   },
   {
     title: '성장하기',
+    icon: '📈',
     actions: [
       { key: ACTION_KEYS.KEYWORD_DISCOVERY, title: '추가키워드 발굴하기' },
-      { key: ACTION_KEYS.REVIEW_REPLY_AI, title: 'ai로 리뷰답글달기' },
       { key: ACTION_KEYS.PLACE_ACTIVATION, title: '플레이스 활성화하기' },
+      { key: ACTION_KEYS.MAIN_KEYWORDS, title: '대표키워드 설정하기' },
       { key: ACTION_KEYS.CONTACT_WHIPLACE, title: '윕플에 문의하기' },
     ],
   },
   {
     title: '추천작업',
+    icon: '✨',
     actions: [
       { key: ACTION_KEYS.COMPETITOR_ANALYSIS, title: '경쟁업체 분석하기' },
-      { key: ACTION_KEYS.MAIN_KEYWORDS_REC, title: '대표키워드 설정하기' },
+      { key: ACTION_KEYS.REVIEW_REPLY_AI, title: 'ai로 리뷰답글달기' },
       { key: ACTION_KEYS.FEATURE_VOTING, title: '추가 기능 요청 투표하기' },
     ],
   },
