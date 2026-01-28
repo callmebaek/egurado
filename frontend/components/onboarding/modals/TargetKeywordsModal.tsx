@@ -19,6 +19,7 @@ interface RegisteredStore {
   name: string;
   address: string;
   platform: string;
+  thumbnail?: string;
 }
 
 export default function TargetKeywordsModal({
@@ -26,7 +27,7 @@ export default function TargetKeywordsModal({
   onClose,
   onComplete,
 }: TargetKeywordsModalProps) {
-  const { getToken } = useAuth();
+  const { getToken, user } = useAuth();
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
   const [stores, setStores] = useState<RegisteredStore[]>([]);
@@ -59,6 +60,8 @@ export default function TargetKeywordsModal({
   // 매장 선택 시 주소에서 지역명 자동 추출
   useEffect(() => {
     if (selectedStore && selectedStore.address) {
+      // 매장이 바뀔 때마다 지역명 초기화 후 새로 추출
+      setRegions([]);
       autoExtractRegions(selectedStore.address);
     }
   }, [selectedStore]);
@@ -106,7 +109,8 @@ export default function TargetKeywordsModal({
     if (guMatch) extracted.push(...guMatch);
     if (dongMatch) extracted.push(...dongMatch);
     
-    const uniqueRegions = [...new Set([...regions, ...extracted])];
+    // 중복 제거
+    const uniqueRegions = [...new Set(extracted)];
     setRegions(uniqueRegions);
   };
 
@@ -125,6 +129,7 @@ export default function TargetKeywordsModal({
   const handleAnalyze = async () => {
     if (!selectedStore) {
       setError('매장을 선택해주세요.');
+      setLoading(false);
       return;
     }
 
@@ -133,10 +138,22 @@ export default function TargetKeywordsModal({
 
     try {
       const token = getToken();
-      if (!token) {
+      if (!token || !user) {
         setError('로그인이 필요합니다.');
+        setLoading(false);
+        setCurrentStep(1);
         return;
       }
+
+      console.log('[타겟 키워드] 분석 시작:', {
+        store_id: selectedStore.id,
+        user_id: user.id,
+        regions,
+        landmarks,
+        menus,
+        industries,
+        others
+      });
 
       const response = await fetch(`${api.baseUrl}/api/v1/target-keywords/analyze`, {
         method: 'POST',
@@ -145,7 +162,7 @@ export default function TargetKeywordsModal({
         },
         body: JSON.stringify({
           store_id: selectedStore.id,
-          user_id: token, // userId가 필요한 경우
+          user_id: user.id,
           regions,
           landmarks,
           menus,
@@ -154,22 +171,29 @@ export default function TargetKeywordsModal({
         }),
       });
 
+      console.log('[타겟 키워드] Response status:', response.status);
+
       if (!response.ok) {
-        throw new Error('분석에 실패했습니다.');
+        const errorData = await response.json().catch(() => ({}));
+        console.error('[타겟 키워드] Error:', errorData);
+        throw new Error(errorData.detail || errorData.message || '분석에 실패했습니다.');
       }
 
       const result = await response.json();
+      console.log('[타겟 키워드] 분석 완료:', result);
       
-      if (result.status === 'success') {
-        setTotalKeywords(result.data.top_keywords.length);
+      if (result.status === 'success' && result.data) {
+        setTotalKeywords(result.data.top_keywords?.length || 0);
         setAnalysisSuccess(true);
         setCurrentStep(8);
       } else {
-        throw new Error(result.message || '분석에 실패했습니다.');
+        throw new Error(result.message || '분석 결과를 가져오는데 실패했습니다.');
       }
     } catch (err) {
+      console.error('[타겟 키워드] 분석 에러:', err);
       setError(err instanceof Error ? err.message : '분석 중 오류가 발생했습니다.');
-      setCurrentStep(1);
+      setLoading(false);
+      setCurrentStep(6); // 기타 키워드 입력 단계로 돌아가기
     } finally {
       setLoading(false);
     }
@@ -183,18 +207,44 @@ export default function TargetKeywordsModal({
         return;
       }
       setError('');
+      setTempInput(''); // 입력창 비우기
       setCurrentStep(2);
     } else if (currentStep === 2) {
-      // 지역명은 선택사항이지만, 자동 추출된 것이 있으면 다음으로
+      // 지역명은 필수
+      if (regions.length === 0) {
+        setError('최소 1개 이상의 지역명을 입력해주세요.');
+        return;
+      }
+      setError('');
+      setTempInput(''); // 입력창 비우기
       setCurrentStep(3);
     } else if (currentStep === 3) {
+      // 랜드마크는 선택사항
+      setError('');
+      setTempInput(''); // 입력창 비우기
       setCurrentStep(4);
     } else if (currentStep === 4) {
+      // 메뉴는 필수
+      if (menus.length === 0) {
+        setError('최소 1개 이상의 메뉴나 상품명을 입력해주세요.');
+        return;
+      }
+      setError('');
+      setTempInput(''); // 입력창 비우기
       setCurrentStep(5);
     } else if (currentStep === 5) {
+      // 업종은 필수
+      if (industries.length === 0) {
+        setError('최소 1개 이상의 업종을 입력해주세요.');
+        return;
+      }
+      setError('');
+      setTempInput(''); // 입력창 비우기
       setCurrentStep(6);
     } else if (currentStep === 6) {
-      // 분석 시작
+      // 기타는 선택사항
+      setError('');
+      setTempInput(''); // 입력창 비우기
       setCurrentStep(7);
       handleAnalyze();
     } else if (currentStep === 8) {
@@ -251,6 +301,7 @@ export default function TargetKeywordsModal({
               `}
             >
               <div className="flex items-start gap-3">
+                {/* 라디오 버튼 */}
                 <div className={`
                   w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5
                   ${
@@ -264,6 +315,23 @@ export default function TargetKeywordsModal({
                   )}
                 </div>
                 
+                {/* 썸네일 */}
+                {store.thumbnail ? (
+                  <img
+                    src={store.thumbnail}
+                    alt={store.name}
+                    className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+                ) : (
+                  <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Store className="w-8 h-8 text-gray-400" />
+                  </div>
+                )}
+                
+                {/* 매장 정보 */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="font-semibold text-gray-900 truncate">{store.name}</span>
@@ -273,7 +341,7 @@ export default function TargetKeywordsModal({
                   </div>
                   <p className="text-sm text-gray-600 flex items-center gap-1">
                     <MapPin className="w-3 h-3" />
-                    {store.address}
+                    <span className="truncate">{store.address}</span>
                   </p>
                 </div>
               </div>
@@ -338,6 +406,12 @@ export default function TargetKeywordsModal({
           💡 <strong>Tip:</strong> 지역명을 입력하면 "강남 맛집", "역삼동 카페" 같은 조합이 만들어져요
         </p>
       </div>
+
+      {error && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-lg mt-4">
+          <p className="text-sm text-red-600 font-semibold">{error}</p>
+        </div>
+      )}
     </div>
   );
 
@@ -452,6 +526,12 @@ export default function TargetKeywordsModal({
           💡 <strong>Tip:</strong> 메뉴를 추가하면 "강남 보쌈 맛집" 같은 조합이 만들어져요
         </p>
       </div>
+
+      {error && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-lg mt-4">
+          <p className="text-sm text-red-600 font-semibold">{error}</p>
+        </div>
+      )}
     </div>
   );
 
@@ -509,6 +589,12 @@ export default function TargetKeywordsModal({
           💡 <strong>Tip:</strong> 업종을 추가하면 "강남 맛집" 같은 기본 조합이 만들어져요
         </p>
       </div>
+
+      {error && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-lg mt-4">
+          <p className="text-sm text-red-600 font-semibold">{error}</p>
+        </div>
+      )}
     </div>
   );
 
@@ -579,6 +665,12 @@ export default function TargetKeywordsModal({
           {others.length > 0 && <div>✨ 기타: {others.length}개</div>}
         </div>
       </div>
+
+      {error && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-lg mt-4">
+          <p className="text-sm text-red-600 font-semibold">{error}</p>
+        </div>
+      )}
     </div>
   );
 
