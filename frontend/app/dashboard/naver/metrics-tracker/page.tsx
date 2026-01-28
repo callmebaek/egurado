@@ -1,7 +1,7 @@
 "use client"
 
 /**
- * 주요지표 추적 페이지 - Apple Style Premium Design
+ * 키워드순위 추적 페이지 - Apple Style Premium Design
  * Glassmorphism, Dynamic Gradients, Smooth Animations
  */
 import { useStores } from "@/lib/hooks/useStores"
@@ -641,10 +641,13 @@ export default function MetricsTrackerPage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="space-y-2">
             <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
-              주요지표 추적
+              키워드순위 추적
             </h1>
             <p className="text-sm sm:text-base text-gray-600">
-              매장별 키워드의 순위와 리뷰 수를 자동으로 추적합니다
+              매장별 주요 키워드의 순위 변화와 방문자/블로그 리뷰 수를 자동으로 추적하고 알림을 받을 수 있습니다.
+            </p>
+            <p className="text-sm text-gray-500">
+              하루 최대 24회까지 설정 가능하며, 순위 변동이 발생하면 즉시 알림을 받아 빠르게 대응할 수 있습니다.
             </p>
           </div>
           <button

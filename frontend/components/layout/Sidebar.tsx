@@ -48,7 +48,7 @@ const navigation: NavItem[] = [
     icon: <Store className="w-5 h-5" />,
   },
   {
-    title: '네이버 플레이스',
+    title: 'N사 플레이스',
     icon: <span className="w-5 h-5 flex items-center justify-center font-bold text-green-600">N</span>,
     children: [
       {
@@ -57,14 +57,9 @@ const navigation: NavItem[] = [
         icon: <TrendingUp className="w-4 h-4" />,
       },
       {
-        title: '주요지표 추적',
-        href: '/dashboard/naver/metrics-tracker',
-        icon: <BarChart3 className="w-4 h-4" />,
-      },
-      {
-        title: '대표키워드 분석',
-        href: '/dashboard/naver/main-keywords',
-        icon: <Key className="w-4 h-4" />,
+        title: '플레이스 진단',
+        href: '/dashboard/naver/audit',
+        icon: <Search className="w-4 h-4" />,
       },
       {
         title: '타겟키워드 추출',
@@ -72,17 +67,27 @@ const navigation: NavItem[] = [
         icon: <Target className="w-4 h-4" />,
       },
       {
-        title: '리뷰 관리',
-        icon: <MessageSquare className="w-4 h-4" />,
-        children: [
-          { title: '리뷰 통계/현황분석', href: '/dashboard/naver/reviews', icon: null },
-          { title: 'AI 리뷰답글 달기', href: '/dashboard/naver/reviews/ai-reply', icon: null },
-        ],
+        title: '키워드순위 추적',
+        href: '/dashboard/naver/metrics-tracker',
+        icon: <BarChart3 className="w-4 h-4" />,
       },
       {
-        title: '플레이스 진단',
-        href: '/dashboard/naver/audit',
-        icon: <Search className="w-4 h-4" />,
+        title: '플레이스 활성화',
+        href: '/dashboard/naver/activation',
+        icon: <TrendingUp className="w-4 h-4" />,
+      },
+      {
+        title: '대표키워드 분석',
+        href: '/dashboard/naver/main-keywords',
+        icon: <Key className="w-4 h-4" />,
+      },
+      {
+        title: '리뷰관리',
+        icon: <MessageSquare className="w-4 h-4" />,
+        children: [
+          { title: '리뷰 분석', href: '/dashboard/naver/reviews', icon: null },
+          { title: 'AI 리뷰답글', href: '/dashboard/naver/reviews/ai-reply', icon: null },
+        ],
       },
       {
         title: '경쟁매장 분석',
@@ -95,16 +100,11 @@ const navigation: NavItem[] = [
         icon: <Tag className="w-4 h-4" />,
       },
       {
-        title: '플레이스 활성화',
-        href: '/dashboard/naver/activation',
-        icon: <TrendingUp className="w-4 h-4" />,
-      },
-      {
         title: '플레이스 지수관리',
         icon: <BarChart3 className="w-4 h-4" />,
         badge: '준비중',
         children: [
-          { title: '주요 KPI 현황', href: '/dashboard/naver/metrics', icon: null },
+          { title: '주요 KPI현황', href: '/dashboard/naver/metrics', icon: null },
           { title: '지수 분석 및 전략', href: '/dashboard/naver/metrics/strategy', icon: null },
         ],
       },
@@ -123,7 +123,38 @@ const navigation: NavItem[] = [
     ],
   },
   {
-    title: '구글 비즈니스 프로필',
+    title: 'K사 비지니스 매장',
+    icon: <span className="w-5 h-5 flex items-center justify-center font-bold text-amber-600">K</span>,
+    badge: '준비중',
+    children: [
+      {
+        title: 'K사 비지니스 매장진단',
+        href: '/dashboard/kakao/audit',
+        icon: <Search className="w-4 h-4" />,
+        badge: '준비중',
+      },
+      {
+        title: '리뷰관리',
+        href: '/dashboard/kakao/reviews',
+        icon: <MessageSquare className="w-4 h-4" />,
+        badge: '준비중',
+      },
+      {
+        title: 'K사 맵 순위조회',
+        href: '/dashboard/kakao/rank',
+        icon: <TrendingUp className="w-4 h-4" />,
+        badge: '준비중',
+      },
+      {
+        title: '주요지표관리',
+        href: '/dashboard/kakao/metrics',
+        icon: <BarChart3 className="w-4 h-4" />,
+        badge: '준비중',
+      },
+    ],
+  },
+  {
+    title: 'G사 비지니스 프로필',
     icon: <span className="w-5 h-5 flex items-center justify-center font-bold text-blue-600">G</span>,
     badge: '준비중',
     children: [
@@ -132,7 +163,7 @@ const navigation: NavItem[] = [
         icon: <MessageSquare className="w-4 h-4" />,
         badge: '준비중',
         children: [
-          { title: '리뷰 통계/현황분석', href: '/dashboard/google/reviews', icon: null, badge: '준비중' },
+          { title: '리뷰 통계/현황 분석', href: '/dashboard/google/reviews', icon: null, badge: '준비중' },
           { title: 'AI 리뷰답글 달기', href: '/dashboard/google/reviews/ai-reply', icon: null, badge: '준비중' },
         ],
       },
@@ -143,7 +174,7 @@ const navigation: NavItem[] = [
         badge: '준비중',
       },
       {
-        title: '구글 순위조회',
+        title: 'G사 맵 순위조회',
         href: '/dashboard/google/rank',
         icon: <TrendingUp className="w-4 h-4" />,
         badge: '준비중',
@@ -167,11 +198,13 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname()
   // 모든 메뉴를 기본으로 펼쳐진 상태로 설정
   const [openItems, setOpenItems] = useState<string[]>([
-    '네이버 플레이스', 
-    '리뷰 관리', 
+    'N사 플레이스', 
+    '리뷰관리', 
     '플레이스 지수관리', 
     '검색광고 분석',
-    '구글 비즈니스'
+    'K사 비지니스 매장',
+    'G사 비지니스 프로필',
+    '리뷰 관리'  // G사 하위 메뉴
   ])
 
   // 모바일에서 라우트 변경 시 사이드바 닫기

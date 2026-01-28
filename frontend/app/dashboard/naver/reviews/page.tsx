@@ -788,9 +788,12 @@ export default function ReviewManagementPage() {
       {/* 헤더 */}
       <div className="flex items-center justify-between">
       <div>
-          <h1 className="text-3xl font-bold">리뷰 관리</h1>
+          <h1 className="text-3xl font-bold">리뷰 분석</h1>
           <p className="text-muted-foreground mt-1">
-            리뷰 통계 및 현황 분석
+            방문자 리뷰와 블로그 리뷰를 AI로 분석하여 긍정/부정 감성과 핵심 키워드를 파악합니다.
+          </p>
+          <p className="text-muted-foreground text-sm">
+            리뷰 추이와 고객 반응을 실시간으로 모니터링하고 개선점을 도출할 수 있습니다.
         </p>
       </div>
 

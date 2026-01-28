@@ -565,10 +565,13 @@ export default function NaverAIReplyPage() {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-primary mb-2">
-            AI 답글 생성
+            AI 리뷰답글
           </h1>
           <p className="text-muted-foreground">
-            AI가 리뷰 내용을 분석하여 적절한 답글을 자동으로 생성합니다.
+            AI가 리뷰 내용을 분석하여 감성에 맞는 전문적인 답글을 자동으로 생성합니다.
+          </p>
+          <p className="text-muted-foreground text-sm">
+            매장 톤앤매너를 설정하면 브랜드 이미지에 맞는 일관된 답글을 작성할 수 있습니다.
           </p>
         </div>
         
