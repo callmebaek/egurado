@@ -123,7 +123,7 @@ export function RankTrackingModal({ opened, onClose, onComplete }: RankTrackingM
       if (!response.ok) throw new Error('매장 목록을 불러올 수 없습니다')
 
       const data = await response.json()
-      const naverStores = data.filter((s: any) => s.platform === 'naver')
+      const naverStores = data.stores?.filter((s: any) => s.platform === 'naver') || []
       setStores(naverStores)
     } catch (err: any) {
       console.error('매장 로드 오류:', err)
