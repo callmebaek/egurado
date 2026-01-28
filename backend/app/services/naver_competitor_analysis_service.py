@@ -698,9 +698,13 @@ class NaverCompetitorAnalysisService:
             count_7d = 0
             cutoff_date = now - timedelta(days=7)
             
-            for review in all_reviews:
+            logger.info(f"[경쟁분석] 방문자 리뷰 날짜 필터링 시작 - cutoff_date: {cutoff_date}, now: {now}")
+            
+            for idx, review in enumerate(all_reviews):
                 created_str = review.get("created")
                 if not created_str:
+                    if idx < 3:  # 처음 3개만 로깅
+                        logger.warning(f"[경쟁분석] 리뷰 #{idx}: created 필드 없음")
                     continue
                 
                 try:
@@ -713,10 +717,16 @@ class NaverCompetitorAnalysisService:
                     # cutoff_date도 timezone 추가
                     cutoff_with_tz = cutoff_date.replace(tzinfo=timezone.utc) if cutoff_date.tzinfo is None else cutoff_date
                     
+                    days_diff = (now - review_date).days
+                    
+                    if idx < 3:  # 처음 3개만 로깅
+                        logger.info(f"[경쟁분석] 리뷰 #{idx}: created={created_str}, review_date={review_date}, days_ago={days_diff}")
+                    
                     if review_date >= cutoff_with_tz:
                         count_7d += 1
                 except Exception as e:
-                    logger.debug(f"[경쟁분석] 날짜 파싱 실패: {created_str}, {str(e)}")
+                    if idx < 3:  # 처음 3개만 로깅
+                        logger.warning(f"[경쟁분석] 리뷰 #{idx}: 날짜 파싱 실패 - {created_str}, {str(e)}")
                     continue
             
             logger.info(f"[경쟁분석] 방문자리뷰 7일: {count_7d}개 (전체 조회: {len(all_reviews)}개)")
@@ -750,13 +760,12 @@ class NaverCompetitorAnalysisService:
         try:
             logger.info(f"[경쟁분석] 블로그 리뷰 계산 시작 - place_id={place_id}, store_name={store_name}, road_address={road_address}")
             
-            # HTML 파싱으로 블로그 리뷰 가져오기 (7일치만 필요하므로 조기 종료 활용)
+            # HTML 파싱으로 블로그 리뷰 가져오기 (7일치만 필요하므로 max_pages 제한)
             all_reviews = await self.review_service.get_blog_reviews_html(
                 place_id=place_id,
                 store_name=store_name,
                 road_address=road_address,
-                max_pages=3,  # 7일치는 보통 1-2페이지에 있음 (속도 최적화)
-                target_days=7  # 7일 이전 블로그 발견 시 조기 종료
+                max_pages=3  # 7일치는 보통 1-2페이지에 있음 (속도 최적화)
             )
             
             logger.info(f"[경쟁분석] 블로그 리뷰 HTML 파싱 결과: {len(all_reviews) if all_reviews else 0}개")
@@ -769,12 +778,22 @@ class NaverCompetitorAnalysisService:
             cutoff_date = datetime.now() - timedelta(days=7)
             recent_count = 0
             
-            for review in all_reviews:
+            logger.info(f"[경쟁분석] 블로그 리뷰 날짜 필터링 시작 - cutoff_date: {cutoff_date}")
+            
+            for idx, review in enumerate(all_reviews):
                 date_str = review.get("dateString") or review.get("date", "")
                 if date_str:
                     review_date = self._parse_blog_review_date(date_str)
-                    if review_date and review_date >= cutoff_date:
-                        recent_count += 1
+                    if review_date:
+                        days_ago = (datetime.now() - review_date).days
+                        if idx < 3:  # 처음 3개만 로깅
+                            logger.info(f"[경쟁분석] 블로그 #{idx}: date={date_str}, parsed={review_date}, days_ago={days_ago}")
+                        
+                        if review_date >= cutoff_date:
+                            recent_count += 1
+                    else:
+                        if idx < 3:  # 처음 3개만 로깅
+                            logger.warning(f"[경쟁분석] 블로그 #{idx}: 날짜 파싱 실패 - {date_str}")
             
             logger.info(f"[경쟁분석] 블로그리뷰 7일: {recent_count}개 (전체: {len(all_reviews)}개)")
             return float(recent_count)
