@@ -450,10 +450,11 @@ export function RankTrackingModal({ opened, onClose, onComplete }: RankTrackingM
         </Center>
       ) : (
         <>
-          {!showCustomInput && keywordOptions.length > 0 && (
+          {/* 과거 추출한 타겟키워드 목록 (항상 표시) */}
+          {keywordOptions.length > 0 && (
             <Paper p="md" radius="md" style={{ border: '1px solid #e0e7ff' }}>
               <Group justify="space-between" mb="sm">
-                <Text size="sm" fw={600}>🎯 타겟키워드 추출 결과</Text>
+                <Text size="sm" fw={600}>🎯 과거 추출한 키워드</Text>
                 <Badge size="sm" variant="light" color="brand">
                   최신 {keywordOptions.length}개
                 </Badge>
@@ -477,7 +478,14 @@ export function RankTrackingModal({ opened, onClose, onComplete }: RankTrackingM
                         : '#ffffff',
                       transition: 'all 0.2s'
                     }}
-                    onClick={() => setSelectedKeyword(option.keyword)}
+                    onClick={() => {
+                      setSelectedKeyword(option.keyword)
+                      // 직접 입력창 닫기
+                      if (showCustomInput) {
+                        setShowCustomInput(false)
+                        setCustomKeyword('')
+                      }
+                    }}
                   >
                     <Group justify="space-between">
                       <Group gap="xs">
@@ -498,15 +506,24 @@ export function RankTrackingModal({ opened, onClose, onComplete }: RankTrackingM
             </Paper>
           )}
 
+          {/* 직접 입력 토글 버튼 */}
           <Flex direction="column" gap="sm">
             <Button
               variant={showCustomInput ? 'filled' : 'light'}
               color="gray"
               leftSection={<Plus size={16} />}
-              onClick={() => setShowCustomInput(!showCustomInput)}
+              onClick={() => {
+                setShowCustomInput(!showCustomInput)
+                // 직접 입력 켤 때 기존 선택 초기화
+                if (!showCustomInput) {
+                  setSelectedKeyword('')
+                } else {
+                  setCustomKeyword('')
+                }
+              }}
               fullWidth
             >
-              {showCustomInput ? '타겟키워드에서 선택하기' : '직접 키워드 입력하기'}
+              {showCustomInput ? '입력창 닫기' : '직접 키워드 입력하기'}
             </Button>
 
             {showCustomInput && (
@@ -530,6 +547,15 @@ export function RankTrackingModal({ opened, onClose, onComplete }: RankTrackingM
               </Paper>
             )}
           </Flex>
+
+          {/* 타겟키워드가 없을 때 안내 메시지 */}
+          {keywordOptions.length === 0 && !showCustomInput && (
+            <Alert color="blue" title="💡 안내">
+              <Text size="xs">
+                아직 추출된 타겟키워드가 없습니다. "직접 키워드 입력하기"를 클릭하여 키워드를 입력하세요.
+              </Text>
+            </Alert>
+          )}
         </>
       )}
 
