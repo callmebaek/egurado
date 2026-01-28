@@ -53,8 +53,10 @@ interface RegisteredStore {
 
 interface ExtractedKeyword {
   keyword: string
-  volume: number
-  competition: number
+  total_volume: number
+  comp_idx: string
+  rank?: number
+  total_count?: number
 }
 
 interface KeywordOption {
@@ -175,7 +177,7 @@ export function RankTrackingModal({ opened, onClose, onComplete }: RankTrackingM
           .slice(0, 10)
           .map(k => ({
             keyword: k.keyword,
-            volume: k.volume,
+            volume: k.total_volume,
             isCustom: false
           }))
         
