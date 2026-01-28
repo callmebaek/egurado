@@ -198,7 +198,7 @@ async def get_store_keyword_history(
         
         # 히스토리 조회 (최신순, 최대 10개)
         result = supabase.table("target_keywords_history") \
-            .select("id, store_name, regions, landmarks, menus, industries, other_keywords, total_keywords, created_at") \
+            .select("id, store_name, regions, landmarks, menus, industries, other_keywords, extracted_keywords, total_keywords, created_at") \
             .eq("store_id", store_id) \
             .order("created_at", desc=True) \
             .limit(10) \

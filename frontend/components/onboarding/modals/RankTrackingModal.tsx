@@ -141,22 +141,33 @@ export function RankTrackingModal({ opened, onClose, onComplete }: RankTrackingM
       const token = getToken()
       if (!token) throw new Error('인증이 필요합니다')
 
+      console.log('🔍 타겟키워드 히스토리 로드 시작:', selectedStore.id, selectedStore.name)
+      
       const response = await fetch(api.targetKeywords.history(selectedStore.id), {
         headers: { 'Authorization': `Bearer ${token}` }
       })
 
+      console.log('📡 API 응답 상태:', response.status, response.ok)
+
       if (!response.ok) {
-        console.log('타겟키워드 히스토리가 없습니다')
+        console.log('⚠️ 타겟키워드 히스토리가 없거나 에러:', response.status)
         setKeywordOptions([])
         return
       }
 
-      const histories = await response.json()
+      const data = await response.json()
+      console.log('📦 받은 히스토리 데이터:', data)
+      
+      const histories = data.histories || []
+      console.log('📋 히스토리 배열:', histories)
       
       if (histories && histories.length > 0) {
         // 가장 최근 히스토리의 추출된 키워드 가져오기 (상위 10개)
         const latestHistory = histories[0]
+        console.log('✅ 최신 히스토리:', latestHistory)
+        
         const extractedKeywords: ExtractedKeyword[] = latestHistory.extracted_keywords || []
+        console.log('🎯 추출된 키워드:', extractedKeywords)
         
         const options: KeywordOption[] = extractedKeywords
           .slice(0, 10)
@@ -166,12 +177,14 @@ export function RankTrackingModal({ opened, onClose, onComplete }: RankTrackingM
             isCustom: false
           }))
         
+        console.log('✨ 최종 키워드 옵션:', options)
         setKeywordOptions(options)
       } else {
+        console.log('⚠️ 히스토리 배열이 비어있음')
         setKeywordOptions([])
       }
     } catch (err: any) {
-      console.error('타겟키워드 로드 오류:', err)
+      console.error('❌ 타겟키워드 로드 오류:', err)
       setKeywordOptions([])
     } finally {
       setLoadingKeywords(false)
