@@ -8,8 +8,8 @@ from typing import List, Optional
 from uuid import UUID
 import logging
 
-from app.core.supabase import get_supabase_client
-from app.core.auth import get_current_user
+from app.core.database import get_supabase_client
+from app.routers.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 
