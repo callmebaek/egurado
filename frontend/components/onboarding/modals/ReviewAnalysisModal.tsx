@@ -59,6 +59,8 @@ export default function ReviewAnalysisModal({
   onClose,
   onComplete,
 }: ReviewAnalysisModalProps) {
+  console.log('🚀 ReviewAnalysisModal 컴포넌트 로드됨! isOpen:', isOpen);
+  
   const { getToken } = useAuth();
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);

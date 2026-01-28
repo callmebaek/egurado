@@ -236,6 +236,7 @@ export default function OnboardingSection({ onStoreRegistered }: OnboardingSecti
         break;
       
       case ACTION_KEYS.REVIEW_ANALYSIS:
+        console.log('🔥 리뷰 현황 분석하기 클릭됨!');
         setShowReviewAnalysisModal(true);
         break;
       
@@ -388,6 +389,7 @@ export default function OnboardingSection({ onStoreRegistered }: OnboardingSecti
         onComplete={() => markActionComplete(ACTION_KEYS.DIRECTIONS_AI)}
       />
 
+      {console.log('🎯 ReviewAnalysisModal 렌더링 체크:', showReviewAnalysisModal)}
       <ReviewAnalysisModal
         isOpen={showReviewAnalysisModal}
         onClose={() => setShowReviewAnalysisModal(false)}
