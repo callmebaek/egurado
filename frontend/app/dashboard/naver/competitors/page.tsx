@@ -63,6 +63,8 @@ interface CompetitorStore {
   is_place_plus?: boolean
   is_new_business?: boolean
   supports_naverpay?: boolean
+  has_naver_talk?: boolean
+  has_naver_order?: boolean
   has_naver_booking?: boolean
   store_search_volume?: number
   important_review?: string
@@ -91,6 +93,8 @@ interface ComparisonResult {
     has_coupon: ComparisonGap
     is_place_plus: ComparisonGap
     supports_naverpay: ComparisonGap
+    has_naver_talk: ComparisonGap
+    has_naver_order: ComparisonGap
   }
   recommendations: Array<{
     priority: string
@@ -412,6 +416,8 @@ export default function CompetitorsPage() {
     const couponRate = (competitors.filter(c => c.has_coupon).length / competitors.length) * 100
     const placePlusRate = (competitors.filter(c => c.is_place_plus).length / competitors.length) * 100
     const naverpayRate = (competitors.filter(c => c.supports_naverpay).length / competitors.length) * 100
+    const naverTalkRate = (competitors.filter(c => c.has_naver_talk).length / competitors.length) * 100
+    const naverOrderRate = (competitors.filter(c => c.has_naver_order).length / competitors.length) * 100
     
     const scoreDistribution = {
       S: competitors.filter(c => c.diagnosis_grade === "S").length,
@@ -429,6 +435,8 @@ export default function CompetitorsPage() {
       has_coupon: ComparisonGap
       is_place_plus: ComparisonGap
       supports_naverpay: ComparisonGap
+      has_naver_talk: ComparisonGap
+      has_naver_order: ComparisonGap
     } = {
       diagnosis_score: {
         my_value: myStore.diagnosis_score || 0,
@@ -468,6 +476,16 @@ export default function CompetitorsPage() {
         my_value: myStore.supports_naverpay || false,
         competitor_rate: naverpayRate,
         status: (myStore.supports_naverpay ? "good" : "bad") as "good" | "bad",
+      },
+      has_naver_talk: {
+        my_value: myStore.has_naver_talk || false,
+        competitor_rate: naverTalkRate,
+        status: (myStore.has_naver_talk ? "good" : "bad") as "good" | "bad",
+      },
+      has_naver_order: {
+        my_value: myStore.has_naver_order || false,
+        competitor_rate: naverOrderRate,
+        status: (myStore.has_naver_order ? "good" : "bad") as "good" | "bad",
       },
     }
     
@@ -810,6 +828,8 @@ export default function CompetitorsPage() {
                     <Table.Th style={{ fontWeight: 700, minWidth: '70px', textAlign: 'center' }}>플플</Table.Th>
                     <Table.Th style={{ fontWeight: 700, minWidth: '90px', textAlign: 'center' }}>새로오픈</Table.Th>
                     <Table.Th style={{ fontWeight: 700, minWidth: '80px', textAlign: 'center' }}>네페이</Table.Th>
+                    <Table.Th style={{ fontWeight: 700, minWidth: '80px', textAlign: 'center' }}>네톡</Table.Th>
+                    <Table.Th style={{ fontWeight: 700, minWidth: '80px', textAlign: 'center' }}>네주문</Table.Th>
                     <Table.Th style={{ fontWeight: 700, minWidth: '90px', textAlign: 'center' }}>네예약</Table.Th>
                     <Table.Th style={{ fontWeight: 700, minWidth: '100px' }}>검색량</Table.Th>
                     <Table.Th style={{ fontWeight: 700, minWidth: '250px' }}>하이라이트 리뷰</Table.Th>
@@ -891,6 +911,20 @@ export default function CompetitorsPage() {
                             <Loader size="xs" />
                           ) : analyzed ? (
                             analyzed.supports_naverpay ? <CheckCircle2 size={16} color="#2ecc71" /> : <Minus size={16} color="#dee2e6" />
+                          ) : '-'}
+                        </Table.Td>
+                        <Table.Td style={{ textAlign: 'center' }}>
+                          {isLoading ? (
+                            <Loader size="xs" />
+                          ) : analyzed ? (
+                            analyzed.has_naver_talk ? <CheckCircle2 size={16} color="#2ecc71" /> : <Minus size={16} color="#dee2e6" />
+                          ) : '-'}
+                        </Table.Td>
+                        <Table.Td style={{ textAlign: 'center' }}>
+                          {isLoading ? (
+                            <Loader size="xs" />
+                          ) : analyzed ? (
+                            analyzed.has_naver_order ? <CheckCircle2 size={16} color="#2ecc71" /> : <Minus size={16} color="#dee2e6" />
                           ) : '-'}
                         </Table.Td>
                         <Table.Td style={{ textAlign: 'center' }}>

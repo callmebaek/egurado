@@ -15,6 +15,7 @@ from .naver_complete_diagnosis_service import complete_diagnosis_service
 from .naver_diagnosis_engine import diagnosis_engine
 from .llm_recommendation_service import llm_recommendation_service
 from .naver_keyword_search_volume_service import NaverKeywordSearchVolumeService
+from .naver_review_service import NaverReviewService
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +25,7 @@ class NaverCompetitorAnalysisService:
     
     def __init__(self):
         self.search_service = NaverPlaceNewAPIService()
+        self.review_service = NaverReviewService()
     
     async def get_top_competitors(
         self,
@@ -88,16 +90,17 @@ class NaverCompetitorAnalysisService:
             logger.info(f"[경쟁분석-DEBUG] Step 2: diagnosis_engine.diagnose 호출")
             diagnosis_result = diagnosis_engine.diagnose(place_data)
             
-            # 7일간 리뷰 통계 추출
-            logger.info(f"[경쟁분석-DEBUG] Step 3: 방문자 리뷰 통계 계산")
-            visitor_reviews_7d = self._calculate_recent_reviews(
-                place_data.get("visitor_review_count", 0),
+            # 7일간 리뷰 통계 추출 (정확한 데이터 수집)
+            logger.info(f"[경쟁분석-DEBUG] Step 3: 방문자 리뷰 통계 계산 (실제 데이터)")
+            visitor_reviews_7d = await self._calculate_visitor_reviews_accurate(
                 place_data.get("recent_visitor_reviews") or []
             )
-            logger.info(f"[경쟁분석-DEBUG] Step 4: 블로그 리뷰 통계 계산")
-            blog_reviews_7d = self._calculate_recent_reviews(
-                place_data.get("blog_review_count", 0),
-                place_data.get("recent_blog_reviews") or []
+            logger.info(f"[경쟁분석-DEBUG] Step 4: 블로그 리뷰 통계 계산 (HTML 파싱)")
+            blog_reviews_7d = await self._calculate_blog_reviews_accurate(
+                place_id,
+                store_name or place_data.get("name", ""),
+                place_data.get("road_address", ""),
+                place_data.get("blog_review_count", 0)
             )
             
             # 공지 통계
@@ -118,12 +121,10 @@ class NaverCompetitorAnalysisService:
                 elif isinstance(first_review, str):
                     important_review = first_review
             
-            # 네이버페이 지원 여부 확인
-            payment_methods = place_data.get("payment_methods") or []
-            supports_naverpay = False
-            if payment_methods:
-                payment_str = str(payment_methods)
-                supports_naverpay = "네이버페이" in payment_str or "naverpay" in payment_str.lower()
+            # 네이버 서비스 정확한 데이터 (HTML 파싱 결과)
+            supports_naverpay = place_data.get("has_naver_pay", False)
+            has_naver_talk = place_data.get("has_naver_talk", False)
+            has_naver_order = place_data.get("has_naver_order", False)
             
             # 쿠폰 보유 여부 확인
             promotions = place_data.get("promotions") or {}
@@ -168,6 +169,8 @@ class NaverCompetitorAnalysisService:
                 "is_place_plus": place_data.get("is_place_plus", False),
                 "is_new_business": place_data.get("is_new_business", False),
                 "supports_naverpay": supports_naverpay,
+                "has_naver_talk": has_naver_talk,  # 네이버톡톡
+                "has_naver_order": has_naver_order,  # 네이버주문
                 "has_naver_booking": has_naver_booking,  # 네이버 예약
                 "store_search_volume": store_search_volume,  # 매장명 검색량
                 "important_review": important_review,  # 네이버 하이라이트 리뷰
@@ -609,6 +612,123 @@ class NaverCompetitorAnalysisService:
         recommendations.sort(key=lambda x: priority_order.get(x["priority"], 2))
         
         return recommendations
+    
+    async def _calculate_visitor_reviews_accurate(
+        self,
+        recent_visitor_reviews: List[Dict]
+    ) -> float:
+        """
+        방문자리뷰 7일 정확한 계산 (실제 데이터 기반)
+        
+        Args:
+            recent_visitor_reviews: 최근 방문자 리뷰 목록
+        
+        Returns:
+            7일간 리뷰 수
+        """
+        if not recent_visitor_reviews:
+            return 0.0
+        
+        cutoff_date = datetime.now() - timedelta(days=7)
+        recent_count = 0
+        
+        for review in recent_visitor_reviews:
+            review_date = self._parse_review_date(review.get("visited") or review.get("date", ""))
+            if review_date and review_date >= cutoff_date:
+                recent_count += 1
+        
+        logger.info(f"[경쟁분석] 방문자리뷰 7일: {recent_count}개")
+        return float(recent_count)
+    
+    async def _calculate_blog_reviews_accurate(
+        self,
+        place_id: str,
+        store_name: str,
+        road_address: str,
+        total_blog_review_count: int
+    ) -> float:
+        """
+        블로그리뷰 7일 정확한 계산 (HTML 파싱 + 필터링)
+        
+        Args:
+            place_id: 플레이스 ID
+            store_name: 매장명
+            road_address: 도로명주소
+            total_blog_review_count: 전체 블로그 리뷰 수 (fallback용)
+        
+        Returns:
+            7일간 리뷰 수
+        """
+        try:
+            # HTML 파싱으로 블로그 리뷰 가져오기
+            all_reviews = await self.review_service.get_blog_reviews_html(
+                place_id=place_id,
+                store_name=store_name,
+                road_address=road_address,
+                max_pages=10
+            )
+            
+            if not all_reviews:
+                logger.warning(f"[경쟁분석] 블로그 리뷰 파싱 실패, 추정값 사용")
+                estimated_daily_avg = total_blog_review_count / 365 if total_blog_review_count > 0 else 0
+                return estimated_daily_avg * 7
+            
+            # 날짜 파싱하여 7일 이내 카운팅
+            cutoff_date = datetime.now() - timedelta(days=7)
+            recent_count = 0
+            
+            for review in all_reviews:
+                date_str = review.get("dateString") or review.get("date", "")
+                if date_str:
+                    review_date = self._parse_blog_review_date(date_str)
+                    if review_date and review_date >= cutoff_date:
+                        recent_count += 1
+            
+            logger.info(f"[경쟁분석] 블로그리뷰 7일: {recent_count}개 (전체: {len(all_reviews)}개)")
+            return float(recent_count)
+            
+        except Exception as e:
+            logger.error(f"[경쟁분석] 블로그 리뷰 계산 실패: {str(e)}")
+            estimated_daily_avg = total_blog_review_count / 365 if total_blog_review_count > 0 else 0
+            return estimated_daily_avg * 7
+    
+    def _parse_blog_review_date(self, date_str: str) -> Optional[datetime]:
+        """
+        블로그 리뷰 날짜 파싱
+        
+        지원 형식:
+        - "2025.09.30."
+        - "25.9.30."
+        - "14시간 전", "3일 전"
+        """
+        if not date_str:
+            return None
+        
+        try:
+            # "N일 전", "N주 전", "N시간 전" 형식
+            if "전" in date_str:
+                if "시간" in date_str or "분" in date_str:
+                    # 시간/분 전 -> 오늘
+                    return datetime.now()
+                elif "일" in date_str:
+                    days = int(re.search(r'\d+', date_str).group())
+                    return datetime.now() - timedelta(days=days)
+                elif "주" in date_str:
+                    weeks = int(re.search(r'\d+', date_str).group())
+                    return datetime.now() - timedelta(weeks=weeks)
+            
+            # "YYYY.MM.DD." 또는 "YY.MM.DD." 형식
+            date_str_clean = date_str.replace(".", "").strip()
+            if len(date_str_clean) == 6:  # YYMMDD
+                return datetime.strptime(date_str_clean, "%y%m%d")
+            elif len(date_str_clean) == 8:  # YYYYMMDD
+                return datetime.strptime(date_str_clean, "%Y%m%d")
+            
+            return None
+            
+        except Exception as e:
+            logger.debug(f"[경쟁분석] 날짜 파싱 실패: {date_str} - {str(e)}")
+            return None
 
 
 # 싱글톤 인스턴스
