@@ -1052,7 +1052,7 @@ class NaverReviewService:
         soup = BeautifulSoup(html, 'html.parser')
         reviews = []
         
-        # 매장명 필터링 준비
+        # 매장명 필터링 준비 (단순화)
         # 1. 정확한 매장명
         exact_store_name = store_name.strip()
         
@@ -1065,9 +1065,9 @@ class NaverReviewService:
         first_word_lower = first_word_store_name.lower().replace(" ", "") if first_word_store_name else ""
         
         if has_space:
-            logger.info(f"[블로그 필터링] 매장명: '{exact_store_name}', 첫 단어: '{first_word_store_name}'")
+            logger.info(f"[블로그 필터링] 매장명: '{exact_store_name}' (정규화: '{exact_store_lower}'), 첫 단어: '{first_word_store_name}' (정규화: '{first_word_lower}')")
         else:
-            logger.info(f"[블로그 필터링] 매장명: '{exact_store_name}' (띄어쓰기 없음, 매장명만 사용)")
+            logger.info(f"[블로그 필터링] 매장명: '{exact_store_name}' (정규화: '{exact_store_lower}', 띄어쓰기 없음)")
         
         # 블로그 링크를 직접 찾기
         blog_links = soup.find_all('a', href=re.compile(r'blog\.naver\.com/[^/]+/\d+'))
@@ -1109,15 +1109,15 @@ class NaverReviewService:
                 description_lower = description.lower().replace(" ", "")
                 combined_text_lower = title_lower + description_lower
                 
-                # 매칭 조건: 매장명 전체 OR 첫 단어
+                # 매칭 조건: 매장명 전체 OR 첫 단어 (2가지만)
                 is_match = exact_store_lower in combined_text_lower
                 if first_word_lower:  # 띄어쓰기가 있을 때만 첫 단어도 확인
                     is_match = is_match or (first_word_lower in combined_text_lower)
                 
                 if not is_match:
                     filtered_count += 1
-                    if idx < 10:  # 처음 10개만 로그
-                        logger.info(f"[블로그 필터링] 제외 #{idx+1}: '{title[:60]}'")
+                    if idx < 10:  # 처음 10개만 로그 (디버깅용)
+                        logger.info(f"[블로그 필터링] 제외 #{idx+1}: '{title[:60]}' → 정규화: '{combined_text_lower[:80]}'")
                     continue
                 
                 if idx < 10:  # 처음 10개만 로그
@@ -1131,7 +1131,7 @@ class NaverReviewService:
                     match_in_title = (exact_store_lower in title_lower) or (first_word_lower and first_word_lower in title_lower)
                     match_location = "제목" if match_in_title else "미리보기"
                     
-                    logger.info(f"[블로그 파싱] ✓ #{idx+1} ({match_type}/{match_location}): '{title[:60]}'")
+                    logger.info(f"[블로그 파싱] ✓ #{idx+1} ({match_type}/{match_location}): '{title[:60]}' → 정규화: '{combined_text_lower[:80]}'")
                 
                 # 링크의 부모 요소에서 날짜와 작성자 찾기
                 # 부모를 여러 단계 올라가면서 찾기
