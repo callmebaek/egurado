@@ -290,7 +290,8 @@ export function RankTrackingModal({ opened, onClose, onComplete }: RankTrackingM
         throw new Error('키워드 정보를 가져올 수 없습니다')
       }
 
-      const keywords = await keywordsResponse.json()
+      const keywordsData = await keywordsResponse.json()
+      const keywords = keywordsData.keywords || []
       const keywordData = keywords.find((k: any) => k.keyword === finalKeyword)
 
       if (!keywordData) {
