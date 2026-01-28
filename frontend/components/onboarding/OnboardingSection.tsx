@@ -10,6 +10,7 @@ import { useAuth } from '@/lib/auth-context';
 import StoreRegisterModal from './modals/StoreRegisterModal';
 import PlaceAuditModal from './modals/PlaceAuditModal';
 import TargetKeywordsModal from './modals/TargetKeywordsModal';
+import { RankTrackingModal } from './modals/RankTrackingModal';
 import GenericActionModal from './modals/GenericActionModal';
 
 interface OnboardingSectionProps {
@@ -27,6 +28,7 @@ export default function OnboardingSection({ onStoreRegistered }: OnboardingSecti
   const [showStoreRegisterModal, setShowStoreRegisterModal] = useState(false);
   const [showPlaceAuditModal, setShowPlaceAuditModal] = useState(false);
   const [showTargetKeywordsModal, setShowTargetKeywordsModal] = useState(false);
+  const [showRankTrackingModal, setShowRankTrackingModal] = useState(false);
   const [genericModalConfig, setGenericModalConfig] = useState<{
     isOpen: boolean;
     title: string;
@@ -115,37 +117,8 @@ export default function OnboardingSection({ onStoreRegistered }: OnboardingSecti
         setShowTargetKeywordsModal(true);
         break;
         
-      case ACTION_KEYS.PLACE_DIAGNOSIS:
-        setGenericModalConfig({
-          isOpen: true,
-          title: '플레이스 진단하기',
-          description: '내 매장의 네이버 플레이스 상태를 진단하고 개선점을 찾아보세요.',
-          pageUrl: '/dashboard/naver/place-details',
-          pageLabel: '플레이스 진단 페이지로 이동',
-          actionKey,
-        });
-        break;
-        
-      case ACTION_KEYS.TARGET_KEYWORDS:
-        setGenericModalConfig({
-          isOpen: true,
-          title: '타겟키워드 설정하기',
-          description: 'AI가 추천하는 타겟 키워드를 확인하고 설정하세요.',
-          pageUrl: '/dashboard/naver/target-keywords',
-          pageLabel: '타겟키워드 페이지로 이동',
-          actionKey,
-        });
-        break;
-        
       case ACTION_KEYS.METRICS_TRACKING:
-        setGenericModalConfig({
-          isOpen: true,
-          title: '주요지표 추적하기',
-          description: '방문자수, 리뷰수 등 주요 지표를 자동으로 추적하세요.',
-          pageUrl: '/dashboard/naver/metric-tracker',
-          pageLabel: '주요지표 추적 페이지로 이동',
-          actionKey,
-        });
+        setShowRankTrackingModal(true);
         break;
         
       case ACTION_KEYS.RANK_ALERTS:
@@ -381,6 +354,12 @@ export default function OnboardingSection({ onStoreRegistered }: OnboardingSecti
         isOpen={showTargetKeywordsModal}
         onClose={() => setShowTargetKeywordsModal(false)}
         onComplete={() => markActionComplete(ACTION_KEYS.TARGET_KEYWORDS)}
+      />
+      
+      <RankTrackingModal
+        opened={showRankTrackingModal}
+        onClose={() => setShowRankTrackingModal(false)}
+        onComplete={() => markActionComplete(ACTION_KEYS.METRICS_TRACKING)}
       />
       
       <GenericActionModal

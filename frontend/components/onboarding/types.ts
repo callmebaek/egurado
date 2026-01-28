@@ -70,7 +70,7 @@ export const ONBOARDING_STEPS: Step[] = [
       { key: ACTION_KEYS.STORE_REGISTER, title: '매장 등록하기' },
       { key: ACTION_KEYS.PLACE_DIAGNOSIS, title: '플레이스 진단하기' },
       { key: ACTION_KEYS.TARGET_KEYWORDS, title: '타겟키워드 설정하기' },
-      { key: ACTION_KEYS.METRICS_TRACKING, title: '주요지표 추적하기' },
+      { key: ACTION_KEYS.METRICS_TRACKING, title: '플레이스 순위 추적하기' },
     ],
   },
   {

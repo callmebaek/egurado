@@ -153,6 +153,15 @@ export const api = {
     updateAction: (actionKey: string) => api.url(`/api/v1/onboarding/progress/${actionKey}`),
     preferences: () => api.url('/api/v1/onboarding/preferences'),
   },
+  
+  /**
+   * 타겟키워드 관련 API
+   */
+  targetKeywords: {
+    analyze: () => api.url('/api/v1/target-keywords/analyze'),
+    history: (storeId: string) => api.url(`/api/v1/target-keywords/history/${storeId}`),
+    historyDetail: (historyId: string) => api.url(`/api/v1/target-keywords/history/detail/${historyId}`),
+  },
 } as const
 
 /**
