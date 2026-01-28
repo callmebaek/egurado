@@ -985,8 +985,8 @@ class NaverReviewService:
                 html = response.text
                 logger.info(f"[블로그 검색] HTML 길이: {len(html)} bytes")
                 
-                # HTML 파싱하여 블로그 리뷰 추출 (검색 결과 그대로 사용, 필터링 없음)
-                reviews = self._parse_naver_blog_search_html(html)
+                # HTML 파싱하여 블로그 리뷰 추출 (매장명 필터링 적용)
+                reviews = self._parse_naver_blog_search_html(html, store_name)
                 
                 logger.info(f"[블로그 검색] 파싱 완료: {len(reviews)}개")
                 
@@ -1033,16 +1033,18 @@ class NaverReviewService:
     
     def _parse_naver_blog_search_html(
         self, 
-        html: str
+        html: str,
+        store_name: str
     ) -> List[Dict[str, Any]]:
         """
-        네이버 통합 검색 블로그 탭 HTML 파싱 (검색 결과 그대로 사용)
+        네이버 통합 검색 블로그 탭 HTML 파싱 (매장명 필터링 적용)
         
         Args:
             html: 네이버 검색 결과 HTML 문자열
+            store_name: 매장명 (필터링에 사용)
         
         Returns:
-            List[Dict]: 파싱된 블로그 리뷰 목록
+            List[Dict]: 파싱된 블로그 리뷰 목록 (매장명 필터링 적용)
         """
         from bs4 import BeautifulSoup
         from datetime import datetime, timedelta
@@ -1050,11 +1052,24 @@ class NaverReviewService:
         soup = BeautifulSoup(html, 'html.parser')
         reviews = []
         
+        # 매장명 필터링 준비
+        # 1. 정확한 매장명
+        exact_store_name = store_name.strip()
+        # 2. 매장명 첫 단어 (공백 기준)
+        first_word_store_name = exact_store_name.split()[0] if exact_store_name else ""
+        
+        # 비교를 위해 소문자 변환 및 공백 제거
+        exact_store_lower = exact_store_name.lower().replace(" ", "")
+        first_word_lower = first_word_store_name.lower().replace(" ", "")
+        
+        logger.info(f"[블로그 필터링] 매장명: '{exact_store_name}', 첫 단어: '{first_word_store_name}'")
+        
         # 블로그 링크를 직접 찾기
         blog_links = soup.find_all('a', href=re.compile(r'blog\.naver\.com/[^/]+/\d+'))
         logger.info(f"[블로그 검색] 발견된 블로그 링크: {len(blog_links)}개")
         
         processed_urls = set()  # 중복 방지
+        filtered_count = 0  # 필터링으로 제외된 개수
         
         for idx, link in enumerate(blog_links):
             try:
@@ -1069,8 +1084,18 @@ class NaverReviewService:
                 if not title or len(title) < 5:  # 너무 짧은 제목은 무시
                     continue
                 
+                # 매장명 필터링: 제목에 정확한 매장명 OR 첫 단어가 포함되어야 함
+                title_lower = title.lower().replace(" ", "")
+                is_match = (exact_store_lower in title_lower) or (first_word_lower in title_lower)
+                
+                if not is_match:
+                    filtered_count += 1
+                    if idx < 10:  # 처음 10개만 로그
+                        logger.info(f"[블로그 필터링] 제외 #{idx+1}: '{title[:60]}'")
+                    continue
+                
                 if idx < 10:  # 처음 10개만 로그
-                    logger.info(f"[블로그 파싱] #{idx+1}: '{title[:60]}'")
+                    logger.info(f"[블로그 파싱] ✓ #{idx+1}: '{title[:60]}'")
                 
                 # 링크의 부모 요소에서 날짜와 작성자 찾기
                 # 부모를 여러 단계 올라가면서 찾기
@@ -1126,7 +1151,7 @@ class NaverReviewService:
                     logger.warning(f"[블로그 검색] 아이템 {idx} 파싱 중 오류: {str(e)}")
                 continue
         
-        logger.info(f"[블로그 파싱] 완료: {len(reviews)}개 (전체 링크: {len(blog_links)}개)")
+        logger.info(f"[블로그 파싱] 완료: {len(reviews)}개 (전체: {len(blog_links)}개, 필터링 제외: {filtered_count}개)")
         
         return reviews
     
