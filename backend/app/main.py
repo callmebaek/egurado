@@ -98,6 +98,7 @@ from app.routers.naver_session import router as naver_session_router
 from app.routers.ai_settings import router as ai_settings_router
 from app.routers.metric_tracker import router as metric_tracker_router
 from app.routers.votes import router as votes_router
+from app.routers.onboarding import router as onboarding_router
 
 # 라우터 등록
 app.include_router(auth_router, prefix="/api/v1", tags=["Auth"])
@@ -113,4 +114,5 @@ app.include_router(naver_session_router, prefix="/api/v1/naver-session", tags=["
 app.include_router(ai_settings_router, tags=["AI Settings"])
 app.include_router(metric_tracker_router, prefix="/api/v1/metrics", tags=["Metric Tracker"])
 app.include_router(votes_router, tags=["Feature Voting"])
+app.include_router(onboarding_router, prefix="/api/v1", tags=["Onboarding"])
 

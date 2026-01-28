@@ -34,6 +34,7 @@ import {
   TrendingDown
 } from "lucide-react"
 import Link from "next/link"
+import OnboardingSection from "@/components/onboarding/OnboardingSection"
 import {
   DndContext,
   closestCenter,
@@ -816,6 +817,9 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* 온보딩 섹션 */}
+      <OnboardingSection />
 
       {/* 통계 카드 그리드 */}
       <div className="grid gap-4 sm:gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">

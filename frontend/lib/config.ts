@@ -144,6 +144,15 @@ export const api = {
     myVotes: () => api.url('/api/v1/votes/my-votes'),
     summary: (featureKey: string) => api.url(`/api/v1/votes/features/${featureKey}/summary`),
   },
+  
+  /**
+   * 온보딩 관련 API
+   */
+  onboarding: {
+    progress: () => api.url('/api/v1/onboarding/progress'),
+    updateAction: (actionKey: string) => api.url(`/api/v1/onboarding/progress/${actionKey}`),
+    preferences: () => api.url('/api/v1/onboarding/preferences'),
+  },
 } as const
 
 /**
