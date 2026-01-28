@@ -10,7 +10,11 @@ import { useAuth } from '@/lib/auth-context';
 import StoreRegisterModal from './modals/StoreRegisterModal';
 import GenericActionModal from './modals/GenericActionModal';
 
-export default function OnboardingSection() {
+interface OnboardingSectionProps {
+  onStoreRegistered?: () => void;
+}
+
+export default function OnboardingSection({ onStoreRegistered }: OnboardingSectionProps) {
   const { user, getToken } = useAuth();
   const [progress, setProgress] = useState<OnboardingProgress>({});
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -348,7 +352,11 @@ export default function OnboardingSection() {
       <StoreRegisterModal
         isOpen={showStoreRegisterModal}
         onClose={() => setShowStoreRegisterModal(false)}
-        onComplete={() => markActionComplete(ACTION_KEYS.STORE_REGISTER)}
+        onComplete={() => {
+          markActionComplete(ACTION_KEYS.STORE_REGISTER);
+          // 대시보드 매장 목록 새로고침
+          onStoreRegistered?.();
+        }}
       />
       
       <GenericActionModal

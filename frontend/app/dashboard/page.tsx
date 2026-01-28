@@ -632,6 +632,31 @@ export default function DashboardPage() {
     }
   }
 
+  // 매장 목록만 다시 로드하는 함수 (온보딩에서 매장 등록 후 호출)
+  const reloadStores = async () => {
+    const token = getToken()
+    if (!token) return
+
+    try {
+      const storesRes = await fetch(api.stores.list(), {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      
+      if (storesRes.ok) {
+        const storesData = await storesRes.json()
+        const loadedStores = storesData.stores || []
+        setStores(loadedStores)
+        
+        // 매장이 변경되면 추적 키워드도 다시 그룹화
+        await loadTrackers(loadedStores)
+      }
+    } catch (error) {
+      console.error("[DEBUG] Error reloading stores:", error)
+    }
+  }
+
   // 데이터 로드
   useEffect(() => {
     const loadDashboardData = async () => {
@@ -884,7 +909,7 @@ export default function DashboardPage() {
       </div>
 
       {/* 온보딩 섹션 */}
-      <OnboardingSection />
+      <OnboardingSection onStoreRegistered={reloadStores} />
 
       {/* 통계 카드 그리드 */}
       <div className="grid gap-4 sm:gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
