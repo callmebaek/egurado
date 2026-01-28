@@ -115,6 +115,9 @@ export default function TargetKeywordsPage() {
   
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null)
+  
+  // 히스토리 관련 상태
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false)
 
   // 등록된 매장 불러오기
   useEffect(() => {
@@ -134,6 +137,16 @@ export default function TargetKeywordsPage() {
       }
     }
   }, [selectedStore, registeredStores])
+
+  // URL 파라미터로 historyId가 있으면 해당 히스토리 로드
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const historyId = params.get("historyId")
+    
+    if (historyId) {
+      loadHistoryDetail(historyId)
+    }
+  }, [])
 
   const fetchRegisteredStores = async () => {
     try {
@@ -162,6 +175,89 @@ export default function TargetKeywordsPage() {
         description: "등록된 매장을 불러오는데 실패했습니다.",
         variant: "destructive",
       })
+    }
+  }
+
+  const loadHistoryDetail = async (historyId: string) => {
+    setIsLoadingHistory(true)
+    try {
+      const token = getToken()
+      if (!token) throw new Error("인증 토큰 없음")
+      
+      const response = await fetch(`${api.baseUrl}/api/v1/target-keywords/history/detail/${historyId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      
+      if (!response.ok) throw new Error("히스토리 조회 실패")
+      
+      const result = await response.json()
+      const history = result.history
+      
+      if (!history) throw new Error("히스토리 데이터 없음")
+      
+      console.log("[타겟 키워드] 히스토리 로드:", history)
+      
+      // 히스토리의 입력값으로 상태 설정
+      setSelectedStore(history.store_id)
+      setRegions(history.regions || [])
+      setLandmarks(history.landmarks || [])
+      setMenus(history.menus || [])
+      setIndustries(history.industries || [])
+      setOthers(history.other_keywords || [])
+      
+      // 추출된 키워드로 분석 결과 재구성
+      // 간단하게 extracted_keywords만 표시
+      const mockAnalysisResult: AnalysisResult = {
+        store_info: {
+          store_id: history.store_id,
+          place_id: "",
+          store_name: history.store_name,
+          address: ""
+        },
+        input_keywords: {
+          regions: history.regions || [],
+          landmarks: history.landmarks || [],
+          menus: history.menus || [],
+          industries: history.industries || [],
+          others: history.other_keywords || []
+        },
+        total_combinations: 0,
+        top_keywords: history.extracted_keywords.map((kw: any, idx: number) => ({
+          keyword: kw.keyword,
+          type: "",
+          components: {},
+          monthly_pc_qc_cnt: 0,
+          monthly_mobile_qc_cnt: 0,
+          total_volume: kw.total_volume || 0,
+          comp_idx: kw.comp_idx || "-"
+        })),
+        seo_analysis: {
+          field_analysis: {},
+          keyword_total_counts: {},
+          keyword_field_matches: {},
+          all_keywords: []
+        },
+        place_details: {}
+      }
+      
+      setAnalysisResult(mockAnalysisResult)
+      
+      toast({
+        title: "히스토리 로드 완료",
+        description: `${history.store_name}의 과거 추출 결과를 불러왔습니다.`,
+      })
+      
+    } catch (error) {
+      console.error("히스토리 로드 에러:", error)
+      toast({
+        title: "오류",
+        description: "히스토리를 불러오는데 실패했습니다.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoadingHistory(false)
     }
   }
 
@@ -236,6 +332,14 @@ export default function TargetKeywordsPage() {
       
       if (result.status === "success") {
         setAnalysisResult(result.data)
+        
+        // 히스토리 ID가 있으면 URL 업데이트
+        if (result.history_id) {
+          const newUrl = `${window.location.pathname}?historyId=${result.history_id}`
+          window.history.pushState({}, '', newUrl)
+          console.log("[타겟 키워드] 히스토리 ID 저장:", result.history_id)
+        }
+        
         toast({
           title: "분석 완료",
           description: `총 ${result.data.top_keywords.length}개의 타겟 키워드를 추출했습니다.`,
@@ -256,12 +360,14 @@ export default function TargetKeywordsPage() {
   }
 
   // 로딩 중
-  if (storesLoading) {
+  if (storesLoading || isLoadingHistory) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
           <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
-          <p className="text-muted-foreground">페이지를 불러오는 중...</p>
+          <p className="text-muted-foreground">
+            {isLoadingHistory ? "히스토리를 불러오는 중..." : "페이지를 불러오는 중..."}
+          </p>
         </div>
       </div>
     )

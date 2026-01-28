@@ -47,6 +47,7 @@ export default function TargetKeywordsModal({
   const [error, setError] = useState('');
   const [analysisSuccess, setAnalysisSuccess] = useState(false);
   const [totalKeywords, setTotalKeywords] = useState(0);
+  const [historyId, setHistoryId] = useState<string | null>(null);
 
   const totalSteps = 8;
 
@@ -185,6 +186,13 @@ export default function TargetKeywordsModal({
       if (result.status === 'success' && result.data) {
         setTotalKeywords(result.data.top_keywords?.length || 0);
         setAnalysisSuccess(true);
+        
+        // 히스토리 ID 저장
+        if (result.history_id) {
+          setHistoryId(result.history_id);
+          console.log('[타겟 키워드] 히스토리 ID 저장:', result.history_id);
+        }
+        
         setCurrentStep(8);
       } else {
         throw new Error(result.message || '분석 결과를 가져오는데 실패했습니다.');
@@ -251,7 +259,13 @@ export default function TargetKeywordsModal({
       // 상세 페이지로 이동
       onComplete();
       onClose();
-      router.push('/dashboard/naver/target-keywords');
+      
+      // 히스토리 ID가 있으면 URL 파라미터로 전달
+      const targetUrl = historyId 
+        ? `/dashboard/naver/target-keywords?historyId=${historyId}`
+        : '/dashboard/naver/target-keywords';
+      
+      router.push(targetUrl);
     }
   };
 
