@@ -1002,7 +1002,7 @@ class NaverReviewService:
                         if page == 0:
                             logger.info(f"[블로그 검색] HTML 길이: {len(html)} bytes")
                         
-                        # HTML에서 모든 블로그의 날짜 확인 (매칭 여부와 무관하게 early stopping 판단용)
+                        # HTML 파싱 (한 번만 수행하여 성능 최적화)
                         from bs4 import BeautifulSoup
                         import re
                         
@@ -1019,9 +1019,9 @@ class NaverReviewService:
                         checked_dates = 0
                         
                         # 페이지 내 일부 블로그 링크의 날짜만 샘플링 확인 (속도 최적화)
-                        # 최대 5개만 확인하여 빠르게 60일 기준 확인
+                        # 최대 3개만 확인하여 빠르게 60일 기준 확인
                         for link_idx, link in enumerate(blog_links_in_page):
-                            if link_idx >= 5:  # 최대 5개까지 샘플링 (속도 최적화)
+                            if link_idx >= 3:  # 최대 3개까지 샘플링 (속도 최적화)
                                 break
                             
                             try:
@@ -1071,8 +1071,8 @@ class NaverReviewService:
                             except:
                                 continue
                         
-                        # HTML 파싱하여 블로그 리뷰 추출 (매장명 필터링 적용)
-                        page_reviews = self._parse_naver_blog_search_html(html, store_name)
+                        # 블로그 리뷰 추출 (매장명 필터링 적용, 이미 파싱된 soup 재사용)
+                        page_reviews = self._parse_naver_blog_search_html(soup, store_name)
                         all_reviews.extend(page_reviews)
                         
                         # Early stopping 판단: 이 페이지의 가장 오래된 블로그가 60일 이전인지 확인
@@ -1089,9 +1089,9 @@ class NaverReviewService:
                             logger.info(f"[블로그 검색] 페이지 {page+1}/{max_pages}: 매칭 {len(page_reviews)}개 (누적: {len(all_reviews)}개), 날짜 파싱 실패")
                         
                         
-                        # 페이지 간 딜레이 (bot 감지 방지)
+                        # 페이지 간 딜레이 (bot 감지 방지, 최소화)
                         if page < max_pages - 1:
-                            await asyncio.sleep(0.5)
+                            await asyncio.sleep(0.3)
                     
                     except Exception as e:
                         logger.warning(f"[블로그 검색] 페이지 {page+1} 오류: {str(e)}")
@@ -1145,23 +1145,21 @@ class NaverReviewService:
     
     def _parse_naver_blog_search_html(
         self, 
-        html: str,
+        soup,  # BeautifulSoup 객체를 직접 받아서 재파싱 방지 (성능 최적화)
         store_name: str
     ) -> List[Dict[str, Any]]:
         """
         네이버 통합 검색 블로그 탭 HTML 파싱 (매장명 필터링 적용)
         
         Args:
-            html: 네이버 검색 결과 HTML 문자열
+            soup: BeautifulSoup 파싱된 객체 (성능 최적화를 위해 재사용)
             store_name: 매장명 (필터링에 사용)
         
         Returns:
             List[Dict]: 파싱된 블로그 리뷰 목록 (매장명 필터링 적용)
         """
-        from bs4 import BeautifulSoup
         from datetime import datetime, timedelta
         
-        soup = BeautifulSoup(html, 'html.parser')
         reviews = []
         
         # 매장명 필터링 준비 (단순화)
