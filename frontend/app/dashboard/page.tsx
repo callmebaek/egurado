@@ -64,6 +64,8 @@ interface UserProfile {
   max_stores?: number
   max_keywords?: number
   max_trackers?: number
+  created_at?: string
+  subscription_end_date?: string
 }
 
 interface Store {
@@ -784,36 +786,99 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-4 sm:space-y-6 lg:space-y-8 pb-6 sm:pb-8">
-      {/* 환영 헤더 */}
-      <div className={`relative overflow-hidden bg-gradient-to-br ${tier.bgColor} rounded-2xl sm:rounded-3xl border-2 border-white shadow-xl`}>
-        <div className="absolute top-0 right-0 w-32 h-32 sm:w-64 sm:h-64 bg-white/30 rounded-full -mr-16 sm:-mr-32 -mt-16 sm:-mt-32" />
-        <div className="absolute bottom-0 left-0 w-24 h-24 sm:w-48 sm:h-48 bg-white/20 rounded-full -ml-12 sm:-ml-24 -mb-12 sm:-mb-24" />
-        
-        <div className="relative p-5 sm:p-8 lg:p-12">
-          <div className="flex items-start justify-between flex-wrap gap-3 sm:gap-4">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
-                <div className={`bg-gradient-to-br ${tier.color} p-2 sm:p-3 rounded-xl sm:rounded-2xl shadow-lg`}>
-                  <User className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-gray-800 truncate">
-                    환영합니다, {profile.display_name || profile.email.split('@')[0]}님! 👋
-                  </h1>
-                  <p className="text-gray-600 mt-0.5 sm:mt-1 text-xs sm:text-sm md:text-base">
-                    오늘도 멋진 하루 되세요!
-                  </p>
-                </div>
+      {/* 환영 헤더 + 계정 정보 */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
+        {/* 환영 카드 */}
+        <div className={`lg:col-span-2 relative overflow-hidden bg-gradient-to-br ${tier.bgColor} rounded-2xl sm:rounded-3xl border-2 border-white shadow-xl`}>
+          <div className="absolute top-0 right-0 w-32 h-32 sm:w-64 sm:h-64 bg-white/30 rounded-full -mr-16 sm:-mr-32 -mt-16 sm:-mt-32" />
+          <div className="absolute bottom-0 left-0 w-24 h-24 sm:w-48 sm:h-48 bg-white/20 rounded-full -ml-12 sm:-ml-24 -mb-12 sm:-mb-24" />
+          
+          <div className="relative p-5 sm:p-8 lg:p-10">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className={`bg-gradient-to-br ${tier.color} p-3 sm:p-4 rounded-xl sm:rounded-2xl shadow-lg`}>
+                <User className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-800 truncate">
+                  환영합니다, {profile.display_name || profile.email.split('@')[0]}님! 👋
+                </h1>
+                <p className="text-gray-600 mt-1 text-sm sm:text-base md:text-lg">
+                  오늘도 멋진 하루 되세요!
+                </p>
               </div>
             </div>
-            
-            <div className={`flex items-center gap-2 sm:gap-3 px-3 sm:px-4 lg:px-5 py-2 sm:py-3 bg-gradient-to-r ${tier.color} text-white rounded-xl sm:rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 flex-shrink-0`}>
-              <tier.Icon className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" />
+          </div>
+        </div>
+
+        {/* 계정 정보 카드 */}
+        <div className="bg-white rounded-2xl sm:rounded-3xl border-2 border-gray-100 shadow-xl p-5 sm:p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-bold text-gray-800">계정 정보</h3>
+            <User className="w-5 h-5 text-gray-400" />
+          </div>
+          
+          <div className="space-y-4">
+            {/* 플랜 */}
+            <div>
+              <p className="text-xs text-gray-500 mb-1">현재 플랜</p>
+              <div className={`inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r ${tier.color} text-white rounded-lg shadow-md`}>
+                <tier.Icon className="w-4 h-4" />
+                <span className="text-sm font-bold">{tier.label}</span>
+              </div>
+            </div>
+
+            {/* 이메일 */}
+            <div>
+              <p className="text-xs text-gray-500 mb-1">이메일</p>
+              <p className="text-sm font-medium text-gray-800 truncate">{profile.email}</p>
+            </div>
+
+            {/* 잔여 크레딧 */}
+            <div>
+              <p className="text-xs text-gray-500 mb-1">잔여 크레딧</p>
+              <p className="text-lg font-bold text-gray-800">
+                {remainingCredits}
+                {totalCredits !== -1 && (
+                  <span className="text-sm text-gray-500 ml-1">/ {totalCredits.toLocaleString()}</span>
+                )}
+              </p>
+              {totalCredits !== -1 && (
+                <div className="mt-2 bg-gray-100 rounded-full h-2 overflow-hidden">
+                  <div 
+                    className="bg-gradient-to-r from-green-500 to-emerald-500 h-full transition-all duration-500"
+                    style={{ width: `${creditPercentage}%` }}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* 가입일 */}
+            {profile.created_at && (
               <div>
-                <p className="text-xs opacity-90 font-medium">현재 플랜</p>
-                <p className="text-base sm:text-lg font-bold tracking-wide">{tier.label}</p>
+                <p className="text-xs text-gray-500 mb-1">가입일</p>
+                <p className="text-sm font-medium text-gray-800">
+                  {new Date(profile.created_at).toLocaleDateString('ko-KR', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  })}
+                </p>
               </div>
-            </div>
+            )}
+
+            {/* 구독 갱신일 */}
+            {profile.subscription_end_date && (
+              <div>
+                <p className="text-xs text-gray-500 mb-1">구독 갱신일</p>
+                <p className="text-sm font-medium text-gray-800">
+                  {new Date(profile.subscription_end_date).toLocaleDateString('ko-KR', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  })}
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>
