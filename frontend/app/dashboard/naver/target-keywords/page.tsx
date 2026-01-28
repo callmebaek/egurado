@@ -121,6 +121,8 @@ export default function TargetKeywordsPage() {
   const [isLoadingHistory, setIsLoadingHistory] = useState(false)
   const [histories, setHistories] = useState<any[]>([])
   const [currentHistoryId, setCurrentHistoryId] = useState<string | null>(null)
+  const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null)
+  const [expandedHistoryData, setExpandedHistoryData] = useState<any>(null)
 
   // 등록된 매장 불러오기
   useEffect(() => {
@@ -150,11 +152,10 @@ export default function TargetKeywordsPage() {
     const params = new URLSearchParams(window.location.search)
     const historyId = params.get("historyId")
     
-    if (historyId) {
-      setCurrentHistoryId(historyId)
+    if (historyId && histories.length > 0) {
       loadHistoryDetail(historyId)
     }
-  }, [])
+  }, [histories])
 
   const fetchRegisteredStores = async () => {
     try {
@@ -209,8 +210,14 @@ export default function TargetKeywordsPage() {
   }
 
   const loadHistoryDetail = async (historyId: string) => {
+    // 이미 펼쳐진 히스토리를 다시 클릭하면 접기
+    if (expandedHistoryId === historyId) {
+      setExpandedHistoryId(null)
+      setExpandedHistoryData(null)
+      return
+    }
+    
     setIsLoadingHistory(true)
-    setCurrentHistoryId(historyId)
     
     try {
       const token = getToken()
@@ -231,72 +238,9 @@ export default function TargetKeywordsPage() {
       
       console.log("[타겟 키워드] 히스토리 로드:", history)
       
-      // 히스토리의 입력값으로 상태 설정
-      setSelectedStore(history.store_id)
-      setRegions(history.regions || [])
-      setLandmarks(history.landmarks || [])
-      setMenus(history.menus || [])
-      setIndustries(history.industries || [])
-      setOthers(history.other_keywords || [])
-      
-      // 추출된 키워드로 분석 결과 재구성
-      // rank_data도 함께 재구성
-      const rank_data: Record<string, { rank: number; total_count: number }> = {}
-      
-      const top_keywords = history.extracted_keywords.map((kw: any) => {
-        // rank_data 재구성 (기존 히스토리 호환성 위해 null 체크)
-        rank_data[kw.keyword] = {
-          rank: kw.rank || 0,
-          total_count: kw.total_count || 0
-        }
-        
-        return {
-          keyword: kw.keyword,
-          type: "",
-          components: {},
-          monthly_pc_qc_cnt: 0,
-          monthly_mobile_qc_cnt: 0,
-          total_volume: kw.total_volume || 0,
-          comp_idx: kw.comp_idx || "-"
-        }
-      })
-      
-      const mockAnalysisResult: AnalysisResult = {
-        store_info: {
-          store_id: history.store_id,
-          place_id: "",
-          store_name: history.store_name,
-          address: ""
-        },
-        input_keywords: {
-          regions: history.regions || [],
-          landmarks: history.landmarks || [],
-          menus: history.menus || [],
-          industries: history.industries || [],
-          others: history.other_keywords || []
-        },
-        total_combinations: 0,
-        top_keywords: top_keywords,
-        rank_data: rank_data, // rank_data 추가
-        seo_analysis: {
-          field_analysis: {},
-          keyword_total_counts: {},
-          keyword_field_matches: {},
-          all_keywords: []
-        },
-        place_details: {}
-      }
-      
-      setAnalysisResult(mockAnalysisResult)
-      
-      // URL 업데이트
-      const newUrl = `${window.location.pathname}?historyId=${historyId}`
-      window.history.pushState({}, '', newUrl)
-      
-      toast({
-        title: "히스토리 로드 완료",
-        description: `${history.store_name}의 과거 추출 결과를 불러왔습니다.`,
-      })
+      // 히스토리 데이터 설정 (펼쳐서 표시용)
+      setExpandedHistoryId(historyId)
+      setExpandedHistoryData(history)
       
     } catch (error) {
       console.error("히스토리 로드 에러:", error)
@@ -382,9 +326,8 @@ export default function TargetKeywordsPage() {
       if (result.status === "success") {
         setAnalysisResult(result.data)
         
-        // 히스토리 ID가 있으면 URL 업데이트 및 현재 히스토리 ID 설정
+        // 히스토리 ID가 있으면 URL 업데이트
         if (result.history_id) {
-          setCurrentHistoryId(result.history_id)
           const newUrl = `${window.location.pathname}?historyId=${result.history_id}`
           window.history.pushState({}, '', newUrl)
           console.log("[타겟 키워드] 히스토리 ID 저장:", result.history_id)
@@ -482,7 +425,7 @@ export default function TargetKeywordsPage() {
                 </TableHeader>
                 <TableBody>
                   {histories.map((history) => {
-                    const isCurrentHistory = currentHistoryId === history.id
+                    const isExpanded = expandedHistoryId === history.id
                     const allInputKeywords = [
                       ...(history.regions || []),
                       ...(history.landmarks || []),
@@ -492,65 +435,122 @@ export default function TargetKeywordsPage() {
                     ]
                     
                     return (
-                      <TableRow 
-                        key={history.id} 
-                        className={isCurrentHistory ? "bg-blue-50" : ""}
-                      >
-                        <TableCell className="font-medium">
-                          <div className="flex items-center gap-2">
-                            <Calendar className="h-4 w-4 text-gray-500" />
-                            <span className="text-sm">
-                              {new Date(history.created_at).toLocaleDateString('ko-KR', {
-                                year: 'numeric',
-                                month: '2-digit',
-                                day: '2-digit',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex flex-wrap gap-1">
-                            {allInputKeywords.slice(0, 5).map((keyword, idx) => (
-                              <Badge key={idx} variant="secondary" className="text-xs">
-                                {keyword}
-                              </Badge>
-                            ))}
-                            {allInputKeywords.length > 5 && (
-                              <Badge variant="outline" className="text-xs">
-                                +{allInputKeywords.length - 5}개
-                              </Badge>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <Badge variant="default" className="font-bold">
-                            {history.total_keywords}개
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <Button
-                            size="sm"
-                            variant={isCurrentHistory ? "default" : "outline"}
-                            onClick={() => loadHistoryDetail(history.id)}
-                            disabled={isLoadingHistory}
-                            className="w-full"
-                          >
-                            {isCurrentHistory ? (
-                              <>
-                                <CheckCircle2 className="h-4 w-4 mr-1" />
-                                현재
-                              </>
-                            ) : (
-                              <>
-                                <Eye className="h-4 w-4 mr-1" />
-                                보기
-                              </>
-                            )}
-                          </Button>
-                        </TableCell>
-                      </TableRow>
+                      <>
+                        <TableRow 
+                          key={history.id} 
+                          className={`${isExpanded ? "bg-blue-50" : ""} cursor-pointer hover:bg-gray-50`}
+                          onClick={() => loadHistoryDetail(history.id)}
+                        >
+                          <TableCell className="font-medium">
+                            <div className="flex items-center gap-2">
+                              <Calendar className="h-4 w-4 text-gray-500" />
+                              <span className="text-sm">
+                                {new Date(history.created_at).toLocaleDateString('ko-KR', {
+                                  year: 'numeric',
+                                  month: '2-digit',
+                                  day: '2-digit',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-wrap gap-1">
+                              {allInputKeywords.slice(0, 5).map((keyword, idx) => (
+                                <Badge key={idx} variant="secondary" className="text-xs">
+                                  {keyword}
+                                </Badge>
+                              ))}
+                              {allInputKeywords.length > 5 && (
+                                <Badge variant="outline" className="text-xs">
+                                  +{allInputKeywords.length - 5}개
+                                </Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Badge variant="default" className="font-bold">
+                              {history.total_keywords}개
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Button
+                              size="sm"
+                              variant={isExpanded ? "default" : "outline"}
+                              disabled={isLoadingHistory}
+                              className="w-full"
+                            >
+                              {isLoadingHistory && expandedHistoryId === history.id ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                                  로딩...
+                                </>
+                              ) : isExpanded ? (
+                                <>
+                                  <CheckCircle2 className="h-4 w-4 mr-1" />
+                                  접기
+                                </>
+                              ) : (
+                                <>
+                                  <Eye className="h-4 w-4 mr-1" />
+                                  보기
+                                </>
+                              )}
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                        
+                        {/* 펼쳐진 상세 정보 */}
+                        {isExpanded && expandedHistoryData && (
+                          <TableRow key={`${history.id}-detail`} className="bg-blue-50">
+                            <TableCell colSpan={4} className="p-6">
+                              <div className="space-y-4">
+                                <div className="flex items-center justify-between mb-4">
+                                  <h4 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                                    <Target className="h-5 w-5 text-blue-600" />
+                                    추출된 키워드 ({expandedHistoryData.total_keywords}개)
+                                  </h4>
+                                </div>
+                                
+                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                                  {expandedHistoryData.extracted_keywords.map((kw: any, idx: number) => (
+                                    <div
+                                      key={idx}
+                                      className="bg-white p-3 rounded-lg border border-blue-200 shadow-sm"
+                                    >
+                                      <div className="flex items-start justify-between gap-2">
+                                        <span className="text-sm font-semibold text-gray-900 flex-1">
+                                          {kw.keyword}
+                                        </span>
+                                        {kw.rank > 0 && (
+                                          <Badge variant="default" className="text-xs">
+                                            {kw.rank}위
+                                          </Badge>
+                                        )}
+                                      </div>
+                                      <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
+                                        <span>검색량</span>
+                                        <span className="font-medium text-blue-600">
+                                          {kw.total_volume?.toLocaleString() || 0}
+                                        </span>
+                                      </div>
+                                      {kw.total_count > 0 && (
+                                        <div className="mt-1 flex items-center justify-between text-xs text-gray-500">
+                                          <span>전체</span>
+                                          <span className="font-medium">
+                                            {kw.total_count?.toLocaleString()}개
+                                          </span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </>
                     )
                   })}
                 </TableBody>
