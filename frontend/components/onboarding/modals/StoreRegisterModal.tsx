@@ -13,11 +13,12 @@ interface StoreRegisterModalProps {
 }
 
 interface StoreSearchResult {
-  id: string;
+  place_id: string;
   name: string;
-  address: string;
   category: string;
-  phone?: string;
+  address: string;
+  road_address?: string;
+  thumbnail?: string;
 }
 
 export default function StoreRegisterModal({
@@ -58,9 +59,9 @@ export default function StoreRegisterModal({
       }
 
       const data = await response.json();
-      setSearchResults(data.places || []);
+      setSearchResults(data.results || []);
       
-      if (data.places && data.places.length > 0) {
+      if (data.results && data.results.length > 0) {
         setCurrentStep(2);
       } else {
         setError('검색 결과가 없습니다. 다른 매장명으로 시도해주세요.');
@@ -91,10 +92,13 @@ export default function StoreRegisterModal({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          place_id: selectedStore.id,
+          place_id: selectedStore.place_id,
           name: selectedStore.name,
-          address: selectedStore.address,
           category: selectedStore.category,
+          address: selectedStore.address,
+          road_address: selectedStore.road_address || '',
+          thumbnail: selectedStore.thumbnail || '',
+          platform: 'naver',
         }),
       });
 
@@ -194,12 +198,12 @@ export default function StoreRegisterModal({
       <div className="space-y-3 max-h-96 overflow-y-auto">
         {searchResults.map((store) => (
           <button
-            key={store.id}
+            key={store.place_id}
             onClick={() => setSelectedStore(store)}
             className={`
               w-full p-4 border-2 rounded-lg text-left transition-all
               ${
-                selectedStore?.id === store.id
+                selectedStore?.place_id === store.place_id
                   ? 'border-blue-500 bg-blue-50'
                   : 'border-gray-200 hover:border-gray-300'
               }
@@ -209,12 +213,12 @@ export default function StoreRegisterModal({
               <div className={`
                 w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5
                 ${
-                  selectedStore?.id === store.id
+                  selectedStore?.place_id === store.place_id
                     ? 'border-blue-500 bg-blue-500'
                     : 'border-gray-300'
                 }
               `}>
-                {selectedStore?.id === store.id && (
+                {selectedStore?.place_id === store.place_id && (
                   <div className="w-2 h-2 bg-white rounded-full" />
                 )}
               </div>
