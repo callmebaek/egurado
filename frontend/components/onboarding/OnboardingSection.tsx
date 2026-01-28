@@ -9,6 +9,7 @@ import { api } from '@/lib/config';
 import { useAuth } from '@/lib/auth-context';
 import StoreRegisterModal from './modals/StoreRegisterModal';
 import PlaceAuditModal from './modals/PlaceAuditModal';
+import TargetKeywordsModal from './modals/TargetKeywordsModal';
 import GenericActionModal from './modals/GenericActionModal';
 
 interface OnboardingSectionProps {
@@ -25,6 +26,7 @@ export default function OnboardingSection({ onStoreRegistered }: OnboardingSecti
   // 모달 상태
   const [showStoreRegisterModal, setShowStoreRegisterModal] = useState(false);
   const [showPlaceAuditModal, setShowPlaceAuditModal] = useState(false);
+  const [showTargetKeywordsModal, setShowTargetKeywordsModal] = useState(false);
   const [genericModalConfig, setGenericModalConfig] = useState<{
     isOpen: boolean;
     title: string;
@@ -107,6 +109,10 @@ export default function OnboardingSection({ onStoreRegistered }: OnboardingSecti
         
       case ACTION_KEYS.PLACE_DIAGNOSIS:
         setShowPlaceAuditModal(true);
+        break;
+        
+      case ACTION_KEYS.TARGET_KEYWORDS:
+        setShowTargetKeywordsModal(true);
         break;
         
       case ACTION_KEYS.PLACE_DIAGNOSIS:
@@ -369,6 +375,12 @@ export default function OnboardingSection({ onStoreRegistered }: OnboardingSecti
         isOpen={showPlaceAuditModal}
         onClose={() => setShowPlaceAuditModal(false)}
         onComplete={() => markActionComplete(ACTION_KEYS.PLACE_DIAGNOSIS)}
+      />
+      
+      <TargetKeywordsModal
+        isOpen={showTargetKeywordsModal}
+        onClose={() => setShowTargetKeywordsModal(false)}
+        onComplete={() => markActionComplete(ACTION_KEYS.TARGET_KEYWORDS)}
       />
       
       <GenericActionModal
