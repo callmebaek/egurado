@@ -198,7 +198,7 @@ async def get_store_keyword_history(
         
         # 히스토리 조회 (최신순, 최대 10개)
         result = supabase.table("target_keywords_history") \
-            .select("id, store_name, regions, landmarks, menus, industries, other_keywords, extracted_keywords, total_keywords, created_at") \
+            .select("*") \
             .eq("store_id", store_id) \
             .order("created_at", desc=True) \
             .limit(10) \
@@ -207,6 +207,13 @@ async def get_store_keyword_history(
         histories = result.data if result.data else []
         
         logger.info(f"[타겟 키워드 히스토리] 조회 완료: store_id={store_id}, count={len(histories)}")
+        
+        # 디버깅: 첫 번째 히스토리의 키 확인
+        if histories:
+            logger.info(f"[타겟 키워드 히스토리] 첫 번째 히스토리 키: {list(histories[0].keys())}")
+            logger.info(f"[타겟 키워드 히스토리] extracted_keywords 존재 여부: {'extracted_keywords' in histories[0]}")
+            if 'extracted_keywords' in histories[0]:
+                logger.info(f"[타겟 키워드 히스토리] extracted_keywords 값: {histories[0]['extracted_keywords']}")
         
         return {
             "status": "success",
