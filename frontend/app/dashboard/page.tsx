@@ -111,6 +111,15 @@ interface StoreTrackerGroup {
   blog_review_change?: number
 }
 
+interface LatestDiagnosis {
+  id: string
+  store_name: string
+  diagnosed_at: string
+  total_score: number
+  max_score: number
+  grade: string
+}
+
 // 매장별 색상 팔레트
 const STORE_COLORS = [
   { bg: 'from-blue-50 to-blue-100', border: 'border-blue-300', text: 'text-blue-900', badge: 'bg-blue-500' },
@@ -394,6 +403,7 @@ export default function DashboardPage() {
   const [isLoadingData, setIsLoadingData] = useState(true)
   const [isReordering, setIsReordering] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState<Set<string>>(new Set())
+  const [latestDiagnosis, setLatestDiagnosis] = useState<LatestDiagnosis | null>(null)
   
   // 드래그앤드롭 센서 설정
   const sensors = useSensors(
@@ -632,6 +642,35 @@ export default function DashboardPage() {
     }
   }
 
+  // 최근 진단 결과 로드
+  const loadLatestDiagnosis = async (storesList: Store[]) => {
+    const token = getToken()
+    if (!token || storesList.length === 0) return
+
+    // 네이버 매장만 필터
+    const naverStores = storesList.filter(store => store.platform === 'naver')
+    if (naverStores.length === 0) return
+
+    try {
+      // 첫 번째 네이버 매장의 최근 진단 결과 조회
+      const firstStore = naverStores[0]
+      const response = await fetch(api.naver.diagnosisHistory(firstStore.id, 1), {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        if (data.history && data.history.length > 0) {
+          setLatestDiagnosis(data.history[0])
+        }
+      }
+    } catch (error) {
+      console.error("[DEBUG] Error loading latest diagnosis:", error)
+    }
+  }
+
   // 매장 목록만 다시 로드하는 함수 (온보딩에서 매장 등록 후 호출)
   const reloadStores = async () => {
     const token = getToken()
@@ -651,6 +690,9 @@ export default function DashboardPage() {
         
         // 매장이 변경되면 추적 키워드도 다시 그룹화
         await loadTrackers(loadedStores)
+        
+        // 최근 진단 결과도 다시 로드
+        await loadLatestDiagnosis(loadedStores)
       }
     } catch (error) {
       console.error("[DEBUG] Error reloading stores:", error)
@@ -700,6 +742,9 @@ export default function DashboardPage() {
         // 3. 추적 키워드 목록 조회 (백엔드에서 변동값 포함하여 반환)
         // 매장 목록을 함께 전달하여 즉시 그룹화
         await loadTrackers(loadedStores)
+
+        // 4. 최근 진단 결과 조회
+        await loadLatestDiagnosis(loadedStores)
 
       } catch (error) {
         console.error("[DEBUG] Error loading dashboard data:", error)
@@ -975,7 +1020,7 @@ export default function DashboardPage() {
         </div>
 
         {/* 추적 키워드 카드 */}
-        <div className="group bg-white rounded-xl sm:rounded-2xl border border-gray-200 p-4 sm:p-5 lg:p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 sm:col-span-2">
+        <div className="group bg-white rounded-xl sm:rounded-2xl border border-gray-200 p-4 sm:p-5 lg:p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
           <div className="flex items-center justify-between mb-3 sm:mb-4">
             <div className="p-2 sm:p-3 bg-gradient-to-br from-indigo-100 to-indigo-200 rounded-lg sm:rounded-xl">
               <Activity className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-600" />
@@ -1011,6 +1056,60 @@ export default function DashboardPage() {
             )}
           </div>
         </div>
+
+        {/* 플레이스 진단 카드 */}
+        <Link 
+          href="/dashboard/naver/audit"
+          className="group block bg-white rounded-xl sm:rounded-2xl border border-gray-200 p-4 sm:p-5 lg:p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
+        >
+          <div className="flex items-center justify-between mb-3 sm:mb-4">
+            <div className="p-2 sm:p-3 bg-gradient-to-br from-purple-100 to-purple-200 rounded-lg sm:rounded-xl">
+              <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600" />
+            </div>
+            <div className="text-xs text-gray-500 font-medium px-2 sm:px-3 py-1 bg-gray-100 rounded-full">
+              진단
+            </div>
+          </div>
+          <p className="text-gray-500 text-xs sm:text-sm mb-1">플레이스 진단</p>
+          <p className="text-xl sm:text-2xl font-bold text-gray-800 mb-2 sm:mb-3">
+            {latestDiagnosis ? `${latestDiagnosis.grade}등급` : '진단 기록 없음'}
+          </p>
+          
+          {latestDiagnosis ? (
+            <div className="mt-4 p-3 bg-purple-50 rounded-lg">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-semibold text-purple-900">{latestDiagnosis.store_name}</span>
+                <span className={`text-2xl font-bold ${
+                  latestDiagnosis.grade === 'S' ? 'text-purple-600' :
+                  latestDiagnosis.grade === 'A' ? 'text-blue-600' :
+                  latestDiagnosis.grade === 'B' ? 'text-green-600' :
+                  latestDiagnosis.grade === 'C' ? 'text-orange-600' : 'text-red-600'
+                }`}>
+                  {latestDiagnosis.grade}
+                </span>
+              </div>
+              <p className="text-xs text-gray-600 mb-1">
+                점수: {latestDiagnosis.total_score.toFixed(1)} / {latestDiagnosis.max_score}점
+              </p>
+              <p className="text-xs text-gray-500">
+                {new Date(latestDiagnosis.diagnosed_at).toLocaleDateString('ko-KR', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric'
+                })}
+              </p>
+              <div className="mt-2 pt-2 border-t border-purple-200">
+                <span className="text-sm font-semibold text-purple-700">상세 리포트 보기 →</span>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-4 p-3 bg-purple-50 rounded-lg">
+              <p className="text-xs text-gray-600 mb-2">아직 진단 기록이 없습니다</p>
+              <p className="text-xs text-gray-500 mb-3">진단 기능을 통해 매장의 상태를 분석하세요</p>
+              <span className="text-sm font-semibold text-purple-700">진단 시작하기 →</span>
+            </div>
+          )}
+        </Link>
       </div>
 
       {/* 매장별 추적 키워드 리스트 */}

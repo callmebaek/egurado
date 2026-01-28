@@ -8,6 +8,7 @@ import { ONBOARDING_STEPS, OnboardingProgress, OnboardingPreferences, ACTION_KEY
 import { api } from '@/lib/config';
 import { useAuth } from '@/lib/auth-context';
 import StoreRegisterModal from './modals/StoreRegisterModal';
+import PlaceAuditModal from './modals/PlaceAuditModal';
 import GenericActionModal from './modals/GenericActionModal';
 
 interface OnboardingSectionProps {
@@ -23,6 +24,7 @@ export default function OnboardingSection({ onStoreRegistered }: OnboardingSecti
   
   // 모달 상태
   const [showStoreRegisterModal, setShowStoreRegisterModal] = useState(false);
+  const [showPlaceAuditModal, setShowPlaceAuditModal] = useState(false);
   const [genericModalConfig, setGenericModalConfig] = useState<{
     isOpen: boolean;
     title: string;
@@ -101,6 +103,10 @@ export default function OnboardingSection({ onStoreRegistered }: OnboardingSecti
     switch (actionKey) {
       case ACTION_KEYS.STORE_REGISTER:
         setShowStoreRegisterModal(true);
+        break;
+        
+      case ACTION_KEYS.PLACE_DIAGNOSIS:
+        setShowPlaceAuditModal(true);
         break;
         
       case ACTION_KEYS.PLACE_DIAGNOSIS:
@@ -357,6 +363,12 @@ export default function OnboardingSection({ onStoreRegistered }: OnboardingSecti
           // 대시보드 매장 목록 새로고침
           onStoreRegistered?.();
         }}
+      />
+      
+      <PlaceAuditModal
+        isOpen={showPlaceAuditModal}
+        onClose={() => setShowPlaceAuditModal(false)}
+        onComplete={() => markActionComplete(ACTION_KEYS.PLACE_DIAGNOSIS)}
       />
       
       <GenericActionModal
