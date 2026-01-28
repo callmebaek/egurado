@@ -679,9 +679,11 @@ class NaverCompetitorAnalysisService:
                     break
                 
                 # 다음 페이지 확인
-                cursor = reviews_data.get("nextCursor")
-                if not cursor or not reviews_data.get("hasMore", False):
-                    logger.info(f"[경쟁분석] 모든 리뷰 조회 완료 (페이지 {page+1}, 총 {len(all_reviews)}개)")
+                cursor = reviews_data.get("nextCursor") or reviews_data.get("last_cursor")
+                has_more = reviews_data.get("hasMore", reviews_data.get("has_more", False))
+                
+                if not cursor or not has_more:
+                    logger.info(f"[경쟁분석] 모든 리뷰 조회 완료 (페이지 {page+1}, 총 {len(all_reviews)}개, cursor={cursor is not None}, has_more={has_more})")
                     break
             
             if not all_reviews:

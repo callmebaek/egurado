@@ -143,6 +143,7 @@ interface ActivationData {
   has_naver_pay: boolean
   has_naver_booking: boolean
   has_naver_talk: boolean
+  has_naver_order: boolean
 }
 
 export default function ActivationPage() {
@@ -1060,10 +1061,48 @@ export default function ActivationPage() {
                   )}
                 </Group>
               </Paper>
+              <Paper p="sm" withBorder>
+                <Group justify="space-between">
+                  <Group gap="xs">
+                    <ThemeIcon variant="light" size="sm" color="orange">
+                      <CreditCard className="w-3 h-3" />
+                    </ThemeIcon>
+                    <Text size="sm">네이버주문</Text>
+                  </Group>
+                  {activationData.has_naver_order ? (
+                    <Badge color="green" variant="light" leftSection={<CheckCircle className="w-3 h-3" />}>
+                      사용중
+                    </Badge>
+                  ) : (
+                    <Badge color="gray" variant="light">
+                      미사용
+                    </Badge>
+                  )}
+                </Group>
+              </Paper>
+              <Paper p="sm" withBorder>
+                <Group justify="space-between">
+                  <Group gap="xs">
+                    <ThemeIcon variant="light" size="sm" color="violet">
+                      <MessageCircle className="w-3 h-3" />
+                    </ThemeIcon>
+                    <Text size="sm">네이버톡톡</Text>
+                  </Group>
+                  {activationData.has_naver_talk ? (
+                    <Badge color="green" variant="light" leftSection={<CheckCircle className="w-3 h-3" />}>
+                      사용중
+                    </Badge>
+                  ) : (
+                    <Badge color="gray" variant="light">
+                      미사용
+                    </Badge>
+                  )}
+                </Group>
+              </Paper>
             </SimpleGrid>
             
             {(!activationData.has_smart_call || !activationData.has_naver_pay || 
-              !activationData.has_naver_booking || !activationData.has_naver_talk) && (
+              !activationData.has_naver_booking || !activationData.has_naver_talk || !activationData.has_naver_order) && (
               <Alert icon={<AlertCircle className="w-4 h-4" />} color="yellow" variant="light">
                 <Text size="sm" mb="xs">미사용 중인 네이버 서비스가 있습니다.</Text>
                 <Group gap="xs">
@@ -1085,6 +1124,11 @@ export default function ActivationPage() {
                   {!activationData.has_naver_talk && (
                     <Button size="xs" variant="light" component="a" href="https://talk.naver.com" target="_blank">
                       네이버톡톡 설정
+                    </Button>
+                  )}
+                  {!activationData.has_naver_order && (
+                    <Button size="xs" variant="light" component="a" href="https://order.store.naver.com" target="_blank">
+                      네이버주문 설정
                     </Button>
                   )}
                 </Group>
