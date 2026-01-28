@@ -847,7 +847,7 @@ export default function ActivationPage() {
               color="blue"
               onClick={() => setShowDirectionsModal(true)}
             >
-              SEO 최적화하여 생성하기
+              AI로 완벽한 찾아오는길 생성
             </Button>
           </Stack>
         </Card>

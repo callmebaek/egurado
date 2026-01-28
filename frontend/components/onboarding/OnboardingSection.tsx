@@ -11,6 +11,8 @@ import StoreRegisterModal from './modals/StoreRegisterModal';
 import PlaceAuditModal from './modals/PlaceAuditModal';
 import TargetKeywordsModal from './modals/TargetKeywordsModal';
 import { RankTrackingModal } from './modals/RankTrackingModal';
+import StoreDescriptionModal from './modals/StoreDescriptionModal';
+import StoreDirectionsModal from './modals/StoreDirectionsModal';
 import GenericActionModal from './modals/GenericActionModal';
 
 interface OnboardingSectionProps {
@@ -29,6 +31,8 @@ export default function OnboardingSection({ onStoreRegistered }: OnboardingSecti
   const [showPlaceAuditModal, setShowPlaceAuditModal] = useState(false);
   const [showTargetKeywordsModal, setShowTargetKeywordsModal] = useState(false);
   const [showRankTrackingModal, setShowRankTrackingModal] = useState(false);
+  const [showDescriptionModal, setShowDescriptionModal] = useState(false);
+  const [showDirectionsModal, setShowDirectionsModal] = useState(false);
   const [genericModalConfig, setGenericModalConfig] = useState<{
     isOpen: boolean;
     title: string;
@@ -222,13 +226,17 @@ export default function OnboardingSection({ onStoreRegistered }: OnboardingSecti
         break;
         
       case ACTION_KEYS.INTRO_AI:
+        setShowDescriptionModal(true);
+        break;
+        
       case ACTION_KEYS.DIRECTIONS_AI:
+        setShowDirectionsModal(true);
+        break;
+      
       case ACTION_KEYS.CONTACT_WHIPLACE:
         setGenericModalConfig({
           isOpen: true,
-          title: actionKey === ACTION_KEYS.INTRO_AI ? '업체소개글 AI로 작성하기' :
-                 actionKey === ACTION_KEYS.DIRECTIONS_AI ? '찾아오는길 AI로 작성하기' :
-                 '윕플에 문의하기',
+          title: '윕플에 문의하기',
           description: '이 기능은 곧 추가될 예정입니다.',
           actionKey,
         });
@@ -360,6 +368,18 @@ export default function OnboardingSection({ onStoreRegistered }: OnboardingSecti
         opened={showRankTrackingModal}
         onClose={() => setShowRankTrackingModal(false)}
         onComplete={() => markActionComplete(ACTION_KEYS.METRICS_TRACKING)}
+      />
+      
+      <StoreDescriptionModal
+        isOpen={showDescriptionModal}
+        onClose={() => setShowDescriptionModal(false)}
+        onComplete={() => markActionComplete(ACTION_KEYS.INTRO_AI)}
+      />
+      
+      <StoreDirectionsModal
+        isOpen={showDirectionsModal}
+        onClose={() => setShowDirectionsModal(false)}
+        onComplete={() => markActionComplete(ACTION_KEYS.DIRECTIONS_AI)}
       />
       
       <GenericActionModal
