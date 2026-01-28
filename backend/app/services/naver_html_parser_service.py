@@ -201,66 +201,64 @@ class NaverHtmlParserService:
                 logger.warning(f"[HTML Parser] 네이버톡톡 파싱 실패: {str(e)}")
                 result["has_naver_talk"] = False
             
-            # 11. 네이버 주문 감지 (개선됨)
+            # 11. 네이버 주문 감지 (더욱 강화됨)
             try:
                 result["has_naver_order"] = False
                 
-                # 1) 모든 링크 확인
+                # 1) 가장 확실한 패턴: m.booking.naver.com/order 직접 확인
                 all_links = soup.find_all('a', href=True)
                 for link in all_links:
                     href = link.get('href', '')
                     link_text = link.get_text(strip=True)
                     
-                    # 네이버 주문 관련 URL 패턴 (더 포괄적으로)
-                    order_patterns = [
-                        'order.store.naver.com',
-                        'booking.naver.com/booking',
-                        'booking.naver.com/order',
-                        'm.booking.naver.com',
-                        'smartstore.naver.com',
-                        '/order',
-                        '/delivery',
-                        '/booking'
-                    ]
+                    # 최우선 패턴: booking.naver.com/order 또는 order.store.naver.com
+                    if 'booking.naver.com/order' in href or 'm.booking.naver.com/order' in href:
+                        result["has_naver_order"] = True
+                        logger.info(f"[HTML Parser] ✅ 네이버 주문: True (booking/order URL, 텍스트: '{link_text}')")
+                        break
                     
-                    # URL 패턴 매칭
-                    if any(pattern in href for pattern in order_patterns):
-                        # 주문/배달 관련 텍스트가 있는지 확인
-                        if any(keyword in link_text for keyword in ['주문', '배달', '포장', '예약', 'Order', 'Delivery']):
-                            result["has_naver_order"] = True
-                            logger.info(f"[HTML Parser] 네이버 주문: True (URL 패턴, 텍스트: '{link_text}', 링크: {href[:100]})")
+                    if 'order.store.naver.com' in href:
+                        result["has_naver_order"] = True
+                        logger.info(f"[HTML Parser] ✅ 네이버 주문: True (order.store URL, 텍스트: '{link_text}')")
+                        break
+                
+                # 2) booking.naver.com 링크는 제외 (예약과 주문을 구분하기 어려움)
+                # 1단계에서 /order 경로가 있는 경우만 감지하도록 함
+                
+                # 3) 역방향: "주문" 텍스트가 있는 요소에서 부모 링크 확인 (반드시 /order 경로 포함)
+                if not result["has_naver_order"]:
+                    order_texts = soup.find_all(['span', 'button'], string=re.compile(r'^주문$'))
+                    for text_elem in order_texts:
+                        # 부모 링크 찾기 (최대 5단계)
+                        parent = text_elem.parent
+                        for _ in range(5):
+                            if not parent:
+                                break
+                            if parent.name == 'a' and parent.get('href'):
+                                href = parent.get('href', '')
+                                # 반드시 naver.com + /order 또는 order.store 패턴이어야 함
+                                if 'naver.com' in href and ('/order' in href or 'order.store' in href or 'order/bizes' in href):
+                                    result["has_naver_order"] = True
+                                    logger.info(f"[HTML Parser] ✅ 네이버 주문: True (역방향 탐색, href: {href[:100]})")
+                                    break
+                            parent = parent.parent
+                        if result["has_naver_order"]:
                             break
                 
-                # 2) 버튼/요소로 확인 (링크가 없어도 버튼만 있을 수 있음)
+                # 4) 기타 명확한 주문 패턴만 확인
                 if not result["has_naver_order"]:
-                    # 주문/배달 관련 버튼이나 요소 찾기
-                    order_buttons = soup.find_all(['button', 'a', 'span'], text=re.compile(r'주문|배달|포장주문|배달주문|온라인주문'))
-                    for button in order_buttons:
-                        # 부모 요소에서 네이버 관련 링크 확인
-                        parent = button.find_parent(['a', 'div'], href=True) or button.find_parent(['div'])
-                        if parent:
-                            parent_href = parent.get('href', '') if parent.get('href') else ''
-                            # 네이버 관련이거나 onclick 등의 이벤트가 있으면 활성화된 것으로 간주
-                            if 'naver.com' in parent_href or parent.get('onclick') or parent.get('data-url'):
+                    # 스마트스토어는 주문 기능이 명확함
+                    for link in all_links:
+                        href = link.get('href', '')
+                        link_text = link.get_text(strip=True)
+                        if 'smartstore.naver.com' in href:
+                            if any(keyword in link_text for keyword in ['주문', '구매', '장바구니']):
                                 result["has_naver_order"] = True
-                                logger.info(f"[HTML Parser] 네이버 주문: True (버튼 요소, 텍스트: '{button.get_text(strip=True)}')")
-                                break
-                
-                # 3) 특정 클래스명으로 확인 (네이버 플레이스의 공통 클래스)
-                if not result["has_naver_order"]:
-                    order_elements = soup.find_all(class_=re.compile(r'order|delivery|booking', re.IGNORECASE))
-                    for element in order_elements:
-                        text = element.get_text(strip=True)
-                        if any(keyword in text for keyword in ['주문', '배달', '포장']):
-                            # 링크나 버튼이 있는지 확인
-                            has_interaction = element.find('a') or element.find('button') or element.get('onclick')
-                            if has_interaction:
-                                result["has_naver_order"] = True
-                                logger.info(f"[HTML Parser] 네이버 주문: True (클래스명, 텍스트: '{text[:50]}')")
+                                logger.info(f"[HTML Parser] ✅ 네이버 주문: True (스마트스토어, 텍스트: '{link_text}')")
                                 break
                 
                 if not result["has_naver_order"]:
-                    logger.info(f"[HTML Parser] 네이버 주문: False")
+                    logger.info(f"[HTML Parser] ❌ 네이버 주문: False")
             except Exception as e:
                 logger.warning(f"[HTML Parser] 네이버 주문 파싱 실패: {str(e)}")
                 result["has_naver_order"] = False
