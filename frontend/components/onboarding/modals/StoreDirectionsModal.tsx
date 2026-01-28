@@ -19,7 +19,7 @@ import {
   Alert,
   ActionIcon,
 } from '@mantine/core'
-import { Copy, Sparkles, Store as StoreIcon, MapPin, Navigation, CheckCircle2, ChevronRight } from 'lucide-react'
+import { Copy, Sparkles, Store as StoreIcon, MapPin, Navigation, CheckCircle2, ChevronRight, Plus, X } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import { api } from '@/lib/config'
 import { useToast } from '@/components/ui/use-toast'
@@ -50,8 +50,11 @@ export default function StoreDirectionsModal({ isOpen, onClose, onComplete }: St
   
   // 입력 필드
   const [regionKeyword, setRegionKeyword] = useState('')
-  const [landmarkKeywords, setLandmarkKeywords] = useState('')
+  const [landmarks, setLandmarks] = useState<string[]>([])
   const [directionsDescription, setDirectionsDescription] = useState('')
+  
+  // 임시 입력값
+  const [tempInput, setTempInput] = useState('')
   
   // 생성 결과
   const [generatedText, setGeneratedText] = useState('')
@@ -64,6 +67,19 @@ export default function StoreDirectionsModal({ isOpen, onClose, onComplete }: St
       loadStores()
     }
   }, [isOpen, currentStep])
+
+  // 키워드 추가
+  const addKeyword = (array: string[], setter: React.Dispatch<React.SetStateAction<string[]>>) => {
+    if (tempInput.trim()) {
+      setter([...array, tempInput.trim()])
+      setTempInput('')
+    }
+  }
+
+  // 키워드 제거
+  const removeKeyword = (index: number, array: string[], setter: React.Dispatch<React.SetStateAction<string[]>>) => {
+    setter(array.filter((_, i) => i !== index))
+  }
 
   const loadStores = async () => {
     setLoadingStores(true)
@@ -141,8 +157,6 @@ export default function StoreDirectionsModal({ isOpen, onClose, onComplete }: St
       const token = getToken()
       if (!token) throw new Error('인증이 필요합니다')
 
-      const landmarks = landmarkKeywords.split(',').map(k => k.trim()).filter(Boolean)
-
       const response = await fetch(api.naver.generateDirections(), {
         method: 'POST',
         headers: {
@@ -205,8 +219,9 @@ export default function StoreDirectionsModal({ isOpen, onClose, onComplete }: St
     setCurrentStep(1)
     setSelectedStore(null)
     setRegionKeyword('')
-    setLandmarkKeywords('')
+    setLandmarks([])
     setDirectionsDescription('')
+    setTempInput('')
     setGeneratedText('')
     setError('')
     onClose()
@@ -340,18 +355,53 @@ export default function StoreDirectionsModal({ isOpen, onClose, onComplete }: St
           <Text size="sm" fw={600}>랜드마크 키워드</Text>
           <Badge size="sm" variant="light">선택</Badge>
         </Group>
-        <TextInput
-          size="lg"
-          placeholder="예: 합정역, 메세나폴리스 (쉼표로 구분)"
-          value={landmarkKeywords}
-          onChange={(e) => setLandmarkKeywords(e.target.value)}
-          styles={{
-            input: {
-              borderColor: '#e0e7ff',
-              '&:focus': { borderColor: '#635bff' }
-            }
-          }}
-        />
+        <Group gap="xs">
+          <TextInput
+            size="lg"
+            placeholder="예: 합정역"
+            value={tempInput}
+            onChange={(e) => setTempInput(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && addKeyword(landmarks, setLandmarks)}
+            styles={{
+              root: { flex: 1 },
+              input: {
+                borderColor: '#e0e7ff',
+                '&:focus': { borderColor: '#635bff' }
+              }
+            }}
+          />
+          <Button
+            variant="light"
+            color="brand"
+            onClick={() => addKeyword(landmarks, setLandmarks)}
+          >
+            <Plus size={16} />
+          </Button>
+        </Group>
+        
+        {/* 추가된 키워드 목록 */}
+        {landmarks.length > 0 && (
+          <Group gap="xs" mt="md">
+            {landmarks.map((keyword, index) => (
+              <Badge
+                key={index}
+                size="lg"
+                variant="light"
+                color="blue"
+                rightSection={
+                  <X
+                    size={14}
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => removeKeyword(index, landmarks, setLandmarks)}
+                  />
+                }
+                style={{ paddingRight: 8 }}
+              >
+                {keyword}
+              </Badge>
+            ))}
+          </Group>
+        )}
       </Paper>
 
       <Alert color="blue" title="💡 입력 팁">
@@ -445,6 +495,14 @@ export default function StoreDirectionsModal({ isOpen, onClose, onComplete }: St
         </Text>
       </div>
 
+      {/* AI 생성 콘텐츠 주의사항 */}
+      <Alert color="yellow" title="⚠️ 꼭 확인해주세요">
+        <Text size="sm">
+          AI가 작성한 콘텐츠는 입력하신 정보를 기반으로 자동 생성되었습니다. 
+          사실과 다르거나 부정확한 내용이 포함될 수 있으니, <strong>반드시 검토 후 수정하여 사용</strong>해주시기 바랍니다.
+        </Text>
+      </Alert>
+
       <Paper p="md" withBorder style={{ background: '#f8fafc' }}>
         <Group justify="space-between" align="center" mb="xs">
           <Text size="sm" fw={600}>생성된 찾아오는길 ({generatedText.length}자)</Text>
@@ -452,9 +510,12 @@ export default function StoreDirectionsModal({ isOpen, onClose, onComplete }: St
             <Copy size={16} />
           </ActionIcon>
         </Group>
-        <Text size="sm" style={{ whiteSpace: 'pre-wrap', lineHeight: 1.8 }}>
-          {generatedText}
-        </Text>
+        <Divider my="xs" />
+        <Paper p="sm" withBorder style={{ background: 'white' }}>
+          <Text size="sm" style={{ whiteSpace: 'pre-wrap', lineHeight: 1.8 }}>
+            {generatedText}
+          </Text>
+        </Paper>
         <Button
           fullWidth
           mt="md"

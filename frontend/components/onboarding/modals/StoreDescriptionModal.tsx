@@ -19,7 +19,7 @@ import {
   Center,
   Alert,
 } from '@mantine/core'
-import { Copy, Sparkles, Store as StoreIcon, MapPin, Building2, Package, Heart, CheckCircle2, ChevronRight } from 'lucide-react'
+import { Copy, Sparkles, Store as StoreIcon, MapPin, Building2, Package, Heart, CheckCircle2, ChevronRight, Plus, X } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import { api } from '@/lib/config'
 import { useToast } from '@/components/ui/use-toast'
@@ -50,10 +50,13 @@ export default function StoreDescriptionModal({ isOpen, onClose, onComplete }: S
   
   // 입력 필드
   const [regionKeyword, setRegionKeyword] = useState('')
-  const [landmarkKeywords, setLandmarkKeywords] = useState('')
+  const [landmarks, setLandmarks] = useState<string[]>([])
   const [businessTypeKeyword, setBusinessTypeKeyword] = useState('')
-  const [productKeywords, setProductKeywords] = useState('')
+  const [products, setProducts] = useState<string[]>([])
   const [storeFeatures, setStoreFeatures] = useState('')
+  
+  // 임시 입력값
+  const [tempInput, setTempInput] = useState('')
   
   // 생성 결과
   const [generatedText, setGeneratedText] = useState('')
@@ -66,6 +69,19 @@ export default function StoreDescriptionModal({ isOpen, onClose, onComplete }: S
       loadStores()
     }
   }, [isOpen, currentStep])
+
+  // 키워드 추가
+  const addKeyword = (array: string[], setter: React.Dispatch<React.SetStateAction<string[]>>) => {
+    if (tempInput.trim()) {
+      setter([...array, tempInput.trim()])
+      setTempInput('')
+    }
+  }
+
+  // 키워드 제거
+  const removeKeyword = (index: number, array: string[], setter: React.Dispatch<React.SetStateAction<string[]>>) => {
+    setter(array.filter((_, i) => i !== index))
+  }
 
   const loadStores = async () => {
     setLoadingStores(true)
@@ -159,9 +175,6 @@ export default function StoreDescriptionModal({ isOpen, onClose, onComplete }: S
       const token = getToken()
       if (!token) throw new Error('인증이 필요합니다')
 
-      const landmarks = landmarkKeywords.split(',').map(k => k.trim()).filter(k => k)
-      const products = productKeywords.split(',').map(k => k.trim()).filter(k => k)
-
       const response = await fetch(api.naver.generateDescription(), {
         method: 'POST',
         headers: {
@@ -225,10 +238,11 @@ export default function StoreDescriptionModal({ isOpen, onClose, onComplete }: S
     setCurrentStep(1)
     setSelectedStore(null)
     setRegionKeyword('')
-    setLandmarkKeywords('')
+    setLandmarks([])
     setBusinessTypeKeyword('')
-    setProductKeywords('')
+    setProducts([])
     setStoreFeatures('')
+    setTempInput('')
     setGeneratedText('')
     setError('')
     onClose()
@@ -353,7 +367,7 @@ export default function StoreDescriptionModal({ isOpen, onClose, onComplete }: S
         근처에 유명한 장소가 있나요?
       </Text>
       <Text size="sm" c="dimmed" ta="center">
-        역, 상권, 건물, 관광지 등 (최대 2개, 선택사항)
+        역, 상권, 건물, 관광지 등 (선택사항)
       </Text>
 
       <Paper p="md" radius="md" style={{ border: '1px solid #e0e7ff', background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)' }}>
@@ -362,18 +376,53 @@ export default function StoreDescriptionModal({ isOpen, onClose, onComplete }: S
           <Text size="sm" fw={600}>랜드마크 키워드</Text>
           <Badge size="sm" variant="light">선택</Badge>
         </Group>
-        <TextInput
-          size="lg"
-          placeholder="예: 합정역, 홍대입구역 (쉼표로 구분)"
-          value={landmarkKeywords}
-          onChange={(e) => setLandmarkKeywords(e.target.value)}
-          styles={{
-            input: {
-              borderColor: '#e0e7ff',
-              '&:focus': { borderColor: '#635bff' }
-            }
-          }}
-        />
+        <Group gap="xs">
+          <TextInput
+            size="lg"
+            placeholder="예: 합정역"
+            value={tempInput}
+            onChange={(e) => setTempInput(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && addKeyword(landmarks, setLandmarks)}
+            styles={{
+              root: { flex: 1 },
+              input: {
+                borderColor: '#e0e7ff',
+                '&:focus': { borderColor: '#635bff' }
+              }
+            }}
+          />
+          <Button
+            variant="light"
+            color="brand"
+            onClick={() => addKeyword(landmarks, setLandmarks)}
+          >
+            <Plus size={16} />
+          </Button>
+        </Group>
+        
+        {/* 추가된 키워드 목록 */}
+        {landmarks.length > 0 && (
+          <Group gap="xs" mt="md">
+            {landmarks.map((keyword, index) => (
+              <Badge
+                key={index}
+                size="lg"
+                variant="light"
+                color="blue"
+                rightSection={
+                  <X
+                    size={14}
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => removeKeyword(index, landmarks, setLandmarks)}
+                  />
+                }
+                style={{ paddingRight: 8 }}
+              >
+                {keyword}
+              </Badge>
+            ))}
+          </Group>
+        )}
       </Paper>
 
       <Alert color="blue" title="💡 입력 팁">
@@ -428,7 +477,7 @@ export default function StoreDescriptionModal({ isOpen, onClose, onComplete }: S
         어떤 상품이나 서비스를 제공하시나요?
       </Text>
       <Text size="sm" c="dimmed" ta="center">
-        대표 메뉴나 서비스를 최대 3개까지 알려주세요 (선택사항)
+        대표 메뉴나 서비스를 알려주세요 (선택사항)
       </Text>
 
       <Paper p="md" radius="md" style={{ border: '1px solid #e0e7ff', background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)' }}>
@@ -437,18 +486,53 @@ export default function StoreDescriptionModal({ isOpen, onClose, onComplete }: S
           <Text size="sm" fw={600}>상품/서비스</Text>
           <Badge size="sm" variant="light">선택</Badge>
         </Group>
-        <TextInput
-          size="lg"
-          placeholder="예: 칼국수, 보쌈, 커피 (쉼표로 구분)"
-          value={productKeywords}
-          onChange={(e) => setProductKeywords(e.target.value)}
-          styles={{
-            input: {
-              borderColor: '#e0e7ff',
-              '&:focus': { borderColor: '#635bff' }
-            }
-          }}
-        />
+        <Group gap="xs">
+          <TextInput
+            size="lg"
+            placeholder="예: 칼국수"
+            value={tempInput}
+            onChange={(e) => setTempInput(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && addKeyword(products, setProducts)}
+            styles={{
+              root: { flex: 1 },
+              input: {
+                borderColor: '#e0e7ff',
+                '&:focus': { borderColor: '#635bff' }
+              }
+            }}
+          />
+          <Button
+            variant="light"
+            color="brand"
+            onClick={() => addKeyword(products, setProducts)}
+          >
+            <Plus size={16} />
+          </Button>
+        </Group>
+        
+        {/* 추가된 키워드 목록 */}
+        {products.length > 0 && (
+          <Group gap="xs" mt="md">
+            {products.map((keyword, index) => (
+              <Badge
+                key={index}
+                size="lg"
+                variant="light"
+                color="green"
+                rightSection={
+                  <X
+                    size={14}
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => removeKeyword(index, products, setProducts)}
+                  />
+                }
+                style={{ paddingRight: 8 }}
+              >
+                {keyword}
+              </Badge>
+            ))}
+          </Group>
+        )}
       </Paper>
 
       <Alert color="blue" title="💡 입력 팁">
@@ -541,6 +625,14 @@ export default function StoreDescriptionModal({ isOpen, onClose, onComplete }: S
           생성된 업체소개글을 복사해서 사용하세요
         </Text>
       </div>
+
+      {/* AI 생성 콘텐츠 주의사항 */}
+      <Alert color="yellow" title="⚠️ 꼭 확인해주세요">
+        <Text size="sm">
+          AI가 작성한 콘텐츠는 입력하신 정보를 기반으로 자동 생성되었습니다. 
+          사실과 다르거나 부정확한 내용이 포함될 수 있으니, <strong>반드시 검토 후 수정하여 사용</strong>해주시기 바랍니다.
+        </Text>
+      </Alert>
 
       <Paper p="md" withBorder style={{ background: '#f8fafc' }}>
         <Stack gap="md">
