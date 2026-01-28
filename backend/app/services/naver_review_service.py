@@ -1084,9 +1084,26 @@ class NaverReviewService:
                 if not title or len(title) < 5:  # 너무 짧은 제목은 무시
                     continue
                 
-                # 매장명 필터링: 제목에 정확한 매장명 OR 첫 단어가 포함되어야 함
+                # 미리보기(description) 추출: 부모 요소에서 찾기
+                description = ""
+                parent_for_desc = link.parent
+                for level in range(3):  # 최대 3단계까지 탐색
+                    if not parent_for_desc:
+                        break
+                    # 부모 요소의 모든 텍스트에서 제목을 제외한 나머지가 미리보기
+                    parent_text = parent_for_desc.get_text(strip=True)
+                    # 제목보다 긴 텍스트가 있으면 그것이 미리보기를 포함
+                    if len(parent_text) > len(title) + 10:  # 제목보다 충분히 길면
+                        description = parent_text
+                        break
+                    parent_for_desc = parent_for_desc.parent
+                
+                # 매장명 필터링: 제목 OR 미리보기에 정확한 매장명 OR 첫 단어가 포함되어야 함
                 title_lower = title.lower().replace(" ", "")
-                is_match = (exact_store_lower in title_lower) or (first_word_lower in title_lower)
+                description_lower = description.lower().replace(" ", "")
+                combined_text_lower = title_lower + description_lower
+                
+                is_match = (exact_store_lower in combined_text_lower) or (first_word_lower in combined_text_lower)
                 
                 if not is_match:
                     filtered_count += 1
@@ -1095,7 +1112,8 @@ class NaverReviewService:
                     continue
                 
                 if idx < 10:  # 처음 10개만 로그
-                    logger.info(f"[블로그 파싱] ✓ #{idx+1}: '{title[:60]}'")
+                    match_in = "제목" if (exact_store_lower in title_lower or first_word_lower in title_lower) else "미리보기"
+                    logger.info(f"[블로그 파싱] ✓ #{idx+1} ({match_in}): '{title[:60]}'")
                 
                 # 링크의 부모 요소에서 날짜와 작성자 찾기
                 # 부모를 여러 단계 올라가면서 찾기
