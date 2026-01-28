@@ -1018,15 +1018,20 @@ class NaverReviewService:
                         oldest_date_in_page = None
                         checked_dates = 0
                         
-                        for link in blog_links_in_page[:10]:  # 처음 10개만 확인 (대표성)
+                        # 페이지 내 모든 블로그 링크의 날짜를 확인 (최대 30개)
+                        for link_idx, link in enumerate(blog_links_in_page):
+                            if link_idx >= 30:  # 최대 30개까지 (한 페이지당 약 30개 블로그)
+                                break
+                            
                             try:
-                                # 날짜 요소 찾기
                                 parent = link.parent
+                                date_found_for_link = False  # 이 링크의 날짜를 찾았는지 여부
+                                
                                 for level in range(5):
-                                    if not parent:
+                                    if not parent or date_found_for_link:
                                         break
                                     
-                                    date_candidates = parent.find_all(['span', 'time', 'div'], limit=20)
+                                    date_candidates = parent.find_all(['span', 'time', 'div'], limit=10)
                                     for candidate in date_candidates:
                                         text = candidate.get_text(strip=True)
                                         
@@ -1034,16 +1039,23 @@ class NaverReviewService:
                                             continue
                                         
                                         # 날짜 패턴 확인
-                                        if re.match(r'^\d+\s*(일|주|시간|분)\s*전', text) or re.match(r'^\d{2,4}\.\d{1,2}\.\d{1,2}\.?', text):
+                                        is_date = False
+                                        if re.match(r'^\d+\s*(일|주|시간|분)\s*전', text):
+                                            is_date = True
+                                        elif re.match(r'^\d{2,4}\.\d{1,2}\.\d{1,2}\.?', text):
+                                            is_date = True
+                                        
+                                        if is_date:
                                             parsed_date = self._parse_naver_search_date(text)
                                             if parsed_date:
                                                 checked_dates += 1
                                                 if oldest_date_in_page is None or parsed_date < oldest_date_in_page:
                                                     oldest_date_in_page = parsed_date
-                                                break
+                                                date_found_for_link = True  # 이 링크의 날짜를 찾았음
+                                                break  # 이 링크의 다른 날짜는 확인하지 않음
                                     
-                                    if oldest_date_in_page:
-                                        break
+                                    if date_found_for_link:
+                                        break  # 이 링크의 부모를 더 탐색하지 않음
                                     parent = parent.parent
                             except:
                                 continue
