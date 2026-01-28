@@ -1220,6 +1220,7 @@ async def get_place_details(
         logger.info(f"[플레이스 진단] 평가 점수: {diagnosis_result['total_score']}/{diagnosis_result['max_score']}점 ({diagnosis_result['grade']}등급)")
         
         # 진단 히스토리 저장 (store_id와 current_user가 제공된 경우에만)
+        history_id = None
         if store_id and current_user:
             try:
                 supabase = get_supabase_client()
@@ -1237,8 +1238,12 @@ async def get_place_details(
                         "diagnosis_result": diagnosis_result,
                         "place_details": details
                     }
-                    supabase.table("diagnosis_history").insert(history_data).execute()
-                    logger.info(f"[진단 히스토리] 저장 완료: store_id={store_id}, user_id={user_id}")
+                    result = supabase.table("diagnosis_history").insert(history_data).execute()
+                    if result.data and len(result.data) > 0:
+                        history_id = result.data[0].get("id")
+                        logger.info(f"[진단 히스토리] 저장 완료: store_id={store_id}, user_id={user_id}, history_id={history_id}")
+                    else:
+                        logger.warning(f"[진단 히스토리] 저장은 되었으나 ID를 가져올 수 없음")
                 else:
                     logger.warning(f"[진단 히스토리] user_id를 찾을 수 없음")
             except Exception as e:
@@ -1255,7 +1260,8 @@ async def get_place_details(
             "mode": mode,
             "fill_rate": round(fill_rate, 1),
             "details": details,
-            "diagnosis": diagnosis_result  # 진단 평가 결과 추가
+            "diagnosis": diagnosis_result,  # 진단 평가 결과 추가
+            "history_id": history_id  # 저장된 히스토리 ID 추가
         }
         
     except HTTPException:

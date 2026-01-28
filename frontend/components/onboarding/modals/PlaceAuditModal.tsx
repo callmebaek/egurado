@@ -34,6 +34,16 @@ interface DiagnosisResult {
   diagnosis_date: string;
 }
 
+interface DiagnosisResponse {
+  status: string;
+  place_id: string;
+  mode: string;
+  fill_rate: number;
+  details: any;
+  diagnosis: DiagnosisResult;
+  history_id?: string;
+}
+
 export default function PlaceAuditModal({
   isOpen,
   onClose,
@@ -47,6 +57,7 @@ export default function PlaceAuditModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [diagnosisResult, setDiagnosisResult] = useState<DiagnosisResult | null>(null);
+  const [historyId, setHistoryId] = useState<string | null>(null);
 
   const totalSteps = 3;
 
@@ -127,8 +138,9 @@ export default function PlaceAuditModal({
         throw new Error('플레이스 진단에 실패했습니다.');
       }
 
-      const data = await response.json();
+      const data: DiagnosisResponse = await response.json();
       setDiagnosisResult(data.diagnosis);
+      setHistoryId(data.history_id || null);
       setCurrentStep(3);
     } catch (err) {
       setError(err instanceof Error ? err.message : '진단 중 오류가 발생했습니다.');
@@ -142,8 +154,12 @@ export default function PlaceAuditModal({
   const handleViewDetailReport = () => {
     onComplete();
     onClose();
-    // 실제 플레이스 진단 페이지로 이동
-    router.push('/dashboard/naver/audit');
+    // 실제 플레이스 진단 페이지로 이동 (history_id가 있으면 쿼리 파라미터로 전달)
+    if (historyId) {
+      router.push(`/dashboard/naver/audit?historyId=${historyId}`);
+    } else {
+      router.push('/dashboard/naver/audit');
+    }
   };
 
   // 완료 후 닫기

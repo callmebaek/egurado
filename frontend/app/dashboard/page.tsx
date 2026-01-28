@@ -1073,7 +1073,7 @@ export default function DashboardPage() {
 
         {/* 플레이스 진단 카드 */}
         <Link 
-          href="/dashboard/naver/audit"
+          href={latestDiagnosis ? `/dashboard/naver/audit?historyId=${latestDiagnosis.id}` : '/dashboard/naver/audit'}
           className="group block bg-white rounded-xl sm:rounded-2xl border border-gray-200 p-4 sm:p-5 lg:p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
         >
           <div className="flex items-center justify-between mb-3 sm:mb-4">

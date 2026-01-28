@@ -5,6 +5,7 @@ import { Store, Loader2, CheckCircle2, AlertCircle, X, ExternalLink, TrendingUp,
 import { useToast } from "@/components/ui/use-toast"
 import { useAuth } from "@/lib/auth-context"
 import { api } from "@/lib/config"
+import { useSearchParams } from "next/navigation"
 import {
   Paper,
   Card,
@@ -189,6 +190,7 @@ interface DiagnosisHistoryDetail {
 export default function AuditPage() {
   const { toast } = useToast()
   const { user, getToken } = useAuth()
+  const searchParams = useSearchParams()
   const [stores, setStores] = useState<RegisteredStore[]>([])
   const [isLoadingStores, setIsLoadingStores] = useState(false)
   const [selectedStore, setSelectedStore] = useState<RegisteredStore | null>(null)
@@ -206,6 +208,14 @@ export default function AuditPage() {
 
   // 종합 요약 섹션 ref
   const summaryRef = useRef<HTMLDivElement>(null)
+
+  // URL 파라미터에서 historyId를 가져와서 자동으로 로드
+  useEffect(() => {
+    const historyId = searchParams.get('historyId')
+    if (historyId && user) {
+      handleViewHistoryDetail(historyId)
+    }
+  }, [searchParams, user])
 
   // 등록된 매장 목록 가져오기
   useEffect(() => {
