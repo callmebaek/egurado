@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo, memo, useCallback } from "react"
+import { useSearchParams } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -207,6 +208,7 @@ interface Review {
 export default function ReviewManagementPage() {
   const { toast } = useToast()
   const { user, getToken } = useAuth()
+  const searchParams = useSearchParams()
   
   // 상태
   const [stores, setStores] = useState<Store[]>([])
@@ -253,6 +255,26 @@ export default function ReviewManagementPage() {
   useEffect(() => {
     loadStores()
   }, [])
+  
+  // URL 파라미터 처리 (모달에서 넘어온 경우)
+  useEffect(() => {
+    const storeId = searchParams.get('storeId')
+    const period = searchParams.get('period')
+    const autoStart = searchParams.get('autoStart')
+    
+    if (storeId && period && autoStart === 'true') {
+      // 매장 선택
+      setSelectedStoreId(storeId)
+      setDatePeriod(period)
+      
+      // 매장 목록이 로드된 후 자동 분석 시작
+      const timer = setTimeout(() => {
+        handleAnalyze()
+      }, 1000) // 1초 딜레이로 매장 정보 로딩 대기
+      
+      return () => clearTimeout(timer)
+    }
+  }, [searchParams, stores])
   
   // 매장 선택 시 이전 데이터 초기화 및 매장 정보 로드
   useEffect(() => {
@@ -622,10 +644,9 @@ export default function ReviewManagementPage() {
               
               setAnalysisProgress(100)
               
-              // 통계와 리뷰 목록 새로고침 (오늘 날짜 기준)
-              const today = new Date().toISOString().split('T')[0]
-              console.log("📊 통계 로딩 시작 (날짜:", today, ")...")
-              await loadStats(today)
+              // 통계와 리뷰 목록 새로고침 (실제 분석한 기간의 종료일 기준)
+              console.log("📊 통계 로딩 시작 (날짜:", dateRange.end_date, ")...")
+              await loadStats(dateRange.end_date)
               console.log("📝 리뷰 목록 로딩 시작...")
               await loadReviews()
               console.log("✅ 통계 및 리뷰 로딩 완료")

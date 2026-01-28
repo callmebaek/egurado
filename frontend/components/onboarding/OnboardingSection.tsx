@@ -13,6 +13,7 @@ import TargetKeywordsModal from './modals/TargetKeywordsModal';
 import { RankTrackingModal } from './modals/RankTrackingModal';
 import StoreDescriptionModal from './modals/StoreDescriptionModal';
 import StoreDirectionsModal from './modals/StoreDirectionsModal';
+import ReviewAnalysisModal from './modals/ReviewAnalysisModal';
 import GenericActionModal from './modals/GenericActionModal';
 
 interface OnboardingSectionProps {
@@ -33,6 +34,7 @@ export default function OnboardingSection({ onStoreRegistered }: OnboardingSecti
   const [showRankTrackingModal, setShowRankTrackingModal] = useState(false);
   const [showDescriptionModal, setShowDescriptionModal] = useState(false);
   const [showDirectionsModal, setShowDirectionsModal] = useState(false);
+  const [showReviewAnalysisModal, setShowReviewAnalysisModal] = useState(false);
   const [genericModalConfig, setGenericModalConfig] = useState<{
     isOpen: boolean;
     title: string;
@@ -233,6 +235,10 @@ export default function OnboardingSection({ onStoreRegistered }: OnboardingSecti
         setShowDirectionsModal(true);
         break;
       
+      case ACTION_KEYS.REVIEW_ANALYSIS:
+        setShowReviewAnalysisModal(true);
+        break;
+      
       case ACTION_KEYS.CONTACT_WHIPLACE:
         setGenericModalConfig({
           isOpen: true,
@@ -381,7 +387,13 @@ export default function OnboardingSection({ onStoreRegistered }: OnboardingSecti
         onClose={() => setShowDirectionsModal(false)}
         onComplete={() => markActionComplete(ACTION_KEYS.DIRECTIONS_AI)}
       />
-      
+
+      <ReviewAnalysisModal
+        isOpen={showReviewAnalysisModal}
+        onClose={() => setShowReviewAnalysisModal(false)}
+        onComplete={() => markActionComplete(ACTION_KEYS.REVIEW_ANALYSIS)}
+      />
+
       <GenericActionModal
         isOpen={genericModalConfig.isOpen}
         onClose={() => setGenericModalConfig(prev => ({ ...prev, isOpen: false }))}
