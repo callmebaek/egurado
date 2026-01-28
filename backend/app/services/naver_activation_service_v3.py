@@ -322,8 +322,18 @@ class NaverActivationServiceV3:
             )
             
             if not all_reviews:
-                logger.warning(f"[활성화-블로그 HTML] 리뷰 파싱 실패, 추정값 사용 (전체: {total_blog_review_count}개)")
-                return self._calculate_blog_review_trends_estimated(total_blog_review_count)
+                logger.warning(f"[활성화-블로그 HTML] 매칭된 블로그가 없음, 0으로 처리")
+                return {
+                    'last_3days_avg': 0.0,
+                    'last_7days_avg': 0.0,
+                    'last_30days_avg': 0.0,
+                    'last_60days_avg': 0.0,
+                    'comparisons': {
+                        'vs_last_7days': {'direction': 'stable', 'change': 0.0},
+                        'vs_last_30days': {'direction': 'stable', 'change': 0.0},
+                        'vs_last_60days': {'direction': 'stable', 'change': 0.0},
+                    }
+                }
             
             logger.info(f"[활성화-블로그 HTML] 파싱 완료: {len(all_reviews)}개")
             
@@ -331,10 +341,20 @@ class NaverActivationServiceV3:
             reviews_with_date = [r for r in all_reviews if r.get("date")]
             logger.info(f"[활성화-블로그 HTML] 날짜 있는 리뷰: {len(reviews_with_date)}개 / {len(all_reviews)}개")
             
-            # 날짜가 너무 적으면 추정값 사용
-            if len(reviews_with_date) < 5:
-                logger.warning(f"[활성화-블로그 HTML] 날짜 있는 리뷰가 너무 적음 ({len(reviews_with_date)}개), 추정값 사용")
-                return self._calculate_blog_review_trends_estimated(total_blog_review_count)
+            # 날짜가 있는 리뷰가 0개이면 0으로 처리 (추정값 사용 안 함)
+            if len(reviews_with_date) == 0:
+                logger.warning(f"[활성화-블로그 HTML] 날짜 있는 리뷰가 없음, 0으로 처리")
+                return {
+                    'last_3days_avg': 0.0,
+                    'last_7days_avg': 0.0,
+                    'last_30days_avg': 0.0,
+                    'last_60days_avg': 0.0,
+                    'comparisons': {
+                        'vs_last_7days': {'direction': 'stable', 'change': 0.0},
+                        'vs_last_30days': {'direction': 'stable', 'change': 0.0},
+                        'vs_last_60days': {'direction': 'stable', 'change': 0.0},
+                    }
+                }
             
             # 날짜 기준으로 정렬 (최신순)
             reviews_with_date.sort(key=lambda x: x.get("date", ""), reverse=True)

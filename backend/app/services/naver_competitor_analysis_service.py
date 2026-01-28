@@ -745,9 +745,8 @@ class NaverCompetitorAnalysisService:
             )
             
             if not all_reviews:
-                logger.warning(f"[경쟁분석] 블로그 리뷰 파싱 실패, 추정값 사용")
-                estimated_daily_avg = total_blog_review_count / 365 if total_blog_review_count > 0 else 0
-                return estimated_daily_avg * 7
+                logger.warning(f"[경쟁분석] 블로그 리뷰 파싱 실패, 0으로 처리")
+                return 0.0
             
             # 날짜 파싱하여 7일 이내 카운팅
             cutoff_date = datetime.now() - timedelta(days=7)
@@ -765,8 +764,7 @@ class NaverCompetitorAnalysisService:
             
         except Exception as e:
             logger.error(f"[경쟁분석] 블로그 리뷰 계산 실패: {str(e)}")
-            estimated_daily_avg = total_blog_review_count / 365 if total_blog_review_count > 0 else 0
-            return estimated_daily_avg * 7
+            return 0.0
     
     def _parse_review_date_enhanced(self, date_str: str) -> Optional[datetime]:
         """
