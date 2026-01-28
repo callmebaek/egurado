@@ -101,89 +101,89 @@ const navigation: NavItem[] = [
       },
       {
         title: '플레이스 지수',
-        icon: <BarChart3 className="w-4 h-4" />,
-        badge: '준비중',
+        icon: <BarChart3 className="w-3.5 h-3.5" />,
+        badge: '투표',
         children: [
-          { title: '주요 KPI현황', href: '/dashboard/naver/metrics', icon: null, badge: '준비중' },
-          { title: '지수 분석 및 전략', href: '/dashboard/naver/metrics/strategy', icon: null, badge: '준비중' },
+          { title: '주요 KPI현황', href: '/dashboard/feature-voting', icon: null, badge: '투표' },
+          { title: '지수 분석 및 전략', href: '/dashboard/feature-voting', icon: null, badge: '투표' },
         ],
       },
       {
         title: '검색광고 분석',
-        href: '/dashboard/naver/search-ads',
+        href: '/dashboard/feature-voting',
         icon: <Star className="w-4 h-4" />,
-        badge: '준비중',
+        badge: '투표',
       },
       {
         title: '네이버 공지',
-        href: '/dashboard/naver/notices',
+        href: '/dashboard/feature-voting',
         icon: <Bell className="w-4 h-4" />,
-        badge: '준비중',
+        badge: '투표',
       },
     ],
   },
   {
     title: 'K사 맵 관리',
     icon: <span className="w-5 h-5 flex items-center justify-center font-bold text-amber-500">K</span>,
-    badge: '준비중',
+    badge: '투표',
     children: [
       {
         title: 'K사 비지니스 매장진단',
-        href: '/dashboard/kakao/audit',
+        href: '/dashboard/feature-voting',
         icon: <Search className="w-4 h-4" />,
-        badge: '준비중',
+        badge: '투표',
       },
       {
         title: '리뷰관리',
-        href: '/dashboard/kakao/reviews',
+        href: '/dashboard/feature-voting',
         icon: <MessageSquare className="w-4 h-4" />,
-        badge: '준비중',
+        badge: '투표',
       },
       {
         title: 'K사 맵 순위조회',
-        href: '/dashboard/kakao/rank',
+        href: '/dashboard/feature-voting',
         icon: <TrendingUp className="w-4 h-4" />,
-        badge: '준비중',
+        badge: '투표',
       },
       {
         title: '주요지표관리',
-        href: '/dashboard/kakao/metrics',
+        href: '/dashboard/feature-voting',
         icon: <BarChart3 className="w-4 h-4" />,
-        badge: '준비중',
+        badge: '투표',
       },
     ],
   },
   {
     title: 'G사 비지니스 프로필',
     icon: <span className="w-5 h-5 flex items-center justify-center font-bold text-blue-600">G</span>,
-    badge: '준비중',
+    badge: '투표',
     children: [
       {
         title: '리뷰 관리',
         icon: <MessageSquare className="w-4 h-4" />,
-        badge: '준비중',
+        badge: '투표',
         children: [
-          { title: '리뷰 통계/현황 분석', href: '/dashboard/google/reviews', icon: null, badge: '준비중' },
-          { title: 'AI 리뷰답글 달기', href: '/dashboard/google/reviews/ai-reply', icon: null, badge: '준비중' },
+          { title: '리뷰 통계/현황 분석', href: '/dashboard/feature-voting', icon: null, badge: '투표' },
+          { title: 'AI 리뷰답글 달기', href: '/dashboard/feature-voting', icon: null, badge: '투표' },
         ],
       },
       {
         title: 'GBP 진단',
-        href: '/dashboard/google/audit',
+        href: '/dashboard/feature-voting',
         icon: <Search className="w-4 h-4" />,
-        badge: '준비중',
+        badge: '투표',
       },
       {
         title: 'G사 맵 순위조회',
-        href: '/dashboard/google/rank',
+        href: '/dashboard/feature-voting',
         icon: <TrendingUp className="w-4 h-4" />,
-        badge: '준비중',
+        badge: '투표',
       },
       {
         title: 'Citation Boost',
-        href: '/dashboard/google/citation',
+        href: '/dashboard/feature-voting',
         icon: <BarChart3 className="w-4 h-4" />,
-        badge: '준비중',
+        badge: '투표',
       },
     ],
   },
@@ -219,20 +219,19 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     const isActive = item.href && pathname === item.href
     const hasChildren = item.children && item.children.length > 0
     const isOpen = openItems.includes(item.title)
-    const isDisabled = item.badge === '준비중'
+    const isVoting = item.badge === '투표'
 
     return (
       <div key={item.title}>
         {item.href ? (
             <Link
-              href={isDisabled ? '#' : item.href}
-              onClick={(e) => isDisabled && e.preventDefault()}
+              href={item.href}
               className={cn(
-              'flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors',
-              level > 0 && 'pl-10',
-              level > 1 && 'pl-14',
-              level === 0 && 'font-semibold',
-                isDisabled && 'opacity-50 cursor-not-allowed pointer-events-none',
+              'flex items-center gap-3 px-3 py-2 rounded-md transition-colors',
+              level > 0 && 'pl-10 text-xs',
+              level > 1 && 'pl-14 text-xs',
+              level === 0 && 'font-semibold text-sm',
+              level > 0 && !level && 'text-sm',
                 isActive
                 ? 'bg-primary text-primary-foreground font-semibold'
                 : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
@@ -241,7 +240,12 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               {item.icon}
               <span className="flex-1">{item.title}</span>
               {item.badge && (
-              <span className="px-1.5 py-0.5 text-[10px] font-medium bg-gray-100 text-gray-500 border border-gray-200 rounded">
+              <span className={cn(
+                "px-1.5 py-0.5 text-[10px] font-semibold rounded",
+                isVoting 
+                  ? "bg-blue-100 text-blue-700 border border-blue-300" 
+                  : "bg-gray-100 text-gray-500 border border-gray-200"
+              )}>
                   {item.badge}
                 </span>
               )}
@@ -250,17 +254,21 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           <button
             onClick={() => hasChildren && toggleItem(item.title)}
             className={cn(
-              'w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors',
-              level > 0 && 'pl-10',
-              level === 0 && 'font-semibold text-olive-800',
-              isDisabled && 'opacity-60',
+              'w-full flex items-center gap-3 px-3 py-2 rounded-md transition-colors',
+              level > 0 && 'pl-10 text-xs',
+              level === 0 && 'font-semibold text-sm text-olive-800',
               'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
             )}
           >
             {item.icon}
             <span className="flex-1 text-left">{item.title}</span>
             {item.badge && (
-              <span className="px-1.5 py-0.5 text-[10px] font-medium bg-gray-100 text-gray-500 border border-gray-200 rounded">
+              <span className={cn(
+                "px-1.5 py-0.5 text-[10px] font-semibold rounded",
+                isVoting 
+                  ? "bg-blue-100 text-blue-700 border border-blue-300" 
+                  : "bg-gray-100 text-gray-500 border border-gray-200"
+              )}>
                 {item.badge}
               </span>
             )}

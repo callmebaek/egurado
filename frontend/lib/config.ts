@@ -134,6 +134,16 @@ export const api = {
       return api.url(`/api/v1/metrics/trackers/${trackerId}/metrics${queryString ? `?${queryString}` : ''}`)
     },
   },
+  
+  /**
+   * 기능 투표 관련 API
+   */
+  votes: {
+    features: () => api.url('/api/v1/votes/features'),
+    vote: (featureKey: string) => api.url(`/api/v1/votes/features/${featureKey}`),
+    myVotes: () => api.url('/api/v1/votes/my-votes'),
+    summary: (featureKey: string) => api.url(`/api/v1/votes/features/${featureKey}/summary`),
+  },
 } as const
 
 /**
