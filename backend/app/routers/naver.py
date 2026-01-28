@@ -1620,7 +1620,14 @@ class ActivationResponse(BaseModel):
 class GenerateTextRequest(BaseModel):
     """텍스트 생성 요청"""
     store_id: str
-    prompt: str
+    # 기존 필드 (하위 호환성 유지)
+    prompt: Optional[str] = None
+    # 새로운 필드 (업체소개글 SEO 최적화용)
+    region_keyword: Optional[str] = None  # 지역 키워드 (1개)
+    landmark_keywords: Optional[List[str]] = None  # 랜드마크 키워드 (최대 2개)
+    business_type_keyword: Optional[str] = None  # 업종 키워드 (1개)
+    product_keywords: Optional[List[str]] = None  # 상품/서비스 키워드 (최대 3개)
+    store_features: Optional[str] = None  # 매장 특색 및 강점
 
 
 class GenerateTextResponse(BaseModel):
@@ -1736,7 +1743,101 @@ async def generate_description(
         # 2. LLM으로 업체소개글 생성
         from app.services.llm_reply_service import llm_reply_service
         
-        system_prompt = """당신은 네이버 플레이스 SEO 전문가입니다. 
+        # 새로운 필드가 제공된 경우 SEO 최적화 프롬프트 사용
+        if request.region_keyword or request.landmark_keywords or request.business_type_keyword:
+            # 키워드 정리
+            region = request.region_keyword or "정보 없음"
+            landmarks = ", ".join(request.landmark_keywords) if request.landmark_keywords else "정보 없음"
+            business_type = request.business_type_keyword or "정보 없음"
+            products = ", ".join(request.product_keywords) if request.product_keywords else "정보 없음"
+            features = request.store_features or "정보 없음"
+            
+            system_prompt = """당신은 네이버 플레이스 SEO 및 로컬 검색 알고리즘에 특화된 대한민국 최고 수준의
+로컬 마케팅 전문 카피라이터입니다.
+
+당신의 목표는 아래 [입력 정보]를 기반으로
+네이버 플레이스 노출에 최적화된 업체 설명을 작성하는 것입니다."""
+            
+            user_message = f"""━━━━━━━━━━━━━━━━━━
+[입력 정보]
+
+1. 지역 키워드:
+{region}
+
+2. 랜드마크 키워드 (역, 상권, 건물, 관광지 등):
+{landmarks}
+
+3. 업종 키워드:
+{business_type}
+
+4. 상품/서비스 키워드:
+{products}
+
+5. 매장 특색 및 강점, 우리 매장을 꼭 방문해야 하는 이유:
+{features}
+
+━━━━━━━━━━━━━━━━━━
+[SEO 핵심 지침 — 반드시 준수]
+
+1. 최종 결과물은 **1900자 이상 1950자 이하 (한글 기준)** 로 작성하세요.
+   - 글자 수를 반드시 직접 계산하여 이 범위를 벗어나지 않도록 하세요.
+
+2. 아래 키워드는 **SEO 최적 빈도로 자연스럽게 분산 배치**해야 합니다.
+
+   ▪ 지역 키워드:
+     - 총 **7~9회**
+     - 도입부, 중반, 결론부에 고르게 분포
+
+   ▪ 랜드마크 키워드:
+     - 총 **4~6회**
+     - '위치 설명', '찾아오는 방법', '접근성', '주변 환경' 문맥에서 사용
+     - 지역 키워드를 단순 반복하지 말고 보조 위치 신호로 활용
+
+   ▪ 업종 키워드:
+     - 총 **6~7회**
+     - 매장 정체성과 전문성을 설명하는 문장에서 활용
+
+   ▪ 상품/서비스 키워드:
+     - 핵심 상품 각 **2~4회**
+     - 실제 제공 가치, 경험, 결과 중심으로 서술
+
+3. **유저가 입력한 모든 문장은 의미 훼손 없이 반영**해야 합니다.
+   - 일부 표현은 자연스럽게 다듬을 수 있으나, 새로운 사실을 만들어내지 마세요.
+
+━━━━━━━━━━━━━━━━━━
+[네이버 플레이스 최적화 구조]
+
+아래 구조가 자연스럽게 드러나도록 작성하세요.  
+(소제목은 쓰지 말고 흐름으로만 반영)
+
+1) 지역 + 랜드마크 기반 매장 소개
+2) 업종 및 상품/서비스 전문성 설명
+3) 매장의 차별화된 강점과 분위기
+4) 실제 방문 시 고객이 경험하게 되는 포인트
+5) 이런 고객에게 특히 추천되는 이유
+6) 재방문과 추천을 유도하는 마무리
+
+━━━━━━━━━━━━━━━━━━
+[문체 및 표현 규칙]
+
+- 광고 문구처럼 과장된 표현 ❌
+- 실제 매장 운영자가 정성껏 직접 작성한 설명처럼 신뢰감 있게 작성
+- "입니다 / 합니다" 체로 통일
+- 키워드 나열처럼 보이지 않도록 문맥 속에 자연스럽게 녹일 것
+
+━━━━━━━━━━━━━━━━━━
+[출력 제한]
+
+- 제목 ❌
+- 소제목 ❌
+- 이모지 ❌
+- 해시태그 ❌
+- 전화번호, 가격, 이벤트 언급 ❌
+- 순수 본문 텍스트만 출력"""
+        
+        else:
+            # 기존 방식 (하위 호환성 유지)
+            system_prompt = """당신은 네이버 플레이스 SEO 전문가입니다. 
 업체소개글을 작성할 때 다음 가이드라인을 따르세요:
 
 1. 핵심 키워드를 자연스럽게 포함 (지역명, 업종, 특징)
@@ -1747,14 +1848,14 @@ async def generate_description(
 
 업체소개글만 출력하고, 추가 설명은 하지 마세요."""
 
-        user_message = f"""다음 정보를 바탕으로 네이버 플레이스 업체소개글을 작성해주세요:
+            user_message = f"""다음 정보를 바탕으로 네이버 플레이스 업체소개글을 작성해주세요:
 
 매장명: {store.get('store_name')}
 카테고리: {store.get('category', '정보 없음')}
 주소: {store.get('address', '정보 없음')}
 
 사용자 요청사항:
-{request.prompt}
+{request.prompt or '매장 특색을 살린 업체소개글을 작성해주세요.'}
 
 업체소개글:"""
 

@@ -22,7 +22,8 @@ import {
   SimpleGrid,
   ThemeIcon,
   Progress,
-  Tooltip
+  Tooltip,
+  TextInput
 } from '@mantine/core'
 import { 
   Store, 
@@ -158,6 +159,13 @@ export default function ActivationPage() {
   const [directionsPrompt, setDirectionsPrompt] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
   const [generatedText, setGeneratedText] = useState('')
+  
+  // 업체소개글 생성을 위한 5개 입력 필드
+  const [regionKeyword, setRegionKeyword] = useState('')
+  const [landmarkKeywords, setLandmarkKeywords] = useState('')
+  const [businessTypeKeyword, setBusinessTypeKeyword] = useState('')
+  const [productKeywords, setProductKeywords] = useState('')
+  const [storeFeatures, setStoreFeatures] = useState('')
 
   // 등록된 매장 목록 가져오기
   useEffect(() => {
@@ -807,7 +815,7 @@ export default function ActivationPage() {
               color="blue"
               onClick={() => setShowDescriptionModal(true)}
             >
-              SEO 최적화하여 생성하기
+              AI로 완벽한 업체소개글 생성하기
             </Button>
           </Stack>
         </Card>
@@ -1255,25 +1263,77 @@ export default function ActivationPage() {
         opened={showDescriptionModal}
         onClose={() => {
           setShowDescriptionModal(false)
-          setDescriptionPrompt('')
+          setRegionKeyword('')
+          setLandmarkKeywords('')
+          setBusinessTypeKeyword('')
+          setProductKeywords('')
+          setStoreFeatures('')
           setGeneratedText('')
         }}
-        title="업체소개글 SEO 최적화 생성"
-        size="lg"
+        title="AI로 완벽한 업체소개글 생성하기"
+        size="xl"
       >
         <Stack gap="md">
-          <Textarea
-            label="프롬프트 입력"
-            placeholder="예: 강남역 근처 프리미엄 카페, 조용한 분위기, 디저트 맛집"
-            value={descriptionPrompt}
-            onChange={(e) => setDescriptionPrompt(e.target.value)}
-            minRows={3}
+          <Alert color="blue" variant="light">
+            <Text size="sm">
+              SEO 최적화된 업체소개글을 생성합니다. 모든 필드를 입력하면 더 정확한 결과를 얻을 수 있습니다.
+            </Text>
+          </Alert>
+          
+          <TextInput
+            label="1. 지역 키워드"
+            placeholder="예: 합정, 종로, 성수 등"
+            description="가장 메인 지역 1개만 입력"
+            value={regionKeyword}
+            onChange={(e) => setRegionKeyword(e.target.value)}
+            required
           />
+          
+          <TextInput
+            label="2. 랜드마크 키워드"
+            placeholder="예: 합정역, 홍대입구역, 성수역 등"
+            description="역, 상권, 건물, 관광지 등 (최대 2개, 쉼표로 구분)"
+            value={landmarkKeywords}
+            onChange={(e) => setLandmarkKeywords(e.target.value)}
+          />
+          
+          <TextInput
+            label="3. 업종 키워드"
+            placeholder="예: 카페, 식당, 사진관, 헤어샵 등"
+            description="업종 1개만 입력"
+            value={businessTypeKeyword}
+            onChange={(e) => setBusinessTypeKeyword(e.target.value)}
+            required
+          />
+          
+          <TextInput
+            label="4. 상품/서비스 키워드"
+            placeholder="예: 칼국수, 보쌈, 커피, 콜드브루 등"
+            description="최대 3개 (쉼표로 구분)"
+            value={productKeywords}
+            onChange={(e) => setProductKeywords(e.target.value)}
+          />
+          
+          <Textarea
+            label="5. 매장 특색 및 강점, 우리 매장을 꼭 방문해야 하는 이유"
+            placeholder="예: 저희 매장은 처음 방문하시는 분들도 부담 없이 이용할 수 있도록 공간 동선과 서비스 흐름을 단순하고 편안하게 구성했습니다..."
+            description="매장의 특별한 점, 강점, 차별화 포인트를 자유롭게 입력해주세요"
+            value={storeFeatures}
+            onChange={(e) => setStoreFeatures(e.target.value)}
+            minRows={5}
+            required
+          />
+          
           <Button
             onClick={async () => {
               setIsGenerating(true)
               try {
                 const token = getToken()
+                
+                // 랜드마크와 상품 키워드를 배열로 변환
+                const landmarks = landmarkKeywords.split(',').map(k => k.trim()).filter(k => k)
+                const products = productKeywords.split(',').map(k => k.trim()).filter(k => k)
+                
                 const response = await fetch(api.naver.generateDescription(), {
                   method: 'POST',
                   headers: {
@@ -1282,7 +1342,11 @@ export default function ActivationPage() {
                   },
                   body: JSON.stringify({
                     store_id: selectedStore?.id,
-                    prompt: descriptionPrompt
+                    region_keyword: regionKeyword,
+                    landmark_keywords: landmarks,
+                    business_type_keyword: businessTypeKeyword,
+                    product_keywords: products,
+                    store_features: storeFeatures
                   })
                 })
                 
@@ -1290,6 +1354,11 @@ export default function ActivationPage() {
                 
                 const data = await response.json()
                 setGeneratedText(data.generated_text)
+                
+                toast({
+                  title: "✅ 생성 완료",
+                  description: "업체소개글이 성공적으로 생성되었습니다!",
+                })
               } catch (error) {
                 toast({
                   variant: "destructive",
@@ -1301,15 +1370,40 @@ export default function ActivationPage() {
               }
             }}
             loading={isGenerating}
-            disabled={!descriptionPrompt.trim()}
+            disabled={!regionKeyword.trim() || !businessTypeKeyword.trim() || !storeFeatures.trim()}
+            fullWidth
+            size="lg"
           >
-            생성하기
+            AI로 업체소개글 생성하기
           </Button>
           
           {generatedText && (
-            <Paper p="md" withBorder>
-              <Text size="sm" fw={600} mb="xs">생성된 업체소개글:</Text>
-              <Text size="sm">{generatedText}</Text>
+            <Paper p="md" withBorder bg="gray.0">
+              <Stack gap="xs">
+                <Group justify="space-between">
+                  <Text size="sm" fw={600}>생성된 업체소개글:</Text>
+                  <Badge color="blue" variant="light">
+                    {generatedText.length}자
+                  </Badge>
+                </Group>
+                <Divider />
+                <Text size="sm" style={{ whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>
+                  {generatedText}
+                </Text>
+                <Button
+                  variant="light"
+                  size="xs"
+                  onClick={() => {
+                    navigator.clipboard.writeText(generatedText)
+                    toast({
+                      title: "✅ 복사 완료",
+                      description: "클립보드에 복사되었습니다!",
+                    })
+                  }}
+                >
+                  클립보드에 복사
+                </Button>
+              </Stack>
             </Paper>
           )}
         </Stack>
