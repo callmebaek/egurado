@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   Modal,
   Stack,
@@ -65,6 +66,7 @@ interface KeywordOption {
 export function RankTrackingModal({ opened, onClose, onComplete }: RankTrackingModalProps) {
   const { getToken } = useAuth()
   const { toast } = useToast()
+  const router = useRouter()
   
   const [currentStep, setCurrentStep] = useState(1)
   const [isLoading, setIsLoading] = useState(false)
@@ -244,8 +246,9 @@ export function RankTrackingModal({ opened, onClose, onComplete }: RankTrackingM
       return
     }
 
-    // Step 6: 완료
+    // Step 6: 완료 - 키워드 순위 추적 페이지로 이동
     if (currentStep === 6) {
+      router.push('/dashboard/naver/rank')
       handleClose()
       return
     }
@@ -911,7 +914,7 @@ export function RankTrackingModal({ opened, onClose, onComplete }: RankTrackingM
               : currentStep === 5 
                 ? '추적 시작' 
                 : currentStep === 6 
-                  ? '완료'
+                  ? '순위 확인하러 가기'
                   : '다음'}
           </Button>
         </Group>
