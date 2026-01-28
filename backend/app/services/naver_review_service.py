@@ -963,9 +963,6 @@ class NaverReviewService:
                 search_query = store_name
             
             query = quote(search_query)
-            url = f"https://search.naver.com/search.naver?ssc=tab.blog.all&query={query}&sm=tab_opt&nso=so:dd,p:all"
-            logger.info(f"[블로그 검색] HTTP 요청 시작: {url}")
-            logger.info(f"[블로그 검색] 검색어: '{search_query}', Place ID: {place_id}")
             
             # 네이버 검색 페이지용 헤더
             search_headers = {
@@ -975,22 +972,82 @@ class NaverReviewService:
                 "Referer": "https://www.naver.com/",
             }
             
+            # 여러 페이지 가져오기 (60일 이전 블로그를 찾을 때까지)
+            all_reviews = []
+            max_pages = 10  # 최대 10페이지 (약 300개)
+            target_days = 60  # 60일 일평균 계산을 위해
+            
+            from datetime import datetime, timezone, timedelta
+            cutoff_date = datetime.now(timezone.utc) - timedelta(days=target_days)
+            found_old_enough = False
+            
             async with httpx.AsyncClient(timeout=10.0) as client:
-                response = await client.get(url, headers=search_headers, follow_redirects=True)
+                for page in range(max_pages):
+                    start = page * 30 + 1  # 네이버는 1, 31, 61, 91... 형태로 페이징
+                    url = f"https://search.naver.com/search.naver?ssc=tab.blog.all&query={query}&sm=tab_opt&nso=so:dd,p:all&start={start}"
+                    
+                    if page == 0:
+                        logger.info(f"[블로그 검색] HTTP 요청 시작: {url}")
+                        logger.info(f"[블로그 검색] 검색어: '{search_query}', Place ID: {place_id}, 목표: {target_days}일 이전까지")
+                    
+                    try:
+                        response = await client.get(url, headers=search_headers, follow_redirects=True)
+                        
+                        if response.status_code != 200:
+                            logger.warning(f"[블로그 검색] 페이지 {page+1} HTTP {response.status_code}")
+                            continue
+                        
+                        html = response.text
+                        
+                        if page == 0:
+                            logger.info(f"[블로그 검색] HTML 길이: {len(html)} bytes")
+                        
+                        # HTML 파싱하여 블로그 리뷰 추출 (매장명 필터링 적용)
+                        page_reviews = self._parse_naver_blog_search_html(html, store_name)
+                        all_reviews.extend(page_reviews)
+                        
+                        # 리뷰가 없으면 더 이상 페이지가 없는 것
+                        if len(page_reviews) == 0:
+                            logger.info(f"[블로그 검색] 페이지 {page+1}: 리뷰 없음 (페이지 종료)")
+                            break
+                        
+                        # 이 페이지에서 60일 이전 블로그를 찾았는지 확인
+                        oldest_in_page = None
+                        for review in page_reviews:
+                            if review.get("date"):
+                                try:
+                                    review_date = datetime.fromisoformat(review["date"].replace('Z', '+00:00'))
+                                    if oldest_in_page is None or review_date < oldest_in_page:
+                                        oldest_in_page = review_date
+                                except:
+                                    continue
+                        
+                        if oldest_in_page:
+                            days_old = (datetime.now(timezone.utc) - oldest_in_page).days
+                            logger.info(f"[블로그 검색] 페이지 {page+1}/{max_pages}: {len(page_reviews)}개 (누적: {len(all_reviews)}개), 가장 오래된: {days_old}일 전")
+                            
+                            # 60일 이전 블로그를 찾았으면 종료 (early stopping)
+                            if oldest_in_page <= cutoff_date:
+                                found_old_enough = True
+                                logger.info(f"[블로그 검색] ✓ {target_days}일 이전 블로그 발견 (조기 종료)")
+                                break
+                        else:
+                            logger.info(f"[블로그 검색] 페이지 {page+1}/{max_pages}: {len(page_reviews)}개 (누적: {len(all_reviews)}개), 날짜 없음")
+                        
+                        # 페이지 간 딜레이 (bot 감지 방지)
+                        if page < max_pages - 1:
+                            await asyncio.sleep(0.5)
+                    
+                    except Exception as e:
+                        logger.warning(f"[블로그 검색] 페이지 {page+1} 오류: {str(e)}")
+                        continue
                 
-                if response.status_code != 200:
-                    logger.warning(f"[블로그 검색] HTTP {response.status_code}")
-                    return []
+                if not found_old_enough and len(all_reviews) > 0:
+                    logger.warning(f"[블로그 검색] ⚠ {target_days}일 이전 블로그를 찾지 못함 ({max_pages}페이지 도달)")
                 
-                html = response.text
-                logger.info(f"[블로그 검색] HTML 길이: {len(html)} bytes")
+                logger.info(f"[블로그 검색] 파싱 완료: 총 {len(all_reviews)}개")
                 
-                # HTML 파싱하여 블로그 리뷰 추출 (매장명 필터링 적용)
-                reviews = self._parse_naver_blog_search_html(html, store_name)
-                
-                logger.info(f"[블로그 검색] 파싱 완료: {len(reviews)}개")
-                
-                return reviews
+                return all_reviews
             
         except Exception as e:
             logger.error(f"[블로그 검색] 예외 발생: {type(e).__name__} - {str(e)}", exc_info=True)
