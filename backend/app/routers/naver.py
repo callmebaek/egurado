@@ -1741,8 +1741,10 @@ async def generate_description(
             )
         
         # 2. LLM으로 업체소개글 생성
-        from app.services.llm_reply_service import LLMReplyService
-        llm_service = LLMReplyService()
+        import os
+        from openai import AsyncOpenAI
+        
+        openai_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         
         # 새로운 필드가 제공된 경우 SEO 최적화 프롬프트 사용
         if request.region_keyword or request.landmark_keywords or request.business_type_keyword:
@@ -1860,12 +1862,18 @@ async def generate_description(
 
 업체소개글:"""
 
-        generated_text = await llm_service.generate_reply_with_llm(
-            system_prompt=system_prompt,
-            user_message=user_message,
-            temperature=0.7
+        # OpenAI API 직접 호출
+        response = await openai_client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_message}
+            ],
+            temperature=0.7,
+            max_tokens=3000
         )
         
+        generated_text = response.choices[0].message.content
         logger.info(f"[업체소개글 생성] 완료: {len(generated_text)}자")
         
         return GenerateTextResponse(
@@ -1918,8 +1926,10 @@ async def generate_directions(
             )
         
         # 2. LLM으로 찾아오는길 생성
-        from app.services.llm_reply_service import LLMReplyService
-        llm_service = LLMReplyService()
+        import os
+        from openai import AsyncOpenAI
+        
+        openai_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         
         system_prompt = """당신은 네이버 플레이스 SEO 전문가입니다. 
 찾아오는길을 작성할 때 다음 가이드라인을 따르세요:
@@ -1944,12 +1954,18 @@ async def generate_directions(
 
 찾아오는길:"""
 
-        generated_text = await llm_service.generate_reply_with_llm(
-            system_prompt=system_prompt,
-            user_message=user_message,
-            temperature=0.7
+        # OpenAI API 직접 호출
+        response = await openai_client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_message}
+            ],
+            temperature=0.7,
+            max_tokens=1500
         )
         
+        generated_text = response.choices[0].message.content
         logger.info(f"[찾아오는길 생성] 완료: {len(generated_text)}자")
         
         return GenerateTextResponse(
