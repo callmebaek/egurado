@@ -14,6 +14,7 @@ import { RankTrackingModal } from './modals/RankTrackingModal';
 import StoreDescriptionModal from './modals/StoreDescriptionModal';
 import StoreDirectionsModal from './modals/StoreDirectionsModal';
 import ReviewAnalysisModal from './modals/ReviewAnalysisModal';
+import ReviewAnalysisModalSimple from './modals/ReviewAnalysisModalSimple';
 import GenericActionModal from './modals/GenericActionModal';
 
 interface OnboardingSectionProps {
@@ -390,11 +391,18 @@ export default function OnboardingSection({ onStoreRegistered }: OnboardingSecti
       />
 
       {console.log('🎯 ReviewAnalysisModal 렌더링 체크:', showReviewAnalysisModal)}
+      {/* 임시: Simple 버전으로 테스트 */}
+      <ReviewAnalysisModalSimple
+        isOpen={showReviewAnalysisModal}
+        onClose={() => setShowReviewAnalysisModal(false)}
+      />
+      {/* 원본
       <ReviewAnalysisModal
         isOpen={showReviewAnalysisModal}
         onClose={() => setShowReviewAnalysisModal(false)}
         onComplete={() => markActionComplete(ACTION_KEYS.REVIEW_ANALYSIS)}
       />
+      */}
 
       <GenericActionModal
         isOpen={genericModalConfig.isOpen}

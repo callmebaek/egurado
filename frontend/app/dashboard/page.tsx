@@ -393,7 +393,7 @@ function SortableStoreTrackerCard({
   )
 }
 
-// Force redeploy - Review Analysis Modal
+// Force redeploy v2 - Review Analysis Modal (2026-01-29 02:40)
 export default function DashboardPage() {
   const { user, getToken, loading: authLoading } = useAuth()
   
