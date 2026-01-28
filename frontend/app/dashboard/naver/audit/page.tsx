@@ -213,7 +213,10 @@ export default function AuditPage() {
   useEffect(() => {
     const historyId = searchParams.get('historyId')
     if (historyId && user) {
-      handleViewHistoryDetail(historyId)
+      setIsAnalyzing(true)
+      handleViewHistoryDetail(historyId).finally(() => {
+        setIsAnalyzing(false)
+      })
     }
   }, [searchParams, user])
 
@@ -396,6 +399,21 @@ export default function AuditPage() {
       // 과거 진단 결과를 현재 진단 결과처럼 표시
       setPlaceDetails(historyDetail.place_details)
       setDiagnosisResult(historyDetail.diagnosis_result)
+      
+      // selectedStore도 히스토리 데이터에서 재구성하여 설정
+      const storeFromHistory: RegisteredStore = {
+        id: historyDetail.store_id,
+        place_id: historyDetail.place_id,
+        name: historyDetail.store_name,
+        category: historyDetail.place_details?.category || '',
+        address: historyDetail.place_details?.address || '',
+        road_address: historyDetail.place_details?.road_address,
+        thumbnail: historyDetail.place_details?.image_url,
+        platform: 'naver',
+        status: 'active',
+        created_at: historyDetail.created_at || new Date().toISOString()
+      }
+      setSelectedStore(storeFromHistory)
       setShowHistoryModal(false)
       
       toast({
