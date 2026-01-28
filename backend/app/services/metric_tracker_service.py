@@ -115,7 +115,8 @@ class MetricTrackerService:
             # 2️⃣ 모든 trackers의 최근 daily_metrics를 한 번에 조회 (최적화)
             # 각 tracker당 최근 2개의 데이터만 가져옴 (최신 + 이전 날짜)
             today = date.today()
-            cutoff_date = (today - timedelta(days=7)).isoformat()  # 최근 7일치
+            cutoff_date = (today - timedelta(days=30)).isoformat()  # 최근 30일치
+            logger.info(f"[Trackers Get All] 🔍 오늘: {today}, cutoff_date: {cutoff_date}")
             
             all_metrics_result = self.supabase.table('daily_metrics')\
                 .select('*')\
@@ -123,6 +124,8 @@ class MetricTrackerService:
                 .gte('collection_date', cutoff_date)\
                 .order('collection_date', desc=True)\
                 .execute()
+            
+            logger.info(f"[Trackers Get All] 🔍 조회된 total metrics: {len(all_metrics_result.data or [])}")
             
             # 3️⃣ tracker_id별로 metrics를 그룹화 (메모리 상에서 처리)
             metrics_by_tracker: Dict[str, List[dict]] = {}
@@ -157,6 +160,12 @@ class MetricTrackerService:
                 # 해당 tracker의 metrics 가져오기
                 tracker_metrics = metrics_by_tracker.get(tracker_id, [])
                 
+                # 🔍 디버깅: "안국역맛집" tracker 확인
+                if tracker.get('keyword') == '안국역맛집':
+                    logger.info(f"[DEBUG 안국역맛집] tracker_id={tracker_id}, metrics 개수={len(tracker_metrics)}")
+                    if tracker_metrics:
+                        logger.info(f"[DEBUG 안국역맛집] 최신 metric: {tracker_metrics[0]}")
+                
                 if tracker_metrics:
                     # 최신 데이터 (첫 번째)
                     latest_metric = tracker_metrics[0]
@@ -164,6 +173,10 @@ class MetricTrackerService:
                     tracker['rank_change'] = latest_metric.get('rank_change')
                     tracker['visitor_review_count'] = latest_metric.get('visitor_review_count')
                     tracker['blog_review_count'] = latest_metric.get('blog_review_count')
+                    
+                    # 🔍 디버깅: "안국역맛집" 값 확인
+                    if tracker.get('keyword') == '안국역맛집':
+                        logger.info(f"[DEBUG 안국역맛집] 설정된 값: rank={tracker['latest_rank']}, visitor={tracker['visitor_review_count']}, blog={tracker['blog_review_count']}")
                     
                     # 이전 데이터가 있으면 변동값 계산 (두 번째)
                     if len(tracker_metrics) > 1:
