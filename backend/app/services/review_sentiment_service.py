@@ -355,40 +355,116 @@ JSON 형태로 응답하라:
         all_content = " ".join([r.get("content", "") for r in reviews])
         # 간단한 키워드 추출 (추후 더 정교하게 개선 가능)
         
-        prompt = f"""다음은 {period_text} 리뷰 분석 결과예요! 😊
+        # 리뷰 내용 전체를 샘플로 제공 (최대 20개)
+        review_samples = []
+        for i, review in enumerate(reviews[:20]):
+            sentiment = review.get("sentiment", "중립")
+            temp_score = review.get("temperature_score", "N/A")
+            content = review.get("content", "")
+            review_date = review.get("review_date", "날짜 미상")
+            review_samples.append(f"[리뷰 {i+1}] 작성일: {review_date}, 감성: {sentiment}, 온도: {temp_score}, 내용: {content}")
+        
+        prompt = f"""아래는 특정 기간 동안 수집된 네이버 플레이스 리뷰 데이터입니다.
 
-[통계 데이터]
+각 리뷰에는 다음 정보가 포함되어 있습니다:
+- 작성일
+- 리뷰 텍스트
+- 리뷰 감성 분류 결과 (긍정 / 중립 / 부정)
+- 리뷰 온도 점수 (0~100, 낮을수록 부정, 높을수록 긍정)
+
+이 데이터를 바탕으로, 해당 기간의 전체 리뷰를 종합 분석하여
+사장님이 한눈에 이해할 수 있는 "리뷰 요약 리포트"를 작성해주세요.
+
+⚠️ 매우 중요:
+- 반드시 데이터에 기반한 사실만 설명하세요
+- 추측, 과장, 막연한 표현은 절대 사용하지 마세요
+- 리뷰에 실제로 나타난 내용만 요약하세요
+
+---
+
+### 📊 통계 데이터
+- 기간: {period_text}
 - 전체 리뷰: {len(reviews)}개
-- 긍정 리뷰: {stats.get('positive', 0)}개 ({int(stats.get('positive', 0) / len(reviews) * 100)}%)
-- 중립 리뷰: {stats.get('neutral', 0)}개 ({int(stats.get('neutral', 0) / len(reviews) * 100)}%)
-- 부정 리뷰: {stats.get('negative', 0)}개 ({int(stats.get('negative', 0) / len(reviews) * 100)}%)
+- 긍정 리뷰: {stats.get('positive', 0)}개 ({int(stats.get('positive', 0) / len(reviews) * 100) if len(reviews) > 0 else 0}%)
+- 중립 리뷰: {stats.get('neutral', 0)}개 ({int(stats.get('neutral', 0) / len(reviews) * 100) if len(reviews) > 0 else 0}%)
+- 부정 리뷰: {stats.get('negative', 0)}개 ({int(stats.get('negative', 0) / len(reviews) * 100) if len(reviews) > 0 else 0}%)
 - 사진 포함 리뷰: {photo_review_count}개 ({photo_review_pct}%)
-- 평균 리뷰 온도: {avg_temperature}도 (0=매우부정, 50=중립, 100=매우긍정)
+- 평균 리뷰 온도: {avg_temperature}도
 
-[대표 리뷰 샘플]
-{chr(10).join(['- ' + text for text in sample_texts])}
+### 📝 리뷰 샘플 (최대 20개)
+{chr(10).join(review_samples)}
 
-[요청사항]
-위 데이터를 바탕으로 **친절하고 따뜻한 톤**으로 팩트 기반 분석을 3-4문장으로 작성해주세요:
-1. 전반적인 고객 만족도 현황을 숫자와 함께 친절하게 설명 (예: "고객님들께서 ~해 주셨어요")
-2. 사진 리뷰 비율 현황을 긍정적으로 표현 (예: "~의 고객님들이 사진을 남겨주셨네요")
-3. 고객들이 자주 언급하는 내용을 자연스럽게 소개 (예: "특히 ~에 대한 이야기가 많았어요")
+---
 
-**중요 스타일 가이드**:
-- 따뜻하고 친절한 말투 사용 (예: ~했어요, ~네요, ~주셨어요)
-- 긍정적이고 격려하는 톤
-- 향후 운영방향이나 개선 제안은 절대 포함하지 말 것
-- 오직 현재 상황에 대한 팩트만 전달하되, 친근하게 표현"""
+### 📌 출력 형식 및 작성 가이드
+
+아래 구조를 **반드시 그대로 유지**해서 작성해주세요.
+
+---
+
+### 1️⃣ 리뷰 수 추이 요약
+- 해당 기간 동안 전체 리뷰 수의 변화 흐름을 설명해주세요.
+- 리뷰가 늘어난 시기나 줄어든 시기가 있다면, **수치 기반으로** 설명하세요.
+- 원인을 추측하지 말고, 관찰된 변화만 설명하세요.
+
+---
+
+### 2️⃣ 리뷰 감성 분포 요약 (긍정 / 중립 / 부정)
+- 긍정, 중립, 부정 리뷰의 **비중과 전체적인 분위기**를 요약해주세요.
+- 각 감성 리뷰에서 **반복적으로 언급된 핵심 포인트**를 정리해주세요.
+- 실제 리뷰 문구에서 드러나는 내용만 반영하세요.
+
+---
+
+### 3️⃣ 리뷰 온도 분석 인사이트
+- 전체 리뷰 온도의 평균적인 흐름을 설명해주세요.
+- 감성 분포와 온도 점수가 **일관성 있게 나타나는지** 설명해주세요.
+- 숫자는 간단히 표현하고, 해석은 쉽게 풀어서 설명해주세요.
+
+---
+
+### 4️⃣ 주요 특이점 및 눈여겨볼 포인트
+- 해당 기간 리뷰에서 특히 눈에 띄는 변화나 패턴이 있다면 설명해주세요.
+- 반복적으로 등장한 불만, 칭찬, 표현 변화 등이 있다면 정리해주세요.
+- 단, 한두 건의 리뷰를 전체처럼 해석하지 말고 빈도 기반으로 설명하세요.
+
+---
+
+### 5️⃣ 종합 요약 (사장님을 위한 한 문단 정리)
+- 위 내용을 바탕으로, 
+  "이 기간 동안 매장에 대해 고객들이 어떻게 느끼고 있는지"
+  를 친절하지만 전문적인 말투로 4~5문장 내로 정리해주세요.
+- 조언처럼 보이되, 지시하거나 단정하지는 마세요.
+
+---
+
+### ✍️ 말투 가이드
+- 전체 톤은 "친근하지만 전문가다운 컨설턴트"
+- 과도한 마케팅 문구 ❌
+- 감정적인 표현 ❌
+- 데이터 설명은 쉽게, 용어는 부드럽게
+
+이제 분석을 시작해주세요."""
         
         try:
             response = await self.client.chat.completions.create(
                 model=self.model,
                 messages=[
-                    {"role": "system", "content": "너는 친절하고 따뜻한 리뷰 분석 도우미야. 데이터를 객관적으로 전달하되, 친근하고 긍정적인 말투로 이야기해. 제안이나 조언은 하지 않고 오직 현재 상황만 친절하게 설명해줘."},
+                    {"role": "system", "content": """You are a professional data analyst and local business consultant specializing in Naver Place review analysis.
+
+All outputs MUST be written in natural, professional Korean.
+Do NOT use English at all unless explicitly requested.
+Use terminology commonly understood by Korean business owners.
+
+You must NEVER exaggerate, speculate, or invent information.
+All analysis must be strictly based on the provided review data.
+If something cannot be determined, clearly state that it cannot be inferred.
+말투는 네이버 플레이스 컨설턴트가 사장님께 설명하듯,
+친근하지만 가볍지 않고, 숫자와 사실을 중심으로 설명하세요."""},
                     {"role": "user", "content": prompt}
                 ],
                 temperature=0.5,
-                max_tokens=350
+                max_tokens=1000
             )
             
             summary = response.choices[0].message.content.strip()

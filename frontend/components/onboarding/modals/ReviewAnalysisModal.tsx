@@ -420,56 +420,47 @@ export default function ReviewAnalysisModal({
           리뷰를 추출했어요! 🎉
         </Text>
         <Text size="sm" c="dimmed">
-          기본 통계를 확인하고, AI 분석을 시작하세요
+          {getPeriodLabel(datePeriod)} 동안 등록된 리뷰를 확인했어요
         </Text>
       </div>
 
-      {/* 통계 카드 */}
-      <Paper p="lg" radius="md" style={{ 
+      {/* 전체 리뷰 수 카드 */}
+      <Paper p="xl" radius="md" style={{ 
+        textAlign: 'center',
         border: '1px solid #e0e7ff',
         background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)'
       }}>
-        <Group grow>
-          <Paper p="md" radius="md" style={{ textAlign: 'center' }}>
-            <ThemeIcon size={32} radius="md" variant="light" color="blue" style={{ margin: '0 auto 0.5rem' }}>
-              <MessageSquare size={18} />
-            </ThemeIcon>
-            <Text size="xl" fw={700}>{reviewStats?.total || 0}</Text>
-            <Text size="xs" c="dimmed" mt={4}>전체</Text>
-          </Paper>
-          
-          <Paper p="md" radius="md" style={{ textAlign: 'center', border: '1px solid #d1fae5' }}>
-            <ThemeIcon size={32} radius="md" variant="light" color="green" style={{ margin: '0 auto 0.5rem' }}>
-              <ThumbsUp size={18} />
-            </ThemeIcon>
-            <Text size="xl" fw={700} c="green">{reviewStats?.positive || 0}</Text>
-            <Text size="xs" c="dimmed" mt={4}>긍정</Text>
-          </Paper>
-          
-          <Paper p="md" radius="md" style={{ textAlign: 'center' }}>
-            <ThemeIcon size={32} radius="md" variant="light" color="gray" style={{ margin: '0 auto 0.5rem' }}>
-              <Minus size={18} />
-            </ThemeIcon>
-            <Text size="xl" fw={700} c="gray">{reviewStats?.neutral || 0}</Text>
-            <Text size="xs" c="dimmed" mt={4}>중립</Text>
-          </Paper>
-          
-          <Paper p="md" radius="md" style={{ textAlign: 'center', border: '1px solid #fecaca' }}>
-            <ThemeIcon size={32} radius="md" variant="light" color="red" style={{ margin: '0 auto 0.5rem' }}>
-              <ThumbsDown size={18} />
-            </ThemeIcon>
-            <Text size="xl" fw={700} c="red">{reviewStats?.negative || 0}</Text>
-            <Text size="xs" c="dimmed" mt={4}>부정</Text>
-          </Paper>
-        </Group>
+        <ThemeIcon size={48} radius="md" variant="light" color="blue" style={{ margin: '0 auto 0.75rem' }}>
+          <MessageSquare size={24} />
+        </ThemeIcon>
+        <Text size={32} fw={700} mb={4}>{reviewStats?.total || 0}개</Text>
+        <Text size="sm" c="dimmed" fw={500}>전체 리뷰 수</Text>
+        <Text size="xs" c="dimmed" mt={8}>
+          리뷰 등록일 기준으로 분석했어요
+        </Text>
       </Paper>
 
-      {/* 안내 메시지 */}
-      <Alert color="yellow" title="AI 분석이 필요해요">
-        <Text size="sm">
-          리뷰 온도, 감성 분석, 핵심 키워드 추출 등 상세한 분석은 "리뷰 분석하기" 버튼을 눌러 시작할 수 있어요.
-        </Text>
-      </Alert>
+      {/* AI 분석 필요 안내 메시지 (크고 명확하게) */}
+      <Paper p="lg" radius="md" style={{ 
+        border: '2px solid #fbbf24',
+        background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)'
+      }}>
+        <Stack gap="sm" align="center">
+          <ThemeIcon size={48} radius="xl" color="yellow" variant="light">
+            <Sparkles size={24} />
+          </ThemeIcon>
+          <Text size="lg" fw={700} ta="center" c="dark">
+            AI 분석이 필요해요! 🤖
+          </Text>
+          <Text size="sm" ta="center" c="dimmed" style={{ lineHeight: 1.6 }}>
+            리뷰 온도 측정, 감정 분석 (긍정/중립/부정), 핵심 키워드 추출 등 
+            상세한 인사이트는 아래 "리뷰 분석하기" 버튼을 눌러 시작할 수 있어요!
+          </Text>
+          <Text size="xs" ta="center" c="dimmed" mt={4}>
+            💡 분석 시간: 리뷰 개수에 따라 약 10초~3분 소요돼요
+          </Text>
+        </Stack>
+      </Paper>
 
       {/* 선택된 정보 요약 */}
       <Paper p="md" radius="md" style={{ background: '#f9fafb' }}>
