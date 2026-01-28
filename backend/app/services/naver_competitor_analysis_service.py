@@ -6,7 +6,7 @@
 """
 import logging
 from typing import List, Dict, Any, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import asyncio
 import re
 
@@ -90,10 +90,11 @@ class NaverCompetitorAnalysisService:
             logger.info(f"[경쟁분석-DEBUG] Step 2: diagnosis_engine.diagnose 호출")
             diagnosis_result = diagnosis_engine.diagnose(place_data)
             
-            # 7일간 리뷰 통계 추출 (정확한 데이터 수집)
-            logger.info(f"[경쟁분석-DEBUG] Step 3: 방문자 리뷰 통계 계산 (실제 데이터)")
+            # 7일간 리뷰 통계 추출 (정확한 데이터 수집 - API 직접 호출)
+            logger.info(f"[경쟁분석-DEBUG] Step 3: 방문자 리뷰 통계 계산 (API 직접 호출)")
             visitor_reviews_7d = await self._calculate_visitor_reviews_accurate(
-                place_data.get("recent_visitor_reviews") or []
+                place_id,
+                place_data.get("visitor_review_count", 0)
             )
             logger.info(f"[경쟁분석-DEBUG] Step 4: 블로그 리뷰 통계 계산 (HTML 파싱)")
             blog_reviews_7d = await self._calculate_blog_reviews_accurate(
@@ -615,41 +616,103 @@ class NaverCompetitorAnalysisService:
     
     async def _calculate_visitor_reviews_accurate(
         self,
-        recent_visitor_reviews: List[Dict]
+        place_id: str,
+        total_visitor_review_count: int
     ) -> float:
         """
-        방문자리뷰 7일 정확한 계산 (실제 데이터 기반)
+        방문자리뷰 7일 정확한 계산 (API 직접 호출 - 플레이스 활성화와 동일)
         
         Args:
-            recent_visitor_reviews: 최근 방문자 리뷰 목록
+            place_id: 네이버 플레이스 ID
+            total_visitor_review_count: 전체 방문자 리뷰 수 (fallback용)
         
         Returns:
             7일간 리뷰 수
         """
-        if not recent_visitor_reviews:
-            logger.warning(f"[경쟁분석] 방문자리뷰 데이터 없음")
-            return 0.0
-        
-        logger.info(f"[경쟁분석] 방문자리뷰 총 {len(recent_visitor_reviews)}개 확인 중...")
-        
-        cutoff_date = datetime.now() - timedelta(days=7)
-        recent_count = 0
-        parsed_count = 0
-        
-        for idx, review in enumerate(recent_visitor_reviews):
-            # 방문일 또는 작성일 확인 (visited, date, reviewDate 등 다양한 필드명 지원)
-            date_str = review.get("visited") or review.get("date") or review.get("reviewDate") or review.get("visitDate") or ""
+        try:
+            # API 직접 호출하여 최근 리뷰 가져오기 (플레이스 활성화와 동일)
+            all_reviews = []
+            cursor = None
+            max_pages = 5  # 경쟁사 분석은 최대 100개(20*5)만 필요
+            now = datetime.now(timezone.utc)
+            oldest_needed_days = 7  # 7일치만 필요
+            should_stop = False
             
-            if idx < 3:  # 처음 3개만 로그
-                logger.info(f"[경쟁분석-DEBUG] 리뷰 #{idx+1} 날짜: '{date_str}'")
+            logger.info(f"[경쟁분석] 방문자 리뷰 API 호출 시작: place_id={place_id}")
             
-            review_date = self._parse_review_date_enhanced(date_str)
-            if review_date and review_date >= cutoff_date:
-                recent_count += 1
-                parsed_count += 1
-        
-        logger.info(f"[경쟁분석] 방문자리뷰 7일: {recent_count}개 (전체: {len(recent_visitor_reviews)}개, 파싱 성공: {parsed_count}개)")
-        return float(recent_count)
+            for page in range(max_pages):
+                reviews_data = await self.review_service.get_visitor_reviews(
+                    place_id=place_id,
+                    size=20,
+                    after=cursor,
+                    sort="recent"
+                )
+                
+                if not reviews_data or not reviews_data.get("items"):
+                    logger.warning(f"[경쟁분석] 리뷰 API 실패 (페이지 {page+1})")
+                    if page == 0:
+                        # 첫 페이지부터 실패하면 추정값 사용
+                        estimated = (total_visitor_review_count / 365 * 7) if total_visitor_review_count > 0 else 0
+                        logger.info(f"[경쟁분석] 방문자리뷰 7일 추정값 사용: {estimated:.1f}개")
+                        return estimated
+                    else:
+                        break
+                
+                items = reviews_data["items"]
+                
+                # 7일보다 오래된 리뷰가 나오면 중단
+                for review in items:
+                    created_str = review.get("created")
+                    if created_str:
+                        try:
+                            review_date = datetime.fromisoformat(created_str.replace('Z', '+00:00'))
+                            days_ago = (now - review_date).days
+                            if days_ago > oldest_needed_days:
+                                should_stop = True
+                                break
+                        except:
+                            pass
+                    all_reviews.append(review)
+                
+                if should_stop:
+                    logger.info(f"[경쟁분석] 7일 이상 리뷰 도달, 중단 (페이지 {page+1}, 총 {len(all_reviews)}개)")
+                    break
+                
+                # 다음 페이지 확인
+                cursor = reviews_data.get("nextCursor")
+                if not cursor or not reviews_data.get("hasMore", False):
+                    logger.info(f"[경쟁분석] 모든 리뷰 조회 완료 (페이지 {page+1}, 총 {len(all_reviews)}개)")
+                    break
+            
+            if not all_reviews:
+                logger.warning(f"[경쟁분석] 리뷰 없음, 추정값 사용")
+                estimated = (total_visitor_review_count / 365 * 7) if total_visitor_review_count > 0 else 0
+                return estimated
+            
+            # 7일 이내 리뷰 개수 계산
+            count_7d = 0
+            cutoff_date = now - timedelta(days=7)
+            
+            for review in all_reviews:
+                created_str = review.get("created")
+                if not created_str:
+                    continue
+                
+                try:
+                    review_date = datetime.fromisoformat(created_str.replace('Z', '+00:00'))
+                    if review_date >= cutoff_date:
+                        count_7d += 1
+                except Exception as e:
+                    logger.debug(f"[경쟁분석] 날짜 파싱 실패: {created_str}")
+                    continue
+            
+            logger.info(f"[경쟁분석] 방문자리뷰 7일: {count_7d}개 (전체 조회: {len(all_reviews)}개)")
+            return float(count_7d)
+            
+        except Exception as e:
+            logger.error(f"[경쟁분석] 방문자리뷰 계산 실패: {str(e)}")
+            estimated = (total_visitor_review_count / 365 * 7) if total_visitor_review_count > 0 else 0
+            return estimated
     
     async def _calculate_blog_reviews_accurate(
         self,
