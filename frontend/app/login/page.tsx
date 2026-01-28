@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
@@ -11,9 +11,36 @@ import { Loader2 } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { useAuth } from "@/lib/auth-context"
 import { startKakaoLogin, startNaverLogin } from "@/lib/social-login"
+import { Noto_Serif_KR } from 'next/font/google'
+
+const notoSerifKR = Noto_Serif_KR({ 
+  subsets: ['latin'],
+  weight: ['400', '700'],
+  display: 'swap',
+})
 
 // 동적 렌더링 강제
 export const dynamic = 'force-dynamic'
+
+// 명언 배열
+const QUOTES = [
+  "데이터를 확인하는 순간, 장사가 아닌 경영이 시작된다.",
+  "데이터를 기반으로 판단할 때 비로소 사업이 된다.",
+  "데이터 없이 하는 판단은 장사이고, 데이터 위의 판단은 사업이다.",
+  "데이터를 보는 사람은 경영하고, 보지 않는 사람은 장사한다.",
+  "숫자를 읽는 순간, 매출이 아니라 구조가 보인다.",
+  "감이 아닌 데이터가 기준이 되는 순간, 사업이 된다.",
+  "측정되지 않는 것은 개선되지 않는다.",
+  "의사결정의 속도는 감이 빠르지만, 정확도는 데이터가 만든다.",
+  "경험은 과거를 말하고, 데이터는 현재를 증명한다.",
+  "성공은 우연 같아 보이지만, 데이터 안에서는 재현 가능하다.",
+  "잘되는 이유를 설명할 수 없다면, 다시 안 될 가능성도 설명할 수 없다.",
+  "확장 가능한 것은 감이 아니라 데이터다.",
+  "데이터가 없는 성장 전략은 희망 사항에 가깝다.",
+  "성장은 운이 아니라 반복 가능한 수치에서 나온다.",
+  "데이터는 실패를 줄이고, 성공의 확률을 높인다.",
+  "숫자를 이해하는 순간, 사업의 크기가 달라진다.",
+]
 
 export default function LoginPage() {
   const router = useRouter()
@@ -22,6 +49,37 @@ export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [currentQuote, setCurrentQuote] = useState("")
+  const [fadeIn, setFadeIn] = useState(true)
+
+  // 랜덤 명언 선택
+  const getRandomQuote = (excludeCurrent?: string) => {
+    let availableQuotes = QUOTES
+    if (excludeCurrent) {
+      availableQuotes = QUOTES.filter(q => q !== excludeCurrent)
+    }
+    const randomIndex = Math.floor(Math.random() * availableQuotes.length)
+    return availableQuotes[randomIndex]
+  }
+
+  // 초기 명언 설정 및 4.5초마다 변경
+  useEffect(() => {
+    // 초기 명언 설정
+    setCurrentQuote(getRandomQuote())
+
+    const interval = setInterval(() => {
+      // 페이드 아웃
+      setFadeIn(false)
+      
+      // 0.5초 후 명언 변경 및 페이드 인
+      setTimeout(() => {
+        setCurrentQuote(prev => getRandomQuote(prev))
+        setFadeIn(true)
+      }, 500)
+    }, 4500)
+
+    return () => clearInterval(interval)
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -72,20 +130,21 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-white p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <div className="flex justify-center mb-6">
-            <Image
-              src="/whiplace-logo.svg"
-              alt="WhiPlace"
-              width={900}
-              height={300}
-              priority
-              className="w-full max-w-xs h-auto"
-            />
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <div className="w-full max-w-md space-y-6">
+        <Card className="w-full">
+          <CardHeader className="space-y-1">
+            <div className="flex justify-center mb-6">
+              <Image
+                src="/whiplace-logo.svg"
+                alt="WhiPlace"
+                width={900}
+                height={300}
+                priority
+                className="w-full max-w-xs h-auto"
+              />
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
           {/* 이메일 로그인 폼 */}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
@@ -198,6 +257,21 @@ export default function LoginPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* 명언 */}
+      <div className="text-center px-4">
+        <p 
+          className={`${notoSerifKR.className} text-lg sm:text-xl text-gray-700 leading-relaxed transition-opacity duration-500 ${
+            fadeIn ? 'opacity-100' : 'opacity-0'
+          }`}
+          style={{ 
+            minHeight: '3rem'
+          }}
+        >
+          &ldquo;{currentQuote}&rdquo;
+        </p>
+      </div>
+      </div>
     </div>
   )
 }
