@@ -642,7 +642,7 @@ export default function DashboardPage() {
     }
   }
 
-  // 최근 진단 결과 로드
+  // 최근 진단 결과 로드 (모든 매장 중 가장 최근)
   const loadLatestDiagnosis = async (storesList: Store[]) => {
     const token = getToken()
     if (!token || storesList.length === 0) return
@@ -652,19 +652,33 @@ export default function DashboardPage() {
     if (naverStores.length === 0) return
 
     try {
-      // 첫 번째 네이버 매장의 최근 진단 결과 조회
-      const firstStore = naverStores[0]
-      const response = await fetch(api.naver.diagnosisHistory(firstStore.id, 1), {
-        headers: {
-          'Authorization': `Bearer ${token}`
+      // 모든 네이버 매장의 최근 진단 결과를 병렬로 조회
+      const diagnosisPromises = naverStores.map(store => 
+        fetch(api.naver.diagnosisHistory(store.id, 1), {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
+        .then(res => res.ok ? res.json() : null)
+        .catch(() => null)
+      )
+
+      const results = await Promise.all(diagnosisPromises)
+      
+      // 모든 진단 결과를 하나의 배열로 합치기
+      const allDiagnoses: LatestDiagnosis[] = []
+      results.forEach(data => {
+        if (data?.history && data.history.length > 0) {
+          allDiagnoses.push(...data.history)
         }
       })
 
-      if (response.ok) {
-        const data = await response.json()
-        if (data.history && data.history.length > 0) {
-          setLatestDiagnosis(data.history[0])
-        }
+      // 진단 날짜 기준으로 정렬하여 가장 최근 것 선택
+      if (allDiagnoses.length > 0) {
+        const sortedDiagnoses = allDiagnoses.sort((a, b) => 
+          new Date(b.diagnosed_at).getTime() - new Date(a.diagnosed_at).getTime()
+        )
+        setLatestDiagnosis(sortedDiagnoses[0])
       }
     } catch (error) {
       console.error("[DEBUG] Error loading latest diagnosis:", error)
