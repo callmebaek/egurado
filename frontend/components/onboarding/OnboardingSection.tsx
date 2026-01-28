@@ -14,7 +14,6 @@ import { RankTrackingModal } from './modals/RankTrackingModal';
 import StoreDescriptionModal from './modals/StoreDescriptionModal';
 import StoreDirectionsModal from './modals/StoreDirectionsModal';
 import ReviewAnalysisModal from './modals/ReviewAnalysisModal';
-import ReviewAnalysisModalSimple from './modals/ReviewAnalysisModalSimple';
 import GenericActionModal from './modals/GenericActionModal';
 
 interface OnboardingSectionProps {
@@ -140,14 +139,8 @@ export default function OnboardingSection({ onStoreRegistered }: OnboardingSecti
         break;
         
       case ACTION_KEYS.REVIEW_ANALYSIS:
-        setGenericModalConfig({
-          isOpen: true,
-          title: '리뷰 현황 분석하기',
-          description: '리뷰 통계와 감정 분석 결과를 확인하세요.',
-          pageUrl: '/dashboard/naver/review-stats',
-          pageLabel: '리뷰 현황 페이지로 이동',
-          actionKey,
-        });
+        console.log('[OnboardingSection] 리뷰 분석 모달 열기');
+        setShowReviewAnalysisModal(true);
         break;
         
       case ACTION_KEYS.REVIEW_REPLY_AI:
@@ -390,19 +383,11 @@ export default function OnboardingSection({ onStoreRegistered }: OnboardingSecti
         onComplete={() => markActionComplete(ACTION_KEYS.DIRECTIONS_AI)}
       />
 
-      {console.log('🎯 ReviewAnalysisModal 렌더링 체크:', showReviewAnalysisModal)}
-      {/* 임시: Simple 버전으로 테스트 */}
-      <ReviewAnalysisModalSimple
-        isOpen={showReviewAnalysisModal}
-        onClose={() => setShowReviewAnalysisModal(false)}
-      />
-      {/* 원본
       <ReviewAnalysisModal
         isOpen={showReviewAnalysisModal}
         onClose={() => setShowReviewAnalysisModal(false)}
         onComplete={() => markActionComplete(ACTION_KEYS.REVIEW_ANALYSIS)}
       />
-      */}
 
       <GenericActionModal
         isOpen={genericModalConfig.isOpen}
