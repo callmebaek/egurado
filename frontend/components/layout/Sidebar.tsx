@@ -100,12 +100,12 @@ const navigation: NavItem[] = [
         icon: <Tag className="w-4 h-4" />,
       },
       {
-        title: '플레이스 지수관리',
+        title: '플레이스 지수',
         icon: <BarChart3 className="w-4 h-4" />,
         badge: '준비중',
         children: [
-          { title: '주요 KPI현황', href: '/dashboard/naver/metrics', icon: null },
-          { title: '지수 분석 및 전략', href: '/dashboard/naver/metrics/strategy', icon: null },
+          { title: '주요 KPI현황', href: '/dashboard/naver/metrics', icon: null, badge: '준비중' },
+          { title: '지수 분석 및 전략', href: '/dashboard/naver/metrics/strategy', icon: null, badge: '준비중' },
         ],
       },
       {
@@ -123,8 +123,8 @@ const navigation: NavItem[] = [
     ],
   },
   {
-    title: 'K사 비지니스 매장',
-    icon: <span className="w-5 h-5 flex items-center justify-center font-bold text-amber-600">K</span>,
+    title: 'K사 맵 관리',
+    icon: <span className="w-5 h-5 flex items-center justify-center font-bold text-amber-500">K</span>,
     badge: '준비중',
     children: [
       {
@@ -196,15 +196,10 @@ interface SidebarProps {
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname()
-  // 모든 메뉴를 기본으로 펼쳐진 상태로 설정
+  // N사 플레이스와 리뷰관리만 기본으로 펼쳐진 상태로 설정
   const [openItems, setOpenItems] = useState<string[]>([
     'N사 플레이스', 
-    '리뷰관리', 
-    '플레이스 지수관리', 
-    '검색광고 분석',
-    'K사 비지니스 매장',
-    'G사 비지니스 프로필',
-    '리뷰 관리'  // G사 하위 메뉴
+    '리뷰관리'
   ])
 
   // 모바일에서 라우트 변경 시 사이드바 닫기
@@ -224,17 +219,20 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     const isActive = item.href && pathname === item.href
     const hasChildren = item.children && item.children.length > 0
     const isOpen = openItems.includes(item.title)
+    const isDisabled = item.badge === '준비중'
 
     return (
       <div key={item.title}>
         {item.href ? (
             <Link
-              href={item.href}
+              href={isDisabled ? '#' : item.href}
+              onClick={(e) => isDisabled && e.preventDefault()}
               className={cn(
               'flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors',
               level > 0 && 'pl-10',
               level > 1 && 'pl-14',
               level === 0 && 'font-semibold',
+                isDisabled && 'opacity-50 cursor-not-allowed pointer-events-none',
                 isActive
                 ? 'bg-primary text-primary-foreground font-semibold'
                 : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
@@ -243,7 +241,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               {item.icon}
               <span className="flex-1">{item.title}</span>
               {item.badge && (
-              <span className="px-1.5 py-0.5 text-xs font-semibold bg-amber-500 text-white rounded">
+              <span className="px-1.5 py-0.5 text-[10px] font-medium bg-gray-100 text-gray-500 border border-gray-200 rounded">
                   {item.badge}
                 </span>
               )}
@@ -255,13 +253,14 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               'w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors',
               level > 0 && 'pl-10',
               level === 0 && 'font-semibold text-olive-800',
+              isDisabled && 'opacity-60',
               'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
             )}
           >
             {item.icon}
             <span className="flex-1 text-left">{item.title}</span>
             {item.badge && (
-              <span className="px-1.5 py-0.5 text-xs font-semibold bg-amber-500 text-white rounded">
+              <span className="px-1.5 py-0.5 text-[10px] font-medium bg-gray-100 text-gray-500 border border-gray-200 rounded">
                 {item.badge}
               </span>
             )}
