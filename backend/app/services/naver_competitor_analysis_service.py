@@ -700,6 +700,12 @@ class NaverCompetitorAnalysisService:
             
             logger.info(f"[경쟁분석] 방문자 리뷰 날짜 필터링 시작 - cutoff_date: {cutoff_date}, now: {now}")
             
+            # 첫 번째 리뷰의 모든 필드 로깅 (디버깅용)
+            if all_reviews:
+                first_review = all_reviews[0]
+                logger.info(f"[경쟁분석] 첫 번째 리뷰 필드: {list(first_review.keys())}")
+                logger.info(f"[경쟁분석] created={first_review.get('created')}, visited={first_review.get('visited')}")
+            
             for idx, review in enumerate(all_reviews):
                 created_str = review.get("created")
                 if not created_str:
@@ -708,8 +714,13 @@ class NaverCompetitorAnalysisService:
                     continue
                 
                 try:
-                    # ISO 형식 날짜 파싱 (timezone 처리 포함)
-                    review_date = datetime.fromisoformat(created_str.replace('Z', '+00:00'))
+                    # 방문자 리뷰 날짜 파싱 (활성화 서비스와 동일한 로직 사용)
+                    review_date = self._parse_visitor_review_date(created_str)
+                    if not review_date:
+                        if idx < 3:  # 처음 3개만 로깅
+                            logger.warning(f"[경쟁분석] 리뷰 #{idx}: 날짜 파싱 실패 - {created_str}")
+                        continue
+                    
                     # timezone이 없으면 UTC로 가정
                     if review_date.tzinfo is None:
                         review_date = review_date.replace(tzinfo=timezone.utc)
@@ -726,7 +737,7 @@ class NaverCompetitorAnalysisService:
                         count_7d += 1
                 except Exception as e:
                     if idx < 3:  # 처음 3개만 로깅
-                        logger.warning(f"[경쟁분석] 리뷰 #{idx}: 날짜 파싱 실패 - {created_str}, {str(e)}")
+                        logger.warning(f"[경쟁분석] 리뷰 #{idx}: 예외 발생 - {created_str}, {str(e)}")
                     continue
             
             logger.info(f"[경쟁분석] 방문자리뷰 7일: {count_7d}개 (전체 조회: {len(all_reviews)}개)")
@@ -852,6 +863,59 @@ class NaverCompetitorAnalysisService:
         except Exception as e:
             logger.debug(f"[경쟁분석] 날짜 파싱 실패: '{date_str}' - {str(e)}")
             return None
+    
+    def _parse_visitor_review_date(self, date_str: str) -> Optional[datetime]:
+        """
+        방문자 리뷰 날짜 파싱 (활성화 서비스와 동일한 로직)
+        
+        Args:
+            date_str: 날짜 문자열 (예: "2024-01-27T10:30:00+09:00" 또는 "1.27.전" 또는 "1.23.금")
+            
+        Returns:
+            datetime 객체 또는 None
+        """
+        try:
+            # 1. ISO 형식 시도
+            return datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+        except:
+            pass
+        
+        try:
+            # 2. 상대적 날짜 표기 파싱 (예: "1.27.전", "1.23.금")
+            # "M.D.전" 또는 "M.D.요일" 형식
+            match = re.match(r'(\d+)\.(\d+)\.', date_str)
+            if match:
+                month = int(match.group(1))
+                day = int(match.group(2))
+                current_date = datetime.now(timezone.utc)
+                
+                # 올해 날짜로 생성
+                try:
+                    review_date = datetime(current_date.year, month, day, tzinfo=timezone.utc)
+                    
+                    # 미래 날짜면 작년으로 조정
+                    if review_date > current_date:
+                        review_date = datetime(current_date.year - 1, month, day, tzinfo=timezone.utc)
+                    
+                    return review_date
+                except ValueError:
+                    pass
+            
+            # "X일 전", "X시간 전" 형식
+            if "일 전" in date_str:
+                days = int(date_str.split("일")[0].strip())
+                return datetime.now(timezone.utc) - timedelta(days=days)
+            elif "시간 전" in date_str:
+                hours = int(date_str.split("시간")[0].strip())
+                return datetime.now(timezone.utc) - timedelta(hours=hours)
+            elif "분 전" in date_str:
+                minutes = int(date_str.split("분")[0].strip())
+                return datetime.now(timezone.utc) - timedelta(minutes=minutes)
+            
+        except Exception as e:
+            logger.debug(f"[경쟁분석] 방문자 리뷰 날짜 파싱 실패: {date_str}, {str(e)}")
+        
+        return None
     
     def _parse_blog_review_date(self, date_str: str) -> Optional[datetime]:
         """
