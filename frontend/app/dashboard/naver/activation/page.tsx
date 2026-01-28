@@ -23,7 +23,8 @@ import {
   ThemeIcon,
   Progress,
   Tooltip,
-  TextInput
+  TextInput,
+  ActionIcon
 } from '@mantine/core'
 import { 
   Store, 
@@ -167,6 +168,14 @@ export default function ActivationPage() {
   const [businessTypeKeyword, setBusinessTypeKeyword] = useState('')
   const [productKeywords, setProductKeywords] = useState('')
   const [storeFeatures, setStoreFeatures] = useState('')
+  const [generatedTextCharCount, setGeneratedTextCharCount] = useState(0)
+  
+  // 찾아오는길용 state
+  const [directionsRegionKeyword, setDirectionsRegionKeyword] = useState('')
+  const [directionsLandmarkKeywords, setDirectionsLandmarkKeywords] = useState('')
+  const [directionsDescription, setDirectionsDescription] = useState('')
+  const [generatedDirectionsText, setGeneratedDirectionsText] = useState('')
+  const [generatedDirectionsCharCount, setGeneratedDirectionsCharCount] = useState(0)
 
   // 등록된 매장 목록 가져오기
   useEffect(() => {
@@ -1355,6 +1364,7 @@ export default function ActivationPage() {
                 
                 const data = await response.json()
                 setGeneratedText(data.generated_text)
+                setGeneratedTextCharCount(data.generated_text.length)
                 
                 toast({
                   title: "✅ 생성 완료",
@@ -1435,22 +1445,45 @@ export default function ActivationPage() {
         onClose={() => {
           setShowDirectionsModal(false)
           setDirectionsPrompt('')
-          setGeneratedText('')
+          setDirectionsRegionKeyword('')
+          setDirectionsLandmarkKeywords('')
+          setDirectionsDescription('')
+          setGeneratedDirectionsText('')
+          setGeneratedDirectionsCharCount(0)
         }}
-        title="찾아오는길 SEO 최적화 생성"
+        title="AI로 완벽한 찾아오는길 생성"
         size="lg"
       >
         <Stack gap="md">
+          <TextInput
+            label="1. 지역 키워드 (필수)"
+            placeholder="예: 합정, 종로, 성수"
+            description="매장의 가장 메인 지역 키워드 1개를 입력해주세요."
+            value={directionsRegionKeyword}
+            onChange={(event) => setDirectionsRegionKeyword(event.currentTarget.value)}
+            required
+          />
+          <TextInput
+            label="2. 랜드마크 키워드 (선택)"
+            placeholder="예: 합정역, 홍대입구역, 메세나폴리스 (쉼표로 구분)"
+            description="매장 주변의 주요 랜드마크 키워드를 입력해주세요."
+            value={directionsLandmarkKeywords}
+            onChange={(event) => setDirectionsLandmarkKeywords(event.currentTarget.value)}
+          />
           <Textarea
-            label="프롬프트 입력"
-            placeholder="예: 강남역 10번 출구에서 도보 5분, 스타벅스 건물 2층"
-            value={directionsPrompt}
-            onChange={(e) => setDirectionsPrompt(e.target.value)}
-            minRows={3}
+            label="3. 찾아오는 길 설명 (필수)"
+            placeholder="예: 합정역 7번 출구에서 직진 200m, GS25 편의점 옆 건물 2층입니다. 주차는 건물 지하 1층에 가능하며, 방문 시 건물 입구에서 연락주시면 안내해드립니다."
+            description="매장까지 오는 길을 자유롭게 상세하게 설명해주세요."
+            value={directionsDescription}
+            onChange={(event) => setDirectionsDescription(event.currentTarget.value)}
+            minRows={5}
+            required
           />
           <Button
             onClick={async () => {
               setIsGenerating(true)
+              setGeneratedDirectionsText('')
+              setGeneratedDirectionsCharCount(0)
               try {
                 const token = getToken()
                 const response = await fetch(api.naver.generateDirections(), {
@@ -1461,15 +1494,19 @@ export default function ActivationPage() {
                   },
                   body: JSON.stringify({
                     store_id: selectedStore?.id,
-                    prompt: directionsPrompt
+                    region_keyword: directionsRegionKeyword,
+                    landmark_keywords: directionsLandmarkKeywords.split(',').map(k => k.trim()).filter(Boolean),
+                    directions_description: directionsDescription,
                   })
                 })
                 
                 if (!response.ok) throw new Error('생성 실패')
                 
                 const data = await response.json()
-                setGeneratedText(data.generated_text)
+                setGeneratedDirectionsText(data.generated_text)
+                setGeneratedDirectionsCharCount(data.generated_text.length)
               } catch (error) {
+                console.error("Error generating directions:", error)
                 toast({
                   variant: "destructive",
                   title: "❌ 오류",
@@ -1480,15 +1517,28 @@ export default function ActivationPage() {
               }
             }}
             loading={isGenerating}
-            disabled={!directionsPrompt.trim()}
+            disabled={!directionsRegionKeyword.trim() || !directionsDescription.trim()}
           >
             생성하기
           </Button>
           
-          {generatedText && (
+          {generatedDirectionsText && (
             <Paper p="md" withBorder>
-              <Text size="sm" fw={600} mb="xs">생성된 찾아오는길:</Text>
-              <Text size="sm">{generatedText}</Text>
+              <Group justify="space-between" align="center" mb="xs">
+                <Text size="sm" fw={600}>생성된 찾아오는길: ({generatedDirectionsCharCount}자)</Text>
+                <ActionIcon variant="subtle" color="gray" onClick={() => copyToClipboard(generatedDirectionsText)}>
+                  <Copy size={16} />
+                </ActionIcon>
+              </Group>
+              <Text size="sm" style={{ whiteSpace: 'pre-wrap', lineHeight: 1.8 }}>{generatedDirectionsText}</Text>
+              <Button
+                fullWidth
+                mt="md"
+                leftSection={<Copy size={16} />}
+                onClick={() => copyToClipboard(generatedDirectionsText)}
+              >
+                클립보드에 복사하기
+              </Button>
             </Paper>
           )}
         </Stack>

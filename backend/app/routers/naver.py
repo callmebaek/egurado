@@ -1628,6 +1628,8 @@ class GenerateTextRequest(BaseModel):
     business_type_keyword: Optional[str] = None  # 업종 키워드 (1개)
     product_keywords: Optional[List[str]] = None  # 상품/서비스 키워드 (최대 3개)
     store_features: Optional[str] = None  # 매장 특색 및 강점
+    # 찾아오는길 SEO 최적화용
+    directions_description: Optional[str] = None  # 찾아오는 길 자유 입력 설명
 
 
 class GenerateTextResponse(BaseModel):
@@ -1931,7 +1933,92 @@ async def generate_directions(
         
         openai_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         
-        system_prompt = """당신은 네이버 플레이스 SEO 전문가입니다. 
+        # 새로운 SEO 최적화 방식 (region_keyword, landmark_keywords, directions_description 사용)
+        if request.region_keyword and request.directions_description:
+            system_prompt = """당신은 네이버 플레이스 '찾아오는 길' 영역을
+SEO 관점에서 최적화하는 로컬 마케팅 전문가입니다.
+
+아래 [입력 정보]를 반드시 참고하여,
+네이버 플레이스 노출과 실제 방문 편의성을 모두 높이는
+'찾아오는 길' 설명문을 작성하세요.
+
+━━━━━━━━━━━━━━━━━━
+[입력 정보]
+
+1. 지역 키워드:
+{region_keyword}
+
+2. 랜드마크 키워드 (역, 상권, 건물, 관광지 등):
+{landmark_keywords}
+
+3. 작성자가 자유롭게 입력한 찾아오는 길 설명:
+{directions_description}
+
+━━━━━━━━━━━━━━━━━━
+[작성 핵심 지침 — 반드시 준수]
+
+1. 최종 글자 수는 **360자 이상 390자 이하 (한글 기준)** 로 작성하세요.
+   - 반드시 글자 수를 계산하여 이 범위를 초과하거나 부족하지 않게 작성하세요.
+
+2. 입력된 모든 정보는 **의미 훼손 없이 반드시 반영**해야 합니다.
+   - 작성자가 입력한 설명은 핵심 동선·방향·특징을 유지한 채
+     더 이해하기 쉽고 자연스럽게 재구성하세요.
+   - 존재하지 않는 길, 건물, 출구, 교통편을 임의로 생성 ❌
+
+━━━━━━━━━━━━━━━━━━
+[SEO 키워드 사용 가이드]
+
+아래 키워드는 네이버 지도 및 지역 검색 노출을 고려해
+자연스럽고 분산된 빈도로 사용하세요.
+
+▪ 지역 키워드:
+  - 총 **2~3회**
+  - 문장 도입부 또는 마무리 포함
+
+▪ 랜드마크 키워드:
+  - 총 **2~3회**
+  - '역에서 오는 방법', '도보 기준', '주변 기준물' 문맥에서 활용
+  - 길 안내의 기준점(anchor) 역할로 사용
+
+※ 키워드를 나열하거나 반복 삽입한 느낌 ❌
+※ 실제 길 안내 문장처럼 자연스럽게 녹여서 사용
+
+━━━━━━━━━━━━━━━━━━
+[구성 및 내용 가이드]
+
+다음 요소가 자연스럽게 포함되도록 작성하세요.
+
+1) 대표적인 접근 기준 (역, 주요 건물, 상권 등)
+2) 도보 또는 이동 시 주요 동선 설명
+3) 초행자도 헷갈리지 않도록 돕는 기준물
+4) 마지막 도착 지점에서의 간단한 안내
+
+※ 지시형 문장보다는
+   '~하시면 찾기 쉽습니다', '~쪽으로 오시면 됩니다'와 같은
+   친절한 안내 문체를 사용하세요.
+
+━━━━━━━━━━━━━━━━━━
+[표현 및 출력 제한]
+
+- 제목 ❌
+- 소제목 ❌
+- 이모지 ❌
+- 화살표(→), 특수기호 ❌
+- 거리·시간 과장 ❌
+- 순수 텍스트 본문만 출력"""
+
+            user_message = f"""다음 [입력 정보]를 기반으로 네이버 플레이스 찾아오는 길을 작성해주세요.
+
+[입력 정보]
+1. 지역 키워드: {request.region_keyword}
+2. 랜드마크 키워드: {', '.join(request.landmark_keywords) if request.landmark_keywords else '없음'}
+3. 작성자가 자유롭게 입력한 찾아오는 길 설명: {request.directions_description}
+
+찾아오는길:"""
+        
+        else:
+            # 기존 방식 (하위 호환성 유지)
+            system_prompt = """당신은 네이버 플레이스 SEO 전문가입니다. 
 찾아오는길을 작성할 때 다음 가이드라인을 따르세요:
 
 1. 대중교통 정보 우선 (지하철역, 버스 정류장)
@@ -1943,7 +2030,7 @@ async def generate_directions(
 
 찾아오는길만 출력하고, 추가 설명은 하지 마세요."""
 
-        user_message = f"""다음 정보를 바탕으로 네이버 플레이스 찾아오는길을 작성해주세요:
+            user_message = f"""다음 정보를 바탕으로 네이버 플레이스 찾아오는길을 작성해주세요:
 
 매장명: {store.get('store_name')}
 주소: {store.get('address', '정보 없음')}
