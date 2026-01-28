@@ -168,7 +168,7 @@ export default function StoreRegisterModal({
           value={storeName}
           onChange={(e) => setStoreName(e.target.value)}
           onKeyPress={(e) => e.key === 'Enter' && !loading && handleNext()}
-          placeholder="예: 강남역 카페"
+          placeholder="스타벅스 강남점"
           className="w-full px-4 py-4 pr-12 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none text-lg"
           disabled={loading}
         />
@@ -210,6 +210,7 @@ export default function StoreRegisterModal({
             `}
           >
             <div className="flex items-start gap-3">
+              {/* 라디오 버튼 */}
               <div className={`
                 w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5
                 ${
@@ -222,12 +223,29 @@ export default function StoreRegisterModal({
                   <div className="w-2 h-2 bg-white rounded-full" />
                 )}
               </div>
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <Store className="w-4 h-4 text-gray-500" />
-                  <span className="font-semibold text-gray-900">{store.name}</span>
+              
+              {/* 썸네일 */}
+              {store.thumbnail ? (
+                <img
+                  src={store.thumbnail}
+                  alt={store.name}
+                  className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+              ) : (
+                <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <Store className="w-8 h-8 text-gray-400" />
                 </div>
-                <p className="text-sm text-gray-600">{store.address}</p>
+              )}
+              
+              {/* 매장 정보 */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="font-semibold text-gray-900 truncate">{store.name}</span>
+                </div>
+                <p className="text-sm text-gray-600 truncate">{store.address}</p>
                 <p className="text-xs text-gray-500 mt-1">{store.category}</p>
               </div>
             </div>
