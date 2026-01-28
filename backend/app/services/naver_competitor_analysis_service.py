@@ -123,7 +123,8 @@ class NaverCompetitorAnalysisService:
                     important_review = first_review
             
             # 네이버 서비스 정확한 데이터 (HTML 파싱 결과)
-            supports_naverpay = place_data.get("has_naver_pay", False)
+            # has_naverpay_in_search: 검색 결과에서 확인한 네이버페이 사용 여부
+            supports_naverpay = place_data.get("has_naverpay_in_search", False)
             has_naver_talk = place_data.get("has_naver_talk", False)
             has_naver_order = place_data.get("has_naver_order", False)
             
@@ -701,11 +702,19 @@ class NaverCompetitorAnalysisService:
                     continue
                 
                 try:
+                    # ISO 형식 날짜 파싱 (timezone 처리 포함)
                     review_date = datetime.fromisoformat(created_str.replace('Z', '+00:00'))
-                    if review_date >= cutoff_date:
+                    # timezone이 없으면 UTC로 가정
+                    if review_date.tzinfo is None:
+                        review_date = review_date.replace(tzinfo=timezone.utc)
+                    
+                    # cutoff_date도 timezone 추가
+                    cutoff_with_tz = cutoff_date.replace(tzinfo=timezone.utc) if cutoff_date.tzinfo is None else cutoff_date
+                    
+                    if review_date >= cutoff_with_tz:
                         count_7d += 1
                 except Exception as e:
-                    logger.debug(f"[경쟁분석] 날짜 파싱 실패: {created_str}")
+                    logger.debug(f"[경쟁분석] 날짜 파싱 실패: {created_str}, {str(e)}")
                     continue
             
             logger.info(f"[경쟁분석] 방문자리뷰 7일: {count_7d}개 (전체 조회: {len(all_reviews)}개)")
@@ -736,12 +745,13 @@ class NaverCompetitorAnalysisService:
             7일간 리뷰 수
         """
         try:
-            # HTML 파싱으로 블로그 리뷰 가져오기
+            # HTML 파싱으로 블로그 리뷰 가져오기 (7일치만 필요하므로 조기 종료 활용)
             all_reviews = await self.review_service.get_blog_reviews_html(
                 place_id=place_id,
                 store_name=store_name,
                 road_address=road_address,
-                max_pages=10
+                max_pages=3,  # 7일치는 보통 1-2페이지에 있음 (속도 최적화)
+                target_days=7  # 7일 이전 블로그 발견 시 조기 종료
             )
             
             if not all_reviews:
