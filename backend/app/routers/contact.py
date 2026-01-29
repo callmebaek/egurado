@@ -1,11 +1,12 @@
 """
 문의하기 (Contact Us) API 라우터
 """
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, File, UploadFile
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 import logging
 from datetime import datetime
+import os
 
 from app.core.database import get_supabase_client
 from app.routers.auth import get_current_user
@@ -33,6 +34,109 @@ class ContactMessageResponse(BaseModel):
     status: str
     message_id: str
     message: str
+
+
+class FileUploadResponse(BaseModel):
+    """파일 업로드 응답"""
+    status: str
+    name: str
+    url: str
+    size: int
+    type: str
+
+
+@router.post("/upload-file", response_model=FileUploadResponse)
+async def upload_file(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    파일 업로드 (service_role 사용)
+    
+    Args:
+        file: 업로드할 파일
+        current_user: 현재 로그인한 사용자
+        
+    Returns:
+        업로드된 파일 정보 (URL 포함)
+    """
+    try:
+        user_id = current_user["id"]
+        
+        # 파일 크기 검증 (10MB)
+        max_size = 10 * 1024 * 1024
+        file_content = await file.read()
+        file_size = len(file_content)
+        
+        if file_size > max_size:
+            raise HTTPException(
+                status_code=400,
+                detail=f"파일 크기는 최대 10MB까지 가능합니다. (현재: {file_size / 1024 / 1024:.1f}MB)"
+            )
+        
+        # 파일 타입 검증
+        allowed_types = [
+            'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp',
+            'application/pdf', 
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'text/plain'
+        ]
+        
+        if file.content_type not in allowed_types:
+            raise HTTPException(
+                status_code=400,
+                detail=f"지원하지 않는 파일 형식입니다: {file.content_type}"
+            )
+        
+        logger.info(f"[파일 업로드] User {user_id} - {file.filename} ({file_size} bytes)")
+        
+        # 파일명 생성: {user_id}/{timestamp}_{filename}
+        timestamp = int(datetime.now().timestamp() * 1000)
+        safe_filename = file.filename.replace(' ', '_')
+        file_path = f"{user_id}/{timestamp}_{safe_filename}"
+        
+        # Supabase Storage에 업로드 (service_role 사용)
+        supabase = get_supabase_client()
+        
+        # 파일 내용을 다시 읽기 위해 seek
+        result = supabase.storage.from_('contact-attachments').upload(
+            file_path,
+            file_content,
+            {
+                'content-type': file.content_type,
+                'upsert': 'false'
+            }
+        )
+        
+        if hasattr(result, 'error') and result.error:
+            raise HTTPException(
+                status_code=500,
+                detail=f"파일 업로드 실패: {result.error}"
+            )
+        
+        # Public URL 생성
+        public_url_data = supabase.storage.from_('contact-attachments').get_public_url(file_path)
+        public_url = public_url_data
+        
+        logger.info(f"[파일 업로드] 성공: {file_path}")
+        
+        return FileUploadResponse(
+            status="success",
+            name=file.filename,
+            url=public_url,
+            size=file_size,
+            type=file.content_type
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[파일 업로드] 실패: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"파일 업로드 중 오류가 발생했습니다: {str(e)}"
+        )
 
 
 @router.post("/submit", response_model=ContactMessageResponse)

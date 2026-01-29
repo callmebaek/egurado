@@ -168,6 +168,7 @@ export const api = {
    * 문의하기 관련 API
    */
   contact: {
+    uploadFile: () => api.url('/api/v1/contact/upload-file'),
     submit: () => api.url('/api/v1/contact/submit'),
     myMessages: () => api.url('/api/v1/contact/my-messages'),
   },

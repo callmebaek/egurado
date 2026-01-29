@@ -17,7 +17,6 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/config';
 import { useAuth } from '@/lib/auth-context';
-import { supabase } from '@/lib/supabase';
 
 interface ContactModalProps {
   opened: boolean;
@@ -99,31 +98,36 @@ export default function ContactModal({ opened, onClose, onComplete }: ContactMod
     const uploadedAttachments: AttachmentInfo[] = [];
 
     try {
-      const userId = user?.id;
+      const token = getToken();
+      if (!token) {
+        throw new Error('로그인이 필요합니다.');
+      }
 
       for (const file of files) {
-        // 파일명 생성: {user_id}/{timestamp}_{filename}
-        const timestamp = Date.now();
-        const fileName = `${userId}/${timestamp}_${file.name}`;
+        // FormData로 파일 전송
+        const formData = new FormData();
+        formData.append('file', file);
 
-        const { data, error: uploadError } = await supabase.storage
-          .from('contact-attachments')
-          .upload(fileName, file);
+        const response = await fetch(api.contact.uploadFile(), {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+          body: formData
+        });
 
-        if (uploadError) {
-          throw new Error(`파일 업로드 실패: ${uploadError.message}`);
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.detail || '파일 업로드 실패');
         }
 
-        // 공개 URL 생성
-        const { data: urlData } = supabase.storage
-          .from('contact-attachments')
-          .getPublicUrl(fileName);
-
+        const data = await response.json();
+        
         uploadedAttachments.push({
-          name: file.name,
-          url: urlData.publicUrl,
-          size: file.size,
-          type: file.type
+          name: data.name,
+          url: data.url,
+          size: data.size,
+          type: data.type
         });
       }
 
