@@ -591,7 +591,7 @@ async def analyze_reviews_stream(store_id: str, start_date: str, end_date: str):
             temperature_scores = [r.get("temperature_score", 0) for r in analyzed_reviews if r.get("temperature_score") is not None]
             average_temperature = round(sum(temperature_scores) / len(temperature_scores), 1) if temperature_scores else 0.0
             
-            # 통계 데이터 저장 (기존 데이터 있으면 업데이트, 없으면 삽입)
+            # 통계 데이터 저장 (Optimistic Locking: INSERT 먼저 시도, 실패 시 UPDATE)
             stats_data = {
                 "store_id": store_id,
                 "date": save_date,
@@ -608,20 +608,28 @@ async def analyze_reviews_stream(store_id: str, start_date: str, end_date: str):
                 "checked_at": datetime.now(KST).isoformat()
             }
             
-            # 기존 데이터 확인
             logger.info(f"통계 데이터 저장 시작: store_id={store_id}, date={save_date}")
-            existing_stats = supabase.table("review_stats").select("id").eq("store_id", store_id).eq("date", save_date).execute()
             
-            if existing_stats.data:
-                # 업데이트
-                logger.info(f"기존 통계 데이터 업데이트: id={existing_stats.data[0]['id']}")
-                stats_result = supabase.table("review_stats").update(stats_data).eq("store_id", store_id).eq("date", save_date).execute()
-                review_stats_id = existing_stats.data[0]["id"]
-            else:
-                # 삽입
-                logger.info(f"새 통계 데이터 삽입")
+            try:
+                # 먼저 INSERT 시도 (대부분의 경우는 이것으로 끝)
                 stats_result = supabase.table("review_stats").insert(stats_data).execute()
                 review_stats_id = stats_result.data[0]["id"] if stats_result.data else None
+                logger.info(f"✅ 새 통계 데이터 삽입 완료: id={review_stats_id}")
+            except Exception as insert_error:
+                error_msg = str(insert_error)
+                # 중복 키 에러인 경우만 UPDATE로 전환 (Race Condition 처리)
+                if "duplicate key" in error_msg.lower() or "23505" in error_msg:
+                    logger.info(f"⚠️ 중복 키 감지, UPDATE로 전환")
+                    existing_stats = supabase.table("review_stats").select("id").eq("store_id", store_id).eq("date", save_date).execute()
+                    if existing_stats.data:
+                        stats_result = supabase.table("review_stats").update(stats_data).eq("store_id", store_id).eq("date", save_date).execute()
+                        review_stats_id = existing_stats.data[0]["id"]
+                        logger.info(f"✅ 통계 데이터 업데이트 완료: id={review_stats_id}")
+                    else:
+                        raise Exception("중복 키 에러 발생했지만 기존 데이터를 찾을 수 없음")
+                else:
+                    # 다른 에러면 그대로 재발생
+                    raise
             
             logger.info(f"통계 데이터 저장 완료: review_stats_id={review_stats_id}")
             print(f"[DEBUG] review_stats_id={review_stats_id}, 리뷰 저장 시작: {len(analyzed_reviews)}개", flush=True)
