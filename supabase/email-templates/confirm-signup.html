@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', sans-serif;
+      line-height: 1.6;
+      color: #333;
+      margin: 0;
+      padding: 0;
+      background-color: #f5f5f5;
+    }
+    .container {
+      max-width: 600px;
+      margin: 40px auto;
+      background: white;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .header {
+      background: linear-gradient(135deg, #635bff 0%, #9b87ff 100%);
+      color: white;
+      padding: 40px 30px;
+      text-align: center;
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 28px;
+      font-weight: 700;
+    }
+    .header p {
+      margin: 10px 0 0 0;
+      opacity: 0.95;
+      font-size: 16px;
+    }
+    .content {
+      padding: 40px 30px;
+    }
+    .content p {
+      margin: 0 0 20px 0;
+      font-size: 15px;
+      color: #333;
+    }
+    .button {
+      display: inline-block;
+      background: #635bff;
+      color: white !important;
+      padding: 14px 32px;
+      text-decoration: none;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 16px;
+      margin: 20px 0;
+      text-align: center;
+    }
+    .button:hover {
+      background: #5348ee;
+    }
+    .link-box {
+      background: #f8f9fa;
+      border: 1px solid #e0e0e0;
+      border-radius: 6px;
+      padding: 15px;
+      margin: 20px 0;
+      word-break: break-all;
+    }
+    .link-box p {
+      margin: 0;
+      font-size: 13px;
+      color: #666;
+    }
+    .footer {
+      background: #f8f9fa;
+      padding: 30px;
+      text-align: center;
+      border-top: 1px solid #e0e0e0;
+    }
+    .footer p {
+      margin: 5px 0;
+      font-size: 13px;
+      color: #999;
+    }
+    .footer a {
+      color: #635bff;
+      text-decoration: none;
+    }
+    .warning {
+      background: #fff3cd;
+      border-left: 4px solid #ffc107;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    .warning p {
+      margin: 0;
+      font-size: 14px;
+      color: #856404;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🎉 whiplace에 오신 것을 환영합니다!</h1>
+      <p>이메일 인증을 완료하고 서비스를 시작하세요</p>
+    </div>
+    
+    <div class="content">
+      <p>안녕하세요,</p>
+      <p>whiplace 회원가입을 신청해주셔서 감사합니다.</p>
+      <p>아래 버튼을 클릭하여 이메일 인증을 완료해주세요:</p>
+      
+      <div style="text-align: center;">
+        <a href="{{ .ConfirmationURL }}" class="button">
+          이메일 인증하기
+        </a>
+      </div>
+      
+      <p style="margin-top: 30px; font-size: 14px; color: #666;">
+        버튼이 작동하지 않으면 아래 링크를 복사하여 브라우저 주소창에 붙여넣으세요:
+      </p>
+      
+      <div class="link-box">
+        <p>{{ .ConfirmationURL }}</p>
+      </div>
+      
+      <div class="warning">
+        <p><strong>⚠️ 보안 안내</strong></p>
+        <p>본인이 요청하지 않은 이메일이라면 무시하셔도 됩니다.</p>
+        <p>이 링크는 24시간 동안 유효합니다.</p>
+      </div>
+    </div>
+    
+    <div class="footer">
+      <p>이 이메일은 발신 전용입니다.</p>
+      <p>문의사항은 <a href="mailto:support@whiplace.com">support@whiplace.com</a>으로 보내주세요.</p>
+      <p style="margin-top: 15px;">
+        <a href="https://whiplace.com">whiplace.com</a>
+      </p>
+      <p style="color: #ccc; margin-top: 15px;">© 2026 whiplace. All rights reserved.</p>
+    </div>
+  </div>
+</body>
+</html>
