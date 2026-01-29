@@ -16,6 +16,7 @@ import StoreDirectionsModal from './modals/StoreDirectionsModal';
 import ReviewAnalysisModal from './modals/ReviewAnalysisModal';
 import AdditionalKeywordsModal from './modals/AdditionalKeywordsModal';
 import PlaceActivationModal from './modals/PlaceActivationModal';
+import MainKeywordsModal from './modals/MainKeywordsModal';
 import GenericActionModal from './modals/GenericActionModal';
 
 interface OnboardingSectionProps {
@@ -39,6 +40,7 @@ export default function OnboardingSection({ onStoreRegistered }: OnboardingSecti
   const [showReviewAnalysisModal, setShowReviewAnalysisModal] = useState(false);
   const [showAdditionalKeywordsModal, setShowAdditionalKeywordsModal] = useState(false);
   const [showPlaceActivationModal, setShowPlaceActivationModal] = useState(false);
+  const [showMainKeywordsModal, setShowMainKeywordsModal] = useState(false);
   const [genericModalConfig, setGenericModalConfig] = useState<{
     isOpen: boolean;
     title: string;
@@ -175,14 +177,7 @@ export default function OnboardingSection({ onStoreRegistered }: OnboardingSecti
         
       case ACTION_KEYS.MAIN_KEYWORDS:
       case ACTION_KEYS.MAIN_KEYWORDS_REC:
-        setGenericModalConfig({
-          isOpen: true,
-          title: '대표키워드 설정하기',
-          description: '내 매장의 대표 키워드를 분석하고 설정하세요.',
-          pageUrl: '/dashboard/naver/main-keywords',
-          pageLabel: '대표키워드 페이지로 이동',
-          actionKey,
-        });
+        setShowMainKeywordsModal(true);
         break;
         
       case ACTION_KEYS.FEATURE_VOTING:
@@ -389,6 +384,12 @@ export default function OnboardingSection({ onStoreRegistered }: OnboardingSecti
         isOpen={showPlaceActivationModal}
         onClose={() => setShowPlaceActivationModal(false)}
         onComplete={() => markActionComplete(ACTION_KEYS.PLACE_ACTIVATION_CHECK)}
+      />
+
+      <MainKeywordsModal
+        opened={showMainKeywordsModal}
+        onClose={() => setShowMainKeywordsModal(false)}
+        onComplete={() => markActionComplete(selectedAction || '')}
       />
 
       <GenericActionModal
