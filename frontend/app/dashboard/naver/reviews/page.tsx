@@ -698,6 +698,11 @@ export default function ReviewManagementPage() {
               await loadStats(savedDate)
               console.log("✅ 통계 로딩 완료")
               
+              // DB에서 최신 리뷰 목록 다시 로드 (분석 결과 포함)
+              console.log("📝 리뷰 목록 다시 로드 중...")
+              await loadReviews()
+              console.log("📝 리뷰 목록 로드 완료:", reviews.length)
+              
               // 필터 재적용 (분석된 sentiment로 필터링)
               applyFilters()
               console.log("📝 현재 리뷰 개수:", reviews.length)
