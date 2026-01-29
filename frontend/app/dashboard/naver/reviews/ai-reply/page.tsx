@@ -286,7 +286,7 @@ export default function NaverAIReplyPage() {
       const storeName = selectedStore?.store_name || "저희 매장"
       const category = selectedStore?.category || "일반"
 
-      const token = getToken()
+      const token = await getToken()
       const response = await fetch(`${API_BASE_URL}/api/v1/ai-reply/generate`, {
         method: "POST",
         headers: {
@@ -476,8 +476,8 @@ export default function NaverAIReplyPage() {
     setError(null)
     setSuccessMessage(null)
 
-    try:
-      const token = getToken()
+    try {
+      const token = await getToken()
       const response = await fetch(`${API_BASE_URL}/api/v1/ai-reply/post`, {
         method: "POST",
         headers: {
