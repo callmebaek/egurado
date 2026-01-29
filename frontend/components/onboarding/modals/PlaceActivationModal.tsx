@@ -375,12 +375,29 @@ export default function PlaceActivationModal({ isOpen, onClose, onComplete }: Pl
   const renderStep4 = () => {
     if (!activationData) return null
 
-    // 값 포맷팅 함수 (답글, 쿠폰, 공지는 정수, 리뷰는 소수점 2자리)
+    // 값 포맷팅 함수
     const formatValue = (value: number, type: string) => {
-      if (type === 'reply' || type === 'promotion' || type === 'announcement') {
-        return Math.round(value) // 정수
+      // 방문자/블로그 리뷰: 소수점 있으면 1자리, 없으면 정수
+      if (type === 'visitor_review' || type === 'blog_review') {
+        if (value % 1 === 0) {
+          return Math.round(value).toString()
+        }
+        return value.toFixed(1)
       }
-      return value.toFixed(2) // 소수점 2자리
+      // 답글, 쿠폰, 공지: 정수
+      return Math.round(value).toString()
+    }
+
+    // 공지사항/프로모션 메시지
+    const getStatusMessage = (card: any) => {
+      if (card.has_active) {
+        return '✅ 현재 활성화 중'
+      }
+      // 3일 동안 없으면 특별 메시지
+      if (card.days_since_last && card.days_since_last >= 3) {
+        return '❌ 지난 3일동안 공지사항이 없습니다'
+      }
+      return `❌ ${card.days_since_last || 0}일 전 마지막`
     }
 
     return (
@@ -412,7 +429,10 @@ export default function PlaceActivationModal({ isOpen, onClose, onComplete }: Pl
                       <Text size="10px" c="dimmed">지난 3일 평균</Text>
                     </div>
                   </Group>
-                  <Text size="lg" fw={700}>{formatValue(card.value, card.type)}개</Text>
+                  <Group gap={4} wrap="nowrap">
+                    <Text size="lg" fw={700}>{formatValue(card.value, card.type)}</Text>
+                    <Text size="xs" c="dimmed" fw={400}>개</Text>
+                  </Group>
                 </Group>
 
                 {(card.type === 'visitor_review' || card.type === 'blog_review') && (
@@ -444,7 +464,7 @@ export default function PlaceActivationModal({ isOpen, onClose, onComplete }: Pl
 
                 {(card.type === 'promotion' || card.type === 'announcement') && (
                   <Text size="10px" c="dimmed" mt={4}>
-                    {card.has_active ? '✅ 현재 활성화 중' : `❌ ${card.days_since_last || 0}일 전 마지막`}
+                    {getStatusMessage(card)}
                   </Text>
                 )}
               </Paper>

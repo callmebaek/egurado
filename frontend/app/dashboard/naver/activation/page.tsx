@@ -252,7 +252,7 @@ export default function ActivationPage() {
         fetch(api.naver.activation(store.id), {
           headers: { 'Authorization': `Bearer ${token}` }
         }),
-        fetch(`${api.naver.activation(store.id)}/history/${store.id}`, {
+        fetch(api.naver.activationHistory(store.id), {
           headers: { 'Authorization': `Bearer ${token}` }
         }).catch(() => null) // 이력 조회 실패해도 계속 진행
       ])
@@ -1355,12 +1355,15 @@ export default function ActivationPage() {
                         <Paper key={card.type} p="xs" radius="md" withBorder bg="gray.0">
                           <Group justify="space-between">
                             <Text size="sm" fw={500}>{card.title}</Text>
-                            <Text size="sm" fw={700}>
-                              {card.type === 'reply' || card.type === 'promotion' || card.type === 'announcement' 
-                                ? Math.round(card.value) 
-                                : card.value.toFixed(2)
-                              }개
-                            </Text>
+                            <Group gap={4} wrap="nowrap">
+                              <Text size="sm" fw={700}>
+                                {card.type === 'visitor_review' || card.type === 'blog_review'
+                                  ? (card.value % 1 === 0 ? Math.round(card.value) : card.value.toFixed(1))
+                                  : Math.round(card.value)
+                                }
+                              </Text>
+                              <Text size="xs" c="dimmed">개</Text>
+                            </Group>
                           </Group>
                         </Paper>
                       ))}
