@@ -698,11 +698,12 @@ async def analyze_reviews_stream(store_id: str, start_date: str, end_date: str):
                 'type': 'complete',
                 'summary': summary,
                 'total_analyzed': len(analyzed_reviews),
-                'stats': stats
+                'stats': stats,
+                'saved_date': save_date  # 저장된 날짜 전달
             }
             yield f"data: {json.dumps(complete_data)}\n\n"
             
-            logger.info(f"✅ 스트리밍 분석 완료: {len(analyzed_reviews)}개")
+            logger.info(f"✅ 스트리밍 분석 완료: {len(analyzed_reviews)}개, 저장 날짜: {save_date}")
             
         except Exception as e:
             logger.error(f"스트리밍 분석 오류: {str(e)}", exc_info=True)
@@ -730,6 +731,8 @@ async def get_review_stats(store_id: str, date: Optional[str] = None):
     """
     try:
         supabase = get_supabase_client()
+        logger.info(f"통계 조회 요청: store_id={store_id}, date={date}")
+        
         query = supabase.table("review_stats").select("*").eq("store_id", store_id)
         
         if date:
@@ -738,11 +741,19 @@ async def get_review_stats(store_id: str, date: Optional[str] = None):
             query = query.order("date", desc=True).limit(1)
         
         result = query.execute()
+        logger.info(f"통계 조회 결과: {len(result.data) if result.data else 0}개")
+        
+        if result.data:
+            logger.info(f"조회된 데이터 날짜: {[r['date'] for r in result.data]}")
         
         if not result.data:
+            # 디버깅: 해당 매장의 모든 통계 날짜 조회
+            all_dates = supabase.table("review_stats").select("date").eq("store_id", store_id).execute()
+            available_dates = [r['date'] for r in all_dates.data] if all_dates.data else []
+            logger.error(f"통계를 찾을 수 없음. 요청 날짜: {date}, 사용 가능한 날짜: {available_dates}")
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="리뷰 통계를 찾을 수 없습니다"
+                detail=f"리뷰 통계를 찾을 수 없습니다 (요청: {date}, 가능: {available_dates})"
             )
         
         stats = result.data[0]

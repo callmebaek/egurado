@@ -688,9 +688,14 @@ export default function ReviewManagementPage() {
               
               setAnalysisProgress(100)
               
-              // 통계만 새로고침 (리뷰는 SSE로 실시간 업데이트 완료)
-              console.log("📊 통계 로딩 시작 (날짜:", dateRange.end_date, ")...")
-              await loadStats(dateRange.end_date)
+              // 통계만 새로고침 (백엔드가 저장한 날짜로 조회)
+              const savedDate = data.saved_date || dateRange.end_date
+              console.log("📊 통계 로딩 시작")
+              console.log("   - 백엔드가 저장한 날짜:", data.saved_date)
+              console.log("   - dateRange.end_date:", dateRange.end_date)
+              console.log("   - 사용할 날짜:", savedDate)
+              console.log("   - API URL:", api.reviews.stats(selectedStoreId, savedDate))
+              await loadStats(savedDate)
               console.log("✅ 통계 로딩 완료")
               
               // 필터 재적용 (분석된 sentiment로 필터링)
