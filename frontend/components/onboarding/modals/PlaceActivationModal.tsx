@@ -375,90 +375,89 @@ export default function PlaceActivationModal({ isOpen, onClose, onComplete }: Pl
   const renderStep4 = () => {
     if (!activationData) return null
 
+    // 값 포맷팅 함수 (답글, 쿠폰, 공지는 정수, 리뷰는 소수점 2자리)
+    const formatValue = (value: number, type: string) => {
+      if (type === 'reply' || type === 'promotion' || type === 'announcement') {
+        return Math.round(value) // 정수
+      }
+      return value.toFixed(2) // 소수점 2자리
+    }
+
     return (
-      <Stack gap="lg" py="xs">
+      <Stack gap="sm" py="xs">
         <Center>
-          <ThemeIcon size={80} radius={80} variant="light" color="green" style={{ background: 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)' }}>
-            <CheckCircle2 size={40} />
+          <ThemeIcon size={60} radius={60} variant="light" color="green" style={{ background: 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)' }}>
+            <CheckCircle2 size={30} />
           </ThemeIcon>
         </Center>
 
-        <Stack gap={4} ta="center">
-          <Text size="24px" fw={700}>활성화 분석 완료!</Text>
-          <Text size="sm" c="dimmed">
+        <Stack gap={2} ta="center">
+          <Text size="20px" fw={700}>활성화 분석 완료!</Text>
+          <Text size="xs" c="dimmed">
             현재 활성화 수준을 5가지 지표로 요약했어요
           </Text>
         </Stack>
 
-        <Stack gap="xs">
-          {activationData.summary_cards.map((card) => (
-            <Paper key={card.type} p="sm" radius="md" withBorder>
-              <Group justify="space-between" mb={4}>
-                <Group gap="sm">
-                  <ThemeIcon size={32} radius="md" variant="light" color={getCardColor(card.type)}>
-                    {getCardIcon(card.type)}
-                  </ThemeIcon>
-                  <div>
-                    <Text fw={600} size="sm">{card.title}</Text>
-                    <Text size="xs" c="dimmed">지난 3일 일평균</Text>
-                  </div>
+        <div style={{ maxHeight: 350, overflowY: 'auto' }}>
+          <Stack gap={6}>
+            {activationData.summary_cards.map((card) => (
+              <Paper key={card.type} p="xs" radius="md" withBorder>
+                <Group justify="space-between" wrap="nowrap">
+                  <Group gap="xs" wrap="nowrap">
+                    <ThemeIcon size={28} radius="md" variant="light" color={getCardColor(card.type)}>
+                      {getCardIcon(card.type)}
+                    </ThemeIcon>
+                    <div>
+                      <Text fw={600} size="xs">{card.title}</Text>
+                      <Text size="10px" c="dimmed">지난 3일 평균</Text>
+                    </div>
+                  </Group>
+                  <Text size="lg" fw={700}>{formatValue(card.value, card.type)}개</Text>
                 </Group>
-                <Text size="xl" fw={700}>{card.value.toFixed(2)}</Text>
-              </Group>
 
-              {(card.type === 'visitor_review' || card.type === 'blog_review') && (
-                <Group gap="md" mt={8}>
-                  <Group gap={4}>
-                    <Text size="xs" c="dimmed">vs 지난 7일</Text>
+                {(card.type === 'visitor_review' || card.type === 'blog_review') && (
+                  <Group gap="xs" mt={4}>
                     <Badge 
                       size="xs" 
                       variant="light" 
                       color={getTrendColor(card.vs_7d_pct)}
                       leftSection={getTrendIcon(card.vs_7d_pct)}
                     >
-                      {card.vs_7d_pct?.toFixed(1) || '0'}%
+                      7일 {card.vs_7d_pct?.toFixed(1) || '0'}%
                     </Badge>
-                  </Group>
-                  <Group gap={4}>
-                    <Text size="xs" c="dimmed">vs 지난 30일</Text>
                     <Badge 
                       size="xs" 
                       variant="light" 
                       color={getTrendColor(card.vs_30d_pct)}
                       leftSection={getTrendIcon(card.vs_30d_pct)}
                     >
-                      {card.vs_30d_pct?.toFixed(1) || '0'}%
+                      30일 {card.vs_30d_pct?.toFixed(1) || '0'}%
                     </Badge>
                   </Group>
-                </Group>
-              )}
+                )}
 
-              {card.type === 'reply' && card.reply_rate !== undefined && (
-                <Group gap={4} mt={8}>
-                  <Text size="xs" c="dimmed">답글 비율:</Text>
-                  <Badge size="xs" variant="light" color={card.reply_rate >= 80 ? 'green' : card.reply_rate >= 50 ? 'yellow' : 'red'}>
-                    {card.reply_rate.toFixed(1)}%
+                {card.type === 'reply' && card.reply_rate !== undefined && (
+                  <Badge size="xs" variant="light" color={card.reply_rate >= 80 ? 'green' : card.reply_rate >= 50 ? 'yellow' : 'red'} mt={4}>
+                    답글 비율 {card.reply_rate.toFixed(1)}%
                   </Badge>
-                </Group>
-              )}
+                )}
 
-              {(card.type === 'promotion' || card.type === 'announcement') && (
-                <Group gap={4} mt={8}>
-                  <Text size="xs" c="dimmed">
-                    {card.has_active ? '✅ 현재 활성화 중' : `❌ ${card.days_since_last || 0}일 전 마지막 등록`}
+                {(card.type === 'promotion' || card.type === 'announcement') && (
+                  <Text size="10px" c="dimmed" mt={4}>
+                    {card.has_active ? '✅ 현재 활성화 중' : `❌ ${card.days_since_last || 0}일 전 마지막`}
                   </Text>
-                </Group>
-              )}
-            </Paper>
-          ))}
-        </Stack>
+                )}
+              </Paper>
+            ))}
+          </Stack>
+        </div>
 
-        <Alert color="blue" radius="md" title="💡 더 자세한 내용이 궁금하신가요?" p="sm">
-          <Text size="xs">상세 페이지에서 트렌드 분석, 개선 제안 등 더 많은 정보를 확인하세요!</Text>
+        <Alert color="blue" radius="md" p="xs">
+          <Text size="10px">💡 상세 페이지에서 트렌드 분석, 개선 제안 등 더 많은 정보를 확인하세요!</Text>
         </Alert>
 
         <Button
-          size="md"
+          size="sm"
           fullWidth
           radius="md"
           onClick={() => {

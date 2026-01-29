@@ -2092,3 +2092,49 @@ SEO 관점에서 최적화하는 로컬 마케팅 전문가입니다.
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"찾아오는길 생성 중 오류가 발생했습니다: {str(e)}"
         )
+
+
+@router.get("/activation/history/{store_id}")
+async def get_activation_history(
+    store_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    플레이스 활성화 과거 이력 조회
+    
+    Args:
+        store_id: 매장 ID (UUID)
+        current_user: 현재 사용자 정보
+        
+    Returns:
+        과거 활성화 이력 목록 (최신 10개)
+    """
+    try:
+        user_id = current_user["id"]
+        logger.info(f"[활성화 이력] User {user_id} - Store {store_id} 이력 조회 시작")
+        
+        # 해당 매장의 이력 조회 (최신순)
+        result = supabase.table("activation_history")\
+            .select("*")\
+            .eq("user_id", user_id)\
+            .eq("store_id", store_id)\
+            .order("created_at", desc=True)\
+            .limit(10)\
+            .execute()
+        
+        histories = result.data if result.data else []
+        logger.info(f"[활성화 이력] {len(histories)}개 이력 조회 완료")
+        
+        return {
+            "status": "success",
+            "store_id": store_id,
+            "histories": histories,
+            "total_count": len(histories)
+        }
+        
+    except Exception as e:
+        logger.error(f"[활성화 이력] 조회 실패: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"활성화 이력 조회 중 오류가 발생했습니다: {str(e)}"
+        )

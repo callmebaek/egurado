@@ -180,6 +180,12 @@ export default function ActivationPage() {
   const [generatedDirectionsText, setGeneratedDirectionsText] = useState('')
   const [generatedDirectionsCharCount, setGeneratedDirectionsCharCount] = useState(0)
 
+  // 과거 이력 관련 state
+  const [activationHistories, setActivationHistories] = useState<any[]>([])
+  const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null)
+  const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null)
+  const [isLoadingHistories, setIsLoadingHistories] = useState(false)
+
   // 등록된 매장 목록 가져오기
   useEffect(() => {
     if (user) {
@@ -241,11 +247,17 @@ export default function ActivationPage() {
         throw new Error("인증 토큰이 없습니다.")
       }
 
-      const response = await fetch(api.naver.activation(store.id), {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
+      // 활성화 정보와 과거 이력 병렬로 가져오기
+      const [activationResponse, historyResponse] = await Promise.all([
+        fetch(api.naver.activation(store.id), {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }),
+        fetch(`${api.naver.activation(store.id)}/history/${store.id}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }).catch(() => null) // 이력 조회 실패해도 계속 진행
+      ])
+
+      const response = activationResponse
 
       if (!response.ok) {
         throw new Error("플레이스 활성화 정보 조회에 실패했습니다.")
@@ -256,6 +268,15 @@ export default function ActivationPage() {
       console.log('[활성화 디버그] summary_cards[0] (visitor):', data.data.summary_cards?.[0])
       console.log('[활성화 디버그] visitor_review_trends:', data.data.visitor_review_trends)
       setActivationData(data.data) // API 응답의 data 필드만 추출
+
+      // 과거 이력 처리
+      if (historyResponse && historyResponse.ok) {
+        const historyData = await historyResponse.json()
+        setActivationHistories(historyData.histories || [])
+        console.log('[활성화 이력] 조회 완료:', historyData.histories?.length || 0, '개')
+      } else {
+        setActivationHistories([])
+      }
     } catch (error) {
       console.error("Error fetching activation data:", error)
       toast({
@@ -1287,6 +1308,69 @@ export default function ActivationPage() {
           <Title order={3} mb="md">활성화 요약</Title>
           {renderSummaryCards()}
         </div>
+
+        {/* 과거 활성화 이력 */}
+        {activationHistories.length > 0 && (
+          <Paper shadow="xs" p="md" radius="md" withBorder>
+            <Title order={4} mb="md">📜 과거 활성화 이력</Title>
+            <Stack gap="xs">
+              {activationHistories.map((history: any) => (
+                <Paper
+                  key={history.id}
+                  p="sm"
+                  radius="md"
+                  withBorder
+                  style={{ cursor: 'pointer', transition: 'background-color 0.2s' }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#f8f9fa'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'white'
+                  }}
+                  onClick={() => {
+                    if (expandedHistoryId === history.id) {
+                      setExpandedHistoryId(null)
+                    } else {
+                      setExpandedHistoryId(history.id)
+                    }
+                  }}
+                >
+                  <Group justify="space-between">
+                    <Group gap="xs">
+                      <Badge color="blue" variant="light">
+                        {new Date(history.created_at).toLocaleDateString('ko-KR')}
+                      </Badge>
+                      <Text size="sm" fw={500}>
+                        {new Date(history.created_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
+                      </Text>
+                    </Group>
+                    <ActionIcon variant="subtle" size="sm">
+                      {expandedHistoryId === history.id ? '▲' : '▼'}
+                    </ActionIcon>
+                  </Group>
+
+                  {expandedHistoryId === history.id && history.summary_cards && (
+                    <Stack gap="xs" mt="md" pt="md" style={{ borderTop: '1px solid #e9ecef' }}>
+                      {history.summary_cards.map((card: any) => (
+                        <Paper key={card.type} p="xs" radius="md" withBorder bg="gray.0">
+                          <Group justify="space-between">
+                            <Text size="sm" fw={500}>{card.title}</Text>
+                            <Text size="sm" fw={700}>
+                              {card.type === 'reply' || card.type === 'promotion' || card.type === 'announcement' 
+                                ? Math.round(card.value) 
+                                : card.value.toFixed(2)
+                              }개
+                            </Text>
+                          </Group>
+                        </Paper>
+                      ))}
+                    </Stack>
+                  )}
+                </Paper>
+              ))}
+            </Stack>
+          </Paper>
+        )}
 
         {/* 리뷰 추이 현황 */}
         <div>
