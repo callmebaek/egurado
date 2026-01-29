@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo, memo, useCallback } from "react"
+import { useState, useEffect, useMemo, memo, useCallback, useRef } from "react"
 import { useSearchParams } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -251,6 +251,10 @@ export default function ReviewManagementPage() {
   // 분석 시도 여부 (리뷰 없음 메시지 표시 조건)
   const [hasAttemptedAnalysis, setHasAttemptedAnalysis] = useState(false)
   
+  // autoStart 처리를 위한 ref (한 번만 실행)
+  const autoStartProcessedRef = useRef(false)
+  const autoStartPendingRef = useRef(false)
+  
   // 매장 목록 로드
   useEffect(() => {
     loadStores()
@@ -258,23 +262,37 @@ export default function ReviewManagementPage() {
   
   // URL 파라미터 처리 (모달에서 넘어온 경우)
   useEffect(() => {
+    if (autoStartProcessedRef.current) return
+    
     const storeId = searchParams.get('storeId')
     const period = searchParams.get('period')
     const autoStart = searchParams.get('autoStart')
     
     if (storeId && period && autoStart === 'true') {
-      // 매장 선택
+      console.log("🔄 URL 파라미터로 자동 분석 준비:", { storeId, period })
+      autoStartProcessedRef.current = true
+      autoStartPendingRef.current = true
+      
+      // 매장 선택 및 기간 설정
       setSelectedStoreId(storeId)
       setDatePeriod(period)
+    }
+  }, [searchParams])
+  
+  // autoStart가 대기 중이고, selectedStoreId와 datePeriod가 설정되면 자동 분석 시작
+  useEffect(() => {
+    if (autoStartPendingRef.current && selectedStoreId && stores.length > 0) {
+      console.log("✅ 자동 분석 시작:", { selectedStoreId, datePeriod })
+      autoStartPendingRef.current = false
       
-      // 매장 목록이 로드된 후 자동 분석 시작
+      // 매장 정보 로딩을 위해 약간의 딜레이
       const timer = setTimeout(() => {
         handleAnalyze()
-      }, 1000) // 1초 딜레이로 매장 정보 로딩 대기
+      }, 500)
       
       return () => clearTimeout(timer)
     }
-  }, [searchParams, stores])
+  }, [selectedStoreId, datePeriod, stores])
   
   // 매장 선택 시 이전 데이터 초기화 및 매장 정보 로드
   useEffect(() => {
@@ -644,12 +662,15 @@ export default function ReviewManagementPage() {
               
               setAnalysisProgress(100)
               
-              // 통계와 리뷰 목록 새로고침 (실제 분석한 기간의 종료일 기준)
+              // 통계만 새로고침 (리뷰는 SSE로 실시간 업데이트 완료)
               console.log("📊 통계 로딩 시작 (날짜:", dateRange.end_date, ")...")
               await loadStats(dateRange.end_date)
-              console.log("📝 리뷰 목록 로딩 시작...")
-              await loadReviews()
-              console.log("✅ 통계 및 리뷰 로딩 완료")
+              console.log("✅ 통계 로딩 완료")
+              
+              // 필터 재적용 (분석된 sentiment로 필터링)
+              applyFilters()
+              console.log("📝 현재 리뷰 개수:", reviews.length)
+              console.log("📝 필터링된 리뷰 개수:", filteredReviews.length)
               
               toast({
                 title: "리뷰 분석 완료",
