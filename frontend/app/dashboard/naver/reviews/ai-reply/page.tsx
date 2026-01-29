@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
+import { useAuth } from "@/lib/auth-context"
 import { useStores } from "@/lib/hooks/useStores"
 import { EmptyStoreMessage } from "@/components/EmptyStoreMessage"
 import { Loader2, Sparkles, Send, Check, X, AlertCircle, MessageSquare, Settings } from "lucide-react"
@@ -40,6 +41,7 @@ interface SessionStatus {
 export default function NaverAIReplyPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { user, getToken } = useAuth()
   const { stores, hasStores, isLoading: storesLoading } = useStores()
   
   const [selectedStoreId, setSelectedStoreId] = useState<string>("")
@@ -284,10 +286,12 @@ export default function NaverAIReplyPage() {
       const storeName = selectedStore?.store_name || "저희 매장"
       const category = selectedStore?.category || "일반"
 
+      const token = getToken()
       const response = await fetch(`${API_BASE_URL}/api/v1/ai-reply/generate`, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
         },
         body: JSON.stringify({
           review_content: review.content,
@@ -472,11 +476,13 @@ export default function NaverAIReplyPage() {
     setError(null)
     setSuccessMessage(null)
 
-    try {
+    try:
+      const token = getToken()
       const response = await fetch(`${API_BASE_URL}/api/v1/ai-reply/post`, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
         },
         body: JSON.stringify({
           store_id: selectedStoreId,

@@ -6,7 +6,8 @@ AI 답글 생성 API (Selenium 기반)
 """
 import logging
 from typing import List, Optional
-from fastapi import APIRouter, HTTPException, status
+from uuid import UUID
+from fastapi import APIRouter, HTTPException, status, Depends
 from pydantic import BaseModel
 
 from app.services.llm_reply_service import LLMReplyService
@@ -14,6 +15,9 @@ from app.services.naver_selenium_service import naver_selenium_service
 from app.services.reply_queue_service import reply_queue_service
 from app.core.database import get_supabase_client
 from app.models.place_ai_settings import PlaceAISettings
+from app.routers.auth import get_current_user
+from app.services.credit_service import credit_service
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -100,13 +104,36 @@ class QueueStatusResponse(BaseModel):
 # ============================================
 
 @router.post("/generate", response_model=GenerateReplyResponse)
-async def generate_reply(request: GenerateReplyRequest):
+async def generate_reply(
+    request: GenerateReplyRequest,
+    current_user: dict = Depends(get_current_user)
+):
     """
     AI 답글 생성 (PlaceAISettings 지원)
     
     단일 리뷰에 대한 답글을 생성합니다.
+    크레딧: 1 크레딧 소모
     """
+    user_id = UUID(current_user["id"])
+    
     try:
+        # 🆕 크레딧 체크 (Feature Flag 확인)
+        if settings.CREDIT_SYSTEM_ENABLED and settings.CREDIT_CHECK_STRICT:
+            check_result = await credit_service.check_sufficient_credits(
+                user_id=user_id,
+                feature="ai_reply_generate",
+                required_credits=1
+            )
+            
+            if not check_result.sufficient:
+                logger.warning(f"[Credits] User {user_id} has insufficient credits for AI reply generation")
+                raise HTTPException(
+                    status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                    detail="크레딧이 부족합니다. 크레딧을 충전하거나 플랜을 업그레이드해주세요."
+                )
+            
+            logger.info(f"[Credits] User {user_id} has sufficient credits for AI reply generation")
+        
         llm_service = LLMReplyService()
         
         # PlaceAISettings 파싱
@@ -127,6 +154,24 @@ async def generate_reply(request: GenerateReplyRequest):
             sentiment=request.sentiment,
             place_settings=place_settings_obj
         )
+        
+        # 🆕 크레딧 차감 (성공 시에만)
+        if settings.CREDIT_SYSTEM_ENABLED and settings.CREDIT_AUTO_DEDUCT:
+            try:
+                transaction_id = await credit_service.deduct_credits(
+                    user_id=user_id,
+                    feature="ai_reply_generate",
+                    credits_amount=1,
+                    metadata={
+                        "store_name": request.store_name,
+                        "author_name": request.author_name,
+                        "rating": request.rating
+                    }
+                )
+                logger.info(f"[Credits] Deducted 1 credit from user {user_id} (transaction: {transaction_id})")
+            except Exception as credit_error:
+                logger.error(f"[Credits] Failed to deduct credits: {credit_error}")
+                # 크레딧 차감 실패는 기능 사용을 막지 않음 (이미 생성은 완료됨)
         
         return GenerateReplyResponse(**result)
         
@@ -294,13 +339,19 @@ async def get_reviews_for_reply(request: GetReviewsForReplyRequest):
 
 
 @router.post("/post", response_model=PostReplyResponse)
-async def post_reply(request: PostReplyRequest):
+async def post_reply(
+    request: PostReplyRequest,
+    current_user: dict = Depends(get_current_user)
+):
     """
     답글 게시 (큐 시스템 사용)
     
     작업을 큐에 추가하고 job_id를 반환합니다.
     실제 처리는 백그라운드에서 순차적으로 진행됩니다.
+    크레딧: 2 크레딧 소모
     """
+    user_id = UUID(current_user["id"])
+    
     try:
         store_id = request.store_id
         
@@ -318,13 +369,37 @@ async def post_reply(request: PostReplyRequest):
         
         store = store_result.data[0]
         place_id = store.get("place_id")
-        user_id = store.get("user_id")
+        store_user_id = store.get("user_id")
+        
+        # 권한 확인
+        if store_user_id != current_user["id"]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="해당 매장에 접근할 권한이 없습니다"
+            )
         
         if not place_id:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="네이버 플레이스 ID가 등록되지 않은 매장입니다"
             )
+        
+        # 🆕 크레딧 체크 (Feature Flag 확인)
+        if settings.CREDIT_SYSTEM_ENABLED and settings.CREDIT_CHECK_STRICT:
+            check_result = await credit_service.check_sufficient_credits(
+                user_id=user_id,
+                feature="ai_reply_post",
+                required_credits=2
+            )
+            
+            if not check_result.sufficient:
+                logger.warning(f"[Credits] User {user_id} has insufficient credits for AI reply posting")
+                raise HTTPException(
+                    status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                    detail="크레딧이 부족합니다. 크레딧을 충전하거나 플랜을 업그레이드해주세요."
+                )
+            
+            logger.info(f"[Credits] User {user_id} has sufficient credits for AI reply posting")
         
         # 2. 큐에 작업 추가
         job_id = reply_queue_service.add_job(
@@ -335,10 +410,29 @@ async def post_reply(request: PostReplyRequest):
             date=request.date,
             content=request.content,
             reply_text=request.reply_text,
-            user_id=user_id
+            user_id=store_user_id
         )
         
         logger.info(f"[QUEUE] 답글 게시 작업 추가: job_id={job_id}, author={request.author}")
+        
+        # 🆕 크레딧 차감 (큐 추가 성공 시 즉시 차감)
+        if settings.CREDIT_SYSTEM_ENABLED and settings.CREDIT_AUTO_DEDUCT:
+            try:
+                transaction_id = await credit_service.deduct_credits(
+                    user_id=user_id,
+                    feature="ai_reply_post",
+                    credits_amount=2,
+                    metadata={
+                        "store_id": store_id,
+                        "naver_review_id": request.naver_review_id,
+                        "author": request.author,
+                        "job_id": job_id
+                    }
+                )
+                logger.info(f"[Credits] Deducted 2 credits from user {user_id} (transaction: {transaction_id})")
+            except Exception as credit_error:
+                logger.error(f"[Credits] Failed to deduct credits: {credit_error}")
+                # 크레딧 차감 실패는 기능 사용을 막지 않음 (이미 큐에 추가됨)
         
         return PostReplyResponse(
             success=True,
