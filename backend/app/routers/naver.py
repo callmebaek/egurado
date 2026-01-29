@@ -21,6 +21,8 @@ from app.services.naver_competitor_analysis_service import competitor_analysis_s
 from app.core.database import get_supabase_client
 from app.routers.auth import get_current_user
 from datetime import datetime, date
+from app.services.credit_service import credit_service
+from app.core.config import settings
 
 security = HTTPBearer(auto_error=False)
 
@@ -1688,6 +1690,24 @@ async def get_activation_info(
                 detail="네이버 플레이스 ID가 등록되지 않은 매장입니다"
             )
         
+        # 🆕 크레딧 체크 (Feature Flag 확인)
+        user_id = UUID(current_user["id"])
+        if settings.CREDIT_SYSTEM_ENABLED and settings.CREDIT_CHECK_STRICT:
+            check_result = await credit_service.check_sufficient_credits(
+                user_id=user_id,
+                feature="place_diagnosis",
+                required_credits=5
+            )
+            
+            if not check_result.sufficient:
+                logger.warning(f"[Credits] User {user_id} has insufficient credits for place activation")
+                raise HTTPException(
+                    status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                    detail="크레딧이 부족합니다. 크레딧을 충전하거나 플랜을 업그레이드해주세요."
+                )
+            
+            logger.info(f"[Credits] User {user_id} has sufficient credits for place activation")
+        
         # 3. 활성화 정보 조회
         from app.services.naver_activation_service_v3 import activation_service_v3
         
@@ -1698,6 +1718,24 @@ async def get_activation_info(
         )
         
         logger.info(f"[플레이스 활성화] 완료: {len(activation_data.get('issues', []))}개 이슈")
+        
+        # 🆕 크레딧 차감 (성공 시에만)
+        if settings.CREDIT_SYSTEM_ENABLED and settings.CREDIT_AUTO_DEDUCT:
+            try:
+                transaction_id = await credit_service.deduct_credits(
+                    user_id=user_id,
+                    feature="place_diagnosis",
+                    credits_amount=5,
+                    metadata={
+                        "store_id": store_id,
+                        "place_id": place_id,
+                        "store_name": store_name
+                    }
+                )
+                logger.info(f"[Credits] Deducted 5 credits from user {user_id} (transaction: {transaction_id})")
+            except Exception as credit_error:
+                logger.error(f"[Credits] Failed to deduct credits: {credit_error}")
+                # 크레딧 차감 실패는 기능 사용을 막지 않음 (이미 조회는 완료됨)
         
         # 4. 활성화 이력 저장
         try:
@@ -1765,6 +1803,24 @@ async def generate_description(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="해당 매장에 접근할 권한이 없습니다"
             )
+        
+        # 🆕 크레딧 체크 (Feature Flag 확인)
+        user_id = UUID(current_user["id"])
+        if settings.CREDIT_SYSTEM_ENABLED and settings.CREDIT_CHECK_STRICT:
+            check_result = await credit_service.check_sufficient_credits(
+                user_id=user_id,
+                feature="business_description",
+                required_credits=5
+            )
+            
+            if not check_result.sufficient:
+                logger.warning(f"[Credits] User {user_id} has insufficient credits for business description")
+                raise HTTPException(
+                    status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                    detail="크레딧이 부족합니다. 크레딧을 충전하거나 플랜을 업그레이드해주세요."
+                )
+            
+            logger.info(f"[Credits] User {user_id} has sufficient credits for business description")
         
         # 2. LLM으로 업체소개글 생성
         import os
@@ -1902,6 +1958,24 @@ async def generate_description(
         generated_text = response.choices[0].message.content
         logger.info(f"[업체소개글 생성] 완료: {len(generated_text)}자")
         
+        # 🆕 크레딧 차감 (성공 시에만)
+        if settings.CREDIT_SYSTEM_ENABLED and settings.CREDIT_AUTO_DEDUCT:
+            try:
+                transaction_id = await credit_service.deduct_credits(
+                    user_id=user_id,
+                    feature="business_description",
+                    credits_amount=5,
+                    metadata={
+                        "store_id": request.store_id,
+                        "store_name": store.get("store_name"),
+                        "text_length": len(generated_text)
+                    }
+                )
+                logger.info(f"[Credits] Deducted 5 credits from user {user_id} (transaction: {transaction_id})")
+            except Exception as credit_error:
+                logger.error(f"[Credits] Failed to deduct credits: {credit_error}")
+                # 크레딧 차감 실패는 기능 사용을 막지 않음 (이미 생성은 완료됨)
+        
         return GenerateTextResponse(
             status="success",
             generated_text=generated_text.strip()
@@ -1950,6 +2024,24 @@ async def generate_directions(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="해당 매장에 접근할 권한이 없습니다"
             )
+        
+        # 🆕 크레딧 체크 (Feature Flag 확인)
+        user_id = UUID(current_user["id"])
+        if settings.CREDIT_SYSTEM_ENABLED and settings.CREDIT_CHECK_STRICT:
+            check_result = await credit_service.check_sufficient_credits(
+                user_id=user_id,
+                feature="directions",
+                required_credits=3
+            )
+            
+            if not check_result.sufficient:
+                logger.warning(f"[Credits] User {user_id} has insufficient credits for directions")
+                raise HTTPException(
+                    status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                    detail="크레딧이 부족합니다. 크레딧을 충전하거나 플랜을 업그레이드해주세요."
+                )
+            
+            logger.info(f"[Credits] User {user_id} has sufficient credits for directions")
         
         # 2. LLM으로 찾아오는길 생성
         import os
@@ -2078,6 +2170,24 @@ SEO 관점에서 최적화하는 로컬 마케팅 전문가입니다.
         
         generated_text = response.choices[0].message.content
         logger.info(f"[찾아오는길 생성] 완료: {len(generated_text)}자")
+        
+        # 🆕 크레딧 차감 (성공 시에만)
+        if settings.CREDIT_SYSTEM_ENABLED and settings.CREDIT_AUTO_DEDUCT:
+            try:
+                transaction_id = await credit_service.deduct_credits(
+                    user_id=user_id,
+                    feature="directions",
+                    credits_amount=3,
+                    metadata={
+                        "store_id": request.store_id,
+                        "store_name": store.get("store_name"),
+                        "text_length": len(generated_text)
+                    }
+                )
+                logger.info(f"[Credits] Deducted 3 credits from user {user_id} (transaction: {transaction_id})")
+            except Exception as credit_error:
+                logger.error(f"[Credits] Failed to deduct credits: {credit_error}")
+                # 크레딧 차감 실패는 기능 사용을 막지 않음 (이미 생성은 완료됨)
         
         return GenerateTextResponse(
             status="success",
