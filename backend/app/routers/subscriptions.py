@@ -25,7 +25,7 @@ async def get_my_subscription(
     """
     현재 사용자의 구독 조회
     """
-    user_id = UUID(current_user["user_id"])
+    user_id = UUID(current_user["id"])
     subscription = await subscription_service.get_user_subscription(user_id)
     
     if not subscription:
@@ -45,7 +45,7 @@ async def create_subscription(
     """
     구독 생성
     """
-    user_id = UUID(current_user["user_id"])
+    user_id = UUID(current_user["id"])
     subscription = await subscription_service.create_subscription(user_id, request)
     
     if not subscription:
@@ -65,7 +65,7 @@ async def update_subscription(
     """
     구독 업데이트
     """
-    user_id = UUID(current_user["user_id"])
+    user_id = UUID(current_user["id"])
     subscription = await subscription_service.update_subscription(user_id, request)
     
     if not subscription:
@@ -85,7 +85,7 @@ async def upgrade_tier(
     """
     Tier 업그레이드
     """
-    user_id = UUID(current_user["user_id"])
+    user_id = UUID(current_user["id"])
     
     try:
         # Tier 업그레이드 (DB 함수 호출)
@@ -127,7 +127,7 @@ async def cancel_subscription(
     Args:
         immediate: 즉시 취소 (True) / 기간 만료 후 취소 (False)
     """
-    user_id = UUID(current_user["user_id"])
+    user_id = UUID(current_user["id"])
     success = await subscription_service.cancel_subscription(user_id, immediate)
     
     if not success:

@@ -29,7 +29,7 @@ async def create_payment(
     """
     결제 생성
     """
-    user_id = UUID(current_user["user_id"])
+    user_id = UUID(current_user["id"])
     payment = await payment_service.create_payment(user_id, request)
     
     if not payment:
@@ -109,7 +109,7 @@ async def get_payment_by_order(
         )
     
     # 본인 결제인지 확인
-    if str(payment.user_id) != current_user["user_id"]:
+    if str(payment.user_id) != current_user["id"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access denied"
@@ -130,7 +130,7 @@ async def cancel_payment(
     """
     # 본인 결제인지 확인
     payment = await payment_service.get_payment_by_order_id(order_id)
-    if not payment or str(payment.user_id) != current_user["user_id"]:
+    if not payment or str(payment.user_id) != current_user["id"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access denied"
@@ -156,7 +156,7 @@ async def get_payment_history(
     """
     결제 내역 조회
     """
-    user_id = UUID(current_user["user_id"])
+    user_id = UUID(current_user["id"])
     payments = await payment_service.get_user_payments(user_id, limit, offset)
     
     return payments

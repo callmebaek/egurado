@@ -28,7 +28,7 @@ async def get_my_credits(
     """
     현재 사용자의 크레딧 조회
     """
-    user_id = UUID(current_user["user_id"])
+    user_id = UUID(current_user["id"])
     credits = await credit_service.get_user_credits(user_id)
     
     if not credits:
@@ -48,7 +48,7 @@ async def check_credits(
     """
     크레딧 충분한지 확인
     """
-    user_id = UUID(current_user["user_id"])
+    user_id = UUID(current_user["id"])
     result = await credit_service.check_sufficient_credits(
         user_id,
         request.feature,
@@ -66,7 +66,7 @@ async def deduct_credits(
     """
     크레딧 차감
     """
-    user_id = UUID(current_user["user_id"])
+    user_id = UUID(current_user["id"])
     
     try:
         transaction_id = await credit_service.deduct_credits(
@@ -96,7 +96,7 @@ async def charge_credits(
     """
     수동 충전 크레딧 추가
     """
-    user_id = UUID(current_user["user_id"])
+    user_id = UUID(current_user["id"])
     
     try:
         transaction_id = await credit_service.charge_manual_credits(
@@ -126,7 +126,7 @@ async def get_credit_transactions(
     """
     크레딧 트랜잭션 내역 조회
     """
-    user_id = UUID(current_user["user_id"])
+    user_id = UUID(current_user["id"])
     transactions = await credit_service.get_credit_transactions(user_id, limit, offset)
     
     return transactions
@@ -155,7 +155,7 @@ async def reset_monthly_credits(
     """
     월 크레딧 리셋 (테스트용, 실제로는 스케줄러가 실행)
     """
-    user_id = UUID(current_user["user_id"])
+    user_id = UUID(current_user["id"])
     success = await credit_service.reset_monthly_credits(user_id)
     
     if not success:
