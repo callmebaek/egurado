@@ -80,6 +80,13 @@ export default function OnboardingSection({ onStoreRegistered }: OnboardingSecti
           const data = await response.json();
           setProgress(data.progress || {});
           setIsCollapsed(data.is_collapsed || false);
+          
+          // localStorage 체크: 투표 완료 여부
+          const voteCompleted = localStorage.getItem('feature_vote_completed');
+          if (voteCompleted === 'true' && !data.progress[ACTION_KEYS.FEATURE_VOTING]?.completed) {
+            // 백엔드에 반영되지 않았지만 localStorage에 완료 표시가 있으면 자동 완료 처리
+            markActionComplete(ACTION_KEYS.FEATURE_VOTING);
+          }
         }
       } catch (error) {
         console.error('[Onboarding] 진행 상태 로드 실패:', error);
