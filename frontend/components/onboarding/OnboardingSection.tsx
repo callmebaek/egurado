@@ -14,6 +14,7 @@ import { RankTrackingModal } from './modals/RankTrackingModal';
 import StoreDescriptionModal from './modals/StoreDescriptionModal';
 import StoreDirectionsModal from './modals/StoreDirectionsModal';
 import ReviewAnalysisModal from './modals/ReviewAnalysisModal';
+import AdditionalKeywordsModal from './modals/AdditionalKeywordsModal';
 import GenericActionModal from './modals/GenericActionModal';
 
 interface OnboardingSectionProps {
@@ -35,6 +36,7 @@ export default function OnboardingSection({ onStoreRegistered }: OnboardingSecti
   const [showDescriptionModal, setShowDescriptionModal] = useState(false);
   const [showDirectionsModal, setShowDirectionsModal] = useState(false);
   const [showReviewAnalysisModal, setShowReviewAnalysisModal] = useState(false);
+  const [showAdditionalKeywordsModal, setShowAdditionalKeywordsModal] = useState(false);
   const [genericModalConfig, setGenericModalConfig] = useState<{
     isOpen: boolean;
     title: string;
@@ -200,14 +202,7 @@ export default function OnboardingSection({ onStoreRegistered }: OnboardingSecti
         break;
         
       case ACTION_KEYS.KEYWORD_DISCOVERY:
-        setGenericModalConfig({
-          isOpen: true,
-          title: '추가키워드 발굴하기',
-          description: 'AI가 추천하는 새로운 키워드를 발굴하세요.',
-          pageUrl: '/dashboard/naver/target-keywords',
-          pageLabel: '타겟키워드 페이지로 이동',
-          actionKey,
-        });
+        setShowAdditionalKeywordsModal(true);
         break;
         
       case ACTION_KEYS.METRICS_VIEW:
@@ -387,6 +382,12 @@ export default function OnboardingSection({ onStoreRegistered }: OnboardingSecti
         isOpen={showReviewAnalysisModal}
         onClose={() => setShowReviewAnalysisModal(false)}
         onComplete={() => markActionComplete(ACTION_KEYS.REVIEW_ANALYSIS)}
+      />
+
+      <AdditionalKeywordsModal
+        isOpen={showAdditionalKeywordsModal}
+        onClose={() => setShowAdditionalKeywordsModal(false)}
+        onComplete={() => markActionComplete(ACTION_KEYS.KEYWORD_DISCOVERY)}
       />
 
       <GenericActionModal
