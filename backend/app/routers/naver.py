@@ -2113,8 +2113,11 @@ async def get_activation_history(
         user_id = current_user["id"]
         logger.info(f"[활성화 이력] User {user_id} - Store {store_id} 이력 조회 시작")
         
+        # Supabase 클라이언트 가져오기
+        supabase_client = get_supabase_client()
+        
         # 해당 매장의 이력 조회 (최신순)
-        result = supabase.table("activation_history")\
+        result = supabase_client.table("activation_history")\
             .select("*")\
             .eq("user_id", user_id)\
             .eq("store_id", store_id)\
