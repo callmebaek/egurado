@@ -483,6 +483,34 @@ export default function DashboardPage() {
       .filter((group): group is StoreTrackerGroup => group !== undefined)
   }
 
+  // 🆕 크레딧 리로드 함수
+  const reloadCredits = async () => {
+    const token = getToken()
+    if (!token) return
+
+    try {
+      const creditsRes = await fetch(`${api.baseUrl}/api/v1/credits/me`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      
+      if (creditsRes.ok) {
+        const creditsData = await creditsRes.json()
+        setCredits({
+          monthly_credits: creditsData.monthly_credits || 0,
+          monthly_used: creditsData.monthly_used || 0,
+          total_remaining: creditsData.total_remaining || 0,
+          tier: creditsData.tier || 'free',
+          percentage_used: creditsData.percentage_used || 0
+        })
+        console.log('[Credits] 크레딧 업데이트 완료:', creditsData.total_remaining)
+      }
+    } catch (error) {
+      console.log('[Credits] 크레딧 리로드 실패:', error)
+    }
+  }
+
   // 개별 키워드 새로고침
   const handleRefreshTracker = async (trackerId: string) => {
     const token = getToken()
@@ -504,6 +532,9 @@ export default function DashboardPage() {
         
         // 데이터베이스 반영 시간을 위해 잠시 대기
         await new Promise(resolve => setTimeout(resolve, 500))
+        
+        // 🆕 크레딧 리로드 (순위조회 완료 후)
+        await reloadCredits()
       }
 
       // 데이터 다시 로드
@@ -544,6 +575,9 @@ export default function DashboardPage() {
 
       // 모든 수집이 완료된 후 잠시 대기 (데이터베이스 반영 시간)
       await new Promise(resolve => setTimeout(resolve, 1000))
+
+      // 🆕 크레딧 리로드 (전체 순위조회 완료 후)
+      await reloadCredits()
 
       // 데이터 다시 로드
       await loadTrackers()
