@@ -21,6 +21,8 @@ from app.models.schemas import (
 )
 from app.services.metric_tracker_service import metric_tracker_service
 from app.routers.auth import get_current_user
+from app.services.credit_service import credit_service
+from app.core.config import settings
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -225,7 +227,10 @@ async def collect_metrics_now(
     
     - 스케줄과 관계없이 즉시 순위, 리뷰수 등을 수집
     - 테스트 및 데모용으로 유용
+    - 크레딧: 5 크레딧 소모
     """
+    user_id = UUID(current_user["id"])
+    
     try:
         # 권한 확인
         tracker = metric_tracker_service.get_tracker(str(tracker_id), current_user["id"])
@@ -235,8 +240,44 @@ async def collect_metrics_now(
                 detail="추적 설정을 찾을 수 없습니다"
             )
         
+        # 🆕 크레딧 체크 (Feature Flag 확인)
+        if settings.CREDIT_SYSTEM_ENABLED and settings.CREDIT_CHECK_STRICT:
+            has_credits = await credit_service.check_sufficient_credits(
+                user_id=user_id,
+                feature_name="rank_check",
+                credits_required=5
+            )
+            
+            if not has_credits:
+                logger.warning(f"[Credits] User {user_id} has insufficient credits for rank check")
+                raise HTTPException(
+                    status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                    detail="크레딧이 부족합니다. 크레딧을 충전하거나 플랜을 업그레이드해주세요."
+                )
+            
+            logger.info(f"[Credits] User {user_id} has sufficient credits for rank check")
+        
         # 지표 수집
         result = await metric_tracker_service.collect_metrics(str(tracker_id))
+        
+        # 🆕 크레딧 차감 (성공 시에만)
+        if settings.CREDIT_SYSTEM_ENABLED and settings.CREDIT_AUTO_DEDUCT:
+            try:
+                transaction_id = await credit_service.deduct_credits(
+                    user_id=user_id,
+                    feature_name="rank_check",
+                    credits_amount=5,
+                    metadata={
+                        "tracker_id": str(tracker_id),
+                        "keyword": tracker.get("keyword", ""),
+                        "store_name": tracker.get("store_name", "")
+                    }
+                )
+                logger.info(f"[Credits] Deducted 5 credits from user {user_id} (transaction: {transaction_id})")
+            except Exception as credit_error:
+                logger.error(f"[Credits] Failed to deduct credits: {credit_error}")
+                # 크레딧 차감 실패는 기능 사용을 막지 않음 (이미 수집은 완료됨)
+        
         return result
     except HTTPException:
         raise
