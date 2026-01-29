@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/config';
 import { useAuth } from '@/lib/auth-context';
-import { createClient } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase';
 
 interface ContactModalProps {
   opened: boolean;
@@ -99,7 +99,6 @@ export default function ContactModal({ opened, onClose, onComplete }: ContactMod
     const uploadedAttachments: AttachmentInfo[] = [];
 
     try {
-      const supabase = createClient();
       const userId = user?.id;
 
       for (const file of files) {
