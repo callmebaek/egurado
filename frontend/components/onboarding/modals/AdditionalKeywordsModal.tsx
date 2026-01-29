@@ -325,29 +325,29 @@ export default function AdditionalKeywordsModal({ isOpen, onClose, onComplete }:
 
   // Step 1: 환영 메시지
   const renderStep1 = () => (
-    <Stack gap="xl" py="md">
+    <Stack gap="lg" py="xs">
       <Center>
-        <ThemeIcon size={120} radius={120} variant="light" color="yellow" style={{ background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)' }}>
-          <Lightbulb size={60} />
+        <ThemeIcon size={90} radius={90} variant="light" color="yellow" style={{ background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)' }}>
+          <Lightbulb size={45} />
         </ThemeIcon>
       </Center>
       
-      <Stack gap="sm" ta="center" px="md">
-        <Text size="28px" fw={700} style={{ lineHeight: 1.3 }}>
+      <Stack gap="xs" ta="center" px="sm">
+        <Text size="24px" fw={700} style={{ lineHeight: 1.3 }}>
           숨은 알짜 키워드를<br />찾아보세요!
         </Text>
-        <Text size="md" c="dimmed" style={{ lineHeight: 1.6 }}>
+        <Text size="sm" c="dimmed" style={{ lineHeight: 1.5 }}>
           우리 고객들은 항상 대형키워드로만 움직이지 않습니다.<br />
           숨은 알짜키워드를 찾기 위해서 다양한 키워드를 고민하고<br />
           유의미한 검색량을 찾아야 합니다.
         </Text>
       </Stack>
 
-      <Stack gap="md">
-        <Paper p="lg" radius="md" style={{ background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)', border: 'none' }}>
-          <Group gap="md" wrap="nowrap">
-            <ThemeIcon size={48} radius="md" variant="light" color="blue">
-              <Sparkles size={24} />
+      <Stack gap="sm">
+        <Paper p="md" radius="md" style={{ background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)', border: 'none' }}>
+          <Group gap="sm" wrap="nowrap">
+            <ThemeIcon size={40} radius="md" variant="light" color="blue">
+              <Sparkles size={20} />
             </ThemeIcon>
             <div>
               <Text fw={600} size="sm">키워드 조합으로 기회 발굴</Text>
@@ -356,10 +356,10 @@ export default function AdditionalKeywordsModal({ isOpen, onClose, onComplete }:
           </Group>
         </Paper>
         
-        <Paper p="lg" radius="md" style={{ background: 'linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)', border: 'none' }}>
-          <Group gap="md" wrap="nowrap">
-            <ThemeIcon size={48} radius="md" variant="light" color="grape">
-              <Search size={24} />
+        <Paper p="md" radius="md" style={{ background: 'linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)', border: 'none' }}>
+          <Group gap="sm" wrap="nowrap">
+            <ThemeIcon size={40} radius="md" variant="light" color="grape">
+              <Search size={20} />
             </ThemeIcon>
             <div>
               <Text fw={600} size="sm">실시간 검색량 확인</Text>
@@ -368,10 +368,10 @@ export default function AdditionalKeywordsModal({ isOpen, onClose, onComplete }:
           </Group>
         </Paper>
         
-        <Paper p="lg" radius="md" style={{ background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)', border: 'none' }}>
-          <Group gap="md" wrap="nowrap">
-            <ThemeIcon size={48} radius="md" variant="light" color="green">
-              <TrendingUp size={24} />
+        <Paper p="md" radius="md" style={{ background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)', border: 'none' }}>
+          <Group gap="sm" wrap="nowrap">
+            <ThemeIcon size={40} radius="md" variant="light" color="green">
+              <TrendingUp size={20} />
             </ThemeIcon>
             <div>
               <Text fw={600} size="sm">검색 이력 자동 저장</Text>
@@ -759,70 +759,59 @@ export default function AdditionalKeywordsModal({ isOpen, onClose, onComplete }:
     }
 
     return (
-      <Stack gap="xl" py="md">
+      <Stack gap="lg" py="xs">
         <Center>
-          <ThemeIcon size={100} radius={100} variant="light" color="green" style={{ background: 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)' }}>
-            <CheckCircle2 size={50} />
+          <ThemeIcon size={80} radius={80} variant="light" color="green" style={{ background: 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)' }}>
+            <CheckCircle2 size={40} />
           </ThemeIcon>
         </Center>
 
-        <Stack gap="xs" ta="center">
-          <Text size="28px" fw={700}>검색량 조회 완료!</Text>
+        <Stack gap={4} ta="center">
+          <Text size="24px" fw={700}>검색량 조회 완료!</Text>
           <Text size="sm" c="dimmed">
             {searchResults.length}개 키워드의 검색량을 조회했습니다
-          </Text>
-          <Text size="xs" c="dimmed">
-            검색 이력에 자동으로 저장되었습니다
           </Text>
         </Stack>
 
         <div style={{ maxHeight: 400, overflowY: 'auto' }}>
-          <Stack gap="sm">
+          <Stack gap="xs">
             {searchResults.map((result, index) => (
-              <Paper key={index} p="lg" radius="md" withBorder>
-                <Stack gap="sm">
-                  <Group justify="space-between">
-                    <Text fw={600} size="md">{result.keyword}</Text>
-                    <Badge size="xl" variant="light" color="blue">
-                      월 {formatNumber(getTotalVolume(result))}회
-                    </Badge>
+              <Paper key={index} p="sm" radius="md" withBorder>
+                <Group justify="space-between" mb={4}>
+                  <Text fw={600} size="sm">{result.keyword}</Text>
+                  <Badge size="lg" variant="light" color="blue">
+                    월 {formatNumber(getTotalVolume(result))}회
+                  </Badge>
+                </Group>
+                
+                <Group gap="lg" mb={4}>
+                  <Group gap={6}>
+                    <Monitor size={14} color="#228be6" />
+                    <Text size="xs" c="dimmed">
+                      PC: {formatNumber(result.monthly_pc_qc_cnt)}
+                    </Text>
                   </Group>
-                  
-                  <Group gap="xl">
-                    <Group gap="xs">
-                      <Monitor size={16} color="#228be6" />
-                      <Text size="sm" c="dimmed">
-                        PC: {formatNumber(result.monthly_pc_qc_cnt)}
-                      </Text>
-                    </Group>
-                    <Group gap="xs">
-                      <Smartphone size={16} color="#228be6" />
-                      <Text size="sm" c="dimmed">
-                        모바일: {formatNumber(result.monthly_mobile_qc_cnt)}
-                      </Text>
-                    </Group>
+                  <Group gap={6}>
+                    <Smartphone size={14} color="#228be6" />
+                    <Text size="xs" c="dimmed">
+                      모바일: {formatNumber(result.monthly_mobile_qc_cnt)}
+                    </Text>
                   </Group>
-
-                  <Divider />
-
-                  <Group>
-                    <div>
-                      <Text size="xs" c="dimmed">경쟁 강도</Text>
-                      <Text size="sm" fw={600}>{result.comp_idx}</Text>
-                    </div>
+                  <Group gap={6}>
+                    <Text size="xs" c="dimmed">경쟁: {result.comp_idx}</Text>
                   </Group>
-                </Stack>
+                </Group>
               </Paper>
             ))}
           </Stack>
         </div>
 
-        <Alert color="blue" radius="md" title="💡 이제 어떻게 하나요?">
-          조회한 키워드는 "키워드 검색량조회" 페이지의 검색 이력에서 언제든지 다시 확인할 수 있습니다!
+        <Alert color="blue" radius="md" title="💡 이제 어떻게 하나요?" p="sm">
+          <Text size="xs">조회한 키워드는 "키워드 검색량조회" 페이지의 검색 이력에서 언제든지 다시 확인할 수 있습니다!</Text>
         </Alert>
 
         <Button
-          size="lg"
+          size="md"
           fullWidth
           radius="md"
           onClick={() => {
