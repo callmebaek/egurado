@@ -577,9 +577,9 @@ async def analyze_reviews_stream(store_id: str, start_date: str, end_date: str):
                           f"긍정 {stats['positive']}개, 중립 {stats['neutral']}개, 부정 {stats['negative']}개입니다."
                 logger.info(f"기본 요약 사용")
             
-            # 6. DB 저장
-            today_date = datetime.now(KST).strftime("%Y-%m-%d")
-            supabase.table("review_stats").delete().eq("store_id", store_id).eq("date", today_date).execute()
+            # 6. DB 저장 (분석한 기간의 종료일 기준으로 저장)
+            save_date = end_date  # 분석한 기간의 종료일 사용
+            supabase.table("review_stats").delete().eq("store_id", store_id).eq("date", save_date).execute()
             
             blog_result = await review_service.get_blog_reviews(naver_place_id, page=1, size=1)
             blog_review_count = blog_result.get("total", 0)
@@ -594,7 +594,7 @@ async def analyze_reviews_stream(store_id: str, start_date: str, end_date: str):
             # RLS bypass 함수 사용을 위한 파라미터 변환
             stats_data = {
                 "p_store_id": store_id,
-                "p_date": today_date,
+                "p_date": save_date,
                 "p_visitor_review_count": len(analyzed_reviews),
                 "p_visitor_positive_count": stats["positive"],
                 "p_visitor_neutral_count": stats["neutral"],

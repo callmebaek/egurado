@@ -411,25 +411,23 @@ export default function ReviewAnalysisModal({
 
   // Step 4: 결과 미리보기
   const renderStep4 = () => (
-    <Stack gap="xl" align="center" style={{ padding: '2rem 0' }}>
-      {/* 성공 아이콘 */}
-      <ThemeIcon size={80} radius="xl" color="teal" variant="light">
-        <CheckCircle2 size={40} />
-      </ThemeIcon>
-      
-      {/* 메인 메시지 */}
+    <Stack gap="md" align="center" style={{ padding: '1rem 0' }}>
+      {/* 성공 아이콘 + 메시지 */}
       <Stack gap="xs" align="center">
-        <Text size="xl" fw={700} ta="center">
+        <ThemeIcon size={60} radius="xl" color="teal" variant="light">
+          <CheckCircle2 size={30} />
+        </ThemeIcon>
+        <Text size="lg" fw={700} ta="center">
           리뷰를 추출했어요! 🎉
         </Text>
-        <Text size="sm" c="dimmed" ta="center">
+        <Text size="xs" c="dimmed" ta="center">
           {getPeriodLabel(datePeriod)} 동안 등록된 리뷰를 확인했습니다
         </Text>
       </Stack>
 
-      {/* 전체 리뷰 수 - 큰 숫자로 강조 */}
+      {/* 전체 리뷰 수 - 컴팩트하게 */}
       <Paper 
-        p="xl" 
+        p="md" 
         radius="md" 
         withBorder
         w="100%"
@@ -438,25 +436,23 @@ export default function ReviewAnalysisModal({
           backgroundColor: '#f8f9fa'
         }}
       >
-        <Stack gap="sm" align="center">
-          <MessageSquare size={32} color="#228be6" />
-          <div>
-            <Text size="xl" fw={700} style={{ fontSize: '3rem', lineHeight: 1 }}>
-              {reviewStats?.total || 0}
-            </Text>
-            <Text size="sm" c="dimmed" mt="xs">
-              전체 리뷰 수
-            </Text>
-          </div>
-          <Text size="xs" c="dimmed">
-            리뷰 등록일 기준으로 분석했어요
+        <Group justify="center" gap="xs">
+          <MessageSquare size={24} color="#228be6" />
+          <Text size="xl" fw={700} style={{ fontSize: '2rem' }}>
+            {reviewStats?.total || 0}
           </Text>
-        </Stack>
+          <Text size="sm" c="dimmed">
+            개 리뷰
+          </Text>
+        </Group>
+        <Text size="xs" c="dimmed" mt="xs">
+          리뷰 등록일 기준으로 분석했어요
+        </Text>
       </Paper>
 
-      {/* AI 분석 안내 */}
+      {/* AI 분석 안내 - 컴팩트하게 */}
       <Paper 
-        p="lg" 
+        p="md" 
         radius="md" 
         withBorder
         w="100%"
@@ -465,32 +461,32 @@ export default function ReviewAnalysisModal({
           backgroundColor: '#fff9e6'
         }}
       >
-        <Stack gap="sm" align="center">
-          <Sparkles size={28} color="#fd7e14" />
-          <Text size="md" fw={600} ta="center">
-            AI 분석이 필요해요! 🤖
-          </Text>
-          <Text size="sm" ta="center" c="dimmed" style={{ maxWidth: '90%' }}>
-            리뷰 온도 측정, 감정 분석 (긍정/중립/부정), 핵심 키워드 추출 등 상세한 인사이트는 아래 "리뷰 분석하기" 버튼을 눌러 시작할 수 있어요!
-          </Text>
-          <Text size="xs" ta="center" c="dimmed">
-            💡 분석 시간: 리뷰 개수에 따라 약 10초~3분 소요
-          </Text>
-        </Stack>
+        <Group gap="sm" align="flex-start">
+          <Sparkles size={20} color="#fd7e14" style={{ flexShrink: 0, marginTop: 2 }} />
+          <Stack gap="xs" style={{ flex: 1 }}>
+            <Text size="sm" fw={600}>
+              AI 분석이 필요해요! 🤖
+            </Text>
+            <Text size="xs" c="dimmed" style={{ lineHeight: 1.4 }}>
+              리뷰 온도, 감정 분석, 핵심 키워드 추출 등 상세한 인사이트를 확인하세요.
+            </Text>
+            <Text size="xs" c="dimmed" style={{ opacity: 0.7 }}>
+              💡 분석 시간: 약 10초~3분
+            </Text>
+          </Stack>
+        </Group>
       </Paper>
 
-      {/* 선택 정보 요약 */}
-      <Paper p="md" radius="md" withBorder w="100%" bg="#f9fafb">
-        <Stack gap="xs">
-          <Group justify="space-between">
-            <Text size="sm" c="dimmed">매장</Text>
-            <Text size="sm" fw={500}>{selectedStore?.name}</Text>
-          </Group>
-          <Group justify="space-between">
-            <Text size="sm" c="dimmed">기간</Text>
-            <Text size="sm" fw={500}>{getPeriodLabel(datePeriod)}</Text>
-          </Group>
-        </Stack>
+      {/* 선택 정보 요약 - 컴팩트하게 */}
+      <Paper p="sm" radius="md" withBorder w="100%" bg="#f9fafb">
+        <Group justify="space-between">
+          <Text size="xs" c="dimmed">매장</Text>
+          <Text size="xs" fw={500}>{selectedStore?.name}</Text>
+        </Group>
+        <Group justify="space-between" mt="xs">
+          <Text size="xs" c="dimmed">기간</Text>
+          <Text size="xs" fw={500}>{getPeriodLabel(datePeriod)}</Text>
+        </Group>
       </Paper>
     </Stack>
   );
