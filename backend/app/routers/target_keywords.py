@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 class TargetKeywordAnalysisRequest(BaseModel):
     """타겟 키워드 분석 요청"""
     store_id: str = Field(..., description="매장 ID")
-    user_id: UUID = Field(..., description="사용자 ID")
+    # user_id: UUID = Field(..., description="사용자 ID")  # Removed: user_id is now extracted from current_user
     regions: List[str] = Field(default=[], description="지역명 리스트")
     landmarks: List[str] = Field(default=[], description="랜드마크 리스트")
     menus: List[str] = Field(default=[], description="메뉴/상품명 리스트")
@@ -72,14 +72,14 @@ async def analyze_target_keywords(
             
             logger.info(f"[Credits] User {user_id} has sufficient credits for target keyword extraction")
         
-        logger.info(f"[타겟 키워드 API] 요청 받음: store_id={request.store_id}, user_id={request.user_id}")
+        logger.info(f"[타겟 키워드 API] 요청 받음: store_id={request.store_id}, user_id={user_id}")  # Modified: use user_id from current_user
         logger.info(f"[타겟 키워드 API] 입력 키워드: regions={request.regions}, landmarks={request.landmarks}, menus={request.menus}, industries={request.industries}, others={request.others}")
         
         service = NaverTargetKeywordService()
         
         result = await service.analyze_target_keywords(
             store_id=request.store_id,
-            user_id=str(request.user_id),
+            user_id=str(user_id),  # Modified: use user_id from current_user
             regions=request.regions,
             landmarks=request.landmarks,
             menus=request.menus,

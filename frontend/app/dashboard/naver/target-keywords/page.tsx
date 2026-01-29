@@ -319,7 +319,7 @@ export default function TargetKeywordsPage() {
         },
         body: JSON.stringify({
           store_id: selectedStore,
-          user_id: userId,
+          // user_id: userId,  // Removed: user_id is now extracted from current_user in backend
           regions,
           landmarks,
           menus,
