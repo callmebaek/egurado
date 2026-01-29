@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { 
   Container, 
   Title, 
@@ -149,6 +150,7 @@ interface ActivationData {
 export default function ActivationPage() {
   const { user, getToken } = useAuth()
   const { toast } = useToast()
+  const searchParams = useSearchParams()
   
   const [stores, setStores] = useState<RegisteredStore[]>([])
   const [isLoadingStores, setIsLoadingStores] = useState(false)
@@ -184,6 +186,18 @@ export default function ActivationPage() {
       fetchStores()
     }
   }, [user])
+
+  // URL 파라미터로부터 storeId 읽어서 자동 선택
+  useEffect(() => {
+    const storeId = searchParams.get('storeId')
+    if (storeId && stores.length > 0 && !selectedStore) {
+      const targetStore = stores.find(s => s.id === storeId)
+      if (targetStore) {
+        console.log('[활성화] URL에서 매장 자동 선택:', targetStore.name)
+        handleStoreSelect(targetStore)
+      }
+    }
+  }, [searchParams, stores])
 
   const fetchStores = async () => {
     const token = getToken()

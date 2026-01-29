@@ -52,7 +52,7 @@ export const ACTION_KEYS = {
   // 성장하기
   KEYWORD_DISCOVERY: 'grow-keyword-discovery',
   REVIEW_REPLY_AI: 'grow-review-reply-ai',
-  PLACE_ACTIVATION: 'grow-place-activation',
+  PLACE_ACTIVATION_CHECK: 'grow-place-activation-check',
   CONTACT_WHIPLACE: 'grow-contact-whiplace',
   
   // 추천작업
@@ -88,7 +88,7 @@ export const ONBOARDING_STEPS: Step[] = [
     icon: '📈',
     actions: [
       { key: ACTION_KEYS.KEYWORD_DISCOVERY, title: '추가키워드 발굴하기' },
-      { key: ACTION_KEYS.PLACE_ACTIVATION, title: '플레이스 활성화하기' },
+      { key: ACTION_KEYS.PLACE_ACTIVATION_CHECK, title: '플레이스 활성화 확인하기' },
       { key: ACTION_KEYS.MAIN_KEYWORDS, title: '대표키워드 설정하기' },
       { key: ACTION_KEYS.CONTACT_WHIPLACE, title: '윕플에 문의하기' },
     ],

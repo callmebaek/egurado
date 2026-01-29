@@ -1699,6 +1699,24 @@ async def get_activation_info(
         
         logger.info(f"[플레이스 활성화] 완료: {len(activation_data.get('issues', []))}개 이슈")
         
+        # 4. 활성화 이력 저장
+        try:
+            history_data = {
+                "user_id": current_user["id"],
+                "store_id": store_id,
+                "store_name": store_name,
+                "place_id": place_id,
+                "thumbnail": store.get("thumbnail"),
+                "summary_cards": activation_data.get("summary_cards", []),
+                "activation_data": activation_data,
+            }
+            
+            supabase.table("activation_history").insert(history_data).execute()
+            logger.info(f"[플레이스 활성화] 이력 저장 완료: store_id={store_id}")
+        except Exception as e:
+            # 이력 저장 실패해도 결과는 반환
+            logger.warning(f"[플레이스 활성화] 이력 저장 실패: {str(e)}")
+        
         return ActivationResponse(
             status="success",
             data=activation_data

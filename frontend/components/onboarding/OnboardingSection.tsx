@@ -15,6 +15,7 @@ import StoreDescriptionModal from './modals/StoreDescriptionModal';
 import StoreDirectionsModal from './modals/StoreDirectionsModal';
 import ReviewAnalysisModal from './modals/ReviewAnalysisModal';
 import AdditionalKeywordsModal from './modals/AdditionalKeywordsModal';
+import PlaceActivationModal from './modals/PlaceActivationModal';
 import GenericActionModal from './modals/GenericActionModal';
 
 interface OnboardingSectionProps {
@@ -37,6 +38,7 @@ export default function OnboardingSection({ onStoreRegistered }: OnboardingSecti
   const [showDirectionsModal, setShowDirectionsModal] = useState(false);
   const [showReviewAnalysisModal, setShowReviewAnalysisModal] = useState(false);
   const [showAdditionalKeywordsModal, setShowAdditionalKeywordsModal] = useState(false);
+  const [showPlaceActivationModal, setShowPlaceActivationModal] = useState(false);
   const [genericModalConfig, setGenericModalConfig] = useState<{
     isOpen: boolean;
     title: string;
@@ -156,15 +158,8 @@ export default function OnboardingSection({ onStoreRegistered }: OnboardingSecti
         });
         break;
         
-      case ACTION_KEYS.PLACE_ACTIVATION:
-        setGenericModalConfig({
-          isOpen: true,
-          title: '플레이스 활성화하기',
-          description: '플레이스 활성화 현황을 실시간으로 확인하세요.',
-          pageUrl: '/dashboard/naver/activation',
-          pageLabel: '플레이스 활성화 페이지로 이동',
-          actionKey,
-        });
+      case ACTION_KEYS.PLACE_ACTIVATION_CHECK:
+        setShowPlaceActivationModal(true);
         break;
         
       case ACTION_KEYS.COMPETITOR_ANALYSIS:
@@ -388,6 +383,12 @@ export default function OnboardingSection({ onStoreRegistered }: OnboardingSecti
         isOpen={showAdditionalKeywordsModal}
         onClose={() => setShowAdditionalKeywordsModal(false)}
         onComplete={() => markActionComplete(ACTION_KEYS.KEYWORD_DISCOVERY)}
+      />
+
+      <PlaceActivationModal
+        isOpen={showPlaceActivationModal}
+        onClose={() => setShowPlaceActivationModal(false)}
+        onComplete={() => markActionComplete(ACTION_KEYS.PLACE_ACTIVATION_CHECK)}
       />
 
       <GenericActionModal
