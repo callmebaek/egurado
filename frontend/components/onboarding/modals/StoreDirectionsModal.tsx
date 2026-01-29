@@ -18,6 +18,7 @@ import {
   Center,
   Alert,
   ActionIcon,
+  Divider,
 } from '@mantine/core'
 import { Copy, Sparkles, Store as StoreIcon, MapPin, Navigation, CheckCircle2, ChevronRight, Plus, X } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
