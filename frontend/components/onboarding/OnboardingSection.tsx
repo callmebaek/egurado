@@ -11,6 +11,7 @@ import StoreRegisterModal from './modals/StoreRegisterModal';
 import PlaceAuditModal from './modals/PlaceAuditModal';
 import TargetKeywordsModal from './modals/TargetKeywordsModal';
 import { RankTrackingModal } from './modals/RankTrackingModal';
+import RankAlertsModal from './modals/RankAlertsModal';
 import StoreDescriptionModal from './modals/StoreDescriptionModal';
 import StoreDirectionsModal from './modals/StoreDirectionsModal';
 import ReviewAnalysisModal from './modals/ReviewAnalysisModal';
@@ -39,6 +40,7 @@ export default function OnboardingSection({ onStoreRegistered }: OnboardingSecti
   const [showPlaceAuditModal, setShowPlaceAuditModal] = useState(false);
   const [showTargetKeywordsModal, setShowTargetKeywordsModal] = useState(false);
   const [showRankTrackingModal, setShowRankTrackingModal] = useState(false);
+  const [showRankAlertsModal, setShowRankAlertsModal] = useState(false);
   const [showDescriptionModal, setShowDescriptionModal] = useState(false);
   const [showDirectionsModal, setShowDirectionsModal] = useState(false);
   const [showReviewAnalysisModal, setShowReviewAnalysisModal] = useState(false);
@@ -149,14 +151,7 @@ export default function OnboardingSection({ onStoreRegistered }: OnboardingSecti
         break;
         
       case ACTION_KEYS.RANK_ALERTS:
-        setGenericModalConfig({
-          isOpen: true,
-          title: '순위추적 알림설정하기',
-          description: '키워드 순위 변동 시 알림을 받으세요.',
-          pageUrl: '/dashboard/naver/rank-check',
-          pageLabel: '순위조회 페이지로 이동',
-          actionKey,
-        });
+        setShowRankAlertsModal(true);
         break;
         
       case ACTION_KEYS.REVIEW_ANALYSIS:
@@ -365,6 +360,12 @@ export default function OnboardingSection({ onStoreRegistered }: OnboardingSecti
         opened={showRankTrackingModal}
         onClose={() => setShowRankTrackingModal(false)}
         onComplete={() => markActionComplete(ACTION_KEYS.METRICS_TRACKING)}
+      />
+
+      <RankAlertsModal
+        opened={showRankAlertsModal}
+        onClose={() => setShowRankAlertsModal(false)}
+        onComplete={() => markActionComplete(ACTION_KEYS.RANK_ALERTS)}
       />
       
       <StoreDescriptionModal
