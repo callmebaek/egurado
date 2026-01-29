@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useStores } from "@/lib/hooks/useStores"
 import { EmptyStoreMessage } from "@/components/EmptyStoreMessage"
 import { Loader2, Sparkles, Send, Check, X, AlertCircle, MessageSquare, Settings } from "lucide-react"
@@ -39,6 +39,7 @@ interface SessionStatus {
 
 export default function NaverAIReplyPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { stores, hasStores, isLoading: storesLoading } = useStores()
   
   const [selectedStoreId, setSelectedStoreId] = useState<string>("")
@@ -193,6 +194,32 @@ export default function NaverAIReplyPage() {
       clearInterval(interval)
     }
   }, [])
+
+  // URL 파라미터로 자동 시작
+  useEffect(() => {
+    const autoStart = searchParams.get('autoStart')
+    const storeId = searchParams.get('storeId')
+    const limit = searchParams.get('reviewLimit')
+    
+    if (autoStart === 'true' && storeId && stores.length > 0 && !selectedStoreId) {
+      console.log('[AI 리뷰답글] 자동 시작:', storeId, limit)
+      setSelectedStoreId(storeId)
+      if (limit) {
+        setReviewLimit(limit)
+      }
+      // URL 파라미터 제거
+      window.history.replaceState({}, '', window.location.pathname)
+    }
+  }, [searchParams, stores, selectedStoreId])
+  
+  // 매장 선택 후 자동 로드
+  useEffect(() => {
+    const autoStart = searchParams.get('autoStart')
+    if (autoStart === 'true' && selectedStoreId && !isLoadingReviews && reviews.length === 0) {
+      console.log('[AI 리뷰답글] 리뷰 자동 로드')
+      loadReviews()
+    }
+  }, [selectedStoreId, searchParams])
 
   // AI 설정 불러오기
   const loadAISettings = async (storeId: string) => {

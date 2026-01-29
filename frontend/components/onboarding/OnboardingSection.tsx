@@ -20,6 +20,7 @@ import MainKeywordsModal from './modals/MainKeywordsModal';
 import ContactModal from './modals/ContactModal';
 import CompetitorAnalysisModal from './modals/CompetitorAnalysisModal';
 import FeatureVoteModal from './modals/FeatureVoteModal';
+import AIReviewReplyModal from './modals/AIReviewReplyModal';
 import GenericActionModal from './modals/GenericActionModal';
 
 interface OnboardingSectionProps {
@@ -47,6 +48,7 @@ export default function OnboardingSection({ onStoreRegistered }: OnboardingSecti
   const [showContactModal, setShowContactModal] = useState(false);
   const [showCompetitorAnalysisModal, setShowCompetitorAnalysisModal] = useState(false);
   const [showFeatureVoteModal, setShowFeatureVoteModal] = useState(false);
+  const [showAIReviewReplyModal, setShowAIReviewReplyModal] = useState(false);
   const [genericModalConfig, setGenericModalConfig] = useState<{
     isOpen: boolean;
     title: string;
@@ -163,6 +165,10 @@ export default function OnboardingSection({ onStoreRegistered }: OnboardingSecti
         break;
         
       case ACTION_KEYS.REVIEW_REPLY_AI:
+        setShowAIReviewReplyModal(true);
+        break;
+        
+      case ACTION_KEYS.REVIEW_REPLY_AI_OLD:
         setGenericModalConfig({
           isOpen: true,
           title: 'AI로 리뷰답글달기',
@@ -413,6 +419,12 @@ export default function OnboardingSection({ onStoreRegistered }: OnboardingSecti
         opened={showFeatureVoteModal}
         onClose={() => setShowFeatureVoteModal(false)}
         onComplete={() => markActionComplete(ACTION_KEYS.FEATURE_VOTING)}
+      />
+
+      <AIReviewReplyModal
+        opened={showAIReviewReplyModal}
+        onClose={() => setShowAIReviewReplyModal(false)}
+        onComplete={() => markActionComplete(ACTION_KEYS.REVIEW_REPLY_AI)}
       />
 
       <GenericActionModal
