@@ -698,14 +698,12 @@ export default function ReviewManagementPage() {
               await loadStats(savedDate)
               console.log("✅ 통계 로딩 완료")
               
-              // DB에서 최신 리뷰 목록 다시 로드 (분석 결과 포함)
-              console.log("📝 리뷰 목록 다시 로드 중...")
-              await loadReviews()
-              console.log("📝 리뷰 목록 로드 완료:", reviews.length)
+              // 리뷰 목록은 이미 SSE로 실시간 업데이트되었으므로 그대로 유지
+              console.log("📝 리뷰 목록 유지 (SSE로 이미 업데이트됨)")
+              console.log("📝 현재 리뷰 개수:", reviews.length)
               
               // 필터 재적용 (분석된 sentiment로 필터링)
               applyFilters()
-              console.log("📝 현재 리뷰 개수:", reviews.length)
               console.log("📝 필터링된 리뷰 개수:", filteredReviews.length)
               
               toast({
