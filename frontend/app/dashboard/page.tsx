@@ -406,6 +406,15 @@ export default function DashboardPage() {
   const [isRefreshing, setIsRefreshing] = useState<Set<string>>(new Set())
   const [latestDiagnosis, setLatestDiagnosis] = useState<LatestDiagnosis | null>(null)
   
+  // 🆕 실제 크레딧 정보 (Credits API)
+  const [credits, setCredits] = useState<{
+    monthly_credits: number
+    monthly_used: number
+    total_remaining: number
+    tier: string
+    percentage_used: number
+  } | null>(null)
+  
   // 드래그앤드롭 센서 설정
   const sensors = useSensors(
     useSensor(MouseSensor, {
@@ -740,6 +749,29 @@ export default function DashboardPage() {
           setProfile(profileData)
         }
 
+        // 🆕 1-1. 실제 크레딧 조회 (Credits API)
+        try {
+          const creditsRes = await fetch(`${api.baseUrl}/api/v1/credits/me`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          })
+          
+          if (creditsRes.ok) {
+            const creditsData = await creditsRes.json()
+            setCredits({
+              monthly_credits: creditsData.monthly_credits || 0,
+              monthly_used: creditsData.monthly_used || 0,
+              total_remaining: creditsData.total_remaining || 0,
+              tier: creditsData.tier || 'free',
+              percentage_used: creditsData.percentage_used || 0
+            })
+          }
+        } catch (error) {
+          console.log('[INFO] Credits API not available yet:', error)
+          // 크레딧 API가 아직 없으면 기존 프로필 데이터 사용
+        }
+
         // 2. 매장 목록 조회
         const storesRes = await fetch(api.stores.list(), {
           headers: {
@@ -858,9 +890,9 @@ export default function DashboardPage() {
   const currentTier = profile?.subscription_tier || 'free'
   const tier = tierInfo[currentTier]
 
-  // 크레딧 계산
-  const totalCredits = profile?.total_credits ?? 1000
-  const usedCredits = profile?.used_credits ?? 0
+  // 🆕 크레딧 계산 (실제 Credits API 데이터 우선 사용)
+  const totalCredits = credits?.monthly_credits ?? (profile?.total_credits ?? 1000)
+  const usedCredits = credits?.monthly_used ?? (profile?.used_credits ?? 0)
   const remainingCredits = totalCredits === -1 ? '무제한' : (totalCredits - usedCredits).toLocaleString()
   const creditPercentage = totalCredits === -1 ? 100 : ((totalCredits - usedCredits) / totalCredits) * 100
 
