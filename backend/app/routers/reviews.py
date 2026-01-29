@@ -579,7 +579,11 @@ async def analyze_reviews_stream(store_id: str, start_date: str, end_date: str):
             
             # 6. DB 저장 (분석한 기간의 종료일 기준으로 저장)
             save_date = end_date  # 분석한 기간의 종료일 사용
-            supabase.table("review_stats").delete().eq("store_id", store_id).eq("date", save_date).execute()
+            logger.info(f"저장할 날짜: {save_date}")
+            
+            # 기존 데이터 삭제
+            delete_result = supabase.table("review_stats").delete().eq("store_id", store_id).eq("date", save_date).execute()
+            logger.info(f"기존 데이터 삭제 완료: {len(delete_result.data) if delete_result.data else 0}개")
             
             blog_result = await review_service.get_blog_reviews(naver_place_id, page=1, size=1)
             blog_review_count = blog_result.get("total", 0)
@@ -591,28 +595,29 @@ async def analyze_reviews_stream(store_id: str, start_date: str, end_date: str):
             temperature_scores = [r.get("temperature_score", 0) for r in analyzed_reviews if r.get("temperature_score") is not None]
             average_temperature = round(sum(temperature_scores) / len(temperature_scores), 1) if temperature_scores else 0.0
             
-            # RLS bypass 함수 사용을 위한 파라미터 변환
+            # Upsert 방식으로 통계 데이터 저장
             stats_data = {
-                "p_store_id": store_id,
-                "p_date": save_date,
-                "p_visitor_review_count": len(analyzed_reviews),
-                "p_visitor_positive_count": stats["positive"],
-                "p_visitor_neutral_count": stats["neutral"],
-                "p_visitor_negative_count": stats["negative"],
-                "p_visitor_receipt_count": sum(1 for r in analyzed_reviews if r.get("is_receipt_review")),
-                "p_visitor_reservation_count": sum(1 for r in analyzed_reviews if r.get("is_reservation_review")),
-                "p_photo_review_count": photo_review_count,
-                "p_average_temperature": average_temperature,
-                "p_blog_review_count": blog_review_count,
-                "p_summary": summary,
-                "p_checked_at": datetime.now(KST).isoformat()
+                "store_id": store_id,
+                "date": save_date,
+                "visitor_review_count": len(analyzed_reviews),
+                "visitor_positive_count": stats["positive"],
+                "visitor_neutral_count": stats["neutral"],
+                "visitor_negative_count": stats["negative"],
+                "visitor_receipt_count": sum(1 for r in analyzed_reviews if r.get("is_receipt_review")),
+                "visitor_reservation_count": sum(1 for r in analyzed_reviews if r.get("is_reservation_review")),
+                "photo_review_count": photo_review_count,
+                "average_temperature": average_temperature,
+                "blog_review_count": blog_review_count,
+                "summary": summary,
+                "checked_at": datetime.now(KST).isoformat()
             }
             
-            # ⭐ RLS bypass 함수 호출
-            stats_insert_result = supabase.rpc("insert_review_stats_bypass_rls", stats_data).execute()
-            review_stats_id = stats_insert_result.data
-            print(f"[DEBUG] RPC 반환값 타입: {type(review_stats_id)}, 값: {review_stats_id}", flush=True)
-            print(f"[DEBUG] review_stats_id를 사용하여 리뷰 저장 시작: {len(analyzed_reviews)}개", flush=True)
+            # Upsert 실행 (중복 시 업데이트)
+            logger.info(f"통계 데이터 upsert 시작: store_id={store_id}, date={save_date}")
+            stats_insert_result = supabase.table("review_stats").upsert(stats_data, on_conflict="store_id,date").execute()
+            review_stats_id = stats_insert_result.data[0]["id"] if stats_insert_result.data else None
+            logger.info(f"통계 데이터 저장 완료: review_stats_id={review_stats_id}")
+            print(f"[DEBUG] review_stats_id={review_stats_id}, 리뷰 저장 시작: {len(analyzed_reviews)}개", flush=True)
             
             # 개별 리뷰 저장
             saved_count = 0

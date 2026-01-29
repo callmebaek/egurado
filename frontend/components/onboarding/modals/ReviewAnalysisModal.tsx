@@ -140,13 +140,19 @@ export default function ReviewAnalysisModal({
         const yesterdayStr = formatDate(yesterday);
         return { start_date: yesterdayStr, end_date: yesterdayStr };
       case 'last7days':
-        const last7days = new Date(today);
-        last7days.setDate(last7days.getDate() - 6);
-        return { start_date: formatDate(last7days), end_date: todayStr };
+        // 오늘 제외하고 지난 7일 (어제부터 7일 전까지)
+        const endDate7 = new Date(today);
+        endDate7.setDate(endDate7.getDate() - 1); // 어제
+        const startDate7 = new Date(endDate7);
+        startDate7.setDate(startDate7.getDate() - 6); // 어제로부터 6일 전
+        return { start_date: formatDate(startDate7), end_date: formatDate(endDate7) };
       case 'last30days':
-        const last30days = new Date(today);
-        last30days.setDate(last30days.getDate() - 29);
-        return { start_date: formatDate(last30days), end_date: todayStr };
+        // 오늘 제외하고 지난 30일 (어제부터 30일 전까지)
+        const endDate30 = new Date(today);
+        endDate30.setDate(endDate30.getDate() - 1); // 어제
+        const startDate30 = new Date(endDate30);
+        startDate30.setDate(startDate30.getDate() - 29); // 어제로부터 29일 전
+        return { start_date: formatDate(startDate30), end_date: formatDate(endDate30) };
       case 'today':
       default:
         return { start_date: todayStr, end_date: todayStr };
