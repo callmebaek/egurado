@@ -91,14 +91,10 @@ export function RankTrackingModal({ opened, onClose, onComplete }: RankTrackingM
   // Step 4: 수집 시간
   const [updateTimes, setUpdateTimes] = useState<number[]>([9])
   
-  // Step 5: 알림 설정
-  const [notificationEnabled, setNotificationEnabled] = useState(false)
-  const [notificationType, setNotificationType] = useState<'email' | 'sms' | 'kakao' | ''>('')
-  
   // 에러 메시지
   const [error, setError] = useState<string>('')
 
-  const totalSteps = 6
+  const totalSteps = 5
 
   // 매장 목록 로드
   useEffect(() => {
@@ -232,18 +228,8 @@ export function RankTrackingModal({ opened, onClose, onComplete }: RankTrackingM
       return
     }
 
-    // Step 4: 수집 시간 확인
+    // Step 4: 수집 시간 확인 후 추적 시작
     if (currentStep === 4) {
-      setCurrentStep(5)
-      return
-    }
-
-    // Step 5: 알림 설정 확인 후 추적 시작
-    if (currentStep === 5) {
-      if (notificationEnabled && !notificationType) {
-        setError('알림 방법을 선택해주세요')
-        return
-      }
       await handleStartTracking()
       return
     }
@@ -310,8 +296,8 @@ export function RankTrackingModal({ opened, onClose, onComplete }: RankTrackingM
         keyword: finalKeyword,
         update_frequency: updateFrequency,
         update_times: updateTimes,
-        notification_enabled: notificationEnabled,
-        notification_type: notificationEnabled ? notificationType : null
+        notification_enabled: false,
+        notification_type: null
       }
 
       const trackingResponse = await fetch(api.metrics.create(), {
@@ -336,7 +322,7 @@ export function RankTrackingModal({ opened, onClose, onComplete }: RankTrackingM
       }
 
       // 성공!
-      setCurrentStep(6)
+      setCurrentStep(5)
     } catch (err: any) {
       console.error('추적 시작 오류:', err)
       setError(err.message || '추적 시작 중 오류가 발생했습니다')
@@ -366,13 +352,11 @@ export function RankTrackingModal({ opened, onClose, onComplete }: RankTrackingM
     setShowCustomInput(false)
     setUpdateFrequency('daily_once')
     setUpdateTimes([9])
-    setNotificationEnabled(false)
-    setNotificationType('')
     setError('')
     
     onClose()
     
-    if (currentStep === 6 && onComplete) {
+    if (currentStep === 5 && onComplete) {
       onComplete()
     }
   }
@@ -688,95 +672,6 @@ export function RankTrackingModal({ opened, onClose, onComplete }: RankTrackingM
   )
 
   const renderStep5 = () => (
-    <Stack gap="md">
-      <Text size="lg" fw={600} ta="center">
-        순위 변동 시 알림을 받으시겠어요?
-      </Text>
-      <Text size="sm" c="dimmed" ta="center">
-        순위가 변동되면 즉시 알림을 받을 수 있습니다
-      </Text>
-
-      <Paper p="md" radius="md" style={{ border: '1px solid #e0e7ff' }}>
-        <Group justify="space-between" mb="md">
-          <div>
-            <Text size="sm" fw={600}>알림 받기</Text>
-            <Text size="xs" c="dimmed">순위 변동 시 알림을 받습니다</Text>
-          </div>
-          <Switch
-            size="lg"
-            color="brand"
-            checked={notificationEnabled}
-            onChange={(event) => {
-              const checked = event.currentTarget.checked
-              setNotificationEnabled(checked)
-              if (!checked) {
-                setNotificationType('')
-                setError('')
-              }
-            }}
-          />
-        </Group>
-
-        {notificationEnabled && (
-          <Box pl="md" style={{ borderLeft: '2px solid #635bff' }}>
-            <Text size="sm" fw={500} mb="xs">알림 방법</Text>
-            <Stack gap="xs">
-              {[
-                { value: 'email' as const, label: '📧 이메일', desc: '이메일로 알림 받기' },
-                { value: 'sms' as const, label: '📱 SMS', desc: '문자 메시지로 알림 받기' },
-                { value: 'kakao' as const, label: '💬 카카오톡', desc: '카카오톡으로 알림 받기' },
-              ].map((option) => (
-                <Paper
-                  key={option.value}
-                  p="sm"
-                  radius="md"
-                  style={{
-                    cursor: 'pointer',
-                    border: notificationType === option.value 
-                      ? '2px solid #635bff' 
-                      : '1px solid #e8e8e8',
-                    background: notificationType === option.value
-                      ? 'rgba(99, 91, 255, 0.05)'
-                      : '#ffffff',
-                    transition: 'all 0.2s'
-                  }}
-                  onClick={() => setNotificationType(option.value)}
-                >
-                  <Group justify="space-between">
-                    <div>
-                      <Text fw={600} size="sm">{option.label}</Text>
-                      <Text size="xs" c="dimmed">{option.desc}</Text>
-                    </div>
-                    {notificationType === option.value && (
-                      <ThemeIcon size={24} radius="xl" color="brand" variant="light">
-                        <CheckCircle2 size={16} />
-                      </ThemeIcon>
-                    )}
-                  </Group>
-                </Paper>
-              ))}
-            </Stack>
-          </Box>
-        )}
-      </Paper>
-
-      {error && (
-        <Alert color="red" title="오류">
-          {error}
-        </Alert>
-      )}
-
-      {!notificationEnabled && (
-        <Alert color="gray" title="💡 알림 설정">
-          <Text size="xs">
-            알림을 받지 않아도 언제든지 대시보드에서 순위를 확인할 수 있습니다
-          </Text>
-        </Alert>
-      )}
-    </Stack>
-  )
-
-  const renderStep6 = () => (
     <Stack gap="xl" align="center">
       <ThemeIcon size={80} radius="xl" color="brand" variant="light">
         <Sparkles size={40} />
@@ -821,14 +716,6 @@ export function RankTrackingModal({ opened, onClose, onComplete }: RankTrackingM
               {updateTimes.map(t => `${t}시`).join(', ')}
             </Text>
           </Group>
-          <Group justify="space-between">
-            <Text size="sm" c="dimmed">알림</Text>
-            <Text size="sm" fw={600}>
-              {notificationEnabled 
-                ? `${notificationType === 'email' ? '이메일' : notificationType === 'sms' ? 'SMS' : '카카오톡'}`
-                : '설정 안 함'}
-            </Text>
-          </Group>
         </Stack>
       </Paper>
 
@@ -858,7 +745,7 @@ export function RankTrackingModal({ opened, onClose, onComplete }: RankTrackingM
         <div>
           <Group justify="space-between" mb="xs">
             <Text size="sm" fw={600} c="brand">
-              {currentStep < 6 ? `${currentStep} / ${totalSteps - 1} 단계` : '완료'}
+              {currentStep < 5 ? `${currentStep} / ${totalSteps - 1} 단계` : '완료'}
             </Text>
             <Text size="sm" c="dimmed">
               {Math.round((currentStep / totalSteps) * 100)}%
@@ -879,12 +766,11 @@ export function RankTrackingModal({ opened, onClose, onComplete }: RankTrackingM
           {currentStep === 3 && renderStep3()}
           {currentStep === 4 && renderStep4()}
           {currentStep === 5 && renderStep5()}
-          {currentStep === 6 && renderStep6()}
         </div>
 
         {/* 버튼 */}
         <Group justify="space-between">
-          {currentStep > 1 && currentStep < 6 ? (
+          {currentStep > 1 && currentStep < 5 ? (
             <Button 
               variant="light" 
               color="gray"
@@ -905,7 +791,7 @@ export function RankTrackingModal({ opened, onClose, onComplete }: RankTrackingM
             rightSection={
               isLoading ? (
                 <Loader size={16} color="white" />
-              ) : currentStep < 6 ? (
+              ) : currentStep < 5 ? (
                 <ChevronRight size={16} />
               ) : null
             }
@@ -913,9 +799,9 @@ export function RankTrackingModal({ opened, onClose, onComplete }: RankTrackingM
           >
             {isLoading 
               ? '처리 중...' 
-              : currentStep === 5 
+              : currentStep === 4 
                 ? '추적 시작' 
-                : currentStep === 6 
+                : currentStep === 5 
                   ? '순위 확인하러 가기'
                   : '다음'}
           </Button>
