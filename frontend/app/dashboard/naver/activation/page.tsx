@@ -185,6 +185,7 @@ export default function ActivationPage() {
   const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null)
   const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null)
   const [isLoadingHistories, setIsLoadingHistories] = useState(false)
+  const [storeHistoryCounts, setStoreHistoryCounts] = useState<Record<string, number>>({})
 
   // 등록된 매장 목록 가져오기
   useEffect(() => {
@@ -224,6 +225,28 @@ export default function ActivationPage() {
       const data = await response.json()
       const naverStores = data.stores.filter((store: RegisteredStore) => store.platform === "naver")
       setStores(naverStores)
+
+      // 각 매장별 이력 개수 조회
+      const counts: Record<string, number> = {}
+      await Promise.all(
+        naverStores.map(async (store: RegisteredStore) => {
+          try {
+            const historyResponse = await fetch(api.naver.activationHistory(store.id), {
+              headers: { 'Authorization': `Bearer ${token}` }
+            })
+            if (historyResponse.ok) {
+              const historyData = await historyResponse.json()
+              counts[store.id] = historyData.histories?.length || 0
+            } else {
+              counts[store.id] = 0
+            }
+          } catch {
+            counts[store.id] = 0
+          }
+        })
+      )
+      setStoreHistoryCounts(counts)
+      console.log('[활성화 이력 개수]', counts)
     } catch (error) {
       console.error("Error fetching stores:", error)
       toast({
@@ -272,10 +295,13 @@ export default function ActivationPage() {
       // 과거 이력 처리
       if (historyResponse && historyResponse.ok) {
         const historyData = await historyResponse.json()
-        setActivationHistories(historyData.histories || [])
-        console.log('[활성화 이력] 조회 완료:', historyData.histories?.length || 0, '개')
+        const histories = historyData.histories || []
+        setActivationHistories(histories)
+        console.log('[활성화 이력] ✅ 조회 완료:', histories.length, '개')
+        console.log('[활성화 이력] 데이터:', histories)
       } else {
         setActivationHistories([])
+        console.log('[활성화 이력] ❌ 조회 실패 또는 응답 없음')
       }
     } catch (error) {
       console.error("Error fetching activation data:", error)
@@ -1193,7 +1219,6 @@ export default function ActivationPage() {
                     withBorder
                     style={{ 
                       height: '100%', 
-                      cursor: 'pointer', 
                       transition: 'transform 0.2s, box-shadow 0.2s'
                     }}
                     onMouseEnter={(e) => {
@@ -1204,7 +1229,6 @@ export default function ActivationPage() {
                       e.currentTarget.style.transform = 'translateY(0)'
                       e.currentTarget.style.boxShadow = ''
                     }}
-                    onClick={() => handleStoreSelect(store)}
                   >
                     {store.thumbnail ? (
                       <Card.Section>
@@ -1249,18 +1273,165 @@ export default function ActivationPage() {
                       <Text size="xs" c="dimmed" lineClamp={2}>{store.address}</Text>
                     </Stack>
 
-                    <Button
-                      fullWidth
-                      color="#635bff"
-                      mt="md"
-                      size="sm"
-                    >
-                      활성화 현황 보기
-                    </Button>
+                    <Stack gap="xs" mt="md">
+                      <Button
+                        fullWidth
+                        color="#635bff"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleStoreSelect(store)
+                        }}
+                      >
+                        활성화 현황 보기
+                      </Button>
+
+                      {storeHistoryCounts[store.id] > 0 && (
+                        <Button
+                          fullWidth
+                          variant="light"
+                          color="blue"
+                          size="xs"
+                          onClick={async (e) => {
+                            e.stopPropagation()
+                            setSelectedStore(store)
+                            setIsLoadingHistories(true)
+                            try {
+                              const token = getToken()
+                              if (!token) return
+                              
+                              const response = await fetch(api.naver.activationHistory(store.id), {
+                                headers: { 'Authorization': `Bearer ${token}` }
+                              })
+                              
+                              if (response.ok) {
+                                const data = await response.json()
+                                setActivationHistories(data.histories || [])
+                              }
+                            } catch (error) {
+                              console.error('[이력 조회 실패]', error)
+                            } finally {
+                              setIsLoadingHistories(false)
+                            }
+                          }}
+                        >
+                          📜 과거 이력 보기 ({storeHistoryCounts[store.id]}개)
+                        </Button>
+                      )}
+                    </Stack>
                   </Card>
                 </Grid.Col>
               ))}
             </Grid>
+          )}
+        </Stack>
+      </Container>
+    )
+  }
+
+  // 이력만 보는 경우 (activationData 없이 selectedStore만 있는 경우)
+  if (selectedStore && !activationData && !isLoading) {
+    return (
+      <Container size="xl" py="xl">
+        <Stack gap="xl">
+          {/* 헤더 */}
+          <Group justify="space-between">
+            <Group gap="md">
+              {selectedStore.thumbnail && (
+                <img 
+                  src={selectedStore.thumbnail} 
+                  alt={selectedStore.name}
+                  style={{ width: 48, height: 48, borderRadius: 8, objectFit: 'cover' }}
+                />
+              )}
+              <div>
+                <Title order={2}>{selectedStore.name}</Title>
+                <Text size="sm" c="dimmed">과거 활성화 이력</Text>
+              </div>
+            </Group>
+            <Button variant="light" onClick={() => {
+              setSelectedStore(null)
+              setActivationHistories([])
+            }}>
+              매장 목록으로
+            </Button>
+          </Group>
+
+          {/* 과거 활성화 이력 */}
+          {isLoadingHistories ? (
+            <Center style={{ minHeight: '40vh' }}>
+              <Stack align="center" gap="md">
+                <Loader size="lg" />
+                <Text c="dimmed">이력을 불러오는 중...</Text>
+              </Stack>
+            </Center>
+          ) : activationHistories.length > 0 ? (
+            <Paper shadow="xs" p="md" radius="md" withBorder>
+              <Title order={4} mb="md">📜 과거 활성화 이력 ({activationHistories.length}개)</Title>
+              <Stack gap="xs">
+                {activationHistories.map((history: any) => (
+                  <Paper
+                    key={history.id}
+                    p="sm"
+                    radius="md"
+                    withBorder
+                    style={{ cursor: 'pointer', transition: 'background-color 0.2s' }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#f8f9fa'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'white'
+                    }}
+                    onClick={() => {
+                      if (expandedHistoryId === history.id) {
+                        setExpandedHistoryId(null)
+                      } else {
+                        setExpandedHistoryId(history.id)
+                      }
+                    }}
+                  >
+                    <Group justify="space-between">
+                      <Group gap="xs">
+                        <Badge color="blue" variant="light">
+                          {new Date(history.created_at).toLocaleDateString('ko-KR')}
+                        </Badge>
+                        <Text size="sm" fw={500}>
+                          {new Date(history.created_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
+                        </Text>
+                      </Group>
+                      <ActionIcon variant="subtle" size="sm">
+                        {expandedHistoryId === history.id ? '▲' : '▼'}
+                      </ActionIcon>
+                    </Group>
+
+                    {expandedHistoryId === history.id && history.summary_cards && (
+                      <Stack gap="xs" mt="md" pt="md" style={{ borderTop: '1px solid #e9ecef' }}>
+                        {history.summary_cards.map((card: any) => (
+                          <Paper key={card.type} p="xs" radius="md" withBorder bg="gray.0">
+                            <Group justify="space-between">
+                              <Text size="sm" fw={500}>{card.title}</Text>
+                              <Group gap={4} wrap="nowrap">
+                                <Text size="sm" fw={700}>
+                                  {card.type === 'visitor_review' || card.type === 'blog_review'
+                                    ? (card.value % 1 === 0 ? Math.round(card.value) : card.value.toFixed(1))
+                                    : Math.round(card.value)
+                                  }
+                                </Text>
+                                <Text size="xs" c="dimmed">개</Text>
+                              </Group>
+                            </Group>
+                          </Paper>
+                        ))}
+                      </Stack>
+                    )}
+                  </Paper>
+                ))}
+              </Stack>
+            </Paper>
+          ) : (
+            <Alert icon={<AlertCircle className="w-4 h-4" />} color="blue">
+              아직 활성화 이력이 없습니다. 먼저 활성화 현황을 확인해보세요!
+            </Alert>
           )}
         </Stack>
       </Container>
