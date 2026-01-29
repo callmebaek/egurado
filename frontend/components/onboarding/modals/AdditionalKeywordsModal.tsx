@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import {
   Modal,
   Stack,
@@ -10,15 +10,13 @@ import {
   Paper,
   Group,
   Badge,
-  Divider,
   Loader,
   Progress,
   ThemeIcon,
   Center,
   Alert,
-  Checkbox,
-  ScrollArea,
-  Title,
+  Grid,
+  Divider,
 } from '@mantine/core'
 import {
   Lightbulb,
@@ -34,6 +32,7 @@ import {
   TrendingUp,
   Monitor,
   Smartphone,
+  ChevronLeft,
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import { api } from '@/lib/config'
@@ -60,7 +59,7 @@ interface SearchVolumeData {
 }
 
 export default function AdditionalKeywordsModal({ isOpen, onClose, onComplete }: AdditionalKeywordsModalProps) {
-  const { getToken, user } = useAuth()
+  const { user } = useAuth()
   const { toast } = useToast()
   const router = useRouter()
   
@@ -324,133 +323,121 @@ export default function AdditionalKeywordsModal({ isOpen, onClose, onComplete }:
     setError('')
   }
 
-  const handleSelectAll = () => {
-    if (selectedKeywords.size === combinations.length) {
-      setSelectedKeywords(new Set())
-    } else {
-      // 최대 5개까지만 선택
-      const limited = combinations.slice(0, 5)
-      setSelectedKeywords(new Set(limited))
-      if (combinations.length > 5) {
-        setError('최대 5개까지만 선택할 수 있어 처음 5개만 선택되었습니다')
-      }
-    }
-  }
-
   // Step 1: 환영 메시지
   const renderStep1 = () => (
-    <Stack spacing="xl">
+    <Stack gap="xl" py="md">
       <Center>
-        <ThemeIcon size={80} radius="xl" variant="light" color="yellow">
-          <Lightbulb size={40} />
+        <ThemeIcon size={120} radius={120} variant="light" color="yellow" style={{ background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)' }}>
+          <Lightbulb size={60} />
         </ThemeIcon>
       </Center>
       
-      <Stack spacing="md" align="center">
-        <Title order={2} align="center">숨은 알짜 키워드를 찾아보세요!</Title>
-        <Text size="lg" color="dimmed" align="center" px="md">
-          우리 고객들은 항상 대형키워드로만 움직이지 않습니다. 숨은 알짜키워드를 찾기 위해서 다양한 키워드를 고민하고 유의미한 검색량을 찾아야 합니다.
+      <Stack gap="sm" ta="center" px="md">
+        <Text size="28px" fw={700} style={{ lineHeight: 1.3 }}>
+          숨은 알짜 키워드를<br />찾아보세요!
+        </Text>
+        <Text size="md" c="dimmed" style={{ lineHeight: 1.6 }}>
+          우리 고객들은 항상 대형키워드로만 움직이지 않습니다.<br />
+          숨은 알짜키워드를 찾기 위해서 다양한 키워드를 고민하고<br />
+          유의미한 검색량을 찾아야 합니다.
         </Text>
       </Stack>
 
-      <Paper p="xl" withBorder>
-        <Stack spacing="md">
-          <Group>
-            <ThemeIcon size="lg" radius="xl" variant="light" color="blue">
-              <Sparkles size={20} />
+      <Stack gap="md">
+        <Paper p="lg" radius="md" style={{ background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)', border: 'none' }}>
+          <Group gap="md" wrap="nowrap">
+            <ThemeIcon size={48} radius="md" variant="light" color="blue">
+              <Sparkles size={24} />
             </ThemeIcon>
             <div>
-              <Text weight={600}>키워드 조합으로 기회 발굴</Text>
-              <Text size="sm" color="dimmed">지역, 상품, 업종을 조합하여 숨은 키워드를 찾습니다</Text>
+              <Text fw={600} size="sm">키워드 조합으로 기회 발굴</Text>
+              <Text size="xs" c="dimmed">지역, 상품, 업종을 조합하여 숨은 키워드를 찾습니다</Text>
             </div>
           </Group>
-          
-          <Divider />
-          
-          <Group>
-            <ThemeIcon size="lg" radius="xl" variant="light" color="grape">
-              <Search size={20} />
+        </Paper>
+        
+        <Paper p="lg" radius="md" style={{ background: 'linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)', border: 'none' }}>
+          <Group gap="md" wrap="nowrap">
+            <ThemeIcon size={48} radius="md" variant="light" color="grape">
+              <Search size={24} />
             </ThemeIcon>
             <div>
-              <Text weight={600}>실시간 검색량 확인</Text>
-              <Text size="sm" color="dimmed">네이버 검색광고 API로 정확한 검색량을 조회합니다</Text>
+              <Text fw={600} size="sm">실시간 검색량 확인</Text>
+              <Text size="xs" c="dimmed">네이버 검색광고 API로 정확한 검색량을 조회합니다</Text>
             </div>
           </Group>
-          
-          <Divider />
-          
-          <Group>
-            <ThemeIcon size="lg" radius="xl" variant="light" color="green">
-              <TrendingUp size={20} />
+        </Paper>
+        
+        <Paper p="lg" radius="md" style={{ background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)', border: 'none' }}>
+          <Group gap="md" wrap="nowrap">
+            <ThemeIcon size={48} radius="md" variant="light" color="green">
+              <TrendingUp size={24} />
             </ThemeIcon>
             <div>
-              <Text weight={600}>검색 이력 자동 저장</Text>
-              <Text size="sm" color="dimmed">조회한 키워드는 검색 이력에 자동으로 저장됩니다</Text>
+              <Text fw={600} size="sm">검색 이력 자동 저장</Text>
+              <Text size="xs" c="dimmed">조회한 키워드는 검색 이력에 자동으로 저장됩니다</Text>
             </div>
           </Group>
-        </Stack>
-      </Paper>
-
-      <Button
-        size="lg"
-        rightIcon={<ChevronRight size={20} />}
-        onClick={handleNext}
-        fullWidth
-      >
-        시작하기
-      </Button>
+        </Paper>
+      </Stack>
     </Stack>
   )
 
   // Step 2: 지역 키워드 입력
   const renderStep2 = () => (
-    <Stack spacing="xl">
-      <Stack spacing="xs">
-        <Group position="apart">
-          <Group spacing="xs">
-            <ThemeIcon size="lg" radius="xl" variant="light" color="blue">
-              <MapPin size={20} />
-            </ThemeIcon>
-            <Title order={3}>지역 키워드를 추가해주세요</Title>
-          </Group>
+    <Stack gap="xl" py="md">
+      <Stack gap="xs" ta="center">
+        <Group justify="center" gap="sm">
+          <ThemeIcon size={36} radius="xl" variant="light" color="blue">
+            <MapPin size={20} />
+          </ThemeIcon>
         </Group>
-        <Text color="dimmed">
-          고객들이 검색할 것 같은 지역명을 입력해주세요. (예: 강남, 강남역, 서초, 역삼동)
+        <Text size="24px" fw={700}>지역 키워드를 추가해주세요</Text>
+        <Text size="sm" c="dimmed">
+          고객들이 검색할 것 같은 지역명을 입력해주세요
+        </Text>
+        <Text size="xs" c="dimmed" fs="italic">
+          예: 강남, 강남역, 서초, 역삼동
         </Text>
       </Stack>
 
-      <Stack spacing="sm">
-        <Group>
+      <Stack gap="sm">
+        <Group grow>
           <TextInput
-            placeholder="지역명을 입력하고 추가 버튼을 눌러주세요"
+            placeholder="지역명 입력 후 추가 버튼 클릭"
             value={tempInput}
             onChange={(e) => setTempInput(e.target.value)}
-            onKeyPress={(e) => {
+            onKeyDown={(e) => {
               if (e.key === 'Enter') {
+                e.preventDefault()
                 addKeyword(locationKeywords, setLocationKeywords)
               }
             }}
-            style={{ flex: 1 }}
             size="md"
+            radius="md"
           />
           <Button
-            leftIcon={<Plus size={18} />}
+            leftSection={<Plus size={18} />}
             onClick={() => addKeyword(locationKeywords, setLocationKeywords)}
             disabled={!tempInput.trim()}
+            size="md"
+            radius="md"
+            style={{ minWidth: 100 }}
           >
             추가
           </Button>
         </Group>
 
         {locationKeywords.length > 0 && (
-          <Paper p="md" withBorder>
-            <Text size="sm" weight={600} mb="xs">추가된 지역 키워드 ({locationKeywords.length}개)</Text>
-            <Group spacing="xs">
+          <Paper p="md" radius="md" withBorder>
+            <Text size="sm" fw={600} mb="xs" c="dimmed">추가된 키워드 ({locationKeywords.length}개)</Text>
+            <Group gap="xs">
               {locationKeywords.map((keyword, index) => (
                 <Badge
                   key={index}
                   size="lg"
-                  variant="filled"
+                  variant="light"
+                  color="blue"
                   rightSection={
                     <X
                       size={14}
@@ -458,6 +445,7 @@ export default function AdditionalKeywordsModal({ isOpen, onClose, onComplete }:
                       onClick={() => removeKeyword(index, locationKeywords, setLocationKeywords)}
                     />
                   }
+                  style={{ paddingRight: 4 }}
                 >
                   {keyword}
                 </Badge>
@@ -468,74 +456,67 @@ export default function AdditionalKeywordsModal({ isOpen, onClose, onComplete }:
       </Stack>
 
       {error && (
-        <Alert color="red" title="입력 필요">
+        <Alert color="red" radius="md">
           {error}
         </Alert>
       )}
-
-      <Group position="apart">
-        <Button variant="subtle" onClick={handleBack}>
-          이전
-        </Button>
-        <Button
-          rightIcon={<ChevronRight size={20} />}
-          onClick={handleNext}
-        >
-          다음
-        </Button>
-      </Group>
     </Stack>
   )
 
   // Step 3: 상품 키워드 입력
   const renderStep3 = () => (
-    <Stack spacing="xl">
-      <Stack spacing="xs">
-        <Group position="apart">
-          <Group spacing="xs">
-            <ThemeIcon size="lg" radius="xl" variant="light" color="grape">
-              <Package size={20} />
-            </ThemeIcon>
-            <Title order={3}>상품/서비스 키워드를 추가해주세요</Title>
-          </Group>
+    <Stack gap="xl" py="md">
+      <Stack gap="xs" ta="center">
+        <Group justify="center" gap="sm">
+          <ThemeIcon size={36} radius="xl" variant="light" color="grape">
+            <Package size={20} />
+          </ThemeIcon>
         </Group>
-        <Text color="dimmed">
-          제공하는 상품이나 서비스를 입력해주세요. (예: 커피, 아메리카노, 케이크, 브런치)
+        <Text size="24px" fw={700}>상품/서비스 키워드를 추가해주세요</Text>
+        <Text size="sm" c="dimmed">
+          제공하는 상품이나 서비스를 입력해주세요
+        </Text>
+        <Text size="xs" c="dimmed" fs="italic">
+          예: 커피, 아메리카노, 케이크, 브런치
         </Text>
       </Stack>
 
-      <Stack spacing="sm">
-        <Group>
+      <Stack gap="sm">
+        <Group grow>
           <TextInput
-            placeholder="상품/서비스를 입력하고 추가 버튼을 눌러주세요"
+            placeholder="상품/서비스 입력 후 추가 버튼 클릭"
             value={tempInput}
             onChange={(e) => setTempInput(e.target.value)}
-            onKeyPress={(e) => {
+            onKeyDown={(e) => {
               if (e.key === 'Enter') {
+                e.preventDefault()
                 addKeyword(productKeywords, setProductKeywords)
               }
             }}
-            style={{ flex: 1 }}
             size="md"
+            radius="md"
           />
           <Button
-            leftIcon={<Plus size={18} />}
+            leftSection={<Plus size={18} />}
             onClick={() => addKeyword(productKeywords, setProductKeywords)}
             disabled={!tempInput.trim()}
+            size="md"
+            radius="md"
+            style={{ minWidth: 100 }}
           >
             추가
           </Button>
         </Group>
 
         {productKeywords.length > 0 && (
-          <Paper p="md" withBorder>
-            <Text size="sm" weight={600} mb="xs">추가된 상품 키워드 ({productKeywords.length}개)</Text>
-            <Group spacing="xs">
+          <Paper p="md" radius="md" withBorder>
+            <Text size="sm" fw={600} mb="xs" c="dimmed">추가된 키워드 ({productKeywords.length}개)</Text>
+            <Group gap="xs">
               {productKeywords.map((keyword, index) => (
                 <Badge
                   key={index}
                   size="lg"
-                  variant="filled"
+                  variant="light"
                   color="grape"
                   rightSection={
                     <X
@@ -544,6 +525,7 @@ export default function AdditionalKeywordsModal({ isOpen, onClose, onComplete }:
                       onClick={() => removeKeyword(index, productKeywords, setProductKeywords)}
                     />
                   }
+                  style={{ paddingRight: 4 }}
                 >
                   {keyword}
                 </Badge>
@@ -554,74 +536,67 @@ export default function AdditionalKeywordsModal({ isOpen, onClose, onComplete }:
       </Stack>
 
       {error && (
-        <Alert color="red" title="입력 필요">
+        <Alert color="red" radius="md">
           {error}
         </Alert>
       )}
-
-      <Group position="apart">
-        <Button variant="subtle" onClick={handleBack}>
-          이전
-        </Button>
-        <Button
-          rightIcon={<ChevronRight size={20} />}
-          onClick={handleNext}
-        >
-          다음
-        </Button>
-      </Group>
     </Stack>
   )
 
   // Step 4: 업종 키워드 입력
   const renderStep4 = () => (
-    <Stack spacing="xl">
-      <Stack spacing="xs">
-        <Group position="apart">
-          <Group spacing="xs">
-            <ThemeIcon size="lg" radius="xl" variant="light" color="green">
-              <Building2 size={20} />
-            </ThemeIcon>
-            <Title order={3}>업종 키워드를 추가해주세요</Title>
-          </Group>
+    <Stack gap="xl" py="md">
+      <Stack gap="xs" ta="center">
+        <Group justify="center" gap="sm">
+          <ThemeIcon size={36} radius="xl" variant="light" color="green">
+            <Building2 size={20} />
+          </ThemeIcon>
         </Group>
-        <Text color="dimmed">
-          업종이나 카테고리를 입력해주세요. (예: 카페, 맛집, 디저트카페, 브런치카페)
+        <Text size="24px" fw={700}>업종 키워드를 추가해주세요</Text>
+        <Text size="sm" c="dimmed">
+          업종이나 카테고리를 입력해주세요
+        </Text>
+        <Text size="xs" c="dimmed" fs="italic">
+          예: 카페, 맛집, 디저트카페, 브런치카페
         </Text>
       </Stack>
 
-      <Stack spacing="sm">
-        <Group>
+      <Stack gap="sm">
+        <Group grow>
           <TextInput
-            placeholder="업종을 입력하고 추가 버튼을 눌러주세요"
+            placeholder="업종 입력 후 추가 버튼 클릭"
             value={tempInput}
             onChange={(e) => setTempInput(e.target.value)}
-            onKeyPress={(e) => {
+            onKeyDown={(e) => {
               if (e.key === 'Enter') {
+                e.preventDefault()
                 addKeyword(industryKeywords, setIndustryKeywords)
               }
             }}
-            style={{ flex: 1 }}
             size="md"
+            radius="md"
           />
           <Button
-            leftIcon={<Plus size={18} />}
+            leftSection={<Plus size={18} />}
             onClick={() => addKeyword(industryKeywords, setIndustryKeywords)}
             disabled={!tempInput.trim()}
+            size="md"
+            radius="md"
+            style={{ minWidth: 100 }}
           >
             추가
           </Button>
         </Group>
 
         {industryKeywords.length > 0 && (
-          <Paper p="md" withBorder>
-            <Text size="sm" weight={600} mb="xs">추가된 업종 키워드 ({industryKeywords.length}개)</Text>
-            <Group spacing="xs">
+          <Paper p="md" radius="md" withBorder>
+            <Text size="sm" fw={600} mb="xs" c="dimmed">추가된 키워드 ({industryKeywords.length}개)</Text>
+            <Group gap="xs">
               {industryKeywords.map((keyword, index) => (
                 <Badge
                   key={index}
                   size="lg"
-                  variant="filled"
+                  variant="light"
                   color="green"
                   rightSection={
                     <X
@@ -630,6 +605,7 @@ export default function AdditionalKeywordsModal({ isOpen, onClose, onComplete }:
                       onClick={() => removeKeyword(index, industryKeywords, setIndustryKeywords)}
                     />
                   }
+                  style={{ paddingRight: 4 }}
                 >
                   {keyword}
                 </Badge>
@@ -640,141 +616,100 @@ export default function AdditionalKeywordsModal({ isOpen, onClose, onComplete }:
       </Stack>
 
       {error && (
-        <Alert color="red" title="입력 필요">
+        <Alert color="red" radius="md">
           {error}
         </Alert>
       )}
-
-      <Group position="apart">
-        <Button variant="subtle" onClick={handleBack}>
-          이전
-        </Button>
-        <Button
-          rightIcon={<ChevronRight size={20} />}
-          onClick={handleNext}
-        >
-          조합 생성하기
-        </Button>
-      </Group>
     </Stack>
   )
 
   // Step 5: 조합 결과 미리보기
   const renderStep5 = () => (
-    <Stack spacing="xl">
-      <Stack spacing="xs">
-        <Group spacing="xs">
-          <ThemeIcon size="lg" radius="xl" variant="light" color="yellow">
-            <Sparkles size={20} />
-          </ThemeIcon>
-          <Title order={3}>키워드 조합이 완성되었습니다!</Title>
-        </Group>
-        <Text color="dimmed">
-          총 {combinations.length}개의 키워드 조합이 생성되었습니다. 다음 단계에서 원하는 키워드를 선택해주세요.
+    <Stack gap="xl" py="md">
+      <Center>
+        <ThemeIcon size={80} radius={80} variant="light" color="yellow" style={{ background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)' }}>
+          <Sparkles size={40} />
+        </ThemeIcon>
+      </Center>
+
+      <Stack gap="xs" ta="center">
+        <Text size="24px" fw={700}>
+          키워드 조합이 완성되었습니다!
+        </Text>
+        <Text size="sm" c="dimmed">
+          총 {combinations.length}개의 키워드 조합이 생성되었습니다
         </Text>
       </Stack>
 
-      <Paper p="md" withBorder>
-        <Stack spacing="md">
-          <Group>
-            <Badge size="lg" variant="light" color="blue">지역: {locationKeywords.length}개</Badge>
-            <Badge size="lg" variant="light" color="grape">상품: {productKeywords.length}개</Badge>
-            <Badge size="lg" variant="light" color="green">업종: {industryKeywords.length}개</Badge>
+      <Paper p="xl" radius="md" style={{ background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)', border: 'none' }}>
+        <Stack gap="md">
+          <Group justify="center" gap="xs">
+            <Badge size="lg" variant="filled" color="blue">지역: {locationKeywords.length}개</Badge>
+            <Badge size="lg" variant="filled" color="grape">상품: {productKeywords.length}개</Badge>
+            <Badge size="lg" variant="filled" color="green">업종: {industryKeywords.length}개</Badge>
           </Group>
           
           <Divider />
           
           <div>
-            <Text size="sm" weight={600} mb="xs">조합 예시 (일부)</Text>
-            <ScrollArea style={{ height: 200 }}>
-              <Stack spacing="xs">
-                {combinations.slice(0, 10).map((combo, index) => (
-                  <Paper key={index} p="xs" withBorder>
-                    <Text size="sm">{combo}</Text>
-                  </Paper>
-                ))}
-                {combinations.length > 10 && (
-                  <Text size="xs" color="dimmed" align="center">
-                    외 {combinations.length - 10}개...
-                  </Text>
-                )}
-              </Stack>
-            </ScrollArea>
+            <Text size="sm" fw={600} mb="xs" ta="center">조합 예시 (일부)</Text>
+            <Stack gap="xs">
+              {combinations.slice(0, 8).map((combo, index) => (
+                <Paper key={index} p="sm" withBorder style={{ textAlign: 'center' }}>
+                  <Text size="sm">{combo}</Text>
+                </Paper>
+              ))}
+              {combinations.length > 8 && (
+                <Text size="xs" c="dimmed" ta="center">
+                  외 {combinations.length - 8}개...
+                </Text>
+              )}
+            </Stack>
           </div>
         </Stack>
       </Paper>
 
-      <Alert color="blue" title="안내">
-        다음 단계에서 검색량을 조회할 키워드를 선택해주세요. 한 번에 최대 5개까지 선택 가능합니다.
+      <Alert color="blue" radius="md" title="다음 단계">
+        검색량을 조회할 키워드를 선택해주세요 (최대 5개)
       </Alert>
-
-      <Group position="apart">
-        <Button variant="subtle" onClick={handleBack}>
-          이전
-        </Button>
-        <Button
-          rightIcon={<ChevronRight size={20} />}
-          onClick={handleNext}
-        >
-          키워드 선택하기
-        </Button>
-      </Group>
     </Stack>
   )
 
   // Step 6: 키워드 선택
   const renderStep6 = () => (
-    <Stack spacing="xl">
-      <Stack spacing="xs">
-        <Group spacing="xs">
-          <ThemeIcon size="lg" radius="xl" variant="light" color="blue">
-            <Search size={20} />
-          </ThemeIcon>
-          <Title order={3}>검색량을 조회할 키워드를 선택해주세요</Title>
-        </Group>
-        <Text color="dimmed">
-          최대 5개까지 선택 가능합니다. 선택한 키워드의 검색량을 조회합니다.
+    <Stack gap="xl" py="md">
+      <Stack gap="xs" ta="center">
+        <Text size="24px" fw={700}>
+          검색량을 조회할 키워드를<br />선택해주세요
         </Text>
+        <Text size="sm" c="dimmed">
+          최대 5개까지 선택 가능합니다
+        </Text>
+        <Badge size="lg" color="blue">
+          선택: {selectedKeywords.size} / 5개
+        </Badge>
       </Stack>
 
-      <Group position="apart">
-        <Text size="sm" weight={600}>
-          선택: {selectedKeywords.size} / 5개
-        </Text>
-        <Button
-          size="xs"
-          variant="subtle"
-          onClick={handleSelectAll}
-        >
-          {selectedKeywords.size === Math.min(combinations.length, 5) ? "전체 해제" : "전체 선택"}
-        </Button>
-      </Group>
-
-      <ScrollArea style={{ height: 400 }}>
-        <Stack spacing="xs">
+      <div style={{ maxHeight: 400, overflowY: 'auto' }}>
+        <Stack gap="xs">
           {combinations.map((combo, index) => (
             <Paper
               key={index}
               p="md"
+              radius="md"
               withBorder
               style={{
                 cursor: 'pointer',
-                backgroundColor: selectedKeywords.has(combo) ? '#e7f5ff' : 'white',
                 borderColor: selectedKeywords.has(combo) ? '#228be6' : '#dee2e6',
+                background: selectedKeywords.has(combo) ? 'linear-gradient(135deg, #e7f5ff 0%, #d0ebff 100%)' : 'white',
+                transition: 'all 0.2s'
               }}
               onClick={() => toggleKeywordSelection(combo)}
             >
-              <Group position="apart">
-                <Group>
-                  <Checkbox
-                    checked={selectedKeywords.has(combo)}
-                    onChange={() => toggleKeywordSelection(combo)}
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                  <Text>{combo}</Text>
-                </Group>
+              <Group justify="space-between">
+                <Text size="sm">{combo}</Text>
                 {selectedKeywords.has(combo) && (
-                  <ThemeIcon size="sm" color="blue" variant="light">
+                  <ThemeIcon size="sm" color="blue" variant="light" radius="xl">
                     <CheckCircle2 size={16} />
                   </ThemeIcon>
                 )}
@@ -782,54 +717,32 @@ export default function AdditionalKeywordsModal({ isOpen, onClose, onComplete }:
             </Paper>
           ))}
         </Stack>
-      </ScrollArea>
+      </div>
 
       {error && (
-        <Alert color="red" title="선택 필요">
+        <Alert color="red" radius="md">
           {error}
         </Alert>
       )}
-
-      {selectedKeywords.size > 0 && (
-        <Paper p="md" withBorder style={{ backgroundColor: '#e7f5ff' }}>
-          <Text size="sm" weight={600} mb="xs">선택한 키워드</Text>
-          <Group spacing="xs">
-            {Array.from(selectedKeywords).map((keyword, index) => (
-              <Badge key={index} size="lg" color="blue">
-                {keyword}
-              </Badge>
-            ))}
-          </Group>
-        </Paper>
-      )}
-
-      <Group position="apart">
-        <Button variant="subtle" onClick={handleBack}>
-          이전
-        </Button>
-        <Button
-          rightIcon={<ChevronRight size={20} />}
-          onClick={handleNext}
-          disabled={selectedKeywords.size === 0}
-        >
-          검색량 조회하기
-        </Button>
-      </Group>
     </Stack>
   )
 
   // Step 7: 검색 중
   const renderStep7 = () => (
-    <Stack spacing="xl" align="center" py="xl">
-      <Loader size="xl" />
-      <Stack spacing="xs" align="center">
-        <Title order={3}>검색량을 조회하고 있습니다...</Title>
-        <Text color="dimmed" align="center">
-          네이버 검색광고 API에서 데이터를 가져오는 중입니다.
-        </Text>
+    <Center style={{ minHeight: 300 }}>
+      <Stack gap="xl" align="center">
+        <Loader size={80} />
+        <Stack gap="xs" align="center">
+          <Text size="24px" fw={700}>검색량을 조회하고 있습니다...</Text>
+          <Text size="sm" c="dimmed" ta="center">
+            네이버 검색광고 API에서 데이터를 가져오는 중입니다
+          </Text>
+        </Stack>
+        <div style={{ width: '100%', maxWidth: 400 }}>
+          <Progress value={100} animated radius="md" size="lg" />
+        </div>
       </Stack>
-      <Progress value={100} animate style={{ width: '100%' }} />
-    </Stack>
+    </Center>
   )
 
   // Step 8: 검색 결과
@@ -846,42 +759,45 @@ export default function AdditionalKeywordsModal({ isOpen, onClose, onComplete }:
     }
 
     return (
-      <Stack spacing="xl">
+      <Stack gap="xl" py="md">
         <Center>
-          <ThemeIcon size={80} radius="xl" variant="light" color="green">
-            <CheckCircle2 size={40} />
+          <ThemeIcon size={100} radius={100} variant="light" color="green" style={{ background: 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)' }}>
+            <CheckCircle2 size={50} />
           </ThemeIcon>
         </Center>
 
-        <Stack spacing="xs" align="center">
-          <Title order={2} align="center">검색량 조회 완료!</Title>
-          <Text color="dimmed" align="center">
-            {searchResults.length}개 키워드의 검색량을 조회했습니다. 검색 이력에 자동으로 저장되었습니다.
+        <Stack gap="xs" ta="center">
+          <Text size="28px" fw={700}>검색량 조회 완료!</Text>
+          <Text size="sm" c="dimmed">
+            {searchResults.length}개 키워드의 검색량을 조회했습니다
+          </Text>
+          <Text size="xs" c="dimmed">
+            검색 이력에 자동으로 저장되었습니다
           </Text>
         </Stack>
 
-        <ScrollArea style={{ height: 400 }}>
-          <Stack spacing="sm">
+        <div style={{ maxHeight: 400, overflowY: 'auto' }}>
+          <Stack gap="sm">
             {searchResults.map((result, index) => (
-              <Paper key={index} p="md" withBorder>
-                <Stack spacing="sm">
-                  <Group position="apart">
-                    <Text weight={600} size="lg">{result.keyword}</Text>
-                    <Badge size="lg" color="blue">
+              <Paper key={index} p="lg" radius="md" withBorder>
+                <Stack gap="sm">
+                  <Group justify="space-between">
+                    <Text fw={600} size="md">{result.keyword}</Text>
+                    <Badge size="xl" variant="light" color="blue">
                       월 {formatNumber(getTotalVolume(result))}회
                     </Badge>
                   </Group>
                   
-                  <Group spacing="xl">
-                    <Group spacing="xs">
+                  <Group gap="xl">
+                    <Group gap="xs">
                       <Monitor size={16} color="#228be6" />
-                      <Text size="sm" color="dimmed">
+                      <Text size="sm" c="dimmed">
                         PC: {formatNumber(result.monthly_pc_qc_cnt)}
                       </Text>
                     </Group>
-                    <Group spacing="xs">
+                    <Group gap="xs">
                       <Smartphone size={16} color="#228be6" />
-                      <Text size="sm" color="dimmed">
+                      <Text size="sm" c="dimmed">
                         모바일: {formatNumber(result.monthly_mobile_qc_cnt)}
                       </Text>
                     </Group>
@@ -889,38 +805,34 @@ export default function AdditionalKeywordsModal({ isOpen, onClose, onComplete }:
 
                   <Divider />
 
-                  <Group spacing="xl">
+                  <Group>
                     <div>
-                      <Text size="xs" color="dimmed">경쟁 강도</Text>
-                      <Text size="sm" weight={600}>{result.comp_idx}</Text>
+                      <Text size="xs" c="dimmed">경쟁 강도</Text>
+                      <Text size="sm" fw={600}>{result.comp_idx}</Text>
                     </div>
                   </Group>
                 </Stack>
               </Paper>
             ))}
           </Stack>
-        </ScrollArea>
+        </div>
 
-        <Alert color="blue" title="이제 어떻게 하나요?">
+        <Alert color="blue" radius="md" title="💡 이제 어떻게 하나요?">
           조회한 키워드는 "키워드 검색량조회" 페이지의 검색 이력에서 언제든지 다시 확인할 수 있습니다!
         </Alert>
 
-        <Group position="apart">
-          <Button
-            variant="outline"
-            onClick={handleClose}
-          >
-            닫기
-          </Button>
-          <Button
-            onClick={() => {
-              router.push('/dashboard/naver/keywords')
-              handleClose()
-            }}
-          >
-            검색 이력 보러가기
-          </Button>
-        </Group>
+        <Button
+          size="lg"
+          fullWidth
+          radius="md"
+          onClick={() => {
+            router.push('/dashboard/naver/keywords')
+            handleClose()
+            onComplete?.()
+          }}
+        >
+          검색 이력 보러가기
+        </Button>
       </Stack>
     )
   }
@@ -929,28 +841,71 @@ export default function AdditionalKeywordsModal({ isOpen, onClose, onComplete }:
     <Modal
       opened={isOpen}
       onClose={handleClose}
-      size="xl"
+      size="lg"
+      centered
+      padding="xl"
+      radius="md"
       title={
-        currentStep <= 7 && (
-          <Stack spacing={4}>
-            <Text size="sm" color="dimmed">
+        currentStep <= 7 ? (
+          <Stack gap={8}>
+            <Text size="sm" c="dimmed">
               추가 키워드 발굴하기 ({currentStep}/{totalSteps})
             </Text>
-            <Progress value={(currentStep / totalSteps) * 100} />
+            <Progress value={(currentStep / totalSteps) * 100} radius="md" />
           </Stack>
-        )
+        ) : null
       }
       closeOnClickOutside={false}
       closeOnEscape={false}
+      styles={{
+        body: {
+          maxHeight: '70vh',
+          overflowY: 'auto'
+        }
+      }}
     >
-      {currentStep === 1 && renderStep1()}
-      {currentStep === 2 && renderStep2()}
-      {currentStep === 3 && renderStep3()}
-      {currentStep === 4 && renderStep4()}
-      {currentStep === 5 && renderStep5()}
-      {currentStep === 6 && renderStep6()}
-      {currentStep === 7 && renderStep7()}
-      {currentStep === 8 && renderStep8()}
+      <Stack gap="xl">
+        {currentStep === 1 && renderStep1()}
+        {currentStep === 2 && renderStep2()}
+        {currentStep === 3 && renderStep3()}
+        {currentStep === 4 && renderStep4()}
+        {currentStep === 5 && renderStep5()}
+        {currentStep === 6 && renderStep6()}
+        {currentStep === 7 && renderStep7()}
+        {currentStep === 8 && renderStep8()}
+
+        {currentStep > 1 && currentStep < 7 && (
+          <Group justify="space-between">
+            <Button
+              variant="subtle"
+              onClick={handleBack}
+              leftSection={<ChevronLeft size={18} />}
+              radius="md"
+            >
+              이전
+            </Button>
+            <Button
+              onClick={handleNext}
+              rightSection={<ChevronRight size={18} />}
+              radius="md"
+            >
+              {currentStep === 4 ? '조합 생성하기' : currentStep === 6 ? '검색량 조회하기' : '다음'}
+            </Button>
+          </Group>
+        )}
+
+        {currentStep === 1 && (
+          <Button
+            size="lg"
+            fullWidth
+            rightSection={<ChevronRight size={20} />}
+            onClick={handleNext}
+            radius="md"
+          >
+            시작하기
+          </Button>
+        )}
+      </Stack>
     </Modal>
   )
 }
