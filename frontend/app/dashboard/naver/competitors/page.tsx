@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import { useSearchParams } from 'next/navigation'
 import { Users, Search, Loader2, TrendingUp, TrendingDown, Minus, AlertCircle, CheckCircle2, Store, Target, FileText, ExternalLink } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { useAuth } from "@/lib/auth-context"
@@ -115,6 +116,7 @@ interface ComparisonResult {
 export default function CompetitorsPage() {
   const { toast } = useToast()
   const { user, getToken } = useAuth()
+  const searchParams = useSearchParams()
   
   // 단계 관리
   const [step, setStep] = useState<1 | 2 | 3>(1)
@@ -146,6 +148,36 @@ export default function CompetitorsPage() {
   useEffect(() => {
     fetchStores()
   }, [])
+  
+  // URL 파라미터로 자동 분석 시작
+  useEffect(() => {
+    const autoStart = searchParams.get('autoStart')
+    const storeId = searchParams.get('storeId')
+    const keywordParam = searchParams.get('keyword')
+    
+    if (autoStart === 'true' && storeId && keywordParam && stores.length > 0 && !selectedStore) {
+      // 매장 찾기
+      const store = stores.find(s => s.id === storeId)
+      if (store) {
+        console.log('[경쟁매장 분석] 자동 분석 시작:', store.store_name, keywordParam)
+        setSelectedStore(store)
+        setKeyword(keywordParam)
+        setStep(2)
+      }
+    }
+  }, [searchParams, stores])
+  
+  // 매장과 키워드가 설정되면 자동으로 검색 시작
+  useEffect(() => {
+    const autoStart = searchParams.get('autoStart')
+    
+    if (autoStart === 'true' && selectedStore && keyword && step === 2 && !loadingSearch) {
+      console.log('[경쟁매장 분석] 검색 시작:', keyword)
+      // 한 번만 실행하도록 autoStart 파라미터 제거 (브라우저 히스토리 변경 없이)
+      window.history.replaceState({}, '', window.location.pathname)
+      handleKeywordSubmit()
+    }
+  }, [selectedStore, keyword, step])
   
   const fetchStores = async () => {
     setLoadingStores(true)
