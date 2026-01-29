@@ -242,13 +242,13 @@ async def collect_metrics_now(
         
         # 🆕 크레딧 체크 (Feature Flag 확인)
         if settings.CREDIT_SYSTEM_ENABLED and settings.CREDIT_CHECK_STRICT:
-            has_credits = await credit_service.check_sufficient_credits(
+            check_result = await credit_service.check_sufficient_credits(
                 user_id=user_id,
-                feature_name="rank_check",
-                credits_required=5
+                feature="rank_check",
+                required_credits=5
             )
             
-            if not has_credits:
+            if not check_result.sufficient:
                 logger.warning(f"[Credits] User {user_id} has insufficient credits for rank check")
                 raise HTTPException(
                     status_code=status.HTTP_402_PAYMENT_REQUIRED,
@@ -265,7 +265,7 @@ async def collect_metrics_now(
             try:
                 transaction_id = await credit_service.deduct_credits(
                     user_id=user_id,
-                    feature_name="rank_check",
+                    feature="rank_check",
                     credits_amount=5,
                     metadata={
                         "tracker_id": str(tracker_id),
