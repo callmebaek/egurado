@@ -497,13 +497,19 @@ export default function ReviewManagementPage() {
         const yesterdayStr = formatDate(yesterday)
         return { start_date: yesterdayStr, end_date: yesterdayStr }
       case "last7days":
-        const last7days = new Date(today)
-        last7days.setDate(last7days.getDate() - 6) // 오늘 포함 7일
-        return { start_date: formatDate(last7days), end_date: todayStr }
+        // 오늘 제외하고 지난 7일 (어제부터 7일 전까지)
+        const endDate7 = new Date(today)
+        endDate7.setDate(endDate7.getDate() - 1) // 어제
+        const startDate7 = new Date(endDate7)
+        startDate7.setDate(startDate7.getDate() - 6) // 어제로부터 6일 전
+        return { start_date: formatDate(startDate7), end_date: formatDate(endDate7) }
       case "last30days":
-        const last30days = new Date(today)
-        last30days.setDate(last30days.getDate() - 29) // 오늘 포함 30일
-        return { start_date: formatDate(last30days), end_date: todayStr }
+        // 오늘 제외하고 지난 30일 (어제부터 30일 전까지)
+        const endDate30 = new Date(today)
+        endDate30.setDate(endDate30.getDate() - 1) // 어제
+        const startDate30 = new Date(endDate30)
+        startDate30.setDate(startDate30.getDate() - 29) // 어제로부터 29일 전
+        return { start_date: formatDate(startDate30), end_date: formatDate(endDate30) }
       case "today":
       default:
         return { start_date: todayStr, end_date: todayStr }
@@ -602,14 +608,33 @@ export default function ReviewManagementPage() {
       
       // 2단계: 스트리밍 분석 (실시간 SSE)
       console.log("🔄 2단계: 실시간 분석 시작...")
+      console.log("📡 SSE URL:", api.reviews.analyzeStream(selectedStoreId, dateRange.start_date, dateRange.end_date))
       
       const eventSource = new EventSource(
         api.reviews.analyzeStream(selectedStoreId, dateRange.start_date, dateRange.end_date)
       )
       
+      // SSE 타임아웃 설정 (5분)
+      const sseTimeout = setTimeout(() => {
+        console.error("⏰ SSE 타임아웃: 5분 초과")
+        eventSource.close()
+        setAnalyzing(false)
+        toast({
+          title: "분석 시간 초과",
+          description: "분석 시간이 너무 오래 걸립니다. 다시 시도해주세요.",
+          variant: "destructive",
+        })
+      }, 300000) // 5분
+      
+      eventSource.onopen = () => {
+        console.log("✅ SSE 연결 성공")
+      }
+      
       eventSource.onmessage = async (event) => {
         try {
+          console.log("📨 SSE 메시지 수신:", event.data.substring(0, 100))
           const data = JSON.parse(event.data)
+          console.log("📊 파싱된 데이터 타입:", data.type)
           
           switch (data.type) {
             case 'init':
@@ -624,7 +649,7 @@ export default function ReviewManagementPage() {
               break
               
             case 'review_analyzed':
-              console.log(`✅ 리뷰 분석 완료:`, data.review)
+              console.log(`✅ 리뷰 분석 완료:`, data.review?.id)
               // 개별 리뷰 업데이트
               setReviews(prev => prev.map(review => 
                 review.naver_review_id === data.review.id
@@ -658,6 +683,7 @@ export default function ReviewManagementPage() {
               
             case 'complete':
               console.log("🎉 분석 완료!", data)
+              clearTimeout(sseTimeout) // 타임아웃 클리어
               eventSource.close()
               
               setAnalysisProgress(100)
@@ -682,22 +708,31 @@ export default function ReviewManagementPage() {
               break
               
             case 'error':
-              console.error("❌ 분석 오류:", data.message)
+              console.error("❌ 백엔드 분석 오류:", data.message)
+              clearTimeout(sseTimeout)
               eventSource.close()
-              throw new Error(data.message)
+              setAnalyzing(false)
+              toast({
+                title: "분석 실패",
+                description: data.message || "리뷰 분석 중 오류가 발생했습니다.",
+                variant: "destructive",
+              })
+              break
           }
         } catch (err) {
-          console.error("SSE 파싱 오류:", err)
+          console.error("❌ SSE 메시지 파싱 오류:", err, "원본 데이터:", event.data)
         }
       }
       
       eventSource.onerror = (error) => {
         console.error("❌ SSE 연결 오류:", error)
+        console.error("   readyState:", eventSource.readyState)
+        clearTimeout(sseTimeout)
         eventSource.close()
         setAnalyzing(false)
         toast({
-          title: "분석 중 오류 발생",
-          description: "네트워크 오류가 발생했습니다.",
+          title: "분석 중 연결 오류 발생",
+          description: "서버 연결이 끊어졌습니다. 다시 시도해주세요.",
           variant: "destructive",
         })
       }

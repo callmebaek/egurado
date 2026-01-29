@@ -563,12 +563,19 @@ async def analyze_reviews_stream(store_id: str, start_date: str, end_date: str):
             
             # 5. 요약 생성
             logger.info(f"요약 생성 시작...")
-            summary = await sentiment_service.generate_daily_summary(
-                analyzed_reviews,
-                stats,
-                start_date,
-                end_date
-            )
+            try:
+                summary = await sentiment_service.generate_daily_summary(
+                    analyzed_reviews,
+                    stats,
+                    start_date,
+                    end_date
+                )
+                logger.info(f"요약 생성 완료: {len(summary)}자")
+            except Exception as summary_error:
+                logger.error(f"요약 생성 실패: {str(summary_error)}", exc_info=True)
+                summary = f"{period_text} 동안 총 {len(analyzed_reviews)}개의 리뷰가 등록되었습니다. " \
+                          f"긍정 {stats['positive']}개, 중립 {stats['neutral']}개, 부정 {stats['negative']}개입니다."
+                logger.info(f"기본 요약 사용")
             
             # 6. DB 저장
             today_date = datetime.now(KST).strftime("%Y-%m-%d")
