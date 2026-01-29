@@ -463,12 +463,37 @@ async def analyze_store_reviews(
 
 
 @router.get("/analyze-stream")
-async def analyze_reviews_stream(store_id: str, start_date: str, end_date: str):
+async def analyze_reviews_stream(
+    store_id: str,
+    start_date: str,
+    end_date: str,
+    current_user: dict = Depends(get_current_user)
+):
     """
     리뷰 실시간 스트리밍 분석 (SSE)
     
     추출된 리뷰를 하나씩 분석하면서 진행 상황을 실시간으로 전송합니다.
+    크레딧: 30 크레딧 소모
     """
+    user_id = UUID(current_user["id"])
+    
+    # 🆕 크레딧 체크 (Feature Flag 확인)
+    if settings.CREDIT_SYSTEM_ENABLED and settings.CREDIT_CHECK_STRICT:
+        check_result = await credit_service.check_sufficient_credits(
+            user_id=user_id,
+            feature="review_analysis",
+            required_credits=30
+        )
+        
+        if not check_result.sufficient:
+            logger.warning(f"[Credits] User {user_id} has insufficient credits for review analysis (stream)")
+            raise HTTPException(
+                status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                detail="크레딧이 부족합니다. 크레딧을 충전하거나 플랜을 업그레이드해주세요."
+            )
+        
+        logger.info(f"[Credits] User {user_id} has sufficient credits for review analysis (stream)")
+    
     async def event_generator():
         try:
             logger.info(f"스트리밍 분석 시작: store_id={store_id}, 기간={start_date} ~ {end_date}")
@@ -767,6 +792,24 @@ async def analyze_reviews_stream(store_id: str, start_date: str, end_date: str):
                     print(f"Review {idx}/{len(analyzed_reviews)} save failed - naver_id={review.get('naver_review_id')}: {str(insert_error)}", flush=True)
             
             print(f"Review save summary: {saved_count} saved ({skipped_count} updated), {failed_count} failed out of {len(analyzed_reviews)} total", flush=True)
+            
+            # 🆕 크레딧 차감 (성공 시)
+            if settings.CREDIT_SYSTEM_ENABLED and settings.CREDIT_AUTO_DEDUCT:
+                try:
+                    transaction_id = await credit_service.deduct_credits(
+                        user_id=user_id,
+                        feature="review_analysis",
+                        credits_amount=30,
+                        metadata={
+                            "store_id": store_id,
+                            "start_date": start_date,
+                            "end_date": end_date,
+                            "review_count": len(analyzed_reviews)
+                        }
+                    )
+                    logger.info(f"[Credits] Deducted 30 credits from user {user_id} (transaction: {transaction_id})")
+                except Exception as credit_error:
+                    logger.error(f"[Credits] Failed to deduct credits: {credit_error}")
             
             # 7. 완료 전송
             complete_data = {
