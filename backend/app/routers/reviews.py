@@ -306,31 +306,47 @@ async def analyze_store_reviews(request: AnalyzeReviewsRequest):
             end_date_str
         )
         
-        # 7. DB 저장
-        # 7-1. 기존 통계 삭제 (같은 조회일, 같은 매장)
-        today_date = datetime.now(KST).strftime("%Y-%m-%d")
-        supabase.table("review_stats").delete().eq("store_id", store_id).eq("date", today_date).execute()
+        # 7. DB 저장 (분석 기간의 종료일 기준으로 저장)
+        save_date = end_date_str  # 분석한 기간의 종료일 사용 (today_date 대신)
+        logger.info(f"통계 저장 시작: store_id={store_id}, date={save_date}")
         
-        # 7-2. 통계 저장 (RLS bypass 함수 사용)
-        stats_data = {
-            "p_store_id": store_id,
-            "p_date": today_date,  # 조회 시점 날짜
-            "p_visitor_review_count": len(analyzed_reviews),
-            "p_visitor_positive_count": stats["positive"],
-            "p_visitor_neutral_count": stats["neutral"],
-            "p_visitor_negative_count": stats["negative"],
-            "p_visitor_receipt_count": stats["receipt"],
-            "p_visitor_reservation_count": stats["reservation"],
-            "p_blog_review_count": blog_review_count,
-            "p_summary": summary,
-            "p_checked_at": datetime.now(KST).isoformat()
+        # 7-1. 통계 저장 (Optimistic Locking: INSERT 먼저 시도, 실패 시 UPDATE)
+        normal_stats_data = {
+            "store_id": store_id,
+            "date": save_date,
+            "visitor_review_count": len(analyzed_reviews),
+            "visitor_positive_count": stats["positive"],
+            "visitor_neutral_count": stats["neutral"],
+            "visitor_negative_count": stats["negative"],
+            "visitor_receipt_count": stats["receipt"],
+            "visitor_reservation_count": stats["reservation"],
+            "blog_review_count": blog_review_count,
+            "summary": summary,
+            "checked_at": datetime.now(KST).isoformat()
         }
         
-        # ⭐ RLS bypass 함수 호출
-        stats_insert_result = supabase.rpc("insert_review_stats_bypass_rls", stats_data).execute()
-        review_stats_id = stats_insert_result.data
-        logger.info(f"[DEBUG] RPC 반환값 타입: {type(review_stats_id)}, 값: {review_stats_id}")
-        logger.info(f"통계 저장 완료: id={review_stats_id}")
+        try:
+            # 먼저 INSERT 시도
+            stats_result = supabase.table("review_stats").insert(normal_stats_data).execute()
+            review_stats_id = stats_result.data[0]["id"] if stats_result.data else None
+            logger.info(f"✅ 새 통계 데이터 삽입 완료: id={review_stats_id}")
+        except Exception as insert_error:
+            error_msg = str(insert_error)
+            # 중복 키 에러인 경우만 UPDATE로 전환
+            if "duplicate key" in error_msg.lower() or "23505" in error_msg:
+                logger.info(f"⚠️ 중복 키 감지, UPDATE로 전환")
+                existing_stats = supabase.table("review_stats").select("id").eq("store_id", store_id).eq("date", save_date).execute()
+                if existing_stats.data:
+                    stats_result = supabase.table("review_stats").update(normal_stats_data).eq("store_id", store_id).eq("date", save_date).execute()
+                    review_stats_id = existing_stats.data[0]["id"]
+                    logger.info(f"✅ 통계 데이터 업데이트 완료: id={review_stats_id}")
+                else:
+                    raise Exception("중복 키 에러 발생했지만 기존 데이터를 찾을 수 없음")
+            else:
+                # 다른 에러면 그대로 재발생
+                raise
+        
+        logger.info(f"통계 저장 완료: id={review_stats_id}, date={save_date}")
         
         # 7-3. 개별 리뷰 저장
         for review in analyzed_reviews:
@@ -380,7 +396,7 @@ async def analyze_store_reviews(request: AnalyzeReviewsRequest):
         return ReviewStatsResponse(
             status="success",
             store_id=store_id,
-            date=today_date,
+            date=save_date,  # 저장된 날짜 반환
             checked_at=datetime.now(KST).isoformat(),
             visitor_review_count=len(analyzed_reviews),
             visitor_positive_count=stats["positive"],
