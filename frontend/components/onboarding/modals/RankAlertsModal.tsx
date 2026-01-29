@@ -173,7 +173,7 @@ export default function RankAlertsModal({ opened, onClose, onComplete }: RankAle
       }
 
       const response = await fetch(api.metrics.update(selectedTracker.id), {
-        method: 'PUT',
+        method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
