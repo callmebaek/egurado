@@ -4,7 +4,8 @@
  * 대표키워드 분석 페이지
  * 검색 키워드 입력 시 상위 15개 매장의 대표 키워드를 분석하여 표시
  */
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -33,13 +34,68 @@ interface AnalysisResult {
 
 export default function MainKeywordsAnalysisPage() {
   const { toast } = useToast()
+  const searchParams = useSearchParams()
   
   const [searchQuery, setSearchQuery] = useState<string>("")
   const [loading, setLoading] = useState<boolean>(false)
   const [result, setResult] = useState<AnalysisResult | null>(null)
   
-  const handleAnalyze = async () => {
-    if (!searchQuery.trim()) {
+  // URL 파라미터에서 query가 있으면 자동으로 분석 시작
+  useEffect(() => {
+    const queryFromUrl = searchParams.get('query')
+    if (queryFromUrl && queryFromUrl.trim()) {
+      const trimmedQuery = queryFromUrl.trim()
+      setSearchQuery(trimmedQuery)
+      
+      // 자동 분석 실행
+      const autoAnalyze = async () => {
+        setLoading(true)
+        
+        try {
+          const response = await fetch(api.naver.analyzeMainKeywords(), {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              query: trimmedQuery
+            })
+          })
+          
+          if (!response.ok) {
+            const error = await response.json()
+            throw new Error(error.detail || "분석에 실패했습니다")
+          }
+          
+          const data: AnalysisResult = await response.json()
+          setResult(data)
+          
+          toast({
+            title: "분석 완료",
+            description: `${data.stores_analyzed.length}개 매장의 대표 키워드를 분석했습니다.`,
+          })
+          
+        } catch (error) {
+          console.error("분석 오류:", error)
+          toast({
+            title: "분석 실패",
+            description: error instanceof Error ? error.message : "알 수 없는 오류가 발생했습니다.",
+            variant: "destructive",
+          })
+        } finally {
+          setLoading(false)
+        }
+      }
+      
+      // 약간의 딜레이 후 실행
+      setTimeout(() => {
+        autoAnalyze()
+      }, 100)
+    }
+  }, [searchParams, toast])
+  
+  const handleAnalyzeWithQuery = async (query: string) => {
+    if (!query.trim()) {
       toast({
         title: "검색 키워드 입력",
         description: "분석할 검색 키워드를 입력해주세요.",
@@ -57,7 +113,7 @@ export default function MainKeywordsAnalysisPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          query: searchQuery.trim()
+          query: query.trim()
         })
       })
       
@@ -84,6 +140,10 @@ export default function MainKeywordsAnalysisPage() {
     } finally {
       setLoading(false)
     }
+  }
+  
+  const handleAnalyze = async () => {
+    await handleAnalyzeWithQuery(searchQuery)
   }
   
   const isKeywordHighlighted = (keyword: string): boolean => {

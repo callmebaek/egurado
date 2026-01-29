@@ -105,7 +105,8 @@ export default function MainKeywordsModal({ opened, onClose, onComplete }: MainK
 
   const handleViewFullPage = () => {
     handleClose();
-    router.push('/dashboard/naver/main-keywords');
+    // URL 파라미터로 키워드를 전달하여 페이지에서 자동 분석
+    router.push(`/dashboard/naver/main-keywords?query=${encodeURIComponent(keyword)}`);
   };
 
   const getTopKeywords = () => {
