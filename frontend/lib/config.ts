@@ -163,6 +163,14 @@ export const api = {
     history: (storeId: string) => api.url(`/api/v1/target-keywords/history/${storeId}`),
     historyDetail: (historyId: string) => api.url(`/api/v1/target-keywords/history/detail/${historyId}`),
   },
+  
+  /**
+   * 문의하기 관련 API
+   */
+  contact: {
+    submit: () => api.url('/api/v1/contact/submit'),
+    myMessages: () => api.url('/api/v1/contact/my-messages'),
+  },
 } as const
 
 /**

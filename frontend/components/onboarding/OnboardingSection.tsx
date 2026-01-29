@@ -17,6 +17,7 @@ import ReviewAnalysisModal from './modals/ReviewAnalysisModal';
 import AdditionalKeywordsModal from './modals/AdditionalKeywordsModal';
 import PlaceActivationModal from './modals/PlaceActivationModal';
 import MainKeywordsModal from './modals/MainKeywordsModal';
+import ContactModal from './modals/ContactModal';
 import GenericActionModal from './modals/GenericActionModal';
 
 interface OnboardingSectionProps {
@@ -41,6 +42,7 @@ export default function OnboardingSection({ onStoreRegistered }: OnboardingSecti
   const [showAdditionalKeywordsModal, setShowAdditionalKeywordsModal] = useState(false);
   const [showPlaceActivationModal, setShowPlaceActivationModal] = useState(false);
   const [showMainKeywordsModal, setShowMainKeywordsModal] = useState(false);
+  const [showContactModal, setShowContactModal] = useState(false);
   const [genericModalConfig, setGenericModalConfig] = useState<{
     isOpen: boolean;
     title: string;
@@ -220,12 +222,7 @@ export default function OnboardingSection({ onStoreRegistered }: OnboardingSecti
         break;
       
       case ACTION_KEYS.CONTACT_WHIPLACE:
-        setGenericModalConfig({
-          isOpen: true,
-          title: '윕플에 문의하기',
-          description: '이 기능은 곧 추가될 예정입니다.',
-          actionKey,
-        });
+        setShowContactModal(true);
         break;
         
       default:
@@ -390,6 +387,12 @@ export default function OnboardingSection({ onStoreRegistered }: OnboardingSecti
         opened={showMainKeywordsModal}
         onClose={() => setShowMainKeywordsModal(false)}
         onComplete={() => markActionComplete(selectedAction || '')}
+      />
+
+      <ContactModal
+        opened={showContactModal}
+        onClose={() => setShowContactModal(false)}
+        onComplete={() => markActionComplete(ACTION_KEYS.CONTACT_WHIPLACE)}
       />
 
       <GenericActionModal
