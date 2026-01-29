@@ -127,12 +127,19 @@ export default function AIReviewReplyModal({
       }
 
       // 리뷰 목록 조회 (답글 대기 중인 것만 카운트)
+      const limit = reviewLimit === 'all' ? 0 : parseInt(reviewLimit);
+      
       const response = await fetch(
-        `${api.baseUrl}/api/v1/naver/reviews/list/${selectedStore.place_id}?limit=${reviewLimit}`,
+        `${api.baseUrl}/api/v1/ai-reply/reviews`,
         {
+          method: 'POST',
           headers: {
-            'Authorization': `Bearer ${token}`
-          }
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            store_id: selectedStore.id,
+            limit: limit
+          })
         }
       );
 
