@@ -688,7 +688,7 @@ export default function ReviewManagementPage() {
               
               setAnalysisProgress(100)
               
-              // 통계만 새로고침 (백엔드가 저장한 날짜로 조회)
+              // 통계 및 리뷰 목록 새로고침 (백엔드가 저장한 날짜로 조회)
               const savedDate = data.saved_date || dateRange.end_date
               console.log("📊 통계 로딩 시작")
               console.log("   - 백엔드가 저장한 날짜:", data.saved_date)
@@ -698,13 +698,29 @@ export default function ReviewManagementPage() {
               await loadStats(savedDate)
               console.log("✅ 통계 로딩 완료")
               
-              // 리뷰 목록은 이미 SSE로 실시간 업데이트되었으므로 그대로 유지
-              console.log("📝 리뷰 목록 유지 (SSE로 이미 업데이트됨)")
-              console.log("📝 현재 리뷰 개수:", reviews.length)
-              
-              // 필터 재적용 (분석된 sentiment로 필터링)
-              applyFilters()
-              console.log("📝 필터링된 리뷰 개수:", filteredReviews.length)
+              // DB에서 분석된 리뷰 목록 다시 로드 (날짜별로 필터링됨)
+              console.log("📝 리뷰 목록 다시 로드 중 (날짜:", savedDate, ")")
+              try {
+                const token = await getToken()
+                const reviewsApiUrl = `https://api.whiplace.com/api/v1/reviews/list/${selectedStoreId}?date=${savedDate}`
+                console.log("📝 리뷰 API URL:", reviewsApiUrl)
+                const reviewsResponse = await fetch(reviewsApiUrl, {
+                  headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                  }
+                })
+                if (reviewsResponse.ok) {
+                  const reviewsData = await reviewsResponse.json()
+                  console.log("📝 리뷰 로드 성공:", reviewsData.length, "개")
+                  setReviews(reviewsData)
+                  setFilteredReviews(reviewsData)
+                } else {
+                  console.error("❌ 리뷰 로드 실패:", reviewsResponse.status)
+                }
+              } catch (error) {
+                console.error("❌ 리뷰 로드 에러:", error)
+              }
               
               toast({
                 title: "리뷰 분석 완료",
