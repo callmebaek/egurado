@@ -161,12 +161,12 @@ async def submit_contact_message(
         # 사용자 이름 가져오기
         supabase = get_supabase_client()
         profile_result = supabase.table("profiles")\
-            .select("name")\
+            .select("display_name, email")\
             .eq("id", user_id)\
             .single()\
             .execute()
         
-        user_name = profile_result.data.get("name", "Unknown") if profile_result.data else "Unknown"
+        user_name = profile_result.data.get("display_name") or profile_result.data.get("email", "Unknown") if profile_result.data else "Unknown"
         
         logger.info(f"[문의하기] User {user_id} ({user_name}) 문의 제출 시작")
         
