@@ -581,10 +581,6 @@ async def analyze_reviews_stream(store_id: str, start_date: str, end_date: str):
             save_date = end_date  # 분석한 기간의 종료일 사용
             logger.info(f"저장할 날짜: {save_date}")
             
-            # 기존 데이터 삭제
-            delete_result = supabase.table("review_stats").delete().eq("store_id", store_id).eq("date", save_date).execute()
-            logger.info(f"기존 데이터 삭제 완료: {len(delete_result.data) if delete_result.data else 0}개")
-            
             blog_result = await review_service.get_blog_reviews(naver_place_id, page=1, size=1)
             blog_review_count = blog_result.get("total", 0)
             
@@ -595,7 +591,7 @@ async def analyze_reviews_stream(store_id: str, start_date: str, end_date: str):
             temperature_scores = [r.get("temperature_score", 0) for r in analyzed_reviews if r.get("temperature_score") is not None]
             average_temperature = round(sum(temperature_scores) / len(temperature_scores), 1) if temperature_scores else 0.0
             
-            # Upsert 방식으로 통계 데이터 저장
+            # 통계 데이터 저장 (기존 데이터 있으면 업데이트, 없으면 삽입)
             stats_data = {
                 "store_id": store_id,
                 "date": save_date,
@@ -612,10 +608,21 @@ async def analyze_reviews_stream(store_id: str, start_date: str, end_date: str):
                 "checked_at": datetime.now(KST).isoformat()
             }
             
-            # Upsert 실행 (중복 시 업데이트)
-            logger.info(f"통계 데이터 upsert 시작: store_id={store_id}, date={save_date}")
-            stats_insert_result = supabase.table("review_stats").upsert(stats_data, on_conflict="store_id,date").execute()
-            review_stats_id = stats_insert_result.data[0]["id"] if stats_insert_result.data else None
+            # 기존 데이터 확인
+            logger.info(f"통계 데이터 저장 시작: store_id={store_id}, date={save_date}")
+            existing_stats = supabase.table("review_stats").select("id").eq("store_id", store_id).eq("date", save_date).execute()
+            
+            if existing_stats.data:
+                # 업데이트
+                logger.info(f"기존 통계 데이터 업데이트: id={existing_stats.data[0]['id']}")
+                stats_result = supabase.table("review_stats").update(stats_data).eq("store_id", store_id).eq("date", save_date).execute()
+                review_stats_id = existing_stats.data[0]["id"]
+            else:
+                # 삽입
+                logger.info(f"새 통계 데이터 삽입")
+                stats_result = supabase.table("review_stats").insert(stats_data).execute()
+                review_stats_id = stats_result.data[0]["id"] if stats_result.data else None
+            
             logger.info(f"통계 데이터 저장 완료: review_stats_id={review_stats_id}")
             print(f"[DEBUG] review_stats_id={review_stats_id}, 리뷰 저장 시작: {len(analyzed_reviews)}개", flush=True)
             
