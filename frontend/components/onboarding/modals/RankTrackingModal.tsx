@@ -234,8 +234,8 @@ export function RankTrackingModal({ opened, onClose, onComplete }: RankTrackingM
       return
     }
 
-    // Step 6: 완료 - 키워드 순위 추적 페이지로 이동
-    if (currentStep === 6) {
+    // Step 5: 완료 - 키워드 순위 추적 페이지로 이동
+    if (currentStep === 5) {
       router.push('/dashboard/naver/metrics-tracker')
       handleClose()
       return
