@@ -52,7 +52,7 @@ export default function FeatureVoteModal({
 
   const handleGoToVote = () => {
     // 투표 페이지로 이동
-    router.push('/dashboard/feature-vote');
+    router.push('/dashboard/feature-voting');
     onClose();
   };
 
