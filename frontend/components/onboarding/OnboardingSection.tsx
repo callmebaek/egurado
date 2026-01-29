@@ -18,6 +18,7 @@ import AdditionalKeywordsModal from './modals/AdditionalKeywordsModal';
 import PlaceActivationModal from './modals/PlaceActivationModal';
 import MainKeywordsModal from './modals/MainKeywordsModal';
 import ContactModal from './modals/ContactModal';
+import CompetitorAnalysisModal from './modals/CompetitorAnalysisModal';
 import GenericActionModal from './modals/GenericActionModal';
 
 interface OnboardingSectionProps {
@@ -43,6 +44,7 @@ export default function OnboardingSection({ onStoreRegistered }: OnboardingSecti
   const [showPlaceActivationModal, setShowPlaceActivationModal] = useState(false);
   const [showMainKeywordsModal, setShowMainKeywordsModal] = useState(false);
   const [showContactModal, setShowContactModal] = useState(false);
+  const [showCompetitorAnalysisModal, setShowCompetitorAnalysisModal] = useState(false);
   const [genericModalConfig, setGenericModalConfig] = useState<{
     isOpen: boolean;
     title: string;
@@ -167,14 +169,7 @@ export default function OnboardingSection({ onStoreRegistered }: OnboardingSecti
         break;
         
       case ACTION_KEYS.COMPETITOR_ANALYSIS:
-        setGenericModalConfig({
-          isOpen: true,
-          title: '경쟁업체 분석하기',
-          description: '경쟁 매장과 내 매장을 비교 분석하세요.',
-          pageUrl: '/dashboard/naver/competitor-analysis',
-          pageLabel: '경쟁업체 분석 페이지로 이동',
-          actionKey,
-        });
+        setShowCompetitorAnalysisModal(true);
         break;
         
       case ACTION_KEYS.MAIN_KEYWORDS:
@@ -393,6 +388,12 @@ export default function OnboardingSection({ onStoreRegistered }: OnboardingSecti
         opened={showContactModal}
         onClose={() => setShowContactModal(false)}
         onComplete={() => markActionComplete(ACTION_KEYS.CONTACT_WHIPLACE)}
+      />
+
+      <CompetitorAnalysisModal
+        opened={showCompetitorAnalysisModal}
+        onClose={() => setShowCompetitorAnalysisModal(false)}
+        onComplete={() => markActionComplete(ACTION_KEYS.COMPETITOR_ANALYSIS)}
       />
 
       <GenericActionModal
