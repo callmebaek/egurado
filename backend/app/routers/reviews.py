@@ -467,18 +467,30 @@ async def analyze_reviews_stream(
     store_id: str,
     start_date: str,
     end_date: str,
-    current_user: dict = Depends(get_current_user)
+    token: Optional[str] = None
 ):
     """
     리뷰 실시간 스트리밍 분석 (SSE)
     
     추출된 리뷰를 하나씩 분석하면서 진행 상황을 실시간으로 전송합니다.
     크레딧: 30 크레딧 소모
-    """
-    user_id = UUID(current_user["id"])
     
-    # 🆕 크레딧 체크 (Feature Flag 확인)
-    if settings.CREDIT_SYSTEM_ENABLED and settings.CREDIT_CHECK_STRICT:
+    Note: SSE는 커스텀 헤더를 지원하지 않으므로 토큰을 쿼리 파라미터로 받습니다.
+    """
+    # 토큰으로 사용자 인증
+    user_id = None
+    if token:
+        try:
+            from app.routers.auth import decode_access_token
+            payload = decode_access_token(token)
+            if payload:
+                user_id = UUID(payload.get("user_id"))
+                logger.info(f"[SSE Auth] User authenticated: {user_id}")
+        except Exception as e:
+            logger.warning(f"[SSE Auth] Token validation failed: {e}")
+    
+    # 🆕 크레딧 체크 (Feature Flag 확인) - user_id가 있을 때만
+    if user_id and settings.CREDIT_SYSTEM_ENABLED and settings.CREDIT_CHECK_STRICT:
         check_result = await credit_service.check_sufficient_credits(
             user_id=user_id,
             feature="review_analysis",
@@ -793,8 +805,8 @@ async def analyze_reviews_stream(
             
             print(f"Review save summary: {saved_count} saved ({skipped_count} updated), {failed_count} failed out of {len(analyzed_reviews)} total", flush=True)
             
-            # 🆕 크레딧 차감 (성공 시)
-            if settings.CREDIT_SYSTEM_ENABLED and settings.CREDIT_AUTO_DEDUCT:
+            # 🆕 크레딧 차감 (성공 시) - user_id가 있을 때만
+            if user_id and settings.CREDIT_SYSTEM_ENABLED and settings.CREDIT_AUTO_DEDUCT:
                 try:
                     transaction_id = await credit_service.deduct_credits(
                         user_id=user_id,

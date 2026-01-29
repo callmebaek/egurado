@@ -608,11 +608,15 @@ export default function ReviewManagementPage() {
       
       // 2단계: 스트리밍 분석 (실시간 SSE)
       console.log("🔄 2단계: 실시간 분석 시작...")
-      console.log("📡 SSE URL:", api.reviews.analyzeStream(selectedStoreId, dateRange.start_date, dateRange.end_date))
       
-      const eventSource = new EventSource(
-        api.reviews.analyzeStream(selectedStoreId, dateRange.start_date, dateRange.end_date)
-      )
+      // 토큰 가져오기 (SSE는 커스텀 헤더를 지원하지 않으므로 URL에 추가)
+      const token = await getToken()
+      const baseUrl = api.reviews.analyzeStream(selectedStoreId, dateRange.start_date, dateRange.end_date)
+      const urlWithToken = `${baseUrl}&token=${encodeURIComponent(token)}`
+      
+      console.log("📡 SSE URL:", baseUrl)
+      
+      const eventSource = new EventSource(urlWithToken)
       
       // SSE 타임아웃 설정 (5분)
       const sseTimeout = setTimeout(() => {

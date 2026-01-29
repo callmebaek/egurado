@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { useStores } from "@/lib/hooks/useStores"
+import { useAuth } from "@/lib/auth-context"
 import { EmptyStoreMessage } from "@/components/EmptyStoreMessage"
 import { KeywordCombinator } from "@/components/KeywordCombinator"
 import { Loader2, Search, Sparkles, Trash2, TrendingUp, Monitor, Smartphone } from "lucide-react"
@@ -26,6 +27,7 @@ interface SearchVolumeData {
 
 export default function NaverKeywordsPage() {
   const { hasStores, isLoading, userId } = useStores()
+  const { getToken } = useAuth()
   const { toast } = useToast()
   
   const [keywordInput, setKeywordInput] = useState("")
@@ -116,12 +118,14 @@ export default function NaverKeywordsPage() {
 
     setIsSearching(true)
     try {
+      const token = await getToken()
       const response = await fetch(
         `${api.baseUrl}/api/v1/keyword-search-volume/search-volume`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`,
           },
           body: JSON.stringify({
             user_id: userId,

@@ -10,6 +10,7 @@ import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/use-toast'
+import { useAuth } from '@/lib/auth-context'
 import { Search, TrendingUp, Star } from 'lucide-react'
 import { api } from '@/lib/config'
 
@@ -34,6 +35,7 @@ interface AnalysisResult {
 
 export default function MainKeywordsAnalysisPage() {
   const { toast } = useToast()
+  const { getToken } = useAuth()
   const searchParams = useSearchParams()
   
   const [searchQuery, setSearchQuery] = useState<string>("")
@@ -52,10 +54,12 @@ export default function MainKeywordsAnalysisPage() {
         setLoading(true)
         
         try {
+          const token = await getToken()
           const response = await fetch(api.naver.analyzeMainKeywords(), {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`,
             },
             body: JSON.stringify({
               query: trimmedQuery
@@ -107,10 +111,12 @@ export default function MainKeywordsAnalysisPage() {
     setLoading(true)
     
     try {
+      const token = await getToken()
       const response = await fetch(api.naver.analyzeMainKeywords(), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
         },
         body: JSON.stringify({
           query: query.trim()

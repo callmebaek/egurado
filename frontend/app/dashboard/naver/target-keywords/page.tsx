@@ -310,10 +310,12 @@ export default function TargetKeywordsPage() {
 
     setIsAnalyzing(true)
     try {
+      const token = await getToken()
       const response = await fetch(`${api.baseUrl}/api/v1/target-keywords/analyze`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
         },
         body: JSON.stringify({
           store_id: selectedStore,
