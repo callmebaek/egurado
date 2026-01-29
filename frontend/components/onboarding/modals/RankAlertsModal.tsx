@@ -75,7 +75,7 @@ export default function RankAlertsModal({ opened, onClose, onComplete }: RankAle
         throw new Error('로그인이 필요합니다.');
       }
 
-      const response = await fetch(api.stores.registered(), {
+      const response = await fetch(api.stores.list(), {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -86,7 +86,8 @@ export default function RankAlertsModal({ opened, onClose, onComplete }: RankAle
       }
 
       const data = await response.json();
-      setStores(data.stores || []);
+      const naverStores = data.stores?.filter((s: any) => s.platform === 'naver') || [];
+      setStores(naverStores);
     } catch (err) {
       console.error('매장 목록 로드 실패:', err);
       setError(err instanceof Error ? err.message : '매장 목록을 불러오는 중 오류가 발생했습니다.');
