@@ -1124,19 +1124,58 @@ class KeywordsAnalysisResponse(BaseModel):
 
 
 @router.post("/analyze-main-keywords", response_model=KeywordsAnalysisResponse)
-async def analyze_main_keywords(request: KeywordsAnalysisRequest):
+async def analyze_main_keywords(
+    request: KeywordsAnalysisRequest,
+    current_user: dict = Depends(get_current_user)
+):
     """
     대표키워드 분석
     
     검색 키워드로 상위 15개 매장의 대표 키워드를 분석합니다.
+    크레딧: 10 크레딧 소모
     """
+    user_id = UUID(current_user["id"])
+    
     try:
+        # 🆕 크레딧 체크 (Feature Flag 확인)
+        if settings.CREDIT_SYSTEM_ENABLED and settings.CREDIT_CHECK_STRICT:
+            check_result = await credit_service.check_sufficient_credits(
+                user_id=user_id,
+                feature="main_keyword_analysis",
+                required_credits=10
+            )
+            
+            if not check_result.sufficient:
+                logger.warning(f"[Credits] User {user_id} has insufficient credits for main keyword analysis")
+                raise HTTPException(
+                    status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                    detail="크레딧이 부족합니다. 크레딧을 충전하거나 플랜을 업그레이드해주세요."
+                )
+            
+            logger.info(f"[Credits] User {user_id} has sufficient credits for main keyword analysis")
+        
         logger.info(f"[대표키워드 분석] 요청: {request.query}")
         
         result = await keywords_analyzer_service.analyze_top_stores_keywords(
             query=request.query,
             top_n=15
         )
+        
+        # 🆕 크레딧 차감 (성공 시)
+        if settings.CREDIT_SYSTEM_ENABLED and settings.CREDIT_AUTO_DEDUCT:
+            try:
+                transaction_id = await credit_service.deduct_credits(
+                    user_id=user_id,
+                    feature="main_keyword_analysis",
+                    credits_amount=10,
+                    metadata={
+                        "query": request.query,
+                        "stores_count": len(result.get("stores_analyzed", []))
+                    }
+                )
+                logger.info(f"[Credits] Deducted 10 credits from user {user_id} (transaction: {transaction_id})")
+            except Exception as credit_error:
+                logger.error(f"[Credits] Failed to deduct credits: {credit_error}")
         
         return KeywordsAnalysisResponse(**result)
         

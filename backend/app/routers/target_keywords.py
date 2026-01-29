@@ -10,6 +10,8 @@ import logging
 from app.services.naver_target_keyword_service import NaverTargetKeywordService
 from app.core.database import get_supabase_client
 from app.routers.auth import get_current_user
+from app.services.credit_service import credit_service
+from app.core.config import settings
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -27,7 +29,10 @@ class TargetKeywordAnalysisRequest(BaseModel):
 
 
 @router.post("/analyze")
-async def analyze_target_keywords(request: TargetKeywordAnalysisRequest):
+async def analyze_target_keywords(
+    request: TargetKeywordAnalysisRequest,
+    current_user: dict = Depends(get_current_user)
+):
     """
     타겟 키워드 추출 및 진단
     
@@ -36,6 +41,7 @@ async def analyze_target_keywords(request: TargetKeywordAnalysisRequest):
     - 상위 20개 키워드 추출
     - 매장의 SEO 최적화 상태 분석
     - 히스토리 저장 (매장별 최대 10개, 초과 시 가장 오래된 것 삭제)
+    크레딧: 20 크레딧 소모
     
     Args:
         request: 분석 요청 데이터
@@ -46,7 +52,26 @@ async def analyze_target_keywords(request: TargetKeywordAnalysisRequest):
     Raises:
         HTTPException: 분석 실패 시
     """
+    user_id = UUID(current_user["id"])
+    
     try:
+        # 🆕 크레딧 체크 (Feature Flag 확인)
+        if settings.CREDIT_SYSTEM_ENABLED and settings.CREDIT_CHECK_STRICT:
+            check_result = await credit_service.check_sufficient_credits(
+                user_id=user_id,
+                feature="target_keyword_extraction",
+                required_credits=20
+            )
+            
+            if not check_result.sufficient:
+                logger.warning(f"[Credits] User {user_id} has insufficient credits for target keyword extraction")
+                raise HTTPException(
+                    status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                    detail="크레딧이 부족합니다. 크레딧을 충전하거나 플랜을 업그레이드해주세요."
+                )
+            
+            logger.info(f"[Credits] User {user_id} has sufficient credits for target keyword extraction")
+        
         logger.info(f"[타겟 키워드 API] 요청 받음: store_id={request.store_id}, user_id={request.user_id}")
         logger.info(f"[타겟 키워드 API] 입력 키워드: regions={request.regions}, landmarks={request.landmarks}, menus={request.menus}, industries={request.industries}, others={request.others}")
         
@@ -148,6 +173,23 @@ async def analyze_target_keywords(request: TargetKeywordAnalysisRequest):
         # 응답에 history_id 추가
         if history_id:
             result["history_id"] = history_id
+        
+        # 🆕 크레딧 차감 (성공 시)
+        if settings.CREDIT_SYSTEM_ENABLED and settings.CREDIT_AUTO_DEDUCT:
+            try:
+                transaction_id = await credit_service.deduct_credits(
+                    user_id=user_id,
+                    feature="target_keyword_extraction",
+                    credits_amount=20,
+                    metadata={
+                        "store_id": request.store_id,
+                        "keywords_count": len(result.get('data', {}).get('top_keywords', [])),
+                        "history_id": history_id
+                    }
+                )
+                logger.info(f"[Credits] Deducted 20 credits from user {user_id} (transaction: {transaction_id})")
+            except Exception as credit_error:
+                logger.error(f"[Credits] Failed to deduct credits: {credit_error}")
         
         logger.info(f"[타겟 키워드 API] 분석 완료: {len(result.get('data', {}).get('top_keywords', []))}개 키워드")
         return result

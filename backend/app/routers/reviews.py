@@ -10,7 +10,7 @@ from typing import List, Optional
 from uuid import UUID
 import pytz
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 import json
@@ -18,6 +18,9 @@ import asyncio
 
 from app.services.naver_review_service import NaverReviewService
 from app.services.review_sentiment_service import ReviewSentimentService
+from app.routers.auth import get_current_user
+from app.services.credit_service import credit_service
+from app.core.config import settings
 from app.core.database import get_supabase_client
 
 # 한국 시간대
@@ -211,7 +214,10 @@ async def extract_reviews(request: ExtractReviewsRequest):
 
 
 @router.post("/analyze", response_model=ReviewStatsResponse)
-async def analyze_store_reviews(request: AnalyzeReviewsRequest):
+async def analyze_store_reviews(
+    request: AnalyzeReviewsRequest,
+    current_user: dict = Depends(get_current_user)
+):
     """
     매장의 리뷰를 분석하여 통계 생성
     
@@ -219,8 +225,28 @@ async def analyze_store_reviews(request: AnalyzeReviewsRequest):
     2. OpenAI로 감성 분석
     3. DB에 저장 (일별 통계 + 개별 리뷰)
     4. 통계 반환
+    크레딧: 30 크레딧 소모
     """
+    user_id = UUID(current_user["id"])
+    
     try:
+        # 🆕 크레딧 체크 (Feature Flag 확인)
+        if settings.CREDIT_SYSTEM_ENABLED and settings.CREDIT_CHECK_STRICT:
+            check_result = await credit_service.check_sufficient_credits(
+                user_id=user_id,
+                feature="review_analysis",
+                required_credits=30
+            )
+            
+            if not check_result.sufficient:
+                logger.warning(f"[Credits] User {user_id} has insufficient credits for review analysis")
+                raise HTTPException(
+                    status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                    detail="크레딧이 부족합니다. 크레딧을 충전하거나 플랜을 업그레이드해주세요."
+                )
+            
+            logger.info(f"[Credits] User {user_id} has sufficient credits for review analysis")
+        
         store_id = request.store_id
         # 한국 시간 기준으로 오늘 날짜 계산
         kst_now = datetime.now(KST)
@@ -391,6 +417,24 @@ async def analyze_store_reviews(request: AnalyzeReviewsRequest):
         
         total_time = time.time() - start_time
         logger.info(f"⏱️ 전체 분석 완료: 총 소요시간 {total_time:.2f}초 (리뷰 조회: {fetch_time:.2f}초, AI 분석: {analysis_time:.2f}초)")
+        
+        # 🆕 크레딧 차감 (성공 시)
+        if settings.CREDIT_SYSTEM_ENABLED and settings.CREDIT_AUTO_DEDUCT:
+            try:
+                transaction_id = await credit_service.deduct_credits(
+                    user_id=user_id,
+                    feature="review_analysis",
+                    credits_amount=30,
+                    metadata={
+                        "store_id": store_id,
+                        "start_date": start_date_str,
+                        "end_date": end_date_str,
+                        "review_count": len(analyzed_reviews)
+                    }
+                )
+                logger.info(f"[Credits] Deducted 30 credits from user {user_id} (transaction: {transaction_id})")
+            except Exception as credit_error:
+                logger.error(f"[Credits] Failed to deduct credits: {credit_error}")
         
         # 8. 응답 반환
         return ReviewStatsResponse(
