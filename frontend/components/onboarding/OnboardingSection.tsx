@@ -19,6 +19,7 @@ import PlaceActivationModal from './modals/PlaceActivationModal';
 import MainKeywordsModal from './modals/MainKeywordsModal';
 import ContactModal from './modals/ContactModal';
 import CompetitorAnalysisModal from './modals/CompetitorAnalysisModal';
+import FeatureVoteModal from './modals/FeatureVoteModal';
 import GenericActionModal from './modals/GenericActionModal';
 
 interface OnboardingSectionProps {
@@ -45,6 +46,7 @@ export default function OnboardingSection({ onStoreRegistered }: OnboardingSecti
   const [showMainKeywordsModal, setShowMainKeywordsModal] = useState(false);
   const [showContactModal, setShowContactModal] = useState(false);
   const [showCompetitorAnalysisModal, setShowCompetitorAnalysisModal] = useState(false);
+  const [showFeatureVoteModal, setShowFeatureVoteModal] = useState(false);
   const [genericModalConfig, setGenericModalConfig] = useState<{
     isOpen: boolean;
     title: string;
@@ -170,6 +172,10 @@ export default function OnboardingSection({ onStoreRegistered }: OnboardingSecti
         
       case ACTION_KEYS.COMPETITOR_ANALYSIS:
         setShowCompetitorAnalysisModal(true);
+        break;
+        
+      case ACTION_KEYS.FEATURE_VOTING:
+        setShowFeatureVoteModal(true);
         break;
         
       case ACTION_KEYS.MAIN_KEYWORDS:
@@ -394,6 +400,12 @@ export default function OnboardingSection({ onStoreRegistered }: OnboardingSecti
         opened={showCompetitorAnalysisModal}
         onClose={() => setShowCompetitorAnalysisModal(false)}
         onComplete={() => markActionComplete(ACTION_KEYS.COMPETITOR_ANALYSIS)}
+      />
+
+      <FeatureVoteModal
+        opened={showFeatureVoteModal}
+        onClose={() => setShowFeatureVoteModal(false)}
+        onComplete={() => markActionComplete(ACTION_KEYS.FEATURE_VOTING)}
       />
 
       <GenericActionModal
