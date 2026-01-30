@@ -9026,6 +9026,197 @@ if (!response.ok) {
 
 =====================================
 
+## 📅 2026-01-30: 경쟁매장 분석 크레딧 차감 추가
+
+### 🎯 **작업 목표**
+경쟁매장 분석 기능에 크레딧 차감 로직 추가 (모달 및 페이지 모두 적용)
+
+### 📋 **작업 내용**
+
+#### 1. **Backend: `/competitor/compare` 엔드포인트 수정**
+- **파일**: `backend/app/routers/naver.py`
+- **변경 사항**:
+  - `Depends(get_current_user)` 추가하여 인증 강제
+  - 크레딧 체크 로직 추가 (30 크레딧 필요)
+  - 크레딧 차감 로직 추가 (비교 분석 성공 시)
+  - 크레딧 부족 시 `402 Payment Required` 반환
+
+**구현 코드**:
+```python
+@router.post("/competitor/compare")
+async def compare_competitors(
+    request: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    경쟁매장 비교 분석 (LLM 기반)
+    크레딧: 30 크레딧 소모
+    """
+    user_id = UUID(current_user["id"])
+    
+    # 🆕 크레딧 체크
+    if settings.CREDIT_SYSTEM_ENABLED and settings.CREDIT_CHECK_STRICT:
+        check_result = await credit_service.check_sufficient_credits(
+            user_id=user_id,
+            feature="competitor_analysis",
+            required_credits=30
+        )
+        
+        if not check_result.sufficient:
+            raise HTTPException(
+                status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                detail="크레딧이 부족합니다. 크레딧을 충전하거나 플랜을 업그레이드해주세요."
+            )
+    
+    # LLM 비교 분석 수행
+    comparison = await competitor_analysis_service.compare_with_my_store(
+        my_store_data=my_store,
+        competitors=competitors
+    )
+    
+    # 🆕 크레딧 차감 (성공 시에만)
+    if settings.CREDIT_SYSTEM_ENABLED and settings.CREDIT_AUTO_DEDUCT:
+        transaction_id = await credit_service.deduct_credits(
+            user_id=user_id,
+            feature="competitor_analysis",
+            credits_amount=30,
+            metadata={
+                "my_store": my_store.get("name", "Unknown"),
+                "competitor_count": len(competitors),
+                "recommendations_count": len(comparison.get('recommendations', []))
+            }
+        )
+```
+
+#### 2. **Frontend: Authorization 헤더 추가**
+- **파일**: `frontend/app/dashboard/naver/competitors/page.tsx`
+- **변경 사항**:
+  - `/competitor/compare` 호출 시 `Authorization` 헤더 추가
+  - 백엔드 에러 메시지 표시 로직 개선 (`detail` 필드 읽기)
+
+**Before**:
+```typescript
+const comparisonResponse = await fetch(
+  `${api.url("/api/v1/naver/competitor/compare")}`,
+  {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      my_store: myStore,
+      competitors: analyzed,
+    }),
+  }
+)
+
+if (!comparisonResponse.ok) {
+  const comparisonData = generateComparison(myStore, analyzed)
+  setComparison(comparisonData)
+}
+```
+
+**After**:
+```typescript
+const token = await getToken()
+if (!token) {
+  throw new Error("인증 토큰이 없습니다")
+}
+
+const comparisonResponse = await fetch(
+  `${api.url("/api/v1/naver/competitor/compare")}`,
+  {
+    method: "POST",
+    headers: { 
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`  // ✅ 추가
+    },
+    body: JSON.stringify({
+      my_store: myStore,
+      competitors: analyzed,
+    }),
+  }
+)
+
+const comparisonResult = await comparisonResponse.json()
+
+if (!comparisonResponse.ok) {
+  // ✅ 백엔드 에러 메시지 표시
+  throw new Error(comparisonResult.detail || "비교 분석 중 오류가 발생했습니다")
+}
+
+setComparison(comparisonResult)
+```
+
+#### 3. **Docker 디스크 공간 확보**
+- **문제**: 빌드 중 "no space left on device" 에러 발생
+- **해결**: `docker system prune -af` 실행하여 **24.18GB 공간 확보**
+- **결과**: 빌드 및 배포 성공, 컨테이너 상태 `Up (healthy)`
+
+### 💰 **크레딧 차감 로직**
+
+| 작업 | 엔드포인트 | 크레딧 | 차감 시점 |
+|------|-----------|--------|----------|
+| 경쟁매장 비교 분석 | `/competitor/compare` | 30 | LLM 비교 분석 성공 시 |
+
+**특징**:
+- 경쟁매장 검색 (`/competitor/search`): 크레딧 차감 없음
+- 단일 매장 분석 (`/competitor/analyze-single`): 크레딧 차감 없음
+- 최종 비교 분석 (`/competitor/compare`): **30 크레딧** (LLM 사용)
+
+### 🧪 **테스트 시나리오**
+
+#### **시나리오 1: 크레딧 충분**
+1. 경쟁매장 분석 페이지 접속
+2. 매장 선택 → 키워드 입력 → 분석 시작
+3. 경쟁매장 정보 수집 (크레딧 차감 없음)
+4. 비교 분석 실행 → ✅ **30 크레딧 차감**
+5. 분석 결과 표시
+
+#### **시나리오 2: 크레딧 부족**
+1. 경쟁매장 분석 시작 (잔여 크레딧 < 30)
+2. 경쟁매장 정보 수집 완료
+3. 비교 분석 시도 → ❌ **402 Payment Required**
+4. 에러 메시지 표시: "크레딧이 부족합니다. 크레딧을 충전하거나 플랜을 업그레이드해주세요."
+
+### 📂 **변경된 파일**
+1. `backend/app/routers/naver.py` - 크레딧 로직 추가
+2. `frontend/app/dashboard/naver/competitors/page.tsx` - Authorization 헤더 추가
+
+### 🚀 **배포 상태**
+- **Backend**: Docker 재빌드 완료 ✅ (`Up (healthy)`)
+- **Frontend**: Vercel 자동 배포 대기 중 ⏳
+
+### 💡 **기술적 고려사항**
+
+#### **크레딧 차감 시점 선택**
+- **옵션 A** (채택): `/competitor/compare` 1회 차감
+  - 장점: 사용자 인식과 일치 ("1번의 분석")
+  - 장점: 구현 간단, 중복 차감 없음
+  
+- **옵션 B** (미채택): `/competitor/analyze-single` 호출마다 차감
+  - 단점: 구현 복잡 (중복 차감 방지 로직 필요)
+  - 단점: 사용자 혼란 (여러 번 차감)
+
+#### **에러 처리**
+- 크레딧 부족: `402 Payment Required`
+- 인증 실패: `401 Unauthorized`
+- 백엔드 에러 메시지를 프론트엔드에서 읽어서 사용자에게 표시
+
+### ⚡ **성능 최적화**
+- 경쟁매장 정보 수집 단계는 크레딧 차감 없음
+- 비용이 큰 LLM 작업(비교 분석)만 크레딧 차감
+- 실패 시 크레딧 차감 없음 (트랜잭션 안전성)
+
+---
+
+**프로덕션 배포:** ✅ (Backend) / 🟡 (Frontend 배포 대기 중)  
+**문제 해결 난이도:** ⭐⭐⭐☆☆ (중간 - 디스크 공간 부족 해결)  
+**사용자 만족도:** ⏳ (배포 후 테스트 대기 중)  
+**독립성 보장:** ✅ (경쟁매장 분석 기능만 영향)  
+**디자인 일관성:** ✅ (기존 에러 처리 패턴 유지)  
+**코드 품질:** ✅ (Linter 에러 0개, 타입 안정성)
+
+=====================================
+
 ## 📅 2026-01-30: 대시보드 UI 개선 - 카드 통합 및 레이아웃 최적화
 
 ### 🎯 **작업 목표**

@@ -26,6 +26,8 @@ import {
   ThemeIcon,
   Center,
   Loader,
+  SimpleGrid,
+  Divider,
 } from '@mantine/core'
 import '@mantine/core/styles.css'
 
@@ -383,6 +385,16 @@ export default function CompetitorsPage() {
         throw new Error("인증 토큰이 없습니다")
       }
       
+      console.log('[경쟁매장] 비교 분석 요청 시작')
+      console.log('[경쟁매장] 우리 매장:', myStore.name, myStore.diagnosis_score)
+      console.log('[경쟁매장] 경쟁사 수:', analyzed.length)
+      console.log('[경쟁매장] 경쟁사 데이터 샘플:', analyzed.slice(0, 2).map(c => ({
+        name: c.name,
+        diagnosis_score: c.diagnosis_score,
+        visitor_reviews_7d_avg: c.visitor_reviews_7d_avg,
+        blog_reviews_7d_avg: c.blog_reviews_7d_avg
+      })))
+      
       const comparisonResponse = await fetch(
         `${api.url("/api/v1/naver/competitor/compare")}`,
         {
@@ -398,7 +410,11 @@ export default function CompetitorsPage() {
         }
       )
       
+      console.log('[경쟁매장] 비교 분석 응답 상태:', comparisonResponse.status)
+      
       const comparisonResult = await comparisonResponse.json()
+      
+      console.log('[경쟁매장] 비교 분석 결과:', comparisonResult)
       
       if (!comparisonResponse.ok) {
         // 402 (크레딧 부족) 또는 기타 에러 시 백엔드 메시지 표시
@@ -1000,55 +1016,148 @@ export default function CompetitorsPage() {
           {/* 비교 분석 요약 (분석 완료 후에만 표시) */}
           {!loadingAnalysis && analyzedStores.length > 0 && comparison && (
             <>
-              <Paper ref={summaryRef} shadow="md" p="xl" mb="xl" style={{ border: '2px solid #635bff' }}>
-                <Title order={2} mb="xl" style={{ color: '#212529' }}>
-                  📊 비교 분석 요약
-                </Title>
-                
-                <Group mb="lg">
-                  <Text size="lg">
-                    <Text component="span" fw={700} c="#635bff">{selectedStore?.store_name}</Text> vs 상위 {comparison.competitor_count}개 경쟁매장
-                  </Text>
+              <Paper ref={summaryRef} shadow="sm" p="xl" mb="xl">
+                <Group mb="md" justify="space-between">
+                  <Title order={2} style={{ color: '#212529' }}>
+                    📊 비교 분석 요약
+                  </Title>
+                  <Badge size="lg" color="blue" variant="light">
+                    {selectedStore?.store_name} vs 상위 {comparison.competitor_count}개
+                  </Badge>
                 </Group>
+                
+                <Divider mb="xl" />
 
-                <Grid>
-                  <Grid.Col span={{ base: 12, md: 6 }}>
-                    <ComparisonMetricCard
-                      label="플레이스 진단 점수"
-                      myValue={comparison.gaps.diagnosis_score.my_value as number}
-                      avgValue={comparison.gaps.diagnosis_score.competitor_avg || 0}
-                      status={comparison.gaps.diagnosis_score.status}
-                      unit="점"
-                    />
-                  </Grid.Col>
-                  <Grid.Col span={{ base: 12, md: 6 }}>
-                    <ComparisonMetricCard
-                      label="일평균 방문자 리뷰 (7일)"
-                      myValue={comparison.gaps.visitor_reviews_7d_avg.my_value as number}
-                      avgValue={comparison.gaps.visitor_reviews_7d_avg.competitor_avg || 0}
-                      status={comparison.gaps.visitor_reviews_7d_avg.status}
-                      unit="개"
-                    />
-                  </Grid.Col>
-                  <Grid.Col span={{ base: 12, md: 6 }}>
-                    <ComparisonMetricCard
-                      label="일평균 블로그 리뷰 (7일)"
-                      myValue={comparison.gaps.blog_reviews_7d_avg.my_value as number}
-                      avgValue={comparison.gaps.blog_reviews_7d_avg.competitor_avg || 0}
-                      status={comparison.gaps.blog_reviews_7d_avg.status}
-                      unit="개"
-                    />
-                  </Grid.Col>
-                  <Grid.Col span={{ base: 12, md: 6 }}>
-                    <ComparisonMetricCard
-                      label="7일간 공지 등록 수"
-                      myValue={comparison.gaps.announcements_7d.my_value as number}
-                      avgValue={comparison.gaps.announcements_7d.competitor_avg || 0}
-                      status={comparison.gaps.announcements_7d.status}
-                      unit="개"
-                    />
-                  </Grid.Col>
-                </Grid>
+                {/* 핵심 지표 카드 (플레이스 활성화 스타일) */}
+                <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="md" mb="xl">
+                  <Card shadow="sm" padding="lg" radius="md" withBorder>
+                    <Stack gap="xs">
+                      <Text size="sm" c="dimmed" fw={500}>플레이스 진단 점수</Text>
+                      <Group gap="xs" align="baseline">
+                        <Text size="32px" fw={700} style={{ color: '#635bff' }}>
+                          {comparison.gaps.diagnosis_score.my_value?.toFixed(1) || '0.0'}
+                        </Text>
+                        <Text size="sm" c="dimmed">점</Text>
+                      </Group>
+                      <Divider />
+                      <Stack gap={4}>
+                        <Text size="xs" c="dimmed">
+                          경쟁매장 평균: <Text component="span" fw={600}>{comparison.gaps.diagnosis_score.competitor_avg?.toFixed(1) || '0.0'}점</Text>
+                        </Text>
+                        <Group gap="xs">
+                          {comparison.gaps.diagnosis_score.status === 'good' ? (
+                            <ThemeIcon size="sm" radius="xl" color="green" variant="light">
+                              <TrendingUp size={14} />
+                            </ThemeIcon>
+                          ) : (
+                            <ThemeIcon size="sm" radius="xl" color="red" variant="light">
+                              <TrendingDown size={14} />
+                            </ThemeIcon>
+                          )}
+                          <Text size="xs" fw={600} c={comparison.gaps.diagnosis_score.status === 'good' ? 'green' : 'red'}>
+                            {Math.abs((comparison.gaps.diagnosis_score.my_value || 0) - (comparison.gaps.diagnosis_score.competitor_avg || 0)).toFixed(1)}점 {comparison.gaps.diagnosis_score.status === 'good' ? '우수' : '부족'}
+                          </Text>
+                        </Group>
+                      </Stack>
+                    </Stack>
+                  </Card>
+
+                  <Card shadow="sm" padding="lg" radius="md" withBorder>
+                    <Stack gap="xs">
+                      <Text size="sm" c="dimmed" fw={500}>일평균 방문자 리뷰 (7일)</Text>
+                      <Group gap="xs" align="baseline">
+                        <Text size="32px" fw={700} style={{ color: '#635bff' }}>
+                          {comparison.gaps.visitor_reviews_7d_avg.my_value?.toFixed(1) || '0.0'}
+                        </Text>
+                        <Text size="sm" c="dimmed">개</Text>
+                      </Group>
+                      <Divider />
+                      <Stack gap={4}>
+                        <Text size="xs" c="dimmed">
+                          경쟁매장 평균: <Text component="span" fw={600}>{comparison.gaps.visitor_reviews_7d_avg.competitor_avg?.toFixed(1) || '0.0'}개</Text>
+                        </Text>
+                        <Group gap="xs">
+                          {comparison.gaps.visitor_reviews_7d_avg.status === 'good' ? (
+                            <ThemeIcon size="sm" radius="xl" color="green" variant="light">
+                              <TrendingUp size={14} />
+                            </ThemeIcon>
+                          ) : (
+                            <ThemeIcon size="sm" radius="xl" color="red" variant="light">
+                              <TrendingDown size={14} />
+                            </ThemeIcon>
+                          )}
+                          <Text size="xs" fw={600} c={comparison.gaps.visitor_reviews_7d_avg.status === 'good' ? 'green' : 'red'}>
+                            {Math.abs((comparison.gaps.visitor_reviews_7d_avg.my_value || 0) - (comparison.gaps.visitor_reviews_7d_avg.competitor_avg || 0)).toFixed(1)}개 {comparison.gaps.visitor_reviews_7d_avg.status === 'good' ? '우수' : '부족'}
+                          </Text>
+                        </Group>
+                      </Stack>
+                    </Stack>
+                  </Card>
+
+                  <Card shadow="sm" padding="lg" radius="md" withBorder>
+                    <Stack gap="xs">
+                      <Text size="sm" c="dimmed" fw={500}>일평균 블로그 리뷰 (7일)</Text>
+                      <Group gap="xs" align="baseline">
+                        <Text size="32px" fw={700} style={{ color: '#635bff' }}>
+                          {comparison.gaps.blog_reviews_7d_avg.my_value?.toFixed(1) || '0.0'}
+                        </Text>
+                        <Text size="sm" c="dimmed">개</Text>
+                      </Group>
+                      <Divider />
+                      <Stack gap={4}>
+                        <Text size="xs" c="dimmed">
+                          경쟁매장 평균: <Text component="span" fw={600}>{comparison.gaps.blog_reviews_7d_avg.competitor_avg?.toFixed(1) || '0.0'}개</Text>
+                        </Text>
+                        <Group gap="xs">
+                          {comparison.gaps.blog_reviews_7d_avg.status === 'good' ? (
+                            <ThemeIcon size="sm" radius="xl" color="green" variant="light">
+                              <TrendingUp size={14} />
+                            </ThemeIcon>
+                          ) : (
+                            <ThemeIcon size="sm" radius="xl" color="red" variant="light">
+                              <TrendingDown size={14} />
+                            </ThemeIcon>
+                          )}
+                          <Text size="xs" fw={600} c={comparison.gaps.blog_reviews_7d_avg.status === 'good' ? 'green' : 'red'}>
+                            {Math.abs((comparison.gaps.blog_reviews_7d_avg.my_value || 0) - (comparison.gaps.blog_reviews_7d_avg.competitor_avg || 0)).toFixed(1)}개 {comparison.gaps.blog_reviews_7d_avg.status === 'good' ? '우수' : '부족'}
+                          </Text>
+                        </Group>
+                      </Stack>
+                    </Stack>
+                  </Card>
+
+                  <Card shadow="sm" padding="lg" radius="md" withBorder>
+                    <Stack gap="xs">
+                      <Text size="sm" c="dimmed" fw={500}>7일간 공지 등록 수</Text>
+                      <Group gap="xs" align="baseline">
+                        <Text size="32px" fw={700} style={{ color: '#635bff' }}>
+                          {comparison.gaps.announcements_7d.my_value?.toFixed(1) || '0.0'}
+                        </Text>
+                        <Text size="sm" c="dimmed">개</Text>
+                      </Group>
+                      <Divider />
+                      <Stack gap={4}>
+                        <Text size="xs" c="dimmed">
+                          경쟁매장 평균: <Text component="span" fw={600}>{comparison.gaps.announcements_7d.competitor_avg?.toFixed(1) || '0.0'}개</Text>
+                        </Text>
+                        <Group gap="xs">
+                          {comparison.gaps.announcements_7d.status === 'good' ? (
+                            <ThemeIcon size="sm" radius="xl" color="green" variant="light">
+                              <TrendingUp size={14} />
+                            </ThemeIcon>
+                          ) : (
+                            <ThemeIcon size="sm" radius="xl" color="red" variant="light">
+                              <TrendingDown size={14} />
+                            </ThemeIcon>
+                          )}
+                          <Text size="xs" fw={600} c={comparison.gaps.announcements_7d.status === 'good' ? 'green' : 'red'}>
+                            {Math.abs((comparison.gaps.announcements_7d.my_value || 0) - (comparison.gaps.announcements_7d.competitor_avg || 0)).toFixed(1)}개 {comparison.gaps.announcements_7d.status === 'good' ? '우수' : '부족'}
+                          </Text>
+                        </Group>
+                      </Stack>
+                    </Stack>
+                  </Card>
+                </SimpleGrid>
               </Paper>
 
               {/* 개선 권장사항 */}
@@ -1093,80 +1202,3 @@ export default function CompetitorsPage() {
   )
 }
 
-// 비교 메트릭 카드 컴포넌트
-function ComparisonMetricCard({
-  label,
-  myValue,
-  avgValue,
-  status,
-  unit,
-}: {
-  label: string
-  myValue: number
-  avgValue: number
-  status: "good" | "bad"
-  unit: string
-}) {
-  const diff = Math.abs(myValue - avgValue)
-  const isHigher = myValue > avgValue
-  const borderColor = status === "good" ? '#2ecc71' : '#e74c3c'
-  const iconColor = status === "good" ? '#2ecc71' : '#e74c3c'
-  
-  return (
-    <Card
-      shadow="md"
-      padding="xl"
-      radius="md"
-      style={{
-        height: '100%',
-        border: `3px solid ${borderColor}`,
-        backgroundColor: '#ffffff',
-        transition: 'transform 0.2s',
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.transform = 'translateY(-2px)'
-        e.currentTarget.style.boxShadow = '0 8px 16px rgba(0,0,0,0.1)'
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.transform = 'translateY(0)'
-        e.currentTarget.style.boxShadow = ''
-      }}
-    >
-      <Stack gap="md">
-        {/* Header */}
-        <Group justify="space-between">
-          <Text size="sm" fw={600} c="dimmed">{label}</Text>
-          {status === "good" ? (
-            <ThemeIcon size="lg" radius="xl" color="green" variant="light">
-              <TrendingUp size={20} />
-            </ThemeIcon>
-          ) : (
-            <ThemeIcon size="lg" radius="xl" color="red" variant="light">
-              <TrendingDown size={20} />
-            </ThemeIcon>
-          )}
-        </Group>
-
-        {/* Main Value */}
-        <div style={{ textAlign: 'center', padding: '16px 0' }}>
-          <Text size="48px" fw={700} style={{ lineHeight: 1, color: borderColor }}>
-            {myValue.toFixed(1)}
-          </Text>
-          <Text size="lg" fw={600} c="dimmed" mt="xs">{unit}</Text>
-        </div>
-
-        {/* Comparison */}
-        <Paper p="md" radius="sm" style={{ backgroundColor: '#f8f9fa' }}>
-          <Stack gap="xs">
-            <Text size="sm" ta="center" c="dimmed">
-              경쟁매장 평균: <Text component="span" fw={700} c="dark">{avgValue.toFixed(1)}{unit}</Text>
-            </Text>
-            <Text size="md" ta="center" fw={700} c={status === "good" ? "green" : "red"}>
-              {isHigher ? '▲' : '▼'} {diff.toFixed(1)}{unit} {isHigher ? '우수' : '부족'}
-            </Text>
-          </Stack>
-        </Paper>
-      </Stack>
-    </Card>
-  )
-}
