@@ -59,7 +59,7 @@ interface SearchVolumeData {
 }
 
 export default function AdditionalKeywordsModal({ isOpen, onClose, onComplete }: AdditionalKeywordsModalProps) {
-  const { user } = useAuth()
+  const { user, getToken } = useAuth()
   const { toast } = useToast()
   const router = useRouter()
   
@@ -185,15 +185,26 @@ export default function AdditionalKeywordsModal({ isOpen, onClose, onComplete }:
     setError('')
     
     try {
+      const token = await getToken()
+      if (!token) {
+        toast({
+          title: "인증 오류",
+          description: "로그인이 필요합니다.",
+          variant: "destructive",
+        })
+        setIsSearching(false)
+        return
+      }
+
       const response = await fetch(
         `${api.baseUrl}/api/v1/keyword-search-volume/search-volume`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`,
           },
           body: JSON.stringify({
-            user_id: user.id,
             keywords: keywordsToSearch,
           }),
         }
