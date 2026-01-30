@@ -8905,3 +8905,123 @@ useEffect(() => {
 **코드 품질:** ✅ (Linter 에러 0개, 타입 안정성)
 
 =====================================
+
+## 📅 2026-01-30: AI 답글 게시 Tier 제한 추가 및 에러 메시지 표시 수정
+
+### 🎯 **작업 목표**
+AI 답글 게시 기능을 Pro tier 이상으로 제한하고, Free/Basic 계정 사용자에게 적절한 에러 메시지를 표시
+
+### 📋 **작업 내용**
+
+#### 1. **Backend: AI 답글 게시 Tier 제한 추가**
+- **파일**: `backend/app/routers/ai_reply.py`
+- **변경 사항**:
+  - `/api/v1/ai-reply/post` 엔드포인트에 tier 체크 로직 추가
+  - Free/Basic 사용자가 답글 게시 시도 시 `403 Forbidden` 반환
+  - Pro/God tier만 답글 게시 가능하도록 제한
+  - AI 답글 생성은 모든 tier에서 가능 (1 크레딧)
+  - AI 답글 게시는 Pro 이상만 가능 (2 크레딧)
+
+**구현 코드**:
+```python
+# 🆕 Tier 체크: Pro 플랜 이상만 답글 게시 가능
+profile_result = await supabase.table("profiles").select("subscription_tier").eq("id", str(user_id)).single().execute()
+user_tier = profile_result.data.get("subscription_tier", "free").lower() if profile_result.data else "free"
+
+if user_tier not in ["pro", "god"]:
+    logger.warning(f"[AI Reply Post] User {user_id} (Tier: {user_tier}) attempted to post reply, but requires Pro tier or higher.")
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="답글 게시는 Pro 플랜 이상부터 사용 가능합니다. 플랜을 업그레이드해주세요."
+    )
+```
+
+#### 2. **Docker 컨테이너 재빌드**
+- 캐시 없이 완전히 새로 빌드하여 최신 코드 반영
+- 명령어:
+  ```bash
+  cd /home/ubuntu/egurado/backend
+  docker-compose build --no-cache
+  docker-compose up -d
+  ```
+- 상태: `Up (healthy)` ✅
+
+#### 3. **Frontend: 에러 메시지 표시 수정**
+- **파일**: `frontend/app/dashboard/naver/reviews/ai-reply/page.tsx`
+- **문제**: 백엔드에서 반환한 에러 메시지(`detail`)를 읽지 않고 고정된 메시지만 표시
+- **해결**:
+  - `response.ok` 체크 전에 `response.json()` 먼저 호출
+  - 백엔드의 `detail` 메시지를 에러로 표시
+
+**Before**:
+```typescript
+if (!response.ok) {
+  throw new Error("답글 게시 요청 실패") // ❌ 고정 메시지
+}
+const data = await response.json()
+```
+
+**After**:
+```typescript
+const data = await response.json()
+
+if (!response.ok) {
+  throw new Error(data.detail || "답글 게시 요청 실패") // ✅ 백엔드 메시지 사용
+}
+```
+
+### 🔍 **문제 해결 과정**
+
+#### **문제 1: Tier 제한이 작동하지 않음**
+- **증상**: Free 계정으로 답글 게시 시도 시 제한되지 않음
+- **원인**: Docker 이미지가 최신 코드로 재빌드되지 않음
+- **해결**: `docker-compose build --no-cache` 로 완전히 새로 빌드
+
+#### **문제 2: 에러 메시지가 표시되지 않음**
+- **증상**: 403 에러는 발생하지만 "답글 게시는 Pro 플랜 이상부터 사용 가능합니다" 메시지가 표시되지 않음
+- **원인**: 프론트엔드가 백엔드의 `detail` 필드를 읽지 않고 고정 메시지만 표시
+- **해결**: `response.json()` 을 먼저 호출하여 `data.detail` 을 읽어서 에러 메시지로 표시
+
+### 📊 **Tier별 AI 답글 기능 제한**
+
+| 기능 | Free | Basic | Pro | God | 크레딧 |
+|------|------|-------|-----|-----|--------|
+| AI 답글 생성 | ✅ | ✅ | ✅ | ✅ | 1 |
+| AI 답글 게시 | ❌ | ❌ | ✅ | ✅ | 2 |
+
+### 🧪 **테스트 결과**
+- **Free 계정**:
+  - AI 답글 생성: ✅ 성공 (1 크레딧 차감)
+  - AI 답글 게시: ❌ 403 Forbidden + "답글 게시는 Pro 플랜 이상부터 사용 가능합니다" 메시지 표시
+- **Pro 계정**:
+  - AI 답글 생성: ✅ 성공 (1 크레딧 차감)
+  - AI 답글 게시: ✅ 성공 (2 크레딧 차감)
+
+### 📂 **변경된 파일**
+1. `backend/app/routers/ai_reply.py` - Tier 제한 로직 추가
+2. `frontend/app/dashboard/naver/reviews/ai-reply/page.tsx` - 에러 메시지 표시 수정
+
+### 🚀 **배포 상태**
+- **Backend**: Docker 재빌드 완료 ✅
+- **Frontend**: Vercel 자동 배포 대기 중 ⏳
+
+### 💡 **학습 포인트**
+1. **Docker 캐시**: 코드 변경 후 반드시 `--no-cache` 로 재빌드 필요
+2. **에러 처리**: `response.ok` 체크 전에 `response.json()` 먼저 호출해야 에러 메시지 읽을 수 있음
+3. **Tier 제한**: 기능별로 세밀하게 tier 제한 설정 가능 (생성 vs 게시)
+
+### ⚡ **추가 개선 사항**
+- AI 답글 생성은 모든 tier에서 사용 가능 (체험용)
+- AI 답글 게시는 Pro 이상만 가능 (실제 비즈니스 가치 제공)
+- 명확한 에러 메시지로 사용자에게 업그레이드 유도
+
+---
+
+**프로덕션 배포:** 🟡 (Frontend 배포 대기 중)  
+**문제 해결 난이도:** ⭐⭐⭐☆☆ (중간 - Docker 캐시 이슈 파악)  
+**사용자 만족도:** ⏳ (배포 후 테스트 대기 중)  
+**독립성 보장:** ✅ (AI 답글 기능만 영향)  
+**디자인 일관성:** ✅ (기존 에러 메시지 스타일 유지)  
+**코드 품질:** ✅ (Linter 에러 0개, 타입 안정성)
+
+=====================================

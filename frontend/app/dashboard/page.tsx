@@ -120,6 +120,29 @@ interface LatestDiagnosis {
   grade: string
 }
 
+interface SummaryCard {
+  type: string
+  title: string
+  value: number
+  daily_avg?: number
+  vs_7d_pct?: number
+  vs_30d_pct?: number
+  avg_7d?: number
+  avg_30d?: number
+  total?: number
+  reply_rate?: number
+  has_active?: boolean
+  days_since_last?: number
+}
+
+interface LatestActivation {
+  id: string
+  store_name: string
+  store_id: string
+  created_at: string
+  summary_cards: SummaryCard[]
+}
+
 // 매장별 색상 팔레트
 const STORE_COLORS = [
   { bg: 'from-blue-50 to-blue-100', border: 'border-blue-300', text: 'text-blue-900', badge: 'bg-blue-500' },
@@ -405,6 +428,7 @@ export default function DashboardPage() {
   const [isReordering, setIsReordering] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState<Set<string>>(new Set())
   const [latestDiagnosis, setLatestDiagnosis] = useState<LatestDiagnosis | null>(null)
+  const [latestActivation, setLatestActivation] = useState<LatestActivation | null>(null)
   
   // 🆕 실제 크레딧 정보 (Credits API)
   const [credits, setCredits] = useState<{
@@ -729,6 +753,56 @@ export default function DashboardPage() {
     }
   }
 
+  // 최근 활성화 이력 로드 (모든 매장 중 가장 최근)
+  const loadLatestActivation = async (storesList: Store[]) => {
+    const token = getToken()
+    if (!token || storesList.length === 0) return
+
+    // 네이버 매장만 필터
+    const naverStores = storesList.filter(store => store.platform === 'naver')
+    if (naverStores.length === 0) return
+
+    try {
+      // 모든 네이버 매장의 최근 활성화 이력을 병렬로 조회
+      const activationPromises = naverStores.map(store => 
+        fetch(api.naver.activationHistory(store.id), {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
+        .then(res => res.ok ? res.json() : null)
+        .catch(() => null)
+      )
+
+      const results = await Promise.all(activationPromises)
+      
+      // 모든 활성화 이력을 하나의 배열로 합치기
+      const allActivations: LatestActivation[] = []
+      results.forEach((data, index) => {
+        if (data?.histories && data.histories.length > 0) {
+          // 각 이력에 store_name 추가
+          const storeActivations = data.histories.map((history: any) => ({
+            ...history,
+            store_name: naverStores[index].name || naverStores[index].store_name,
+            store_id: naverStores[index].id
+          }))
+          allActivations.push(...storeActivations)
+        }
+      })
+
+      // 생성 날짜 기준으로 정렬하여 가장 최근 것 선택
+      if (allActivations.length > 0) {
+        const sortedActivations = allActivations.sort((a, b) => 
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        )
+        setLatestActivation(sortedActivations[0])
+        console.log('[Dashboard] 최근 활성화 이력:', sortedActivations[0])
+      }
+    } catch (error) {
+      console.error("[Dashboard] Error loading latest activation:", error)
+    }
+  }
+
   // 매장 목록만 다시 로드하는 함수 (온보딩에서 매장 등록 후 호출)
   const reloadStores = async () => {
     const token = getToken()
@@ -826,6 +900,9 @@ export default function DashboardPage() {
 
         // 4. 최근 진단 결과 조회
         await loadLatestDiagnosis(loadedStores)
+
+        // 5. 최근 활성화 이력 조회
+        await loadLatestActivation(loadedStores)
 
       } catch (error) {
         console.error("[DEBUG] Error loading dashboard data:", error)
@@ -937,29 +1014,131 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-4 sm:space-y-6 lg:space-y-8 pb-6 sm:pb-8">
-      {/* 환영 헤더 + 계정 정보 */}
+      {/* 환영 헤더 + 활성화 요약 + 계정 정보 */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
         {/* 환영 카드 */}
-        <div className={`lg:col-span-2 relative overflow-hidden bg-gradient-to-br ${tier.bgColor} rounded-2xl sm:rounded-3xl border-2 border-white shadow-xl`}>
-          <div className="absolute top-0 right-0 w-32 h-32 sm:w-64 sm:h-64 bg-white/30 rounded-full -mr-16 sm:-mr-32 -mt-16 sm:-mt-32" />
-          <div className="absolute bottom-0 left-0 w-24 h-24 sm:w-48 sm:h-48 bg-white/20 rounded-full -ml-12 sm:-ml-24 -mb-12 sm:-mb-24" />
+        <div className={`relative overflow-hidden bg-gradient-to-br ${tier.bgColor} rounded-2xl sm:rounded-3xl border-2 border-white shadow-xl`}>
+          <div className="absolute top-0 right-0 w-24 h-24 sm:w-40 sm:h-40 bg-white/30 rounded-full -mr-12 sm:-mr-20 -mt-12 sm:-mt-20" />
+          <div className="absolute bottom-0 left-0 w-20 h-20 sm:w-32 sm:h-32 bg-white/20 rounded-full -ml-10 sm:-ml-16 -mb-10 sm:-mb-16" />
           
-          <div className="relative p-5 sm:p-8 lg:p-10">
-            <div className="flex items-center gap-3 sm:gap-4">
-              <div className={`bg-gradient-to-br ${tier.color} p-3 sm:p-4 rounded-xl sm:rounded-2xl shadow-lg`}>
-                <User className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
+          <div className="relative p-4 sm:p-5 lg:p-6">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className={`bg-gradient-to-br ${tier.color} p-2 sm:p-3 rounded-lg sm:rounded-xl shadow-lg`}>
+                <User className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
               </div>
               <div className="flex-1 min-w-0">
-                <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-800 truncate">
+                <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-800 truncate">
                   환영합니다, {profile.display_name || profile.email.split('@')[0]}님! 👋
                 </h1>
-                <p className="text-gray-600 mt-1 text-sm sm:text-base md:text-lg">
+                <p className="text-gray-600 mt-1 text-xs sm:text-sm">
                   오늘도 멋진 하루 되세요!
                 </p>
               </div>
             </div>
           </div>
         </div>
+
+        {/* 플레이스 활성화 요약 카드 */}
+        {latestActivation && latestActivation.summary_cards && latestActivation.summary_cards.length > 0 ? (
+          <div className="bg-white rounded-2xl sm:rounded-3xl border-2 border-gray-100 shadow-xl p-4 sm:p-5">
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
+              <div>
+                <h3 className="text-base sm:text-lg font-bold text-gray-800">플레이스 활성화</h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {new Date(latestActivation.created_at).toLocaleDateString('ko-KR', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  })}
+                </p>
+              </div>
+              <Activity className="w-5 h-5 text-purple-500" />
+            </div>
+            
+            <div className="space-y-2">
+              {latestActivation.summary_cards.slice(0, 5).map((card) => (
+                <div 
+                  key={card.type} 
+                  className="bg-gradient-to-br from-gray-50 to-white border border-gray-200 rounded-lg p-2.5 hover:shadow-md transition-all duration-200"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-gray-600 font-medium truncate">{card.title}</p>
+                      <div className="flex items-baseline gap-1.5 mt-0.5">
+                        <span className="text-base sm:text-lg font-bold text-gray-800">
+                          {card.type === 'visitor_review' || card.type === 'blog_review' 
+                            ? card.value.toFixed(2) 
+                            : Math.round(card.value)}
+                        </span>
+                        {(card.type === 'visitor_review' || card.type === 'blog_review') && (
+                          <span className="text-xs text-gray-500">
+                            {((card.vs_7d_pct || 0) + (card.vs_30d_pct || 0)) / 2 > 0 ? '👏' : 
+                             ((card.vs_7d_pct || 0) + (card.vs_30d_pct || 0)) / 2 < 0 ? '😢' : ''}
+                          </span>
+                        )}
+                        {card.type === 'pending_reply' && (
+                          <span className="text-xs text-gray-500">
+                            {card.value === 0 ? '👏' : 
+                             (card.reply_rate || 0) >= 90 ? '👏' : 
+                             (card.reply_rate || 0) >= 70 ? '💪' : '😢'}
+                          </span>
+                        )}
+                        {card.type === 'coupon' && (
+                          <span className="text-xs text-gray-500">
+                            {card.value >= 1 ? '👏' : '😢'}
+                          </span>
+                        )}
+                        {card.type === 'announcement' && (
+                          <span className="text-xs text-gray-500">
+                            {card.value > 0 ? '👏' : '😢'}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {card.type === 'coupon' && (
+                      <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-semibold ${
+                        card.has_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
+                      }`}>
+                        {card.has_active ? '활성' : '비활성'}
+                      </span>
+                    )}
+                    {card.type === 'pending_reply' && card.reply_rate !== undefined && (
+                      <span className="ml-2 px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
+                        {card.reply_rate.toFixed(0)}%
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            <Link 
+              href={`/dashboard/naver/activation?storeId=${latestActivation.store_id}`}
+              className="mt-3 block w-full text-center py-2 bg-gradient-to-r from-purple-500 to-indigo-500 text-white text-sm font-semibold rounded-lg hover:shadow-lg transition-all duration-300"
+            >
+              상세 보기
+            </Link>
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl sm:rounded-3xl border-2 border-gray-100 shadow-xl p-4 sm:p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-base sm:text-lg font-bold text-gray-800">플레이스 활성화</h3>
+              <Activity className="w-5 h-5 text-gray-400" />
+            </div>
+            <div className="flex flex-col items-center justify-center py-6">
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-3">
+                <Activity className="w-8 h-8 text-gray-400" />
+              </div>
+              <p className="text-sm text-gray-500 mb-3 text-center">아직 활성화 이력이 없습니다</p>
+              <Link 
+                href="/dashboard/naver/activation"
+                className="px-4 py-2 bg-gradient-to-r from-purple-500 to-indigo-500 text-white text-sm font-semibold rounded-lg hover:shadow-lg transition-all duration-300"
+              >
+                활성화 확인하기
+              </Link>
+            </div>
+          </div>
+        )}
 
         {/* 계정 정보 카드 */}
         <div className="bg-white rounded-2xl sm:rounded-3xl border-2 border-gray-100 shadow-xl p-5 sm:p-6">
