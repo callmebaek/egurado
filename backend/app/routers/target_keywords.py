@@ -118,7 +118,7 @@ async def analyze_target_keywords(
             
             # 히스토리 데이터 구성
             history_data = {
-                "user_id": str(request.user_id),
+                "user_id": str(user_id),
                 "store_id": request.store_id,
                 "store_name": store_info.get("store_name", "Unknown"),
                 "regions": request.regions,
