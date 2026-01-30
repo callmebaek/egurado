@@ -378,11 +378,19 @@ export default function CompetitorsPage() {
       }
       
       // 비교 분석 생성
+      const token = await getToken()
+      if (!token) {
+        throw new Error("인증 토큰이 없습니다")
+      }
+      
       const comparisonResponse = await fetch(
         `${api.url("/api/v1/naver/competitor/compare")}`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
           body: JSON.stringify({
             my_store: myStore,
             competitors: analyzed,
@@ -390,13 +398,14 @@ export default function CompetitorsPage() {
         }
       )
       
+      const comparisonResult = await comparisonResponse.json()
+      
       if (!comparisonResponse.ok) {
-        const comparisonData = generateComparison(myStore, analyzed)
-        setComparison(comparisonData)
-      } else {
-        const comparisonResult = await comparisonResponse.json()
-        setComparison(comparisonResult)
+        // 402 (크레딧 부족) 또는 기타 에러 시 백엔드 메시지 표시
+        throw new Error(comparisonResult.detail || "비교 분석 중 오류가 발생했습니다")
       }
+      
+      setComparison(comparisonResult)
 
       // 분석 완료 후 결과 섹션으로 스크롤
       setTimeout(() => {

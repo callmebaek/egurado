@@ -1487,16 +1487,23 @@ async def analyze_competitors(request: CompetitorAnalysisRequest):
 
 
 @router.post("/competitor/compare")
-async def compare_competitors(request: dict):
+async def compare_competitors(
+    request: dict,
+    current_user: dict = Depends(get_current_user)
+):
     """
     경쟁매장 비교 분석 (LLM 기반)
+    크레딧: 30 크레딧 소모
     
     Args:
         request: 우리 매장 + 경쟁매장 데이터
+        current_user: 현재 사용자 정보
         
     Returns:
         LLM 기반 비교 분석 결과
     """
+    user_id = UUID(current_user["id"])
+    
     try:
         print(f"[DEBUG] 비교 분석 요청 받음")
         my_store = request.get("my_store", {})
@@ -1504,7 +1511,24 @@ async def compare_competitors(request: dict):
         print(f"[DEBUG] my_store type: {type(my_store)}")
         print(f"[DEBUG] competitors type: {type(competitors)}")
         print(f"[DEBUG] competitors length: {len(competitors)}")
-        logger.info(f"[경쟁매장] 비교 분석 요청: {len(competitors)}개 경쟁사")
+        logger.info(f"[경쟁매장] 비교 분석 요청: user_id={user_id}, {len(competitors)}개 경쟁사")
+        
+        # 🆕 크레딧 체크 (Feature Flag 확인)
+        if settings.CREDIT_SYSTEM_ENABLED and settings.CREDIT_CHECK_STRICT:
+            check_result = await credit_service.check_sufficient_credits(
+                user_id=user_id,
+                feature="competitor_analysis",
+                required_credits=30
+            )
+            
+            if not check_result.sufficient:
+                logger.warning(f"[Credits] User {user_id} has insufficient credits for competitor analysis")
+                raise HTTPException(
+                    status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                    detail="크레딧이 부족합니다. 크레딧을 충전하거나 플랜을 업그레이드해주세요."
+                )
+            
+            logger.info(f"[Credits] User {user_id} has sufficient credits for competitor analysis")
         
         comparison = await competitor_analysis_service.compare_with_my_store(
             my_store_data=my_store,
@@ -1513,8 +1537,28 @@ async def compare_competitors(request: dict):
         
         logger.info(f"[경쟁매장] 비교 분석 완료: {len(comparison.get('recommendations', []))}개 권장사항")
         
+        # 🆕 크레딧 차감 (성공 시에만)
+        if settings.CREDIT_SYSTEM_ENABLED and settings.CREDIT_AUTO_DEDUCT:
+            try:
+                transaction_id = await credit_service.deduct_credits(
+                    user_id=user_id,
+                    feature="competitor_analysis",
+                    credits_amount=30,
+                    metadata={
+                        "my_store": my_store.get("name", "Unknown"),
+                        "competitor_count": len(competitors),
+                        "recommendations_count": len(comparison.get('recommendations', []))
+                    }
+                )
+                logger.info(f"[Credits] Deducted 30 credits from user {user_id} (transaction: {transaction_id})")
+            except Exception as credit_error:
+                logger.error(f"[Credits] Failed to deduct credits: {credit_error}")
+                # 크레딧 차감 실패는 기능 사용을 막지 않음 (이미 분석은 완료됨)
+        
         return comparison
         
+    except HTTPException:
+        raise
     except Exception as e:
         import traceback
         error_details = traceback.format_exc()
