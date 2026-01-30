@@ -5,26 +5,39 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-[13px] font-medium transition-all duration-[var(--transition-base)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-40 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 active:scale-[0.98]",
+  // TurboTax Base Styles - 모바일 퍼스트
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-button font-bold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-40 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
+        // TurboTax Primary Button
         default:
-          "bg-[var(--primary)] text-white shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] hover:bg-[var(--olive-700)]",
+          "bg-primary-500 text-white shadow-button hover:bg-primary-600 hover:shadow-button-hover active:bg-primary-700 active:scale-95",
+        // Destructive/Danger Button
         destructive:
-          "bg-red-600 text-white shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] hover:bg-red-700",
+          "bg-error text-white shadow-button hover:bg-[#D32F2F] hover:shadow-button-hover active:scale-95",
+        // Outline Button
         outline:
-          "border border-[var(--border)] bg-[var(--card)] shadow-[var(--shadow-sm)] hover:bg-[var(--accent)] hover:text-[var(--foreground)]",
+          "border-2 border-primary-500 bg-white text-primary-500 hover:bg-neutral-100 active:scale-95",
+        // Secondary Button
         secondary:
-          "bg-[var(--muted)] text-[var(--foreground)] shadow-[var(--shadow-sm)] hover:bg-[var(--olive-200)]",
-        ghost: "hover:bg-[var(--accent)] hover:text-[var(--foreground)]",
-        link: "text-[var(--primary)] underline-offset-4 hover:underline",
+          "bg-neutral-100 text-neutral-900 hover:bg-neutral-200 active:scale-95",
+        // Ghost Button
+        ghost: 
+          "bg-transparent text-primary-500 hover:bg-neutral-100 active:scale-95",
+        // Link Button
+        link: 
+          "text-primary-500 underline-offset-4 hover:underline",
       },
       size: {
-        default: "h-10 px-5 py-2.5",
-        sm: "h-8 rounded-lg px-3 text-xs",
-        lg: "h-12 rounded-xl px-8 text-[15px]",
-        icon: "h-10 w-10",
+        // 모바일: 48px, 데스크톱: 44px
+        default: "h-12 md:h-11 px-6 text-base",
+        // 모바일: 40px, 데스크톱: 36px
+        sm: "h-10 md:h-9 px-4 text-sm",
+        // 큰 버튼
+        lg: "h-12 md:h-13 px-8 text-lg",
+        // 아이콘 버튼 (정사각형)
+        icon: "h-12 w-12 md:h-11 md:w-11",
       },
     },
     defaultVariants: {

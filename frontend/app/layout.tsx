@@ -114,6 +114,11 @@ export default function RootLayout({
       <head>
         {/* 추가 SEO 태그 */}
         <meta name="format-detection" content="telephone=no" />
+        {/* NanumSquare Neo 폰트 (CDN) */}
+        <link
+          rel="stylesheet"
+          href="https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_11-01@1.0/NanumSquareNeo.css"
+        />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${notoSansKR.variable} antialiased`}

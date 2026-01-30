@@ -1,0 +1,325 @@
+# Egurado Design System Rules
+# TurboTax-inspired Korean Service UI/UX Guidelines
+
+## 📱 MOBILE-FIRST APPROACH (최우선 원칙!)
+**대부분의 사용자가 모바일 웹으로 접속합니다. 모든 디자인은 모바일부터 시작합니다.**
+
+### Responsive Breakpoints
+- Mobile: 320px ~ 639px (기본, 최우선)
+- Tablet: 640px ~ 1023px
+- Desktop: 1024px+
+
+### Mobile-First Design Rules
+1. **모바일 화면에서 먼저 디자인하고 테스트**
+2. **터치 타겟 최소 크기: 44x44px** (Apple HIG, Material Design 표준)
+3. **터치 가능한 요소 간 최소 간격: 8px**
+4. **한 손 엄지 조작 영역 고려** (화면 하단 75% 영역)
+5. **가로 스크롤 절대 금지** (overflow-x: hidden)
+6. **세로 모드 최적화** (대부분 세로로 사용)
+
+### Responsive Font Sizes (Mobile → Desktop)
+```css
+/* Headings */
+h1: mobile(20px) → tablet(22px) → desktop(24px)
+h2: mobile(18px) → tablet(19px) → desktop(20px)
+h3: mobile(16px) → tablet(17px) → desktop(18px)
+h4: mobile(15px) → tablet(15px) → desktop(16px)
+
+/* Body */
+body: 14px (all devices)
+bodyLarge: mobile(15px) → tablet(16px) → desktop(16px)
+small: 12px (all devices)
+```
+
+### Responsive Spacing (Mobile → Desktop)
+```css
+/* Card Padding */
+mobile: 16px → tablet: 20px → desktop: 24px
+
+/* Section Gap */
+mobile: 16px → tablet: 20px → desktop: 24px
+
+/* Page Padding */
+mobile: 16px → tablet: 24px → desktop: 32px
+```
+
+### Responsive Component Sizes
+```css
+/* Buttons */
+button-medium: mobile(48px) → desktop(44px)
+button-small: mobile(40px) → desktop(36px)
+
+/* Inputs */
+input: mobile(48px) → desktop(44px)
+
+/* Navbar */
+navbar: mobile(56px) → desktop(64px)
+```
+
+### Touch Optimization
+- Minimum touch target: 44x44px
+- Tap highlight: transparent (-webkit-tap-highlight-color)
+- Touch action: manipulation (no double-tap zoom)
+- User select: none (buttons, icons)
+- Active state: visible feedback (scale, color change)
+
+### Modal Responsive Behavior
+```css
+/* Mobile */
+- Width: calc(100vw - 32px)
+- Max height: calc(100vh - 32px)
+- Margin: 16px
+- Scroll: body에서 스크롤 (모달 내부 아님)
+
+/* Tablet */
+- Width: 600px
+- Max width: calc(100vw - 64px)
+- Margin: 32px
+
+/* Desktop */
+- Width: 600px (medium), 800px (large)
+- Centered
+```
+
+### Grid System (Mobile-First)
+```css
+/* 2-Column Grid */
+mobile: 1 column → tablet: 2 columns → desktop: 2 columns
+
+/* 3-Column Grid */
+mobile: 1 column → tablet: 2 columns → desktop: 3 columns
+
+/* 4-Column Grid */
+mobile: 2 columns → tablet: 3 columns → desktop: 4 columns
+```
+
+### Responsive Image/Icon Sizes
+```css
+/* Icons */
+mobile: 20px → desktop: 24px (standard)
+mobile: 16px → desktop: 20px (small)
+
+/* Avatar */
+mobile: 32px → desktop: 40px
+
+/* Logo */
+mobile: 120px → desktop: 140px
+```
+
+---
+
+## 🎨 Color Palette
+
+### Primary Colors
+- Primary Blue: #405D99 (buttons, links, main actions)
+- Primary Hover: #2E4577
+- Primary Active: #1A2B52
+- Brand Red: #D32F2F (signature color, emphasis)
+
+### Neutral Colors
+- Background: #FAFAFA (page), #FFFFFF (cards)
+- Text: #212121 (headings), #616161 (body), #757575 (secondary)
+- Border: #E0E0E0 (default), #BDBDBD (strong)
+- Disabled: #9E9E9E
+
+### Semantic Colors
+- Success: #4CAF50 / Background: #E8F5E9
+- Warning: #FF9800 / Background: #FFF3E0
+- Error: #F44336 / Background: #FFEBEE
+- Info: #2196F3 / Background: #E3F2FD
+
+---
+
+## ✍️ Typography
+
+### Font Family (Korean Optimized)
+```
+"NanumSquare Neo", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif
+```
+
+### Font Weights
+- Body text: 400 (Regular)
+- Emphasized / Labels: 500 (Medium)
+- Section titles / Card headers / Buttons: 600 (Bold)
+- Page titles / Main headings: 700 (ExtraBold)
+- ⚠️ NEVER use 800 or 900
+
+### Heading Scale
+- h1: 24px / 700 / 1.3 (page main title)
+- h2: 20px / 600 / 1.35 (section title)
+- h3: 18px / 600 / 1.4 (card header)
+- h4: 16px / 600 / 1.45 (sub-section)
+- body: 14px / 400 / 1.6 (body text)
+
+### Line Heights (Korean Optimized)
+- Small (12px): 1.55
+- Body (14px): 1.6
+- Large body (16px): 1.65
+- Section titles (18-20px): 1.4 / 1.35
+- Page titles (24px): 1.3
+- KPI numbers (24-32px): 1.25
+
+---
+
+## 📏 Spacing (8px Grid System)
+- xs: 4px (0.5)
+- sm: 8px (1)
+- md: 16px (2)
+- lg: 24px (3)
+- xl: 32px (4)
+- 2xl: 48px (6)
+- 3xl: 64px (8)
+
+### Component Spacing
+- Card padding: 24px (medium), 16px (small), 32px (large)
+- Section gap: 24px
+- Component gap: 16px
+- Element gap: 8px
+- Button padding: 12px 24px (medium)
+
+---
+
+## 🎭 Component Styles
+
+### Cards
+- Border radius: 12px
+- Border: 1px solid #E0E0E0
+- Shadow: 0 2px 8px rgba(0,0,0,0.08)
+- Hover shadow: 0 4px 16px rgba(0,0,0,0.12)
+- Hover transform: translateY(-2px)
+
+### Buttons
+- Border radius: 8px
+- Primary: #405D99 / Hover: #2E4577
+- Font weight: 600
+- Shadow: 0 2px 4px rgba(64,93,153,0.2)
+- Sizes: small (8px 16px), medium (12px 24px), large (16px 32px)
+
+### Inputs
+- Border radius: 8px
+- Border: 1px solid #BDBDBD
+- Focus border: #405D99
+- Focus shadow: 0 0 0 3px rgba(64,93,153,0.1)
+- Padding: 12px 16px
+- Font size: 16px
+
+### Modals (Important - Keep Consistency!)
+- Border radius: 16px
+- Shadow: 0 8px 32px rgba(0,0,0,0.16)
+- Overlay: rgba(0,0,0,0.5) with backdrop-blur(4px)
+- Header padding: 24px 24px 16px 24px
+- Body padding: 24px
+- Footer padding: 16px 24px 24px 24px
+- Title: 20px / 600 / 1.35
+- Border between sections: 1px solid #E0E0E0
+
+---
+
+## 🎬 Animations
+- Default transition: all 0.2s ease-in-out
+- Fast transition: all 0.15s ease-in-out
+- Slow transition: all 0.3s ease-in-out
+- Hover lift: translateY(-2px)
+- Hover scale: scale(1.02)
+
+---
+
+## 📋 Coding Rules
+1. **Always use design system constants** - NO hardcoded colors or sizes
+2. **Mobile-First CSS** - 기본 스타일은 모바일, md:/lg: 로 확장
+3. **Use semantic Tailwind classes** that match design tokens
+4. **Maintain 8px spacing grid** for all layouts
+5. **Touch targets minimum 44px** on mobile
+6. **Test on real devices** - Chrome DevTools + 실제 모바일
+7. **No horizontal scroll** - ensure overflow-x-hidden
+8. **Optimize for thumb reach** - important actions within reach
+9. **Ensure Korean text readability** - use proper line-heights
+10. **Modal consistency is critical** - follow exact specifications
+11. **Accessibility first** - WCAG 2.1 AA compliance
+12. **Preserve all existing functionality** - design changes only
+
+---
+
+## 🚫 Never Do
+- Don't start with desktop design
+- Don't use touch targets smaller than 44x44px on mobile
+- Don't create horizontal scroll
+- Don't hide important content on mobile
+- Don't use hover effects as only interaction method
+- Don't use font-weight 800 or 900
+- Don't hardcode colors (use design tokens)
+- Don't break 8px grid system
+- Don't skip hover/focus states
+- Don't compromise accessibility
+- Don't change functionality during design updates
+
+---
+
+## ✅ Always Do
+- Design mobile-first, then scale up
+- Test on iPhone SE (375px) as minimum width
+- Test on iPad (768px) for tablet view
+- Ensure touch targets are large enough
+- Provide visible tap feedback on mobile
+- Use appropriate font sizes for mobile
+- Optimize images for mobile (WebP, lazy loading)
+- Test orientation changes (portrait ↔ landscape)
+- Consider slow network (mobile data)
+- Use design system imports from `@/lib/design-system`
+- Test all interactive states (hover, focus, active, disabled)
+- Keep modal designs identical across the app
+- Document any deviations from design system
+
+---
+
+## 📱 Mobile Testing Checklist
+Before deploying ANY design change:
+- [ ] Test on iPhone SE (375px width - minimum)
+- [ ] Test on iPhone 12/13/14 (390px width)
+- [ ] Test on Galaxy S21 (360px width)
+- [ ] Test on iPad (768px width)
+- [ ] Test on iPad Pro (1024px width)
+- [ ] Test portrait and landscape modes
+- [ ] Test with iOS Safari (not just Chrome)
+- [ ] Test touch interactions (tap, swipe, scroll)
+- [ ] Test with slow 3G network
+- [ ] Verify no horizontal scroll
+- [ ] Verify all buttons are tappable (44x44px min)
+- [ ] Verify modals work on small screens
+- [ ] Verify forms are usable on mobile keyboard
+- [ ] Test font sizes are readable without zoom
+
+---
+
+## 🎯 Mobile Performance
+- Lazy load images below the fold
+- Use WebP format for images
+- Minimize bundle size
+- Avoid layout shifts (CLS)
+- Optimize for Core Web Vitals
+- Use CSS containment for performance
+- Debounce scroll/resize events
+
+---
+
+## 📦 Design System Usage
+```typescript
+// Import design tokens
+import { colors, typography, spacing, components, responsive } from '@/lib/design-system'
+
+// Use in components
+const buttonStyle = {
+  background: colors.primary[500],
+  padding: spacing.cardPadding.medium,
+  borderRadius: components.button.base.borderRadius,
+}
+```
+
+---
+
+## ⚠️ CRITICAL: Functionality Preservation
+**이 프로젝트는 UI/UX 개선 프로젝트입니다.**
+- 모든 기존 기능은 100% 유지되어야 합니다
+- 데이터 로딩, API 호출, 상태 관리 로직은 절대 변경하지 않습니다
+- 오직 스타일, 레이아웃, 디자인만 변경합니다
+- 변경 전후 기능 테스트 필수

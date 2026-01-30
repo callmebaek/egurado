@@ -4,17 +4,32 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const badgeVariants = cva(
-  "inline-flex items-center rounded-lg border px-2.5 py-1 text-[11px] font-medium transition-all duration-[var(--transition-fast)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:ring-offset-2",
+  // TurboTax Badge Base Styles
+  "inline-flex items-center rounded-xl border px-3 py-1 text-xs font-bold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2",
   {
     variants: {
       variant: {
+        // Primary Badge
         default:
-          "border-transparent bg-[var(--primary)] text-white shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)]",
+          "border-transparent bg-primary-100 text-primary-500",
+        // Secondary Badge
         secondary:
-          "border-transparent bg-[var(--muted)] text-[var(--foreground)] hover:bg-[var(--olive-200)]",
+          "border-transparent bg-neutral-100 text-neutral-700",
+        // Success Badge
+        success:
+          "border-transparent bg-success-bg text-success",
+        // Warning Badge
+        warning:
+          "border-transparent bg-warning-bg text-warning",
+        // Error Badge
         destructive:
-          "border-transparent bg-red-600 text-white shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)]",
-        outline: "text-[var(--foreground)] border-[var(--border)]",
+          "border-transparent bg-error-bg text-error",
+        // Info Badge
+        info:
+          "border-transparent bg-info-bg text-info",
+        // Outline Badge
+        outline: 
+          "text-neutral-700 border-neutral-300 bg-white",
       },
     },
     defaultVariants: {
