@@ -369,12 +369,15 @@ export default function NaverKeywordsPage() {
   // 경쟁도 표시
   const getCompIdxBadge = (compIdx: string) => {
     const colors: Record<string, string> = {
-      "낮음": "bg-green-100 text-green-800",
-      "중간": "bg-yellow-100 text-yellow-800",
-      "높음": "bg-red-100 text-red-800",
+      "낮음": "bg-success/10 text-success border border-success/20",
+      "중간": "bg-warning/10 text-warning border border-warning/20",
+      "높음": "bg-error/10 text-error border border-error/20",
     }
     return (
-      <span className={`px-2 py-1 rounded text-xs font-medium ${colors[compIdx] || "bg-gray-100 text-gray-800"}`}>
+      <span 
+        className={`px-1 py-0.5 rounded text-[10px] md:text-xs font-semibold leading-none flex-shrink-0 w-fit ${colors[compIdx] || "bg-neutral-100 text-neutral-600 border border-neutral-200"}`}
+        style={{ display: 'inline-block', width: 'fit-content', maxWidth: 'fit-content' }}
+      >
         {compIdx || "-"}
       </span>
     )
@@ -384,8 +387,8 @@ export default function NaverKeywordsPage() {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
-          <p className="text-muted-foreground">매장 정보를 불러오는 중...</p>
+          <Loader2 className="h-10 w-10 md:h-12 md:w-12 animate-spin text-primary mx-auto mb-3" />
+          <p className="text-sm md:text-base text-neutral-600">매장 정보를 불러오는 중...</p>
         </div>
       </div>
     )
@@ -396,126 +399,135 @@ export default function NaverKeywordsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       {/* 헤더 */}
       <div>
-        <h1 className="text-2xl md:text-3xl font-bold text-primary mb-2">
-          키워드 검색량
+        <h1 className="text-xl md:text-2xl font-bold text-neutral-900 mb-1 md:mb-2">
+          키워드 검색량 분석
         </h1>
-        <p className="text-muted-foreground">
-          네이버 검색도구 API를 활용하여 키워드의 검색량을 분석하세요.
+        <p className="text-sm md:text-base text-neutral-600">
+          네이버 검색도구 API를 활용하여 키워드의 월간 검색량과 경쟁도를 분석하세요.
         </p>
       </div>
 
       {/* 검색 영역 */}
-      <Card className="p-6">
-        <div className="flex flex-col md:flex-row gap-3">
-          <div className="flex-1">
-            <Input
-              placeholder="키워드를 입력하세요 (쉼표로 구분, 최대 5개)"
-              value={keywordInput}
-              onChange={(e) => setKeywordInput(e.target.value)}
-              onKeyPress={(e) => e.key === "Enter" && handleSearch()}
-              className="w-full"
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              예: 성수맛집, 성수동카페, 종로한식
-            </p>
-            <div className="text-xs mt-1 space-y-0.5">
-              <p className="text-amber-600">
-                ⚠️ 띄어쓰기는 자동으로 제거됩니다
-              </p>
-              <p className="text-amber-600">
-                ⚠️ 키워드는 최대 15자까지 지원됩니다 (네이버 API 제한)
-              </p>
+      <Card className="p-4 md:p-6">
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col sm:flex-row gap-2">
+            <div className="flex-1">
+              <Input
+                placeholder="키워드를 입력하세요 (쉼표로 구분)"
+                value={keywordInput}
+                onChange={(e) => setKeywordInput(e.target.value)}
+                onKeyPress={(e) => e.key === "Enter" && handleSearch()}
+                className="w-full h-11 md:h-10"
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button
+                onClick={() => handleSearch()}
+                disabled={isSearching}
+                className="flex-1 sm:flex-initial gap-2 h-11 md:h-10"
+              >
+                {isSearching ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    검색 중
+                  </>
+                ) : (
+                  <>
+                    <Search className="w-4 h-4" />
+                    검색
+                  </>
+                )}
+              </Button>
+              <Button
+                onClick={() => setIsCombinatorOpen(true)}
+                variant="outline"
+                className="flex-1 sm:flex-initial gap-2 h-11 md:h-10"
+              >
+                <Sparkles className="w-4 h-4" />
+                <span className="hidden sm:inline">키워드 조합기</span>
+                <span className="sm:hidden">조합기</span>
+              </Button>
             </div>
           </div>
-          <div className="flex gap-2">
-            <Button
-              onClick={() => handleSearch()}
-              disabled={isSearching}
-              className="gap-2"
-            >
-              {isSearching ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  검색 중...
-                </>
-              ) : (
-                <>
-                  <Search className="w-4 h-4" />
-                  검색
-                </>
-              )}
-            </Button>
-            <Button
-              onClick={() => setIsCombinatorOpen(true)}
-              variant="outline"
-              className="gap-2"
-            >
-              <Sparkles className="w-4 h-4" />
-              키워드 조합기
-            </Button>
+          <div className="space-y-1">
+            <p className="text-xs text-neutral-500">
+              💡 예시: 성수맛집, 성수동카페, 종로한식
+            </p>
+            <p className="text-xs text-amber-700">
+              ⚠️ 띄어쓰기는 자동으로 제거되며, 키워드는 최대 15자까지 지원됩니다 (네이버 API 제한)
+            </p>
           </div>
         </div>
       </Card>
 
       {/* 현재 검색 결과 */}
       {currentResults.length > 0 && (
-        <Card className="p-6">
-          <h2 className="text-lg font-semibold mb-4">검색 결과</h2>
-          <div className="space-y-4">
+        <Card className="p-4 md:p-6">
+          <h2 className="text-base md:text-lg font-semibold text-neutral-900 mb-3 md:mb-4">
+            검색 결과 ({currentResults.length}개)
+          </h2>
+          <div className="space-y-3">
             {currentResults.map((item) => (
-              <div key={item.id} className="border rounded-lg p-4 bg-blue-50">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-lg font-bold text-gray-900">{item.keyword}</h3>
-                  {getCompIdxBadge(item.comp_idx)}
+              <div 
+                key={item.id} 
+                className="border border-neutral-200 rounded-xl p-3 md:p-4 bg-gradient-to-br from-primary/5 via-white to-white hover:shadow-md transition-shadow duration-200"
+              >
+                <div className="flex items-start justify-between mb-3 gap-2">
+                  <h3 className="text-base md:text-lg font-bold text-neutral-900 break-words flex-1">
+                    {item.keyword}
+                  </h3>
+                  <div className="flex-shrink-0">
+                    {getCompIdxBadge(item.comp_idx)}
+                  </div>
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
-                  <div>
-                    <div className="flex items-center gap-1 text-gray-600 mb-1">
-                      <Search className="w-4 h-4" />
-                      <span className="font-semibold">총 검색량</span>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4 text-sm">
+                  <div className="col-span-2 md:col-span-1">
+                    <div className="flex items-center gap-1 text-neutral-600 mb-1">
+                      <Search className="w-3.5 h-3.5" />
+                      <span className="font-semibold text-xs">총 검색량</span>
                     </div>
-                    <p className="font-bold text-lg text-primary">
+                    <p className="font-bold text-lg md:text-xl text-primary">
                       {(typeof item.monthly_pc_qc_cnt === 'string' || typeof item.monthly_mobile_qc_cnt === 'string')
                         ? '< 10'
                         : formatNumber(getTotalSearchVolume(item.monthly_pc_qc_cnt, item.monthly_mobile_qc_cnt))}
                     </p>
                   </div>
                   <div>
-                    <div className="flex items-center gap-1 text-gray-600 mb-1">
-                      <Monitor className="w-4 h-4" />
-                      <span>PC 검색량</span>
+                    <div className="flex items-center gap-1 text-neutral-600 mb-1">
+                      <Monitor className="w-3.5 h-3.5" />
+                      <span className="text-xs">PC 검색</span>
                     </div>
-                    <p className="font-semibold text-gray-900">
+                    <p className="font-semibold text-neutral-900">
                       {formatNumber(item.monthly_pc_qc_cnt)}
                     </p>
                   </div>
                   <div>
-                    <div className="flex items-center gap-1 text-gray-600 mb-1">
-                      <Smartphone className="w-4 h-4" />
-                      <span>모바일 검색량</span>
+                    <div className="flex items-center gap-1 text-neutral-600 mb-1">
+                      <Smartphone className="w-3.5 h-3.5" />
+                      <span className="text-xs">모바일 검색</span>
                     </div>
-                    <p className="font-semibold text-gray-900">
+                    <p className="font-semibold text-neutral-900">
                       {formatNumber(item.monthly_mobile_qc_cnt)}
                     </p>
                   </div>
                   <div>
-                    <div className="flex items-center gap-1 text-gray-600 mb-1">
-                      <TrendingUp className="w-4 h-4" />
-                      <span>PC 클릭률</span>
+                    <div className="flex items-center gap-1 text-neutral-600 mb-1">
+                      <TrendingUp className="w-3.5 h-3.5" />
+                      <span className="text-xs">PC 클릭률</span>
                     </div>
-                    <p className="font-semibold text-gray-900">
+                    <p className="font-semibold text-neutral-900">
                       {item.monthly_ave_pc_ctr ? `${item.monthly_ave_pc_ctr}%` : "-"}
                     </p>
                   </div>
                   <div>
-                    <div className="flex items-center gap-1 text-gray-600 mb-1">
-                      <TrendingUp className="w-4 h-4" />
-                      <span>모바일 클릭률</span>
+                    <div className="flex items-center gap-1 text-neutral-600 mb-1">
+                      <TrendingUp className="w-3.5 h-3.5" />
+                      <span className="text-xs">모바일 클릭률</span>
                     </div>
-                    <p className="font-semibold text-gray-900">
+                    <p className="font-semibold text-neutral-900">
                       {item.monthly_ave_mobile_ctr ? `${item.monthly_ave_mobile_ctr}%` : "-"}
                     </p>
                   </div>
@@ -527,16 +539,16 @@ export default function NaverKeywordsPage() {
       )}
 
       {/* 검색 이력 */}
-      <Card className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">
-            검색 이력 ({searchHistory.length}/100)
+      <Card className="p-4 md:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+          <h2 className="text-base md:text-lg font-semibold text-neutral-900">
+            검색 이력 <span className="text-neutral-500">({searchHistory.length}/100)</span>
           </h2>
           {searchHistory.length >= 90 && (
-            <div className={`text-xs px-3 py-1 rounded-full ${
+            <div className={`text-xs px-3 py-1 rounded-full font-semibold self-start sm:self-auto ${
               searchHistory.length >= 100 
-                ? 'bg-red-100 text-red-800' 
-                : 'bg-amber-100 text-amber-800'
+                ? 'bg-error/10 text-error border border-error/20' 
+                : 'bg-warning/10 text-warning border border-warning/20'
             }`}>
               {searchHistory.length >= 100 
                 ? '⚠️ 저장 한도 도달' 
@@ -548,13 +560,13 @@ export default function NaverKeywordsPage() {
         {searchHistory.length >= 90 && (
           <div className={`mb-4 p-3 rounded-lg border ${
             searchHistory.length >= 100
-              ? 'bg-red-50 border-red-200'
-              : 'bg-amber-50 border-amber-200'
+              ? 'bg-error/5 border-error/20'
+              : 'bg-warning/5 border-warning/20'
           }`}>
             <p className={`text-sm ${
               searchHistory.length >= 100 
-                ? 'text-red-800' 
-                : 'text-amber-800'
+                ? 'text-error' 
+                : 'text-warning'
             }`}>
               {searchHistory.length >= 100 
                 ? '🚫 검색 이력이 100개에 도달했습니다. 새로운 검색을 위해서는 일부 이력을 삭제해주세요.'
@@ -564,28 +576,33 @@ export default function NaverKeywordsPage() {
         )}
         
         {isLoadingHistory ? (
-          <div className="text-center py-8">
-            <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-2" />
-            <p className="text-sm text-gray-600">검색 이력을 불러오는 중...</p>
+          <div className="text-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-3" />
+            <p className="text-sm text-neutral-600">검색 이력을 불러오는 중...</p>
           </div>
         ) : searchHistory.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
-            <p>검색 이력이 없습니다.</p>
-            <p className="text-sm mt-1">키워드를 검색하면 이곳에 이력이 표시됩니다.</p>
+          <div className="text-center py-12 text-neutral-500">
+            <Search className="w-12 h-12 mx-auto mb-3 opacity-50" />
+            <p className="font-medium">검색 이력이 없습니다</p>
+            <p className="text-sm mt-1">키워드를 검색하면 이곳에 이력이 표시됩니다</p>
           </div>
         ) : (
           <>
             {searchHistory.length > 0 && (
-              <div className="flex items-center justify-between mb-3 pb-3 border-b">
-                <label className="flex items-center gap-2 cursor-pointer">
+              <div className="flex items-center justify-between mb-3 pb-3 border-b border-neutral-200">
+                <label className="flex items-center gap-2 cursor-pointer py-2">
                   <input
                     type="checkbox"
                     checked={selectedHistoryIds.size === searchHistory.length && searchHistory.length > 0}
                     onChange={handleToggleSelectAll}
-                    className="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary"
+                    className="text-primary rounded border-neutral-300 focus:ring-primary focus:ring-1 cursor-pointer"
+                    style={{ width: '13px', height: '13px', minWidth: '13px', minHeight: '13px', maxWidth: '13px', maxHeight: '13px' }}
                   />
-                  <span className="text-sm text-gray-700">
-                    전체 선택 ({selectedHistoryIds.size}개 선택됨)
+                  <span className="text-sm text-neutral-700 font-medium">
+                    전체 선택 
+                    {selectedHistoryIds.size > 0 && (
+                      <span className="text-primary ml-1">({selectedHistoryIds.size}개)</span>
+                    )}
                   </span>
                 </label>
                 {selectedHistoryIds.size > 0 && (
@@ -593,65 +610,80 @@ export default function NaverKeywordsPage() {
                     onClick={handleDeleteSelected}
                     variant="outline"
                     size="sm"
-                    className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                    className="text-error hover:text-error hover:bg-error/5 border-error/20 h-7 px-2.5 text-xs"
                   >
-                    <Trash2 className="w-4 h-4 mr-1" />
-                    선택 삭제 ({selectedHistoryIds.size})
+                    <Trash2 className="w-3 h-3 mr-1" />
+                    <span className="hidden sm:inline">선택 삭제</span>
+                    <span className="sm:hidden">삭제</span>
+                    <span className="ml-0.5">({selectedHistoryIds.size})</span>
                   </Button>
                 )}
               </div>
             )}
 
-            <div className="space-y-3">
+            <div className="space-y-2">
               {searchHistory.map((item) => (
-                <div key={item.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="checkbox"
-                        checked={selectedHistoryIds.has(item.id)}
-                        onChange={() => handleToggleSelect(item.id)}
-                        className="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary"
-                      />
-                      <h3 className="font-semibold text-gray-900">{item.keyword}</h3>
-                      {getCompIdxBadge(item.comp_idx)}
+                <div 
+                  key={item.id} 
+                  className="border border-neutral-200 rounded-lg p-3 md:p-4 hover:bg-neutral-50 hover:shadow-sm transition-all duration-200"
+                >
+                  <div className="flex items-start justify-between mb-2 gap-2">
+                    <div className="flex items-start gap-2 flex-1 min-w-0">
+                      <label className="cursor-pointer flex items-start pt-0.5">
+                        <input
+                          type="checkbox"
+                          checked={selectedHistoryIds.has(item.id)}
+                          onChange={() => handleToggleSelect(item.id)}
+                          className="flex-shrink-0 text-primary rounded border-neutral-300 focus:ring-primary focus:ring-1 cursor-pointer"
+                          style={{ width: '13px', height: '13px', minWidth: '13px', minHeight: '13px', maxWidth: '13px', maxHeight: '13px' }}
+                        />
+                      </label>
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 flex-1 min-w-0">
+                        <h3 className="font-semibold text-neutral-900 break-words text-sm">{item.keyword}</h3>
+                        <div className="self-start">
+                          {getCompIdxBadge(item.comp_idx)}
+                        </div>
+                      </div>
                     </div>
-                    <Button
+                    <button
                       onClick={() => handleDeleteHistory(item.id)}
-                      variant="ghost"
-                      size="sm"
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      className="text-error hover:text-error hover:bg-error/5 flex-shrink-0 rounded-md transition-colors p-1"
+                      style={{ width: '24px', height: '24px' }}
                     >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                      <Trash2 className="w-3 h-3" />
+                    </button>
                   </div>
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-sm">
-                  <div>
-                    <span className="text-gray-600 font-semibold">총 검색량: </span>
-                    <span className="font-bold text-primary">
-                      {(typeof item.monthly_pc_qc_cnt === 'string' || typeof item.monthly_mobile_qc_cnt === 'string')
-                        ? '< 10'
-                        : formatNumber(getTotalSearchVolume(item.monthly_pc_qc_cnt, item.monthly_mobile_qc_cnt))}
-                    </span>
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-2 md:gap-3 text-xs md:text-sm ml-5">
+                    <div>
+                      <span className="text-neutral-600 font-medium">총 검색량: </span>
+                      <span className="font-bold text-primary">
+                        {(typeof item.monthly_pc_qc_cnt === 'string' || typeof item.monthly_mobile_qc_cnt === 'string')
+                          ? '< 10'
+                          : formatNumber(getTotalSearchVolume(item.monthly_pc_qc_cnt, item.monthly_mobile_qc_cnt))}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-neutral-600">PC: </span>
+                      <span className="font-medium text-neutral-900">{formatNumber(item.monthly_pc_qc_cnt)}</span>
+                    </div>
+                    <div>
+                      <span className="text-neutral-600">모바일: </span>
+                      <span className="font-medium text-neutral-900">{formatNumber(item.monthly_mobile_qc_cnt)}</span>
+                    </div>
+                    <div>
+                      <span className="text-neutral-600">PC CTR: </span>
+                      <span className="font-medium text-neutral-900">
+                        {item.monthly_ave_pc_ctr ? `${item.monthly_ave_pc_ctr}%` : "-"}
+                      </span>
+                    </div>
+                    <div className="text-neutral-500 text-xs">
+                      {new Date(item.created_at).toLocaleDateString('ko-KR', { 
+                        year: 'numeric', 
+                        month: 'short', 
+                        day: 'numeric' 
+                      })}
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-gray-600">PC 검색량: </span>
-                    <span className="font-medium">{formatNumber(item.monthly_pc_qc_cnt)}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">모바일 검색량: </span>
-                    <span className="font-medium">{formatNumber(item.monthly_mobile_qc_cnt)}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">PC 클릭률: </span>
-                    <span className="font-medium">
-                      {item.monthly_ave_pc_ctr ? `${item.monthly_ave_pc_ctr}%` : "-"}
-                    </span>
-                  </div>
-                  <div className="text-gray-500 text-xs">
-                    {new Date(item.created_at).toLocaleDateString()}
-                  </div>
-                </div>
                 </div>
               ))}
             </div>
