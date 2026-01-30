@@ -393,12 +393,24 @@ export default function NaverRankPage() {
 
     try {
       // 비공식 API 방식 (5-10배 빠르고 리뷰수 포함) ⭐
+      const token = await getToken()
+      if (!token) {
+        toast({
+          title: "인증 오류",
+          description: "로그인이 필요합니다.",
+          variant: "destructive",
+        })
+        setIsChecking(false)
+        return
+      }
+
       const response = await fetch(
         api.naver.checkRank(),
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`,
           },
           body: JSON.stringify({
             store_id: selectedStoreId,
