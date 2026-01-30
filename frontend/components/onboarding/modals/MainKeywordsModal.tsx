@@ -96,6 +96,21 @@ export default function MainKeywordsModal({ opened, onClose, onComplete }: MainK
       
       const data: AnalysisResult = await response.json();
       setResult(data);
+      
+      // 🆕 캐싱: 결과를 localStorage에 저장 (2분간 유효)
+      try {
+        const cacheKey = `main_keywords_cache_${keyword.trim().toLowerCase()}`
+        const cacheData = {
+          data: data,
+          timestamp: Date.now(),
+          query: keyword.trim()
+        }
+        localStorage.setItem(cacheKey, JSON.stringify(cacheData))
+        console.log('[대표키워드 모달] 캐시 저장 완료:', cacheKey)
+      } catch (err) {
+        console.warn('[대표키워드 모달] 캐시 저장 실패:', err)
+      }
+      
       setStep(4); // 결과 단계로 이동
       
     } catch (err) {

@@ -51,6 +51,40 @@ export default function MainKeywordsAnalysisPage() {
       
       // 자동 분석 실행
       const autoAnalyze = async () => {
+        // 🆕 캐시 확인 (2분 = 120000ms 이내)
+        const cacheKey = `main_keywords_cache_${trimmedQuery.toLowerCase()}`
+        const CACHE_DURATION = 120000 // 2분
+        let cachedData: AnalysisResult | null = null
+        
+        try {
+          const cached = localStorage.getItem(cacheKey)
+          if (cached) {
+            const parsedCache = JSON.parse(cached)
+            const age = Date.now() - parsedCache.timestamp
+            if (age < CACHE_DURATION && parsedCache.query === trimmedQuery) {
+              cachedData = parsedCache.data
+              console.log('[대표키워드] ✅ 캐시 데이터 사용 (중복 API 호출 방지):', Math.round(age / 1000), '초 전')
+            } else {
+              console.log('[대표키워드] ⏰ 캐시 만료:', Math.round(age / 1000), '초 전')
+              localStorage.removeItem(cacheKey)
+            }
+          }
+        } catch (err) {
+          console.warn('[대표키워드] 캐시 읽기 실패:', err)
+        }
+
+        // 캐시가 있으면 API 호출 스킵
+        if (cachedData) {
+          setResult(cachedData)
+          toast({
+            title: "분석 완료 (캐시)",
+            description: `${cachedData.stores_analyzed.length}개 매장의 대표 키워드를 불러왔습니다.`,
+          })
+          return
+        }
+
+        // 캐시가 없으면 API 호출
+        console.log('[대표키워드] 📡 API 호출 (캐시 없음)')
         setLoading(true)
         
         try {
@@ -73,6 +107,19 @@ export default function MainKeywordsAnalysisPage() {
           
           const data: AnalysisResult = await response.json()
           setResult(data)
+          
+          // 🆕 캐시에 저장
+          try {
+            const cacheData = {
+              data: data,
+              timestamp: Date.now(),
+              query: trimmedQuery
+            }
+            localStorage.setItem(cacheKey, JSON.stringify(cacheData))
+            console.log('[대표키워드] 💾 캐시 저장 완료')
+          } catch (err) {
+            console.warn('[대표키워드] 캐시 저장 실패:', err)
+          }
           
           toast({
             title: "분석 완료",

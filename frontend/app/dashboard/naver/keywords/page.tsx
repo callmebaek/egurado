@@ -87,15 +87,6 @@ export default function NaverKeywordsPage() {
       return
     }
 
-    if (keywordsToSearch.length > 5) {
-      toast({
-        title: "오류",
-        description: "한 번에 최대 5개의 키워드만 검색할 수 있습니다.",
-        variant: "destructive",
-      })
-      return
-    }
-
     // 100개 제한 확인
     if (searchHistory.length >= 100) {
       toast({
@@ -119,24 +110,70 @@ export default function NaverKeywordsPage() {
     setIsSearching(true)
     try {
       const token = await getToken()
-      const response = await fetch(
-        `${api.baseUrl}/api/v1/keyword-search-volume/search-volume`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            // user_id는 백엔드에서 current_user로부터 추출되므로 제거
-            keywords: keywordsToSearch,
-          }),
+      
+      // 🆕 키워드를 5개씩 분할 (API 제한)
+      const chunkSize = 5
+      const chunks: string[][] = []
+      for (let i = 0; i < keywordsToSearch.length; i += chunkSize) {
+        chunks.push(keywordsToSearch.slice(i, i + chunkSize))
+      }
+
+      console.log(`[키워드 검색] ${keywordsToSearch.length}개 키워드를 ${chunks.length}개 그룹으로 분할`)
+
+      // 🆕 각 chunk를 순차적으로 처리
+      const allResults: any[] = []
+      let successCount = 0
+      let failCount = 0
+
+      for (let i = 0; i < chunks.length; i++) {
+        const chunk = chunks[i]
+        console.log(`[키워드 검색] ${i + 1}/${chunks.length} 그룹 처리 중... (${chunk.length}개)`)
+
+        try {
+          const response = await fetch(
+            `${api.baseUrl}/api/v1/keyword-search-volume/search-volume`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`,
+              },
+              body: JSON.stringify({
+                keywords: chunk,
+              }),
+            }
+          )
+
+          if (!response.ok) {
+            console.warn(`[키워드 검색] ${i + 1}/${chunks.length} 그룹 실패`)
+            failCount++
+            continue
+          }
+
+          const result = await response.json()
+          allResults.push(result)
+          successCount++
+          console.log(`[키워드 검색] ${i + 1}/${chunks.length} 그룹 성공`)
+        } catch (error) {
+          console.error(`[키워드 검색] ${i + 1}/${chunks.length} 그룹 오류:`, error)
+          failCount++
         }
-      )
+      }
 
-      if (!response.ok) throw new Error("검색 실패")
+      // 🆕 모든 결과 합치기
+      const result = {
+        data: { keywordList: [] },
+        saved_history: []
+      }
 
-      const result = await response.json()
+      allResults.forEach(r => {
+        if (r.data?.keywordList) {
+          result.data.keywordList.push(...r.data.keywordList)
+        }
+        if (r.saved_history) {
+          result.saved_history.push(...r.saved_history)
+        }
+      })
       
       // API 응답에서 키워드 데이터 추출 및 변환
       const keywordList = result.data?.keywordList || []
@@ -164,10 +201,17 @@ export default function NaverKeywordsPage() {
         })
       }
       
-      toast({
-        title: "검색 완료",
-        description: `${displayResults.length}개 키워드의 검색량을 조회했습니다.`,
-      })
+      // 🆕 결과 메시지
+      if (successCount > 0) {
+        toast({
+          title: "검색 완료",
+          description: failCount > 0 
+            ? `${displayResults.length}개 키워드 조회 완료 (${successCount}/${successCount + failCount} 그룹 성공)`
+            : `${displayResults.length}개 키워드의 검색량을 조회했습니다.`,
+        })
+      } else {
+        throw new Error("모든 검색이 실패했습니다")
+      }
 
       // 검색 결과 표시
       setCurrentResults(displayResults)

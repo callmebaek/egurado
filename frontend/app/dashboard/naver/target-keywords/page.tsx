@@ -160,7 +160,7 @@ export default function TargetKeywordsPage() {
 
   const fetchRegisteredStores = async () => {
     try {
-      const token = getToken()
+      const token = await getToken()
       if (!token) throw new Error("인증 토큰 없음")
       
       const response = await fetch(api.stores.list(), {
@@ -190,7 +190,7 @@ export default function TargetKeywordsPage() {
 
   const loadStoreHistories = async (storeId: string) => {
     try {
-      const token = getToken()
+      const token = await getToken()
       if (!token) return
       
       const response = await fetch(`${api.baseUrl}/api/v1/target-keywords/history/${storeId}`, {
@@ -221,7 +221,7 @@ export default function TargetKeywordsPage() {
     setIsLoadingHistory(true)
     
     try {
-      const token = getToken()
+      const token = await getToken()
       if (!token) throw new Error("인증 토큰 없음")
       
       const response = await fetch(`${api.baseUrl}/api/v1/target-keywords/history/detail/${historyId}`, {
