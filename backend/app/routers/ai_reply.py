@@ -348,7 +348,10 @@ async def post_reply(
     
     작업을 큐에 추가하고 job_id를 반환합니다.
     실제 처리는 백그라운드에서 순차적으로 진행됩니다.
-    크레딧: 2 크레딧 소모
+    
+    제한:
+    - Tier: Pro 이상만 사용 가능 (Free, Basic 불가)
+    - 크레딧: 2 크레딧 소모
     """
     user_id = UUID(current_user["id"])
     
@@ -383,6 +386,21 @@ async def post_reply(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="네이버 플레이스 ID가 등록되지 않은 매장입니다"
             )
+        
+        # 🆕 Tier 체크 (Pro 이상만 답글 게시 가능)
+        user_profile = supabase.table("profiles").select("subscription_tier").eq(
+            "id", current_user["id"]
+        ).execute()
+        
+        if user_profile.data and len(user_profile.data) > 0:
+            user_tier = user_profile.data[0].get("subscription_tier", "free").lower()
+            if user_tier in ["free", "basic"]:
+                logger.warning(f"[Tier Restriction] User {user_id} (tier: {user_tier}) attempted to post reply")
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="답글 게시는 Pro 플랜 이상부터 사용 가능합니다. 플랜을 업그레이드해주세요."
+                )
+            logger.info(f"[Tier Check] User {user_id} tier: {user_tier} - allowed")
         
         # 🆕 크레딧 체크 (Feature Flag 확인)
         if settings.CREDIT_SYSTEM_ENABLED and settings.CREDIT_CHECK_STRICT:
