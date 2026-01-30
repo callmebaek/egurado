@@ -243,6 +243,9 @@ export default function TargetKeywordsPage() {
       if (autoSelectStore && history.store_id) {
         setSelectedStore(history.store_id)
         console.log("[타겟 키워드] 매장 자동 선택:", history.store_id)
+        
+        // 🆕 히스토리 목록도 로드하여 UI에 표시되도록 함
+        loadStoreHistories(history.store_id)
       }
       
       // 히스토리 데이터 설정 (펼쳐서 표시용)

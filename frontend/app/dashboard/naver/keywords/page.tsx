@@ -110,6 +110,15 @@ export default function NaverKeywordsPage() {
     setIsSearching(true)
     try {
       const token = await getToken()
+      if (!token) {
+        toast({
+          title: "인증 오류",
+          description: "로그인이 필요합니다.",
+          variant: "destructive",
+        })
+        setIsSearching(false)
+        return
+      }
       
       // 🆕 키워드를 5개씩 분할 (API 제한)
       const chunkSize = 5
