@@ -2,26 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import {
-  Modal,
-  Stack,
-  Text,
-  Button,
-  Paper,
-  Group,
-  Loader,
-  Progress,
-  ThemeIcon,
-  Center,
-  Alert,
-  Grid,
-  Badge,
-  Divider,
-} from '@mantine/core'
-import {
   Activity,
-  Store,
-  ChevronRight,
-  ChevronLeft,
   CheckCircle2,
   MessageSquare,
   FileText,
@@ -31,11 +12,14 @@ import {
   ArrowUp,
   ArrowDown,
   Minus,
+  Sparkles,
+  Loader2,
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import { api } from '@/lib/config'
-import { useToast } from '@/components/ui/use-toast'
 import { useRouter } from 'next/navigation'
+import OnboardingModal from './OnboardingModal'
+import StoreSelector from './StoreSelector'
 
 interface PlaceActivationModalProps {
   isOpen: boolean
@@ -71,7 +55,6 @@ interface ActivationData {
 
 export default function PlaceActivationModal({ isOpen, onClose, onComplete }: PlaceActivationModalProps) {
   const { getToken } = useAuth()
-  const { toast } = useToast()
   const router = useRouter()
   
   const [currentStep, setCurrentStep] = useState(1)
@@ -145,7 +128,7 @@ export default function PlaceActivationModal({ isOpen, onClose, onComplete }: Pl
       const data = await response.json()
       setActivationData(data.data)
       
-      // 🆕 캐싱: 모달에서 가져온 데이터를 localStorage에 저장 (2분간 유효)
+      // 캐싱
       const cacheKey = `activation_cache_${selectedStore.id}`
       const cacheData = {
         data: data.data,
@@ -154,7 +137,6 @@ export default function PlaceActivationModal({ isOpen, onClose, onComplete }: Pl
       }
       try {
         localStorage.setItem(cacheKey, JSON.stringify(cacheData))
-        console.log('[활성화 모달] 캐시 저장 완료:', cacheKey)
       } catch (err) {
         console.warn('[활성화 모달] 캐시 저장 실패:', err)
       }
@@ -163,6 +145,7 @@ export default function PlaceActivationModal({ isOpen, onClose, onComplete }: Pl
     } catch (err) {
       console.error('활성화 분석 오류:', err)
       setError('활성화 분석 중 오류가 발생했습니다')
+      setCurrentStep(2)
     } finally {
       setIsAnalyzing(false)
     }
@@ -171,13 +154,11 @@ export default function PlaceActivationModal({ isOpen, onClose, onComplete }: Pl
   const handleNext = () => {
     setError('')
     
-    // Step 1 → 2
     if (currentStep === 1) {
       setCurrentStep(2)
       return
     }
     
-    // Step 2: 매장 선택 → 분석
     if (currentStep === 2) {
       if (!selectedStore) {
         setError('매장을 선택해주세요')
@@ -186,6 +167,12 @@ export default function PlaceActivationModal({ isOpen, onClose, onComplete }: Pl
       setCurrentStep(3)
       analyzeActivation()
       return
+    }
+    
+    if (currentStep === 4) {
+      router.push(`/dashboard/naver/activation?storeId=${selectedStore?.id}`)
+      handleClose()
+      onComplete?.()
     }
   }
 
@@ -198,217 +185,192 @@ export default function PlaceActivationModal({ isOpen, onClose, onComplete }: Pl
 
   const getCardIcon = (type: string) => {
     switch (type) {
-      case 'visitor_review': return <MessageSquare size={24} />
-      case 'blog_review': return <FileText size={24} />
-      case 'reply': return <MessageSquare size={24} />
-      case 'promotion': return <Gift size={24} />
-      case 'announcement': return <Megaphone size={24} />
-      default: return <Activity size={24} />
+      case 'visitor_review': return <MessageSquare className="w-5 h-5 md:w-6 md:h-6" />
+      case 'blog_review': return <FileText className="w-5 h-5 md:w-6 md:h-6" />
+      case 'reply': return <MessageSquare className="w-5 h-5 md:w-6 md:h-6" />
+      case 'promotion': return <Gift className="w-5 h-5 md:w-6 md:h-6" />
+      case 'announcement': return <Megaphone className="w-5 h-5 md:w-6 md:h-6" />
+      default: return <Activity className="w-5 h-5 md:w-6 md:h-6" />
     }
   }
 
   const getCardColor = (type: string) => {
     switch (type) {
-      case 'visitor_review': return 'blue'
-      case 'blog_review': return 'grape'
-      case 'reply': return 'cyan'
-      case 'promotion': return 'pink'
-      case 'announcement': return 'orange'
-      default: return 'gray'
+      case 'visitor_review': return 'bg-info-bg text-info'
+      case 'blog_review': return 'bg-primary-100 text-primary-700'
+      case 'reply': return 'bg-info-bg text-info'
+      case 'promotion': return 'bg-brand-red/10 text-brand-red'
+      case 'announcement': return 'bg-warning-bg text-warning'
+      default: return 'bg-neutral-100 text-neutral-600'
     }
   }
 
   const getTrendIcon = (pct?: number) => {
-    if (!pct) return <Minus size={14} color="#868e96" />
-    if (pct > 0) return <ArrowUp size={14} color="#51cf66" />
-    if (pct < 0) return <ArrowDown size={14} color="#ff6b6b" />
-    return <Minus size={14} color="#868e96" />
+    if (!pct) return <Minus className="w-3 h-3 md:w-3.5 md:h-3.5" />
+    if (pct > 0) return <ArrowUp className="w-3 h-3 md:w-3.5 md:h-3.5" />
+    if (pct < 0) return <ArrowDown className="w-3 h-3 md:w-3.5 md:h-3.5" />
+    return <Minus className="w-3 h-3 md:w-3.5 md:h-3.5" />
   }
 
   const getTrendColor = (pct?: number) => {
-    if (!pct) return 'gray'
-    if (pct > 0) return 'green'
-    if (pct < 0) return 'red'
-    return 'gray'
+    if (!pct) return 'bg-neutral-100 text-neutral-600'
+    if (pct > 0) return 'bg-success-bg text-success'
+    if (pct < 0) return 'bg-error-bg text-error'
+    return 'bg-neutral-100 text-neutral-600'
   }
 
   // Step 1: 환영 메시지
   const renderStep1 = () => (
-    <Stack gap="lg" py="xs">
-      <Center>
-        <ThemeIcon size={90} radius={90} variant="light" color="blue" style={{ background: 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)' }}>
-          <Activity size={45} />
-        </ThemeIcon>
-      </Center>
-      
-      <Stack gap="xs" ta="center" px="sm">
-        <Text size="24px" fw={700} style={{ lineHeight: 1.3 }}>
-          플레이스 활성화<br />확인하기
-        </Text>
-        <Text size="sm" c="dimmed" style={{ lineHeight: 1.5 }}>
+    <div className="space-y-3 md:space-y-4">
+      <div className="text-center">
+        <div className="w-16 h-16 md:w-20 md:h-20 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <Activity className="w-8 h-8 md:w-10 md:h-10 text-primary-500" />
+        </div>
+        <h3 className="text-xl md:text-2xl font-bold text-neutral-900 mb-2 leading-tight">
+          플레이스 활성화<br className="md:hidden" /> 확인하기
+        </h3>
+        <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
           우리 매장이 활성화된 플레이스라는 것을<br />
           지속적으로 시그널을 만들어야 순위를 올릴 수 있습니다
-        </Text>
-      </Stack>
+        </p>
+      </div>
 
-      <Paper p="md" radius="md" style={{ background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)', border: 'none' }}>
-        <Stack gap="md">
-          <Group gap="sm" wrap="nowrap">
-            <ThemeIcon size={40} radius="md" variant="light" color="blue">
-              <TrendingUp size={20} />
-            </ThemeIcon>
-            <div>
-              <Text fw={600} size="sm">최근 활성화 수준 확인</Text>
-              <Text size="xs" c="dimmed">리뷰, 프로모션, 공지사항 등 5가지 핵심 지표를 확인하세요</Text>
+      <div className="bg-gradient-to-br from-primary-50 to-blue-50 rounded-xl p-4 md:p-6 border border-primary-200">
+        <div className="space-y-4">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 bg-primary-500 rounded-button flex items-center justify-center flex-shrink-0">
+              <TrendingUp className="w-5 h-5 text-white" />
             </div>
-          </Group>
-          
-          <Divider />
-          
-          <Group gap="sm" wrap="nowrap">
-            <ThemeIcon size={40} radius="md" variant="light" color="grape">
-              <Activity size={20} />
-            </ThemeIcon>
             <div>
-              <Text fw={600} size="sm">개선이 필요한 부분 파악</Text>
-              <Text size="xs" c="dimmed">우리 매장에 뭐가 더 필요한지를 수시로 판단하세요</Text>
+              <p className="text-sm md:text-base font-bold text-neutral-900 mb-1">최근 활성화 수준 확인</p>
+              <p className="text-xs md:text-sm text-neutral-600">리뷰, 프로모션, 공지사항 등 5가지 핵심 지표를 확인하세요</p>
             </div>
-          </Group>
+          </div>
           
-          <Divider />
+          <div className="border-t border-primary-200" />
           
-          <Group gap="sm" wrap="nowrap">
-            <ThemeIcon size={40} radius="md" variant="light" color="green">
-              <CheckCircle2 size={20} />
-            </ThemeIcon>
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 bg-info rounded-button flex items-center justify-center flex-shrink-0">
+              <Activity className="w-5 h-5 text-white" />
+            </div>
             <div>
-              <Text fw={600} size="sm">과거 이력 자동 저장</Text>
-              <Text size="xs" c="dimmed">분석 결과는 자동으로 저장되어 변화 추이를 확인할 수 있습니다</Text>
+              <p className="text-sm md:text-base font-bold text-neutral-900 mb-1">개선이 필요한 부분 파악</p>
+              <p className="text-xs md:text-sm text-neutral-600">우리 매장에 뭐가 더 필요한지를 수시로 판단하세요</p>
             </div>
-          </Group>
-        </Stack>
-      </Paper>
+          </div>
+          
+          <div className="border-t border-primary-200" />
+          
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 bg-success rounded-button flex items-center justify-center flex-shrink-0">
+              <CheckCircle2 className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <p className="text-sm md:text-base font-bold text-neutral-900 mb-1">과거 이력 자동 저장</p>
+              <p className="text-xs md:text-sm text-neutral-600">분석 결과는 자동으로 저장되어 변화 추이를 확인할 수 있습니다</p>
+            </div>
+          </div>
+        </div>
+      </div>
 
-      <Alert color="blue" radius="md" p="sm">
-        <Text size="xs">
+      <div className="bg-info-bg rounded-xl p-3 md:p-4 border border-info/30">
+        <p className="text-xs md:text-sm text-neutral-700">
           💡 <strong>TIP:</strong> 정기적으로 활성화 수준을 확인하고 개선 활동을 이어가면 플레이스 순위 상승에 도움이 됩니다!
-        </Text>
-      </Alert>
-    </Stack>
+        </p>
+      </div>
+    </div>
   )
 
   // Step 2: 매장 선택
-  const renderStep2 = () => (
-    <Stack gap="lg" py="xs">
-      <Stack gap="xs" ta="center">
-        <Text size="24px" fw={700}>어떤 매장의 활성화 수준을<br />확인할까요?</Text>
-        <Text size="sm" c="dimmed">
-          매장을 선택하면 현재 활성화 상태를 분석해드려요
-        </Text>
-      </Stack>
+  const renderStep2 = () => {
+    const formattedStores = stores.map(store => ({
+      id: store.id,
+      place_id: store.place_id,
+      name: store.name,
+      address: store.address || '',
+      thumbnail: store.thumbnail,
+      platform: 'naver',
+    }))
 
-      {loadingStores ? (
-        <Center style={{ minHeight: 200 }}>
-          <Loader size="lg" />
-        </Center>
-      ) : stores.length === 0 ? (
-        <Alert color="yellow" title="등록된 매장이 없습니다" radius="md">
-          먼저 네이버 플레이스 매장을 등록해주세요
-        </Alert>
-      ) : (
-        <Grid gutter="md">
-          {stores.map((store) => (
-            <Grid.Col key={store.id} span={{ base: 12, sm: 6 }}>
-              <Paper
-                p="md"
-                radius="md"
-                style={{
-                  cursor: 'pointer',
-                  border: selectedStore?.id === store.id ? '2px solid #228be6' : '1px solid #e0e7ff',
-                  background: selectedStore?.id === store.id ? 'linear-gradient(135deg, #e7f5ff 0%, #d0ebff 100%)' : '#ffffff',
-                  transition: 'all 0.2s'
-                }}
-                onClick={() => setSelectedStore(store)}
-              >
-                <Group gap="md">
-                  {store.thumbnail ? (
-                    <img 
-                      src={store.thumbnail} 
-                      alt={store.name}
-                      style={{ width: 48, height: 48, borderRadius: 8, objectFit: 'cover' }}
-                    />
-                  ) : (
-                    <ThemeIcon size={48} radius="md" variant="light" color="blue">
-                      <Store size={24} />
-                    </ThemeIcon>
-                  )}
-                  <div style={{ flex: 1 }}>
-                    <Text fw={600} size="sm">{store.name}</Text>
-                    {store.address && (
-                      <Text size="xs" c="dimmed">{store.address}</Text>
-                    )}
-                  </div>
-                  {selectedStore?.id === store.id && (
-                    <ThemeIcon size={32} radius="xl" color="blue">
-                      <CheckCircle2 size={20} />
-                    </ThemeIcon>
-                  )}
-                </Group>
-              </Paper>
-            </Grid.Col>
-          ))}
-        </Grid>
-      )}
+    const formattedSelected = selectedStore ? {
+      id: selectedStore.id,
+      place_id: selectedStore.place_id,
+      name: selectedStore.name,
+      address: selectedStore.address || '',
+      thumbnail: selectedStore.thumbnail,
+      platform: 'naver',
+    } : null
 
-      {error && (
-        <Alert color="red" radius="md">
-          {error}
-        </Alert>
-      )}
-    </Stack>
-  )
+    return (
+      <div className="space-y-3 md:space-y-4">
+        <div className="text-center space-y-2">
+          <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
+            어떤 매장의 활성화 수준을 확인할까요?
+          </h3>
+          <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
+            매장을 선택하면 현재 활성화 상태를 분석해드려요
+          </p>
+        </div>
+
+        <StoreSelector
+          stores={formattedStores}
+          selectedStore={formattedSelected}
+          onSelect={(store) => {
+            const original = stores.find(s => s.id === store.id)
+            if (original) {
+              setSelectedStore(original)
+            }
+          }}
+          loading={loadingStores}
+          emptyMessage={error || '등록된 네이버 플레이스 매장이 없습니다.'}
+        />
+
+        {error && (
+          <div className="p-3 md:p-4 bg-error-bg border border-error rounded-button">
+            <p className="text-sm md:text-base text-error font-medium">{error}</p>
+          </div>
+        )}
+      </div>
+    )
+  }
 
   // Step 3: 분석 중
   const renderStep3 = () => (
-    <Center style={{ minHeight: 300 }}>
-      <Stack gap="xl" align="center">
-        <Loader size={80} />
-        <Stack gap="xs" align="center">
-          <Text size="24px" fw={700}>활성화 수준을 분석하고 있습니다...</Text>
-          <Text size="sm" c="dimmed" ta="center">
-            잠시만 기다려주세요
-          </Text>
-        </Stack>
-        <div style={{ width: '100%', maxWidth: 400 }}>
-          <Progress value={100} animated radius="md" size="lg" />
-        </div>
-      </Stack>
-    </Center>
+    <div className="text-center py-8 md:py-12">
+      <div className="relative inline-block mb-6">
+        <Loader2 className="w-16 h-16 md:w-20 md:h-20 animate-spin text-primary-500 mx-auto" />
+        <Activity className="w-6 h-6 md:w-8 md:h-8 text-primary-400 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+      </div>
+      <h3 className="text-xl md:text-2xl font-bold text-neutral-900 mb-3 leading-tight">
+        활성화 수준을 분석하고 있습니다...
+      </h3>
+      <p className="text-sm md:text-base text-neutral-600 mb-2 leading-relaxed">
+        잠시만 기다려주세요
+      </p>
+      <div className="w-full max-w-md mx-auto h-2 bg-neutral-200 rounded-full overflow-hidden">
+        <div className="h-full bg-primary-500 animate-pulse" style={{ width: '100%' }} />
+      </div>
+    </div>
   )
 
   // Step 4: 결과 요약
   const renderStep4 = () => {
     if (!activationData) return null
 
-    // 값 포맷팅 함수
     const formatValue = (value: number, type: string) => {
-      // 방문자/블로그 리뷰: 소수점 있으면 1자리, 없으면 정수
       if (type === 'visitor_review' || type === 'blog_review') {
         if (value % 1 === 0) {
           return Math.round(value).toString()
         }
         return value.toFixed(1)
       }
-      // 답글, 쿠폰, 공지: 정수
       return Math.round(value).toString()
     }
 
-    // 공지사항/프로모션 메시지
     const getStatusMessage = (card: any) => {
       if (card.has_active) {
         return '✅ 현재 활성화 중'
       }
-      // 3일 동안 없으면 특별 메시지
       if (card.days_since_last && card.days_since_last >= 3) {
         return '❌ 지난 3일동안 공지사항이 없습니다'
       }
@@ -416,162 +378,121 @@ export default function PlaceActivationModal({ isOpen, onClose, onComplete }: Pl
     }
 
     return (
-      <Stack gap="sm" py="xs">
-        <Center>
-          <ThemeIcon size={60} radius={60} variant="light" color="green" style={{ background: 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)' }}>
-            <CheckCircle2 size={30} />
-          </ThemeIcon>
-        </Center>
-
-        <Stack gap={2} ta="center">
-          <Text size="20px" fw={700}>활성화 분석 완료!</Text>
-          <Text size="xs" c="dimmed">
+      <div className="space-y-3 md:space-y-4">
+        <div className="text-center">
+          <div className="relative inline-block mb-4">
+            <div className="w-16 h-16 md:w-20 md:h-20 bg-success-bg rounded-full flex items-center justify-center mx-auto">
+              <CheckCircle2 className="w-8 h-8 md:w-10 md:h-10 text-success" />
+            </div>
+            <Sparkles className="w-5 h-5 md:w-6 md:h-6 text-brand-red absolute -top-1 -right-1 animate-pulse" />
+          </div>
+          <h3 className="text-xl md:text-2xl font-bold text-neutral-900 mb-2 leading-tight">
+            활성화 분석 완료!
+          </h3>
+          <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
             현재 활성화 수준을 5가지 지표로 요약했어요
-          </Text>
-        </Stack>
-
-        <div style={{ maxHeight: 350, overflowY: 'auto' }}>
-          <Stack gap={6}>
-            {activationData.summary_cards.map((card) => (
-              <Paper key={card.type} p="xs" radius="md" withBorder>
-                <Group justify="space-between" wrap="nowrap">
-                  <Group gap="xs" wrap="nowrap">
-                    <ThemeIcon size={28} radius="md" variant="light" color={getCardColor(card.type)}>
-                      {getCardIcon(card.type)}
-                    </ThemeIcon>
-                    <div>
-                      <Text fw={600} size="xs">{card.title}</Text>
-                      <Text size="10px" c="dimmed">지난 3일 평균</Text>
-                    </div>
-                  </Group>
-                  <Group gap={4} wrap="nowrap">
-                    <Text size="lg" fw={700}>{formatValue(card.value, card.type)}</Text>
-                    <Text size="xs" c="dimmed" fw={400}>개</Text>
-                  </Group>
-                </Group>
-
-                {(card.type === 'visitor_review' || card.type === 'blog_review') && (
-                  <Group gap="xs" mt={4}>
-                    <Badge 
-                      size="xs" 
-                      variant="light" 
-                      color={getTrendColor(card.vs_7d_pct)}
-                      leftSection={getTrendIcon(card.vs_7d_pct)}
-                    >
-                      7일 {card.vs_7d_pct?.toFixed(1) || '0'}%
-                    </Badge>
-                    <Badge 
-                      size="xs" 
-                      variant="light" 
-                      color={getTrendColor(card.vs_30d_pct)}
-                      leftSection={getTrendIcon(card.vs_30d_pct)}
-                    >
-                      30일 {card.vs_30d_pct?.toFixed(1) || '0'}%
-                    </Badge>
-                  </Group>
-                )}
-
-                {card.type === 'reply' && card.reply_rate !== undefined && (
-                  <Badge size="xs" variant="light" color={card.reply_rate >= 80 ? 'green' : card.reply_rate >= 50 ? 'yellow' : 'red'} mt={4}>
-                    답글 비율 {card.reply_rate.toFixed(1)}%
-                  </Badge>
-                )}
-
-                {(card.type === 'promotion' || card.type === 'announcement') && (
-                  <Text size="10px" c="dimmed" mt={4}>
-                    {getStatusMessage(card)}
-                  </Text>
-                )}
-              </Paper>
-            ))}
-          </Stack>
+          </p>
         </div>
 
-        <Alert color="blue" radius="md" p="xs">
-          <Text size="10px">💡 상세 페이지에서 트렌드 분석, 개선 제안 등 더 많은 정보를 확인하세요!</Text>
-        </Alert>
+        <div className="max-h-[350px] overflow-y-auto space-y-3">
+          {activationData.summary_cards.map((card) => (
+            <div key={card.type} className="p-3 md:p-4 bg-white rounded-xl border-2 border-neutral-200">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2 md:gap-3">
+                  <div className={`w-8 h-8 md:w-10 md:h-10 rounded-button flex items-center justify-center ${getCardColor(card.type)}`}>
+                    {getCardIcon(card.type)}
+                  </div>
+                  <div>
+                    <p className="text-sm md:text-base font-bold text-neutral-900">{card.title}</p>
+                    <p className="text-xs text-neutral-600">지난 3일 평균</p>
+                  </div>
+                </div>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-xl md:text-2xl font-extrabold text-neutral-900">{formatValue(card.value, card.type)}</span>
+                  <span className="text-xs text-neutral-600">개</span>
+                </div>
+              </div>
 
-        <Button
-          size="sm"
-          fullWidth
-          radius="md"
-          onClick={() => {
-            router.push(`/dashboard/naver/activation?storeId=${selectedStore?.id}`)
-            handleClose()
-            onComplete?.()
-          }}
-        >
-          상세 내역 확인하기
-        </Button>
-      </Stack>
+              {(card.type === 'visitor_review' || card.type === 'blog_review') && (
+                <div className="flex gap-2 mt-2">
+                  <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-button text-xs font-bold ${getTrendColor(card.vs_7d_pct)}`}>
+                    {getTrendIcon(card.vs_7d_pct)}
+                    7일 {card.vs_7d_pct?.toFixed(1) || '0'}%
+                  </span>
+                  <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-button text-xs font-bold ${getTrendColor(card.vs_30d_pct)}`}>
+                    {getTrendIcon(card.vs_30d_pct)}
+                    30일 {card.vs_30d_pct?.toFixed(1) || '0'}%
+                  </span>
+                </div>
+              )}
+
+              {card.type === 'reply' && card.reply_rate !== undefined && (
+                <span className={`inline-block px-2 py-1 rounded-button text-xs font-bold mt-2 ${
+                  card.reply_rate >= 80 ? 'bg-success-bg text-success' : 
+                  card.reply_rate >= 50 ? 'bg-warning-bg text-warning' : 'bg-error-bg text-error'
+                }`}>
+                  답글 비율 {card.reply_rate.toFixed(1)}%
+                </span>
+              )}
+
+              {(card.type === 'promotion' || card.type === 'announcement') && (
+                <p className="text-xs text-neutral-600 mt-2">
+                  {getStatusMessage(card)}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <div className="bg-info-bg rounded-xl p-3 md:p-4 border border-info/30">
+          <p className="text-xs md:text-sm text-neutral-700">
+            💡 상세 페이지에서 트렌드 분석, 개선 제안 등 더 많은 정보를 확인하세요!
+          </p>
+        </div>
+      </div>
     )
   }
 
+  const renderContent = () => {
+    switch (currentStep) {
+      case 1:
+        return renderStep1()
+      case 2:
+        return renderStep2()
+      case 3:
+        return renderStep3()
+      case 4:
+        return renderStep4()
+      default:
+        return null
+    }
+  }
+
   return (
-    <Modal
-      opened={isOpen}
+    <OnboardingModal
+      isOpen={isOpen}
       onClose={handleClose}
-      size="lg"
-      centered
-      padding="xl"
-      radius="md"
-      title={
-        currentStep <= 3 ? (
-          <Stack gap={8}>
-            <Text size="sm" c="dimmed">
-              플레이스 활성화 확인하기 ({currentStep}/{totalSteps})
-            </Text>
-            <Progress value={(currentStep / totalSteps) * 100} radius="md" />
-          </Stack>
-        ) : null
+      title="플레이스 활성화 확인하기"
+      currentStep={currentStep}
+      totalSteps={totalSteps}
+      onBack={handleBack}
+      onNext={handleNext}
+      nextButtonText={
+        currentStep === 1
+          ? '시작하기'
+          : currentStep === 2
+          ? '분석 시작하기'
+          : currentStep === 3
+          ? '분석 중...'
+          : '상세 내역 확인하기'
       }
-      closeOnClickOutside={false}
-      closeOnEscape={false}
-      styles={{
-        body: {
-          maxHeight: '70vh',
-          overflowY: 'auto'
-        }
-      }}
+      nextButtonDisabled={
+        (currentStep === 2 && (!selectedStore || loadingStores)) ||
+        currentStep === 3
+      }
+      showBackButton={currentStep === 2}
     >
-      <Stack gap="xl">
-        {currentStep === 1 && renderStep1()}
-        {currentStep === 2 && renderStep2()}
-        {currentStep === 3 && renderStep3()}
-        {currentStep === 4 && renderStep4()}
-
-        {currentStep > 1 && currentStep < 3 && (
-          <Group justify="space-between">
-            <Button
-              variant="subtle"
-              onClick={handleBack}
-              leftSection={<ChevronLeft size={18} />}
-              radius="md"
-            >
-              이전
-            </Button>
-            <Button
-              onClick={handleNext}
-              rightSection={<ChevronRight size={18} />}
-              radius="md"
-            >
-              {currentStep === 2 ? '분석 시작하기' : '다음'}
-            </Button>
-          </Group>
-        )}
-
-        {currentStep === 1 && (
-          <Button
-            size="lg"
-            fullWidth
-            rightSection={<ChevronRight size={20} />}
-            onClick={handleNext}
-            radius="md"
-          >
-            시작하기
-          </Button>
-        )}
-      </Stack>
-    </Modal>
+      {renderContent()}
+    </OnboardingModal>
   )
 }

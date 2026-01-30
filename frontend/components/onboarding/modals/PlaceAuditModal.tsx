@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Store, Loader2, TrendingUp, ExternalLink, CheckCircle2 } from 'lucide-react';
+import { Loader2, TrendingUp, ExternalLink, CheckCircle2, Sparkles } from 'lucide-react';
 import OnboardingModal from './OnboardingModal';
+import StoreSelector from './StoreSelector';
 import { api } from '@/lib/config';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
@@ -184,165 +185,145 @@ export default function PlaceAuditModal({
     }
   };
 
-  // Helper: 등급 색상
+  // Helper: 등급 색상 (TurboTax 스타일)
   const getGradeColor = (grade: string) => {
     switch (grade) {
-      case 'S': return 'text-purple-600';
-      case 'A': return 'text-blue-600';
-      case 'B': return 'text-green-600';
-      case 'C': return 'text-orange-600';
-      default: return 'text-red-600';
+      case 'S': return 'text-brand-red';
+      case 'A': return 'text-primary-500';
+      case 'B': return 'text-success';
+      case 'C': return 'text-warning';
+      default: return 'text-error';
     }
   };
 
-  // Step 1 컨텐츠: 매장 선택
-  const renderStep1 = () => (
-    <div className="space-y-4">
-      <div className="text-center mb-6">
-        <h3 className="text-xl font-bold text-gray-900 mb-2">
-          어떤 매장을 진단하시겠습니까?
-        </h3>
-        <p className="text-sm text-gray-600">
-          네이버 플레이스에 등록된 모든 정보를 가져와서 분석합니다.
-        </p>
+  const getGradeBg = (grade: string) => {
+    switch (grade) {
+      case 'S': return 'bg-gradient-to-br from-red-50 to-pink-50 border-2 border-brand-red/30';
+      case 'A': return 'bg-gradient-to-br from-primary-50 to-blue-50 border-2 border-primary-500/30';
+      case 'B': return 'bg-gradient-to-br from-success-bg to-green-50 border-2 border-success/30';
+      case 'C': return 'bg-gradient-to-br from-warning-bg to-yellow-50 border-2 border-warning/30';
+      default: return 'bg-gradient-to-br from-error-bg to-red-50 border-2 border-error/30';
+    }
+  };
+
+  // Step 1 컨텐츠: 매장 선택 - StoreSelector 사용
+  const renderStep1 = () => {
+    const formattedStores = stores.map(store => ({
+      id: store.id,
+      place_id: store.place_id,
+      name: store.name,
+      address: store.address,
+      thumbnail: store.thumbnail,
+      platform: store.platform,
+      category: store.category,
+    }));
+
+    const formattedSelected = selectedStore ? {
+      id: selectedStore.id,
+      place_id: selectedStore.place_id,
+      name: selectedStore.name,
+      address: selectedStore.address,
+      thumbnail: selectedStore.thumbnail,
+      platform: selectedStore.platform,
+      category: selectedStore.category,
+    } : null;
+
+    return (
+      <div className="space-y-3 md:space-y-4">
+        <div className="text-center space-y-2">
+          <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
+            어떤 매장을 진단하시겠습니까?
+          </h3>
+          <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
+            네이버 플레이스의 모든 정보를 분석합니다.
+          </p>
+        </div>
+
+        <StoreSelector
+          stores={formattedStores}
+          selectedStore={formattedSelected}
+          onSelect={(store) => {
+            const original = stores.find(s => s.id === store.id);
+            if (original) {
+              setSelectedStore(original);
+            }
+          }}
+          loading={loading}
+          emptyMessage={error || '등록된 네이버 플레이스 매장이 없습니다.'}
+        />
+
+        {error && stores.length > 0 && (
+          <div className="p-3 md:p-4 bg-error-bg border border-error rounded-button">
+            <p className="text-sm md:text-base text-error font-medium">{error}</p>
+          </div>
+        )}
       </div>
+    );
+  };
 
-      {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-        </div>
-      ) : error && stores.length === 0 ? (
-        <div className="text-center py-8">
-          <Store className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <p className="text-gray-600">{error}</p>
-        </div>
-      ) : (
-        <div className="space-y-3 max-h-96 overflow-y-auto">
-          {stores.map((store) => (
-            <button
-              key={store.id}
-              onClick={() => setSelectedStore(store)}
-              className={`
-                w-full p-4 border-2 rounded-lg text-left transition-all
-                ${
-                  selectedStore?.id === store.id
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-200 hover:border-gray-300'
-                }
-              `}
-            >
-              <div className="flex items-start gap-3">
-                {/* 라디오 버튼 */}
-                <div className={`
-                  w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5
-                  ${
-                    selectedStore?.id === store.id
-                      ? 'border-blue-500 bg-blue-500'
-                      : 'border-gray-300'
-                  }
-                `}>
-                  {selectedStore?.id === store.id && (
-                    <div className="w-2 h-2 bg-white rounded-full" />
-                  )}
-                </div>
-                
-                {/* 썸네일 */}
-                {store.thumbnail ? (
-                  <img
-                    src={store.thumbnail}
-                    alt={store.name}
-                    className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none';
-                    }}
-                  />
-                ) : (
-                  <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Store className="w-8 h-8 text-gray-400" />
-                  </div>
-                )}
-                
-                {/* 매장 정보 */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-semibold text-gray-900 truncate">{store.name}</span>
-                    <span className="px-2 py-0.5 text-xs bg-green-100 text-green-700 rounded-full flex-shrink-0">
-                      네이버
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-600 truncate">{store.category}</p>
-                  <p className="text-xs text-gray-500 mt-1 truncate">{store.address}</p>
-                </div>
-              </div>
-            </button>
-          ))}
-        </div>
-      )}
-
-      {error && stores.length > 0 && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-          <p className="text-sm text-red-600">{error}</p>
-        </div>
-      )}
-    </div>
-  );
-
-  // Step 2 컨텐츠: 진단 진행 중
+  // Step 2 컨텐츠: 진단 진행 중 - TurboTax 스타일
   const renderStep2 = () => (
-    <div className="text-center py-12">
+    <div className="text-center py-8 md:py-12">
       <div className="relative inline-block mb-6">
-        <Loader2 className="w-20 h-20 animate-spin text-blue-600 mx-auto" />
-        <TrendingUp className="w-8 h-8 text-blue-400 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
+        <Loader2 className="w-16 h-16 md:w-20 md:h-20 animate-spin text-primary-500 mx-auto" />
+        <TrendingUp className="w-6 h-6 md:w-8 md:h-8 text-primary-400 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
       </div>
-      <h3 className="text-2xl font-bold text-gray-900 mb-3">플레이스 진단 중...</h3>
-      <p className="text-gray-600 mb-2">
-        {selectedStore?.name} 매장의 정보를 분석하고 있습니다.
+      <h3 className="text-xl md:text-2xl font-bold text-neutral-900 mb-3 leading-tight">
+        플레이스 진단 중...
+      </h3>
+      <p className="text-sm md:text-base text-neutral-600 mb-2 leading-relaxed">
+        {selectedStore?.name} 매장을 분석하고 있습니다.
       </p>
-      <p className="text-sm text-gray-500">
+      <p className="text-xs md:text-sm text-neutral-500">
         잠시만 기다려주세요. (약 10~20초 소요)
       </p>
     </div>
   );
 
-  // Step 3 컨텐츠: 진단 완료
+  // Step 3 컨텐츠: 진단 완료 - TurboTax 스타일
   const renderStep3 = () => {
     if (!diagnosisResult) return null;
 
     return (
-      <div className="space-y-6">
+      <div className="space-y-3 md:space-y-4">
         {/* 성공 아이콘 */}
         <div className="text-center">
-          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <CheckCircle2 className="w-10 h-10 text-green-600" />
+          <div className="relative inline-block mb-4">
+            <div className="w-16 h-16 md:w-20 md:h-20 bg-success-bg rounded-full flex items-center justify-center mx-auto">
+              <CheckCircle2 className="w-8 h-8 md:w-10 md:h-10 text-success" />
+            </div>
+            <Sparkles className="w-5 h-5 md:w-6 md:h-6 text-brand-red absolute -top-1 -right-1 animate-pulse" />
           </div>
-          <h3 className="text-2xl font-bold text-gray-900 mb-2">진단 완료! 🎉</h3>
-          <p className="text-gray-600">
-            {selectedStore?.name} 매장의 진단이 완료되었습니다.
+          <h3 className="text-xl md:text-2xl font-bold text-neutral-900 mb-2 leading-tight">
+            진단 완료! 🎉
+          </h3>
+          <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
+            {selectedStore?.name} 매장을 분석했습니다.
           </p>
         </div>
 
-        {/* 종합 점수 */}
-        <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl p-6 border-2 border-blue-200">
+        {/* 종합 점수 - 등급별 색상 */}
+        <div className={`rounded-xl p-4 md:p-6 ${getGradeBg(diagnosisResult.grade)}`}>
           <div className="text-center">
-            <p className="text-sm font-semibold text-gray-600 mb-2">종합 점수</p>
+            <p className="text-xs md:text-sm font-bold text-neutral-600 mb-2">종합 점수</p>
             <div className="flex items-center justify-center gap-2 mb-3">
-              <span className={`text-6xl font-black ${getGradeColor(diagnosisResult.grade)}`}>
+              <span className={`text-5xl md:text-6xl font-extrabold ${getGradeColor(diagnosisResult.grade)}`}>
                 {diagnosisResult.grade}
               </span>
-              <span className="text-2xl text-gray-500">등급</span>
+              <span className="text-xl md:text-2xl text-neutral-500 font-bold">등급</span>
             </div>
             <div className="flex items-baseline justify-center gap-2">
-              <span className="text-3xl font-bold text-gray-800">
+              <span className="text-2xl md:text-3xl font-bold text-neutral-900">
                 {diagnosisResult.total_score.toFixed(1)}
               </span>
-              <span className="text-lg text-gray-500">
+              <span className="text-base md:text-lg text-neutral-600 font-medium">
                 / {diagnosisResult.max_score} 점
               </span>
             </div>
             {diagnosisResult.bonus_score > 0 && (
               <div className="mt-3">
-                <span className="inline-flex items-center px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-semibold">
-                  보너스 +{diagnosisResult.bonus_score}점
+                <span className="inline-flex items-center px-3 py-1.5 bg-success-bg text-success rounded-button text-xs md:text-sm font-bold border border-success/30">
+                  ✨ 보너스 +{diagnosisResult.bonus_score}점
                 </span>
               </div>
             )}
@@ -350,14 +331,14 @@ export default function PlaceAuditModal({
         </div>
 
         {/* 상세 리포트 안내 */}
-        <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-          <div className="flex items-start gap-3">
-            <ExternalLink className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+        <div className="bg-info-bg rounded-xl p-3 md:p-4 border border-info/30">
+          <div className="flex items-start gap-2 md:gap-3">
+            <ExternalLink className="w-4 h-4 md:w-5 md:h-5 text-info flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-semibold text-gray-900 mb-1">
-                상세 리포트에서 더 자세한 정보를 확인하세요
+              <p className="text-sm md:text-base font-bold text-neutral-900 mb-1 leading-tight">
+                상세 리포트에서 더 자세히 확인하세요
               </p>
-              <p className="text-xs text-gray-600">
+              <p className="text-xs md:text-sm text-neutral-600 leading-relaxed">
                 • 17개 항목별 상세 분석<br />
                 • 우선순위 개선 권장사항<br />
                 • 카테고리별 등급 및 점수<br />

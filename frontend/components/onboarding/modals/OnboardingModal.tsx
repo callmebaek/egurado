@@ -30,7 +30,7 @@ export default function OnboardingModal({
   nextButtonDisabled = false,
   showBackButton = true,
 }: OnboardingModalProps) {
-  // ESC 키로 닫기
+  // ESC 키로 닫기 + body 스크롤 방지
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -54,58 +54,73 @@ export default function OnboardingModal({
   const progressPercentage = (currentStep / totalSteps) * 100;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      {/* Backdrop */}
+    <div className="fixed inset-0 z-[1000] overflow-y-auto">
+      {/* Backdrop - TurboTax 스타일 */}
       <div
-        className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity"
         onClick={onClose}
+        aria-hidden="true"
       />
 
-      {/* Modal */}
-      <div className="flex min-h-full items-center justify-center p-4">
+      {/* Modal Container - 모바일 최적화 */}
+      <div className="flex min-h-full items-center justify-center p-3 md:p-4">
         <div
-          className="relative w-full max-w-2xl bg-white rounded-2xl shadow-xl transform transition-all"
+          className="relative w-full max-w-2xl bg-white rounded-modal shadow-modal transform transition-all"
           onClick={(e) => e.stopPropagation()}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="modal-title"
         >
-          {/* Header */}
-          <div className="px-8 pt-8 pb-4">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">{title}</h2>
+          {/* Header - 더 compact하게 */}
+          <div className="px-4 md:px-5 lg:px-6 pt-3 md:pt-4 pb-2 md:pb-3 border-b border-neutral-200">
+            <div className="flex items-center justify-between mb-3 md:mb-4">
+              <h2 
+                id="modal-title"
+                className="text-lg md:text-xl font-bold text-neutral-900 leading-tight"
+              >
+                {title}
+              </h2>
               <button
                 onClick={onClose}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
+                className="p-2 rounded-button hover:bg-neutral-100 active:scale-95 transition-all duration-200 flex-shrink-0 ml-2"
+                aria-label="닫기"
               >
-                <X className="w-6 h-6" />
+                <X className="w-5 h-5 md:w-6 md:h-6 text-neutral-600" />
               </button>
             </div>
 
-            {/* Progress Bar */}
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm text-gray-600">
-                <span>진행 상황</span>
-                <span>{currentStep} / {totalSteps}</span>
+            {/* Progress Bar - TurboTax 스타일, compact */}
+            <div className="space-y-1.5">
+              <div className="flex justify-between text-xs md:text-sm text-neutral-600">
+                <span className="font-medium">진행 상황</span>
+                <span className="font-bold">{currentStep} / {totalSteps}</span>
               </div>
-              <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div className="h-2 bg-neutral-200 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-blue-500 to-blue-600 transition-all duration-300"
+                  className="h-full bg-primary-500 transition-all duration-300 ease-out"
                   style={{ width: `${progressPercentage}%` }}
+                  role="progressbar"
+                  aria-valuenow={currentStep}
+                  aria-valuemin={1}
+                  aria-valuemax={totalSteps}
                 />
               </div>
             </div>
           </div>
 
-          {/* Content */}
-          <div className="px-8 py-8">
+          {/* Content - 더 compact하게 */}
+          <div className="px-4 md:px-5 lg:px-6 py-3 md:py-4">
             {children}
           </div>
 
-          {/* Footer */}
-          <div className="px-8 pb-8">
-            <div className="flex items-center justify-between gap-4">
+          {/* Footer - 더 compact하게 */}
+          <div className="px-4 md:px-5 lg:px-6 pb-3 md:pb-4 pt-2 md:pt-3 border-t border-neutral-200">
+            <div className="flex items-center justify-between gap-3">
               {showBackButton && currentStep > 1 ? (
                 <button
                   onClick={onBack}
-                  className="px-6 py-3 text-gray-700 font-medium hover:bg-gray-100 rounded-lg transition-colors"
+                  className="px-4 md:px-6 py-2.5 md:py-3 text-neutral-700 font-bold text-sm md:text-base hover:bg-neutral-100 rounded-button transition-all duration-200 active:scale-95 min-h-[44px]"
+                  aria-label="이전 단계"
                 >
                   이전
                 </button>
@@ -117,7 +132,8 @@ export default function OnboardingModal({
                 <button
                   onClick={onNext}
                   disabled={nextButtonDisabled}
-                  className="px-8 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors ml-auto"
+                  className="px-6 md:px-8 py-2.5 md:py-3 bg-primary-500 text-white font-bold text-sm md:text-base rounded-button shadow-button hover:bg-primary-600 hover:shadow-button-hover disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 active:scale-95 ml-auto min-h-[44px]"
+                  aria-label={nextButtonText}
                 >
                   {nextButtonText}
                 </button>

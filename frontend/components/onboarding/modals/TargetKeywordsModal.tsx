@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Store, Loader2, Plus, X, Target, CheckCircle2, Sparkles, MapPin } from 'lucide-react';
+import { Loader2, Target, CheckCircle2, Sparkles, MapPin } from 'lucide-react';
 import OnboardingModal from './OnboardingModal';
+import StoreSelector from './StoreSelector';
+import KeywordInput from './KeywordInput';
 import { api } from '@/lib/config';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
@@ -116,16 +118,21 @@ export default function TargetKeywordsModal({
     setRegions(uniqueRegions);
   };
 
-  const addKeyword = (array: string[], setter: React.Dispatch<React.SetStateAction<string[]>>) => {
-    if (tempInput.trim()) {
-      setter([...array, tempInput.trim()]);
-      setTempInput('');
-    }
-  };
-
-  const removeKeyword = (index: number, array: string[], setter: React.Dispatch<React.SetStateAction<string[]>>) => {
-    setter(array.filter((_, i) => i !== index));
-  };
+  // KeywordInput 컴포넌트가 사용하는 콜백 함수들
+  const addRegion = (keyword: string) => setRegions([...regions, keyword]);
+  const removeRegion = (index: number) => setRegions(regions.filter((_, i) => i !== index));
+  
+  const addLandmark = (keyword: string) => setLandmarks([...landmarks, keyword]);
+  const removeLandmark = (index: number) => setLandmarks(landmarks.filter((_, i) => i !== index));
+  
+  const addMenu = (keyword: string) => setMenus([...menus, keyword]);
+  const removeMenu = (index: number) => setMenus(menus.filter((_, i) => i !== index));
+  
+  const addIndustry = (keyword: string) => setIndustries([...industries, keyword]);
+  const removeIndustry = (index: number) => setIndustries(industries.filter((_, i) => i !== index));
+  
+  const addOther = (keyword: string) => setOthers([...others, keyword]);
+  const removeOther = (index: number) => setOthers(others.filter((_, i) => i !== index));
 
   // 분석 시작
   const handleAnalyze = async () => {
@@ -294,401 +301,208 @@ export default function TargetKeywordsModal({
     }
   };
 
-  // Step 1: 매장 선택
-  const renderStep1 = () => (
-    <div className="space-y-4">
-      <div className="text-center mb-6">
-        <Target className="w-16 h-16 text-blue-600 mx-auto mb-4" />
-        <h3 className="text-xl font-bold text-gray-900 mb-2">
-          어떤 매장의 타겟 키워드를 찾을까요?
-        </h3>
-        <p className="text-sm text-gray-600">
-          매장을 선택하시면 주소에서 자동으로 지역명을 추출해드려요
-        </p>
+  // Step 1: 매장 선택 - StoreSelector 사용
+  const renderStep1 = () => {
+    const formattedStores = stores.map(store => ({
+      id: store.id,
+      place_id: store.place_id,
+      name: store.name,
+      address: store.address,
+      thumbnail: store.thumbnail,
+      platform: store.platform,
+    }));
+
+    const formattedSelected = selectedStore ? {
+      id: selectedStore.id,
+      place_id: selectedStore.place_id,
+      name: selectedStore.name,
+      address: selectedStore.address,
+      thumbnail: selectedStore.thumbnail,
+      platform: selectedStore.platform,
+    } : null;
+
+    return (
+      <div className="space-y-3 md:space-y-4">
+        <div className="text-center space-y-2">
+          <div className="w-12 h-12 md:w-16 md:h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-3">
+            <Target className="w-6 h-6 md:w-8 md:h-8 text-primary-500" />
+          </div>
+          <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
+            어떤 매장의 타겟 키워드를 찾을까요?
+          </h3>
+          <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
+            매장 선택 시 주소에서 자동으로 지역명을 추출해드려요!
+          </p>
+        </div>
+
+        <StoreSelector
+          stores={formattedStores}
+          selectedStore={formattedSelected}
+          onSelect={(store) => {
+            const original = stores.find(s => s.id === store.id);
+            if (original) {
+              setSelectedStore(original);
+            }
+          }}
+          loading={loading}
+          emptyMessage={error || '등록된 네이버 플레이스 매장이 없습니다.'}
+        />
       </div>
+    );
+  };
 
-      {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-        </div>
-      ) : error && stores.length === 0 ? (
-        <div className="text-center py-8">
-          <Store className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <p className="text-gray-600">{error}</p>
-        </div>
-      ) : (
-        <div className="space-y-3 max-h-96 overflow-y-auto">
-          {stores.map((store) => (
-            <button
-              key={store.id}
-              onClick={() => setSelectedStore(store)}
-              className={`
-                w-full p-4 border-2 rounded-lg text-left transition-all
-                ${
-                  selectedStore?.id === store.id
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-200 hover:border-gray-300'
-                }
-              `}
-            >
-              <div className="flex items-start gap-3">
-                {/* 라디오 버튼 */}
-                <div className={`
-                  w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5
-                  ${
-                    selectedStore?.id === store.id
-                      ? 'border-blue-500 bg-blue-500'
-                      : 'border-gray-300'
-                  }
-                `}>
-                  {selectedStore?.id === store.id && (
-                    <div className="w-2 h-2 bg-white rounded-full" />
-                  )}
-                </div>
-                
-                {/* 썸네일 */}
-                {store.thumbnail ? (
-                  <img
-                    src={store.thumbnail}
-                    alt={store.name}
-                    className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none';
-                    }}
-                  />
-                ) : (
-                  <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Store className="w-8 h-8 text-gray-400" />
-                  </div>
-                )}
-                
-                {/* 매장 정보 */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-semibold text-gray-900 truncate">{store.name}</span>
-                    <span className="px-2 py-0.5 text-xs bg-green-100 text-green-700 rounded-full flex-shrink-0">
-                      네이버
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-600 flex items-center gap-1">
-                    <MapPin className="w-3 h-3" />
-                    <span className="truncate">{store.address}</span>
-                  </p>
-                </div>
-              </div>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-
-  // Step 2: 지역명 입력
+  // Step 2: 지역명 입력 - KeywordInput 사용
   const renderStep2 = () => (
-    <div className="space-y-4">
-      <div className="text-center mb-6">
-        <MapPin className="w-16 h-16 text-purple-600 mx-auto mb-4" />
-        <h3 className="text-xl font-bold text-gray-900 mb-2">
+    <div className="space-y-3 md:space-y-4">
+      <div className="text-center space-y-2">
+        <div className="w-12 h-12 md:w-16 md:h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-3">
+          <MapPin className="w-6 h-6 md:w-8 md:h-8 text-primary-500" />
+        </div>
+        <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
           매장 주변 지역명을 알려주세요
         </h3>
-        <p className="text-sm text-gray-600">
-          예: 강남, 역삼동, 서초 등 (주소에서 자동 추출되었습니다!)
+        <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
+          예: 강남, 역삼동, 서초 등 (주소에서 자동 추출!)
         </p>
       </div>
 
-      <div className="flex gap-2">
-        <input
-          type="text"
-          value={tempInput}
-          onChange={(e) => setTempInput(e.target.value)}
-          onKeyPress={(e) => e.key === 'Enter' && addKeyword(regions, setRegions)}
-          placeholder="지역명 입력 후 Enter"
-          className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none"
-        />
-        <button
-          onClick={() => addKeyword(regions, setRegions)}
-          className="px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <Plus className="w-5 h-5" />
-        </button>
-      </div>
-
-      <div className="flex flex-wrap gap-2 min-h-[60px]">
-        {regions.length === 0 ? (
-          <p className="text-sm text-gray-400 italic">아직 추가된 지역명이 없습니다</p>
-        ) : (
-          regions.map((region, index) => (
-            <span
-              key={index}
-              className="inline-flex items-center gap-1 px-3 py-1.5 bg-purple-100 text-purple-800 rounded-full text-sm font-medium"
-            >
-              {region}
-              <X
-                className="w-4 h-4 cursor-pointer hover:text-purple-900"
-                onClick={() => removeKeyword(index, regions, setRegions)}
-              />
-            </span>
-          ))
-        )}
-      </div>
-
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
-        <p className="text-sm text-blue-800">
-          💡 <strong>Tip:</strong> 지역명을 입력하면 "강남 맛집", "역삼동 카페" 같은 조합이 만들어져요
-        </p>
-      </div>
+      <KeywordInput
+        label="지역명"
+        keywords={regions}
+        onAdd={addRegion}
+        onRemove={removeRegion}
+        placeholder="지역명 입력 후 엔터"
+        helperText="💡 Tip: 지역명을 입력하면 '강남 맛집', '역삼동 카페' 같은 조합이 만들어져요"
+      />
 
       {error && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-lg mt-4">
-          <p className="text-sm text-red-600 font-semibold">{error}</p>
+        <div className="p-3 md:p-4 bg-error-bg border border-error rounded-button">
+          <p className="text-sm md:text-base text-error font-medium">{error}</p>
         </div>
       )}
     </div>
   );
 
-  // Step 3: 랜드마크 입력
+  // Step 3: 랜드마크 입력 - KeywordInput 사용
   const renderStep3 = () => (
-    <div className="space-y-4">
-      <div className="text-center mb-6">
-        <Sparkles className="w-16 h-16 text-orange-600 mx-auto mb-4" />
-        <h3 className="text-xl font-bold text-gray-900 mb-2">
+    <div className="space-y-3 md:space-y-4">
+      <div className="text-center space-y-2">
+        <div className="w-12 h-12 md:w-16 md:h-16 bg-warning-bg rounded-full flex items-center justify-center mx-auto mb-3">
+          <Sparkles className="w-6 h-6 md:w-8 md:h-8 text-warning" />
+        </div>
+        <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
           근처에 유명한 장소가 있나요?
         </h3>
-        <p className="text-sm text-gray-600">
+        <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
           예: 강남역, 코엑스, 타워팰리스 등 (선택사항)
         </p>
       </div>
 
-      <div className="flex gap-2">
-        <input
-          type="text"
-          value={tempInput}
-          onChange={(e) => setTempInput(e.target.value)}
-          onKeyPress={(e) => e.key === 'Enter' && addKeyword(landmarks, setLandmarks)}
-          placeholder="랜드마크 입력 후 Enter"
-          className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none"
-        />
-        <button
-          onClick={() => addKeyword(landmarks, setLandmarks)}
-          className="px-4 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
-        >
-          <Plus className="w-5 h-5" />
-        </button>
-      </div>
-
-      <div className="flex flex-wrap gap-2 min-h-[60px]">
-        {landmarks.length === 0 ? (
-          <p className="text-sm text-gray-400 italic">건너뛰셔도 괜찮아요</p>
-        ) : (
-          landmarks.map((landmark, index) => (
-            <span
-              key={index}
-              className="inline-flex items-center gap-1 px-3 py-1.5 bg-orange-100 text-orange-800 rounded-full text-sm font-medium"
-            >
-              {landmark}
-              <X
-                className="w-4 h-4 cursor-pointer hover:text-orange-900"
-                onClick={() => removeKeyword(index, landmarks, setLandmarks)}
-              />
-            </span>
-          ))
-        )}
-      </div>
-
-      <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mt-4">
-        <p className="text-sm text-orange-800">
-          💡 <strong>Tip:</strong> 랜드마크를 추가하면 "강남역 맛집" 같은 조합이 추가로 만들어져요
-        </p>
-      </div>
+      <KeywordInput
+        label="랜드마크 (선택)"
+        keywords={landmarks}
+        onAdd={addLandmark}
+        onRemove={removeLandmark}
+        placeholder="랜드마크 입력 후 엔터"
+        helperText="💡 Tip: 랜드마크를 추가하면 '강남역 맛집' 같은 조합이 추가로 만들어져요"
+      />
     </div>
   );
 
-  // Step 4: 메뉴/상품명 입력
+  // Step 4: 메뉴/상품명 입력 - KeywordInput 사용
   const renderStep4 = () => (
-    <div className="space-y-4">
-      <div className="text-center mb-6">
-        <Store className="w-16 h-16 text-green-600 mx-auto mb-4" />
-        <h3 className="text-xl font-bold text-gray-900 mb-2">
+    <div className="space-y-3 md:space-y-4">
+      <div className="text-center space-y-2">
+        <div className="w-12 h-12 md:w-16 md:h-16 bg-success-bg rounded-full flex items-center justify-center mx-auto mb-3">
+          <Target className="w-6 h-6 md:w-8 md:h-8 text-success" />
+        </div>
+        <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
           어떤 메뉴나 상품을 판매하시나요?
         </h3>
-        <p className="text-sm text-gray-600">
+        <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
           예: 보쌈, 칼국수, 커피, 헤어컷 등
         </p>
       </div>
 
-      <div className="flex gap-2">
-        <input
-          type="text"
-          value={tempInput}
-          onChange={(e) => setTempInput(e.target.value)}
-          onKeyPress={(e) => e.key === 'Enter' && addKeyword(menus, setMenus)}
-          placeholder="메뉴/상품명 입력 후 Enter"
-          className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none"
-        />
-        <button
-          onClick={() => addKeyword(menus, setMenus)}
-          className="px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-        >
-          <Plus className="w-5 h-5" />
-        </button>
-      </div>
-
-      <div className="flex flex-wrap gap-2 min-h-[60px]">
-        {menus.length === 0 ? (
-          <p className="text-sm text-gray-400 italic">대표 메뉴나 상품을 추가해보세요</p>
-        ) : (
-          menus.map((menu, index) => (
-            <span
-              key={index}
-              className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-100 text-green-800 rounded-full text-sm font-medium"
-            >
-              {menu}
-              <X
-                className="w-4 h-4 cursor-pointer hover:text-green-900"
-                onClick={() => removeKeyword(index, menus, setMenus)}
-              />
-            </span>
-          ))
-        )}
-      </div>
-
-      <div className="bg-green-50 border border-green-200 rounded-lg p-4 mt-4">
-        <p className="text-sm text-green-800">
-          💡 <strong>Tip:</strong> 메뉴를 추가하면 "강남 보쌈 맛집" 같은 조합이 만들어져요
-        </p>
-      </div>
+      <KeywordInput
+        label="메뉴/상품명"
+        keywords={menus}
+        onAdd={addMenu}
+        onRemove={removeMenu}
+        placeholder="메뉴 입력 후 엔터"
+        helperText="💡 Tip: 메뉴를 추가하면 '강남 보쌈 맛집' 같은 조합이 만들어져요"
+      />
 
       {error && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-lg mt-4">
-          <p className="text-sm text-red-600 font-semibold">{error}</p>
+        <div className="p-3 md:p-4 bg-error-bg border border-error rounded-button">
+          <p className="text-sm md:text-base text-error font-medium">{error}</p>
         </div>
       )}
     </div>
   );
 
-  // Step 5: 업종 입력
+  // Step 5: 업종 입력 - KeywordInput 사용
   const renderStep5 = () => (
-    <div className="space-y-4">
-      <div className="text-center mb-6">
-        <Target className="w-16 h-16 text-indigo-600 mx-auto mb-4" />
-        <h3 className="text-xl font-bold text-gray-900 mb-2">
+    <div className="space-y-3 md:space-y-4">
+      <div className="text-center space-y-2">
+        <div className="w-12 h-12 md:w-16 md:h-16 bg-info-bg rounded-full flex items-center justify-center mx-auto mb-3">
+          <Target className="w-6 h-6 md:w-8 md:h-8 text-info" />
+        </div>
+        <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
           어떤 업종인가요?
         </h3>
-        <p className="text-sm text-gray-600">
+        <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
           예: 맛집, 카페, 헤어샵, 네일샵 등
         </p>
       </div>
 
-      <div className="flex gap-2">
-        <input
-          type="text"
-          value={tempInput}
-          onChange={(e) => setTempInput(e.target.value)}
-          onKeyPress={(e) => e.key === 'Enter' && addKeyword(industries, setIndustries)}
-          placeholder="업종 입력 후 Enter"
-          className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none"
-        />
-        <button
-          onClick={() => addKeyword(industries, setIndustries)}
-          className="px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-        >
-          <Plus className="w-5 h-5" />
-        </button>
-      </div>
-
-      <div className="flex flex-wrap gap-2 min-h-[60px]">
-        {industries.length === 0 ? (
-          <p className="text-sm text-gray-400 italic">업종을 추가해보세요</p>
-        ) : (
-          industries.map((industry, index) => (
-            <span
-              key={index}
-              className="inline-flex items-center gap-1 px-3 py-1.5 bg-indigo-100 text-indigo-800 rounded-full text-sm font-medium"
-            >
-              {industry}
-              <X
-                className="w-4 h-4 cursor-pointer hover:text-indigo-900"
-                onClick={() => removeKeyword(index, industries, setIndustries)}
-              />
-            </span>
-          ))
-        )}
-      </div>
-
-      <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4 mt-4">
-        <p className="text-sm text-indigo-800">
-          💡 <strong>Tip:</strong> 업종을 추가하면 "강남 맛집" 같은 기본 조합이 만들어져요
-        </p>
-      </div>
+      <KeywordInput
+        label="업종"
+        keywords={industries}
+        onAdd={addIndustry}
+        onRemove={removeIndustry}
+        placeholder="업종 입력 후 엔터"
+        helperText="💡 Tip: 업종을 추가하면 '강남 맛집' 같은 기본 조합이 만들어져요"
+      />
 
       {error && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-lg mt-4">
-          <p className="text-sm text-red-600 font-semibold">{error}</p>
+        <div className="p-3 md:p-4 bg-error-bg border border-error rounded-button">
+          <p className="text-sm md:text-base text-error font-medium">{error}</p>
         </div>
       )}
     </div>
   );
 
-  // Step 6: 기타 키워드 입력
+  // Step 6: 기타 키워드 입력 - KeywordInput 사용
   const renderStep6 = () => (
-    <div className="space-y-4">
-      <div className="text-center mb-6">
-        <Sparkles className="w-16 h-16 text-pink-600 mx-auto mb-4" />
-        <h3 className="text-xl font-bold text-gray-900 mb-2">
+    <div className="space-y-3 md:space-y-4">
+      <div className="text-center space-y-2">
+        <div className="w-12 h-12 md:w-16 md:h-16 bg-brand-red/10 rounded-full flex items-center justify-center mx-auto mb-3">
+          <Sparkles className="w-6 h-6 md:w-8 md:h-8 text-brand-red" />
+        </div>
+        <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
           추가로 강조하고 싶은 특징이 있나요?
         </h3>
-        <p className="text-sm text-gray-600">
+        <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
           예: 데이트, 회식, 단체주문, 가성비 등 (선택사항)
         </p>
       </div>
 
-      <div className="flex gap-2">
-        <input
-          type="text"
-          value={tempInput}
-          onChange={(e) => setTempInput(e.target.value)}
-          onKeyPress={(e) => e.key === 'Enter' && addKeyword(others, setOthers)}
-          placeholder="특징 입력 후 Enter"
-          className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none"
-        />
-        <button
-          onClick={() => addKeyword(others, setOthers)}
-          className="px-4 py-3 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors"
-        >
-          <Plus className="w-5 h-5" />
-        </button>
-      </div>
+      <KeywordInput
+        label="기타 특징 (선택)"
+        keywords={others}
+        onAdd={addOther}
+        onRemove={removeOther}
+        placeholder="특징 입력 후 엔터"
+        helperText="💡 Tip: 특징을 추가하면 '강남 데이트 맛집' 같은 조합이 추가로 만들어져요"
+      />
 
-      <div className="flex flex-wrap gap-2 min-h-[60px]">
-        {others.length === 0 ? (
-          <p className="text-sm text-gray-400 italic">건너뛰셔도 괜찮아요</p>
-        ) : (
-          others.map((other, index) => (
-            <span
-              key={index}
-              className="inline-flex items-center gap-1 px-3 py-1.5 bg-pink-100 text-pink-800 rounded-full text-sm font-medium"
-            >
-              {other}
-              <X
-                className="w-4 h-4 cursor-pointer hover:text-pink-900"
-                onClick={() => removeKeyword(index, others, setOthers)}
-              />
-            </span>
-          ))
-        )}
-      </div>
-
-      <div className="bg-pink-50 border border-pink-200 rounded-lg p-4 mt-4">
-        <p className="text-sm text-pink-800">
-          💡 <strong>Tip:</strong> 특징을 추가하면 "강남 데이트 맛집" 같은 조합이 추가로 만들어져요
+      {/* 입력 요약 */}
+      <div className="bg-primary-50 border-2 border-primary-500/30 rounded-xl p-3 md:p-4">
+        <p className="text-sm md:text-base text-neutral-900 font-bold mb-3 leading-tight">
+          ✨ 입력 내용 요약
         </p>
-      </div>
-
-      <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-4 mt-6">
-        <p className="text-sm text-blue-900 font-semibold mb-2">
-          ✨ 지금까지 입력하신 내용으로 타겟 키워드를 분석할 준비가 되었어요!
-        </p>
-        <div className="grid grid-cols-2 gap-2 text-xs text-blue-800">
+        <div className="grid grid-cols-2 gap-2 text-xs md:text-sm text-neutral-700">
           {regions.length > 0 && <div>📍 지역명: {regions.length}개</div>}
           {landmarks.length > 0 && <div>🏛️ 랜드마크: {landmarks.length}개</div>}
           {menus.length > 0 && <div>🍽️ 메뉴: {menus.length}개</div>}
@@ -698,62 +512,69 @@ export default function TargetKeywordsModal({
       </div>
 
       {error && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-lg mt-4">
-          <p className="text-sm text-red-600 font-semibold">{error}</p>
+        <div className="p-3 md:p-4 bg-error-bg border border-error rounded-button">
+          <p className="text-sm md:text-base text-error font-medium">{error}</p>
         </div>
       )}
     </div>
   );
 
-  // Step 7: 분석 중
+  // Step 7: 분석 중 - TurboTax 스타일
   const renderStep7 = () => (
-    <div className="text-center py-12">
+    <div className="text-center py-8 md:py-12">
       <div className="relative inline-block mb-6">
-        <Loader2 className="w-20 h-20 animate-spin text-blue-600 mx-auto" />
-        <Target className="w-8 h-8 text-blue-400 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
+        <Loader2 className="w-16 h-16 md:w-20 md:h-20 animate-spin text-primary-500 mx-auto" />
+        <Target className="w-6 h-6 md:w-8 md:h-8 text-primary-400 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
       </div>
-      <h3 className="text-2xl font-bold text-gray-900 mb-3">타겟 키워드 분석 중...</h3>
-      <p className="text-gray-600 mb-2">
-        입력하신 키워드를 조합하고 검색량을 분석하고 있어요
+      <h3 className="text-xl md:text-2xl font-bold text-neutral-900 mb-3 leading-tight">
+        타겟 키워드 분석 중...
+      </h3>
+      <p className="text-sm md:text-base text-neutral-600 mb-2 leading-relaxed">
+        키워드를 조합하고 검색량을 분석하고 있습니다
       </p>
-      <p className="text-sm text-gray-500">
+      <p className="text-xs md:text-sm text-neutral-500">
         잠시만 기다려주세요 (약 10~20초 소요)
       </p>
     </div>
   );
 
-  // Step 8: 완료
+  // Step 8: 완료 - TurboTax 스타일
   const renderStep8 = () => (
-    <div className="space-y-6">
+    <div className="space-y-3 md:space-y-4">
       <div className="text-center">
-        <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <CheckCircle2 className="w-10 h-10 text-green-600" />
+        <div className="relative inline-block mb-4">
+          <div className="w-16 h-16 md:w-20 md:h-20 bg-success-bg rounded-full flex items-center justify-center mx-auto">
+            <CheckCircle2 className="w-8 h-8 md:w-10 md:h-10 text-success" />
+          </div>
+          <Sparkles className="w-5 h-5 md:w-6 md:h-6 text-brand-red absolute -top-1 -right-1 animate-pulse" />
         </div>
-        <h3 className="text-2xl font-bold text-gray-900 mb-2">분석 완료! 🎉</h3>
-        <p className="text-gray-600">
-          타겟 키워드 {totalKeywords}개를 찾았어요!
+        <h3 className="text-xl md:text-2xl font-bold text-neutral-900 mb-2 leading-tight">
+          분석 완료! 🎉
+        </h3>
+        <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
+          타겟 키워드 <span className="font-bold text-primary-500">{totalKeywords}개</span>를 찾았어요!
         </p>
       </div>
 
-      <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl p-6 border-2 border-blue-200">
+      <div className="bg-gradient-to-br from-primary-50 to-blue-50 rounded-xl p-4 md:p-6 border-2 border-primary-500/30">
         <div className="grid grid-cols-2 gap-4 text-center">
           <div>
-            <p className="text-sm font-semibold text-gray-600 mb-1">선택한 매장</p>
-            <p className="text-lg font-bold text-gray-900">{selectedStore?.name}</p>
+            <p className="text-xs md:text-sm font-bold text-neutral-600 mb-1">선택한 매장</p>
+            <p className="text-base md:text-lg font-bold text-neutral-900 leading-tight">{selectedStore?.name}</p>
           </div>
           <div>
-            <p className="text-sm font-semibold text-gray-600 mb-1">추출된 키워드</p>
-            <p className="text-3xl font-bold text-blue-600">{totalKeywords}개</p>
+            <p className="text-xs md:text-sm font-bold text-neutral-600 mb-1">추출된 키워드</p>
+            <p className="text-2xl md:text-3xl font-extrabold text-primary-500">{totalKeywords}개</p>
           </div>
         </div>
       </div>
 
       {/* 추출된 키워드 미리보기 (상위 10개) */}
       {extractedKeywords.length > 0 && (
-        <div className="bg-white rounded-lg p-5 border-2 border-indigo-200">
+        <div className="bg-white rounded-xl p-4 md:p-5 border-2 border-info/30">
           <div className="flex items-center gap-2 mb-3">
-            <Target className="w-5 h-5 text-indigo-600" />
-            <h4 className="text-sm font-bold text-gray-900">
+            <Target className="w-4 h-4 md:w-5 md:h-5 text-info" />
+            <h4 className="text-sm md:text-base font-bold text-neutral-900 leading-tight">
               추출된 키워드 (상위 10개)
             </h4>
           </div>
@@ -761,30 +582,30 @@ export default function TargetKeywordsModal({
             {extractedKeywords.map((kw, idx) => (
               <div
                 key={idx}
-                className="inline-flex items-center gap-2 px-3 py-2 bg-gradient-to-br from-indigo-50 to-blue-50 rounded-lg border border-indigo-200"
+                className="inline-flex items-center gap-2 px-3 py-2 bg-info-bg rounded-button border border-info/30"
               >
-                <span className="text-sm font-semibold text-gray-900">
+                <span className="text-sm font-bold text-neutral-900">
                   {kw.keyword}
                 </span>
-                <span className="text-xs text-indigo-600 font-medium">
+                <span className="text-xs text-info font-bold">
                   {kw.volume.toLocaleString()}
                 </span>
               </div>
             ))}
           </div>
           {totalKeywords > 10 && (
-            <p className="text-xs text-indigo-600 mt-3 text-center font-medium">
-              나머지 {totalKeywords - 10}개 키워드는 상세 페이지에서 확인하세요 →
+            <p className="text-xs md:text-sm text-info mt-3 text-center font-medium">
+              나머지 {totalKeywords - 10}개는 상세 페이지에서 확인하세요 →
             </p>
           )}
         </div>
       )}
 
-      <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-        <p className="text-sm font-semibold text-gray-900 mb-2">
+      <div className="bg-neutral-50 rounded-xl p-3 md:p-4 border border-neutral-300">
+        <p className="text-sm md:text-base font-bold text-neutral-900 mb-2 leading-tight">
           상세 페이지에서 확인하실 수 있어요:
         </p>
-        <ul className="text-sm text-gray-600 space-y-1">
+        <ul className="text-xs md:text-sm text-neutral-600 space-y-1 leading-relaxed">
           <li>• 검색량 기준 상위 20개 타겟 키워드</li>
           <li>• 키워드별 PC/모바일 검색량</li>
           <li>• 경쟁도 분석</li>
