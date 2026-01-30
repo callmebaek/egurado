@@ -228,21 +228,20 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             <Link
               href={item.href}
               className={cn(
-              'flex items-center gap-3 px-4 py-2.5 rounded-button transition-all duration-200',
-              level > 0 && 'pl-10 text-sm',
-              level > 1 && 'pl-14 text-sm',
+              'flex items-center gap-2 px-4 py-2.5 rounded-button transition-all duration-200',
+              level > 0 && 'pl-10 text-sm font-medium',
+              level > 1 && 'pl-14 text-sm font-medium',
               level === 0 && 'font-bold text-base',
-              level > 0 && !level && 'text-sm font-medium',
                 isActive
                 ? 'bg-primary-500 text-white shadow-sm font-bold'
                 : 'text-neutral-700 hover:bg-primary-100 hover:text-primary-700 active:scale-98'
               )}
             >
               {item.icon}
-              <span className="flex-1 leading-relaxed">{item.title}</span>
+              <span className="leading-relaxed">{item.title}</span>
               {item.badge && (
               <span className={cn(
-                "px-2 py-1 text-xs font-bold rounded-full",
+                "px-2 py-1 text-xs font-bold rounded-full flex-shrink-0",
                 isVoting 
                   ? "bg-info-bg text-info border border-info" 
                   : "bg-neutral-100 text-neutral-600 border border-neutral-200"
@@ -255,17 +254,17 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           <button
             onClick={() => hasChildren && toggleItem(item.title)}
             className={cn(
-              'w-full flex items-center gap-3 px-4 py-2.5 rounded-button transition-all duration-200',
+              'w-full flex items-center gap-2 px-4 py-2.5 rounded-button transition-all duration-200',
               level > 0 && 'pl-10 text-sm font-medium',
               level === 0 && 'font-bold text-base text-neutral-900',
               'text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900 active:scale-98'
             )}
           >
             {item.icon}
-            <span className="flex-1 text-left leading-relaxed">{item.title}</span>
+            <span className="text-left leading-relaxed">{item.title}</span>
             {item.badge && (
               <span className={cn(
-                "px-2 py-1 text-xs font-bold rounded-full",
+                "px-2 py-1 text-xs font-bold rounded-full flex-shrink-0",
                 isVoting 
                   ? "bg-info-bg text-info border border-info" 
                   : "bg-neutral-100 text-neutral-600 border border-neutral-200"
@@ -274,7 +273,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               </span>
             )}
             {hasChildren && (
-              isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />
+              isOpen ? <ChevronDown className="w-4 h-4 ml-auto flex-shrink-0" /> : <ChevronRight className="w-4 h-4 ml-auto flex-shrink-0" />
             )}
           </button>
         )}

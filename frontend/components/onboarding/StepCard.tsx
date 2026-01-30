@@ -14,13 +14,13 @@ export default function StepCard({ title, icon, completedCount, totalCount, chil
   return (
     <div className="bg-white rounded-xl shadow-sm overflow-hidden">
       {/* 헤더 */}
-      <div className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">{icon}</span>
-            <h3 className="text-lg font-bold text-gray-900">{title}</h3>
+      <div className="p-3 md:p-4 lg:p-6">
+        <div className="flex items-center justify-between mb-2.5 md:mb-3 lg:mb-4">
+          <div className="flex items-center gap-1.5 md:gap-2">
+            <span className="text-xl md:text-2xl">{icon}</span>
+            <h3 className="text-base md:text-lg font-bold text-gray-900 leading-tight">{title}</h3>
           </div>
-          <span className="text-sm text-gray-500">
+          <span className="text-xs md:text-sm text-gray-500">
             {completedCount}/{totalCount}개 완료
           </span>
         </div>
