@@ -355,12 +355,45 @@ class MetricTrackerService:
             
             # Naver Rank API 호출
             from app.services.naver_rank_api_unofficial import rank_service_api_unofficial
+            import asyncio
             
             rank_result = await rank_service_api_unofficial.check_rank(
                 keyword=keyword,
                 target_place_id=store['place_id'],
                 store_name=store['store_name']
             )
+            
+            # 🆕 순위를 못 찾은 경우 재시도 로직
+            if rank_result.get('rank') is None:
+                logger.warning(
+                    f"[Metrics Collect] ⚠️ 순위를 찾지 못함 (1차 시도): "
+                    f"tracker={tracker_id}, keyword={keyword}, store={store['store_name']}, "
+                    f"place_id={store['place_id']}, found={rank_result.get('found')}, "
+                    f"total_results={rank_result.get('total_results')}"
+                )
+                
+                # 5초 대기 후 재시도
+                logger.info(f"[Metrics Collect] 🔄 5초 후 재시도...")
+                await asyncio.sleep(5)
+                
+                rank_result = await rank_service_api_unofficial.check_rank(
+                    keyword=keyword,
+                    target_place_id=store['place_id'],
+                    store_name=store['store_name']
+                )
+                
+                if rank_result.get('rank') is None:
+                    logger.error(
+                        f"[Metrics Collect] ❌ 순위를 찾지 못함 (2차 시도 실패): "
+                        f"tracker={tracker_id}, keyword={keyword}, store={store['store_name']}, "
+                        f"place_id={store['place_id']}, found={rank_result.get('found')}, "
+                        f"total_results={rank_result.get('total_results')} "
+                        f"→ rank=NULL로 저장됩니다"
+                    )
+                else:
+                    logger.info(
+                        f"[Metrics Collect] ✅ 재시도 성공: rank={rank_result.get('rank')}"
+                    )
             
             # 지표 데이터 구성
             today = date.today()
@@ -403,13 +436,23 @@ class MetricTrackerService:
                     .eq('tracker_id', tracker_id)\
                     .eq('collection_date', today.isoformat())\
                     .execute()
-                logger.info(f"[Metrics Collect] 업데이트 완료: {tracker_id}")
+                logger.info(
+                    f"[Metrics Collect] 업데이트 완료: {tracker_id} - "
+                    f"rank={metric_data['rank']}, "
+                    f"visitor={metric_data['visitor_review_count']}, "
+                    f"blog={metric_data['blog_review_count']}"
+                )
             else:
                 # 삽입
                 result = self.supabase.table('daily_metrics')\
                     .insert(metric_data)\
                     .execute()
-                logger.info(f"[Metrics Collect] 삽입 완료: {tracker_id}")
+                logger.info(
+                    f"[Metrics Collect] 삽입 완료: {tracker_id} - "
+                    f"rank={metric_data['rank']}, "
+                    f"visitor={metric_data['visitor_review_count']}, "
+                    f"blog={metric_data['blog_review_count']}"
+                )
             
             # tracker의 last_collected_at 업데이트
             self.supabase.table('metric_trackers')\
