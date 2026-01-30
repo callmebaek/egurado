@@ -262,51 +262,52 @@ export default function ConnectStorePage() {
 
   return (
     <div className="w-full max-w-4xl mx-auto p-4 md:p-6 lg:p-8">
-      {/* 헤더 */}
-      <div className="mb-8">
-        <h1 className="text-2xl md:text-3xl font-bold text-primary mb-2">
+      {/* 헤더 - TurboTax Style */}
+      <div className="mb-6 md:mb-8">
+        <h1 className="text-xl md:text-2xl font-bold text-neutral-900 mb-1.5 leading-tight">
           내 매장 등록
         </h1>
-        <p className="text-muted-foreground">
+        <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
           연결하고 싶은 매장을 검색하여 등록하세요
         </p>
       </div>
 
-      {/* 등록된 매장 목록 */}
+      {/* 등록된 매장 목록 - TurboTax Style */}
       {isLoadingStores ? (
-        <Card className="mb-8">
-          <CardContent className="p-6">
+        <Card className="mb-6 md:mb-8 rounded-card border-neutral-300 shadow-card">
+          <CardContent className="p-4 md:p-6">
             <div className="flex items-center justify-center gap-3">
-              <Loader2 className="h-5 w-5 animate-spin text-primary" />
-              <p className="text-muted-foreground">등록된 매장을 불러오는 중...</p>
+              <Loader2 className="h-5 w-5 animate-spin text-primary-500" />
+              <p className="text-sm text-neutral-600">등록된 매장을 불러오는 중...</p>
             </div>
           </CardContent>
         </Card>
       ) : registeredStores.length > 0 ? (
-        <Card className="mb-8">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center justify-between text-base">
-              <span>등록된 매장 ({registeredStores.length}개)</span>
-              <span className="text-xs font-normal text-muted-foreground hidden sm:inline">
+        <Card className="mb-6 md:mb-8 rounded-card border-neutral-300 shadow-card">
+          <CardHeader className="pb-3 px-4 md:px-6 pt-4 md:pt-6">
+            <CardTitle className="flex items-center justify-between flex-wrap gap-2">
+              <span className="text-base md:text-lg font-bold text-neutral-900">등록된 매장 ({registeredStores.length}개)</span>
+              <span className="text-xs font-medium text-neutral-500 hidden sm:inline">
                 최대: Free 1개 / Basic 3개 / Pro 10개
               </span>
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="space-y-2 px-4 md:px-6 pb-4 md:pb-6">
             {registeredStores.map((store) => (
               <div
                 key={store.id}
-                className="flex items-center justify-between gap-3 p-3 border rounded-lg hover:bg-accent/50 transition-colors"
+                className="flex items-start justify-between gap-2 p-3 md:p-4 border border-neutral-200 rounded-lg hover:bg-neutral-50 hover:border-primary-300 transition-all duration-200"
               >
-                <div className="flex items-center gap-3 flex-1 min-w-0">
+                {/* 매장 정보 영역 */}
+                <div className="flex items-start gap-2 md:gap-3 flex-1 min-w-0">
                   {/* 썸네일 */}
                   {store.thumbnail ? (
-                    <div className="relative w-12 h-12 flex-shrink-0">
-                      <div className="absolute inset-0 bg-gray-200 rounded-md animate-pulse" />
+                    <div className="relative w-14 h-14 md:w-16 md:h-16 flex-shrink-0">
+                      <div className="absolute inset-0 bg-neutral-200 rounded-lg animate-pulse" />
                       <img
                         src={store.thumbnail}
                         alt={store.name}
-                        className="relative w-12 h-12 object-cover rounded-md"
+                        className="relative w-14 h-14 md:w-16 md:h-16 object-cover rounded-lg"
                         loading="lazy"
                         onLoad={(e) => {
                           const parent = e.currentTarget.previousElementSibling as HTMLElement
@@ -318,52 +319,56 @@ export default function ConnectStorePage() {
                       />
                     </div>
                   ) : (
-                    <div className="w-12 h-12 bg-primary/10 rounded-md flex items-center justify-center flex-shrink-0">
-                      <Store className="h-6 w-6 text-primary" />
+                    <div className="w-14 h-14 md:w-16 md:h-16 bg-primary-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Store className="h-7 w-7 text-primary-500" />
                     </div>
                   )}
 
                   {/* 매장 정보 */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-semibold text-sm truncate">{store.name}</h3>
-                      <span className={`text-xs px-1.5 py-0.5 rounded flex-shrink-0 ${
+                  <div className="flex-1 min-w-0 pr-2">
+                    {/* 매장명 - 최대 2줄 */}
+                    <h3 className="font-bold text-sm md:text-base text-neutral-900 leading-tight mb-1 line-clamp-2">
+                      {store.name}
+                    </h3>
+                    {/* 카테고리와 배지 */}
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {store.category && (
+                        <p className="text-xs md:text-sm text-neutral-500 truncate">
+                          {store.category}
+                        </p>
+                      )}
+                      <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium flex-shrink-0 ${
                         store.status === 'active' 
-                          ? 'bg-green-100 text-green-700' 
-                          : 'bg-gray-100 text-gray-700'
+                          ? 'bg-success text-white' 
+                          : 'bg-neutral-200 text-neutral-700'
                       }`}>
                         {store.status === 'active' ? '활성' : store.status}
                       </span>
                     </div>
-                    {store.category && (
-                      <p className="text-xs text-muted-foreground truncate">
-                        {store.category}
-                      </p>
-                    )}
                   </div>
                 </div>
 
-                {/* 액션 버튼 */}
-                <div className="flex gap-1 flex-shrink-0">
+                {/* 액션 버튼 - 우측 정렬, 약간 아래로 */}
+                <div className="flex gap-1.5 flex-shrink-0 mt-0.5">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => window.open(`https://m.place.naver.com/place/${store.place_id}`, '_blank')}
-                    className="h-8 px-2"
+                    className="h-9 w-9 p-0 border-neutral-300 hover:bg-neutral-50 hover:border-primary-500 active:scale-95 transition-all duration-200"
                   >
-                    <ExternalLink className="h-3 w-3" />
+                    <ExternalLink className="h-4 w-4" />
                   </Button>
                   <Button
                     variant="destructive"
                     size="sm"
                     onClick={() => handleDeleteStore(store.id, store.name)}
                     disabled={deletingStoreId === store.id}
-                    className="h-8 px-2"
+                    className="h-9 w-9 p-0 shadow-button hover:shadow-button-hover active:scale-95 transition-all duration-200"
                   >
                     {deletingStoreId === store.id ? (
-                      <Loader2 className="h-3 w-3 animate-spin" />
+                      <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
-                      <Trash2 className="h-3 w-3" />
+                      <Trash2 className="h-4 w-4" />
                     )}
                   </Button>
                 </div>
@@ -372,26 +377,26 @@ export default function ConnectStorePage() {
           </CardContent>
         </Card>
       ) : (
-        <Card className="mb-8 bg-blue-50/50 border-blue-200">
-          <CardContent className="p-6">
-            <p className="text-center text-muted-foreground">
+        <Card className="mb-6 md:mb-8 bg-info border-primary-200 rounded-card shadow-card">
+          <CardContent className="p-4 md:p-6">
+            <p className="text-center text-sm md:text-base text-primary-700">
               아직 등록된 매장이 없습니다. 아래에서 매장을 검색하여 등록해보세요!
             </p>
           </CardContent>
         </Card>
       )}
 
-      {/* 검색 폼 */}
-      <form onSubmit={handleSearch} className="mb-8">
-        <div className="flex gap-2">
+      {/* 검색 폼 - TurboTax Style */}
+      <form onSubmit={handleSearch} className="mb-6 md:mb-8">
+        <div className="flex gap-2 md:gap-3">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
+            <Search className="absolute left-3 md:left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 h-5 w-5" />
             <Input
               type="text"
               placeholder="매장명을 입력하세요 (예: 스타벅스 강남점)"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 h-12 text-base"
+              className="pl-10 md:pl-12 h-12 md:h-11 text-base border-neutral-300 focus:border-primary-500 focus:ring-primary-500"
               disabled={isSearching}
             />
           </div>
@@ -399,7 +404,7 @@ export default function ConnectStorePage() {
             type="submit"
             size="lg"
             disabled={isSearching || !searchQuery.trim()}
-            className="h-12 px-6"
+            className="h-12 md:h-11 px-5 md:px-6 shadow-button hover:shadow-button-hover active:scale-95 transition-all duration-200 font-bold"
           >
             {isSearching ? (
               <>
@@ -413,14 +418,14 @@ export default function ConnectStorePage() {
         </div>
       </form>
 
-      {/* 로딩 상태 */}
+      {/* 로딩 상태 - TurboTax Style */}
       {isSearching && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
+        <div className="bg-info border border-primary-200 rounded-card p-4 md:p-6 mb-4 md:mb-6 shadow-card">
           <div className="flex items-center gap-3">
-            <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
-            <div>
-              <p className="font-semibold text-blue-900">매장을 검색하고 있습니다...</p>
-              <p className="text-sm text-blue-700 mt-1">
+            <Loader2 className="h-5 w-5 md:h-6 md:h-6 animate-spin text-primary-600 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-sm md:text-base text-primary-900">매장을 검색하고 있습니다...</p>
+              <p className="text-xs md:text-sm text-primary-700 mt-1 leading-relaxed">
                 네이버 지도에서 "{searchQuery}" 매장을 찾는 중입니다.
               </p>
             </div>
@@ -428,23 +433,23 @@ export default function ConnectStorePage() {
         </div>
       )}
 
-      {/* 에러 메시지 */}
+      {/* 에러 메시지 - TurboTax Style */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-          <p className="text-red-800">{error}</p>
+        <div className="bg-error border border-error-dark rounded-card p-4 md:p-5 mb-4 md:mb-6 shadow-card">
+          <p className="text-sm md:text-base text-error-dark font-medium leading-relaxed">{error}</p>
         </div>
       )}
 
-      {/* 성공 메시지 */}
+      {/* 성공 메시지 - TurboTax Style */}
       {selectedStore && !connectingPlaceId && (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-6">
+        <div className="bg-success-light border border-success rounded-card p-4 md:p-6 mb-4 md:mb-6 shadow-card">
           <div className="flex items-center gap-3">
-            <CheckCircle2 className="h-6 w-6 text-green-600" />
-            <div>
-              <p className="font-semibold text-green-900">
+            <CheckCircle2 className="h-5 w-5 md:h-6 md:h-6 text-success flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-sm md:text-base text-success-dark">
                 매장이 성공적으로 등록되었습니다!
               </p>
-              <p className="text-sm text-green-700 mt-1">
+              <p className="text-xs md:text-sm text-success-dark mt-1 leading-relaxed">
                 잠시 후 대시보드로 이동합니다...
               </p>
             </div>
@@ -452,13 +457,13 @@ export default function ConnectStorePage() {
         </div>
       )}
 
-      {/* 검색 결과 */}
+      {/* 검색 결과 - TurboTax Style */}
       {searchCompleted && searchResults.length > 0 && (
         <div>
-          <h2 className="text-lg font-semibold mb-4">
+          <h2 className="text-lg md:text-xl font-bold text-neutral-900 mb-3 md:mb-4 leading-tight">
             검색 결과 ({searchResults.length}개)
           </h2>
-          <div className="grid gap-4">
+          <div className="grid gap-3 md:gap-4">
             {searchResults.map((store) => {
               const isAlreadyRegistered = registeredStores.some(
                 (registered) => registered.place_id === store.place_id
@@ -467,22 +472,22 @@ export default function ConnectStorePage() {
               return (
                 <Card
                   key={store.place_id}
-                  className={`hover:shadow-lg transition-shadow border-2 ${
+                  className={`rounded-card shadow-card transition-all duration-200 ${
                     isAlreadyRegistered 
-                      ? 'bg-gray-50 border-gray-300' 
-                      : 'hover:border-primary'
+                      ? 'bg-neutral-50 border-neutral-300' 
+                      : 'border-neutral-300 hover:shadow-card-hover hover:border-primary-400'
                   }`}
                 >
-                  <CardContent className="p-6">
-                    <div className="flex items-start justify-between gap-4">
+                  <CardContent className="p-4 md:p-6">
+                    <div className="flex items-start justify-between gap-2 md:gap-4 flex-wrap md:flex-nowrap">
                     {/* 썸네일 이미지 */}
                     {store.thumbnail ? (
-                      <div className="flex-shrink-0 relative w-20 h-20">
-                        <div className="absolute inset-0 bg-gray-200 rounded-lg animate-pulse" />
+                      <div className="flex-shrink-0 relative w-16 h-16 md:w-20 md:h-20">
+                        <div className="absolute inset-0 bg-neutral-200 rounded-lg animate-pulse" />
                         <img
                           src={store.thumbnail}
                           alt={store.name}
-                          className="relative w-20 h-20 object-cover rounded-lg"
+                          className="relative w-16 h-16 md:w-20 md:h-20 object-cover rounded-lg"
                           loading="lazy"
                           onLoad={(e) => {
                             const parent = e.currentTarget.previousElementSibling as HTMLElement
@@ -495,53 +500,53 @@ export default function ConnectStorePage() {
                         />
                       </div>
                     ) : (
-                      <div className="flex-shrink-0 bg-primary/10 p-3 rounded-lg">
-                        <Store className="h-14 w-14 text-primary" />
+                      <div className="flex-shrink-0 bg-primary-100 p-3 rounded-lg">
+                        <Store className="h-10 w-10 md:h-14 md:w-14 text-primary-500" />
                       </div>
                     )}
 
-                    <div className="flex-1">
-                      <div className="mb-3">
-                        <h3 className="font-bold text-lg">{store.name}</h3>
+                    <div className="flex-1 min-w-0 pt-0.5">
+                      <div className="mb-1.5 md:mb-2">
+                        <h3 className="font-bold text-sm md:text-base text-neutral-900 leading-tight line-clamp-2 mb-1">{store.name}</h3>
                         {store.category && (
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-xs md:text-sm text-neutral-500 leading-relaxed truncate">
                             {store.category}
                           </p>
                         )}
                       </div>
 
                       {store.address && (
-                        <div className="flex items-start gap-2 text-sm text-muted-foreground">
-                          <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                          <p>{store.address}</p>
+                        <div className="flex items-start gap-1.5 text-xs md:text-sm text-neutral-600 mb-1.5">
+                          <MapPin className="h-3.5 w-3.5 md:h-4 md:w-4 mt-0.5 flex-shrink-0 text-neutral-400" />
+                          <p className="leading-relaxed line-clamp-2">{store.address}</p>
                         </div>
                       )}
 
-                      <p className="text-xs text-muted-foreground mt-2">
+                      <p className="text-xs text-neutral-400 leading-relaxed truncate">
                         플레이스 ID: {store.place_id}
                       </p>
                     </div>
 
                     {isAlreadyRegistered ? (
-                      <div className="flex-shrink-0 px-4 py-2 bg-gray-200 text-gray-600 rounded-lg font-semibold">
-                        이미 등록됨
+                      <div className="flex-shrink-0 px-3 md:px-4 py-1.5 md:py-2 bg-neutral-200 text-neutral-600 rounded-lg font-bold text-xs md:text-sm whitespace-nowrap mt-0.5">
+                        등록됨
                       </div>
                     ) : (
                       <Button
                         onClick={() => handleConnectStore(store)}
                         disabled={connectingPlaceId !== null || selectedStore !== null}
                         size="lg"
-                        className="flex-shrink-0"
+                        className="flex-shrink-0 h-9 md:h-10 px-4 md:px-5 shadow-button hover:shadow-button-hover active:scale-95 transition-all duration-200 font-bold whitespace-nowrap text-sm md:text-base mt-0.5"
                       >
                         {connectingPlaceId === store.place_id ? (
                           <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            <Loader2 className="mr-1.5 h-3.5 w-3.5 md:h-4 md:w-4 animate-spin" />
                             연결중...
                           </>
                         ) : (
                           <>
                             연결
-                            <ChevronRight className="ml-1 h-4 w-4" />
+                            <ChevronRight className="ml-1 h-3.5 w-3.5 md:h-4 md:w-4" />
                           </>
                         )}
                       </Button>
@@ -554,14 +559,16 @@ export default function ConnectStorePage() {
         </div>
       )}
 
-      {/* 안내 메시지 (검색 전) */}
+      {/* 안내 메시지 (검색 전) - TurboTax Style */}
       {!isSearching && !searchCompleted && searchResults.length === 0 && (
-        <div className="bg-gray-50 rounded-lg p-8 text-center">
-          <Store className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="font-semibold text-gray-900 mb-2">
+        <div className="bg-neutral-50 rounded-card border border-neutral-200 p-6 md:p-8 text-center">
+          <div className="w-16 h-16 md:w-20 md:h-20 bg-neutral-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Store className="h-8 w-8 md:h-10 md:w-10 text-neutral-400" />
+          </div>
+          <h3 className="font-bold text-base md:text-lg text-neutral-900 mb-2 leading-tight">
             매장을 검색해보세요
           </h3>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
             위 검색창에 매장명을 입력하면
             <br />
             네이버 지도에서 매장을 찾아드립니다
