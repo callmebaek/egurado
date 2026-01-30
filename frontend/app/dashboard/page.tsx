@@ -1014,36 +1014,76 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-4 sm:space-y-6 lg:space-y-8 pb-6 sm:pb-8">
-      {/* 환영 헤더 + 활성화 요약 + 계정 정보 */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
-        {/* 환영 카드 */}
-        <div className={`relative overflow-hidden bg-gradient-to-br ${tier.bgColor} rounded-2xl sm:rounded-3xl border-2 border-white shadow-xl`}>
-          <div className="absolute top-0 right-0 w-24 h-24 sm:w-40 sm:h-40 bg-white/30 rounded-full -mr-12 sm:-mr-20 -mt-12 sm:-mt-20" />
-          <div className="absolute bottom-0 left-0 w-20 h-20 sm:w-32 sm:h-32 bg-white/20 rounded-full -ml-10 sm:-ml-16 -mb-10 sm:-mb-16" />
-          
-          <div className="relative p-4 sm:p-5 lg:p-6">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className={`bg-gradient-to-br ${tier.color} p-2 sm:p-3 rounded-lg sm:rounded-xl shadow-lg`}>
-                <User className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
+      {/* 환영 헤더 + 활성화 요약 */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5">
+        {/* 계정 정보 카드 (환영 메시지 통합) */}
+        <div className="bg-white rounded-2xl sm:rounded-3xl border-2 border-gray-100 shadow-xl p-3 sm:p-4">
+          <div className="flex items-center justify-between mb-2 sm:mb-3">
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <div className={`bg-gradient-to-br ${tier.color} p-2 rounded-lg shadow-md flex-shrink-0`}>
+                <User className="w-5 h-5 text-white" />
               </div>
               <div className="flex-1 min-w-0">
-                <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-800 truncate">
-                  환영합니다, {profile.display_name || profile.email.split('@')[0]}님! 👋
-                </h1>
-                <p className="text-gray-600 mt-1 text-xs sm:text-sm">
-                  오늘도 멋진 하루 되세요!
-                </p>
+                <h3 className="text-sm sm:text-base font-bold text-gray-800 truncate">
+                  {profile.display_name || profile.email.split('@')[0]}님 👋
+                </h3>
+                <p className="text-xs text-gray-500">오늘도 멋진 하루!</p>
               </div>
             </div>
+            <div className={`px-2 py-1 bg-gradient-to-r ${tier.color} text-white rounded-md shadow-sm flex items-center gap-1 flex-shrink-0`}>
+              <tier.Icon className="w-3 h-3" />
+              <span className="text-xs font-bold">{tier.label}</span>
+            </div>
+          </div>
+          
+          <div className="space-y-1.5">
+            {/* 이메일 */}
+            <div className="bg-gradient-to-br from-gray-50 to-white border border-gray-200 rounded-lg p-2">
+              <p className="text-xs text-gray-500 mb-0.5">이메일</p>
+              <p className="text-xs font-medium text-gray-800 truncate">{profile.email}</p>
+            </div>
+
+            {/* 잔여 크레딧 */}
+            <div className="bg-gradient-to-br from-gray-50 to-white border border-gray-200 rounded-lg p-2">
+              <p className="text-xs text-gray-500 mb-0.5">잔여 크레딧</p>
+              <div className="flex items-baseline gap-1">
+                <span className="text-base font-bold text-gray-800">{remainingCredits}</span>
+                {totalCredits !== -1 && (
+                  <span className="text-xs text-gray-500">/ {totalCredits.toLocaleString()}</span>
+                )}
+              </div>
+              {totalCredits !== -1 && (
+                <div className="mt-1 bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                  <div 
+                    className="bg-gradient-to-r from-green-500 to-emerald-500 h-full transition-all duration-500"
+                    style={{ width: `${creditPercentage}%` }}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* 가입일 */}
+            {profile.created_at && (
+              <div className="bg-gradient-to-br from-gray-50 to-white border border-gray-200 rounded-lg p-2">
+                <p className="text-xs text-gray-500 mb-0.5">가입일</p>
+                <p className="text-xs font-medium text-gray-800">
+                  {new Date(profile.created_at).toLocaleDateString('ko-KR', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  })}
+                </p>
+              </div>
+            )}
           </div>
         </div>
 
         {/* 플레이스 활성화 요약 카드 */}
         {latestActivation && latestActivation.summary_cards && latestActivation.summary_cards.length > 0 ? (
-          <div className="bg-white rounded-2xl sm:rounded-3xl border-2 border-gray-100 shadow-xl p-4 sm:p-5">
-            <div className="flex items-center justify-between mb-3 sm:mb-4">
+          <div className="bg-white rounded-2xl sm:rounded-3xl border-2 border-gray-100 shadow-xl p-3 sm:p-4">
+            <div className="flex items-center justify-between mb-2 sm:mb-3">
               <div>
-                <h3 className="text-base sm:text-lg font-bold text-gray-800">플레이스 활성화</h3>
+                <h3 className="text-sm sm:text-base font-bold text-gray-800">플레이스 활성화</h3>
                 <p className="text-xs text-gray-500 mt-0.5">
                   {new Date(latestActivation.created_at).toLocaleDateString('ko-KR', {
                     year: 'numeric',
@@ -1055,17 +1095,17 @@ export default function DashboardPage() {
               <Activity className="w-5 h-5 text-purple-500" />
             </div>
             
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {latestActivation.summary_cards.slice(0, 5).map((card) => (
                 <div 
                   key={card.type} 
-                  className="bg-gradient-to-br from-gray-50 to-white border border-gray-200 rounded-lg p-2.5 hover:shadow-md transition-all duration-200"
+                  className="bg-gradient-to-br from-gray-50 to-white border border-gray-200 rounded-lg p-2 hover:shadow-md transition-all duration-200"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex-1 min-w-0">
                       <p className="text-xs text-gray-600 font-medium truncate">{card.title}</p>
                       <div className="flex items-baseline gap-1.5 mt-0.5">
-                        <span className="text-base sm:text-lg font-bold text-gray-800">
+                        <span className="text-sm sm:text-base font-bold text-gray-800">
                           {card.type === 'visitor_review' || card.type === 'blog_review' 
                             ? card.value.toFixed(2) 
                             : Math.round(card.value)}
@@ -1111,106 +1151,27 @@ export default function DashboardPage() {
                 </div>
               ))}
             </div>
-            
-            <Link 
-              href={`/dashboard/naver/activation?storeId=${latestActivation.store_id}`}
-              className="mt-3 block w-full text-center py-2 bg-gradient-to-r from-purple-500 to-indigo-500 text-white text-sm font-semibold rounded-lg hover:shadow-lg transition-all duration-300"
-            >
-              상세 보기
-            </Link>
           </div>
         ) : (
-          <div className="bg-white rounded-2xl sm:rounded-3xl border-2 border-gray-100 shadow-xl p-4 sm:p-5">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-base sm:text-lg font-bold text-gray-800">플레이스 활성화</h3>
+          <div className="bg-white rounded-2xl sm:rounded-3xl border-2 border-gray-100 shadow-xl p-3 sm:p-4">
+            <div className="flex items-center justify-between mb-2 sm:mb-3">
+              <h3 className="text-sm sm:text-base font-bold text-gray-800">플레이스 활성화</h3>
               <Activity className="w-5 h-5 text-gray-400" />
             </div>
-            <div className="flex flex-col items-center justify-center py-6">
-              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-3">
-                <Activity className="w-8 h-8 text-gray-400" />
+            <div className="flex flex-col items-center justify-center py-4">
+              <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-2">
+                <Activity className="w-6 h-6 text-gray-400" />
               </div>
-              <p className="text-sm text-gray-500 mb-3 text-center">아직 활성화 이력이 없습니다</p>
+              <p className="text-xs text-gray-500 mb-2 text-center">아직 활성화 이력이 없습니다</p>
               <Link 
                 href="/dashboard/naver/activation"
-                className="px-4 py-2 bg-gradient-to-r from-purple-500 to-indigo-500 text-white text-sm font-semibold rounded-lg hover:shadow-lg transition-all duration-300"
+                className="px-3 py-1.5 bg-gradient-to-r from-purple-500 to-indigo-500 text-white text-xs font-semibold rounded-lg hover:shadow-lg transition-all duration-300"
               >
                 활성화 확인하기
               </Link>
             </div>
           </div>
         )}
-
-        {/* 계정 정보 카드 */}
-        <div className="bg-white rounded-2xl sm:rounded-3xl border-2 border-gray-100 shadow-xl p-5 sm:p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold text-gray-800">계정 정보</h3>
-            <User className="w-5 h-5 text-gray-400" />
-          </div>
-          
-          <div className="space-y-4">
-            {/* 플랜 */}
-            <div>
-              <p className="text-xs text-gray-500 mb-1">현재 플랜</p>
-              <div className={`inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r ${tier.color} text-white rounded-lg shadow-md`}>
-                <tier.Icon className="w-4 h-4" />
-                <span className="text-sm font-bold">{tier.label}</span>
-              </div>
-            </div>
-
-            {/* 이메일 */}
-            <div>
-              <p className="text-xs text-gray-500 mb-1">이메일</p>
-              <p className="text-sm font-medium text-gray-800 truncate">{profile.email}</p>
-            </div>
-
-            {/* 잔여 크레딧 */}
-            <div>
-              <p className="text-xs text-gray-500 mb-1">잔여 크레딧</p>
-              <p className="text-lg font-bold text-gray-800">
-                {remainingCredits}
-                {totalCredits !== -1 && (
-                  <span className="text-sm text-gray-500 ml-1">/ {totalCredits.toLocaleString()}</span>
-                )}
-              </p>
-              {totalCredits !== -1 && (
-                <div className="mt-2 bg-gray-100 rounded-full h-2 overflow-hidden">
-                  <div 
-                    className="bg-gradient-to-r from-green-500 to-emerald-500 h-full transition-all duration-500"
-                    style={{ width: `${creditPercentage}%` }}
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* 가입일 */}
-            {profile.created_at && (
-              <div>
-                <p className="text-xs text-gray-500 mb-1">가입일</p>
-                <p className="text-sm font-medium text-gray-800">
-                  {new Date(profile.created_at).toLocaleDateString('ko-KR', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  })}
-                </p>
-              </div>
-            )}
-
-            {/* 구독 갱신일 */}
-            {profile.subscription_end_date && (
-              <div>
-                <p className="text-xs text-gray-500 mb-1">구독 갱신일</p>
-                <p className="text-sm font-medium text-gray-800">
-                  {new Date(profile.subscription_end_date).toLocaleDateString('ko-KR', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  })}
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
       </div>
 
       {/* 온보딩 섹션 */}
