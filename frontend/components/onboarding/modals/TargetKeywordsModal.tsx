@@ -139,8 +139,7 @@ export default function TargetKeywordsModal({
     setError('');
 
     try {
-      const token = getToken();
-      if (!token || !user) {
+      if (!user) {
         setError('로그인이 필요합니다.');
         setLoading(false);
         setCurrentStep(1);
@@ -158,6 +157,12 @@ export default function TargetKeywordsModal({
       });
 
       const token = await getToken();
+      if (!token) {
+        setError('로그인이 필요합니다.');
+        setLoading(false);
+        setCurrentStep(1);
+        return;
+      }
       const response = await fetch(`${api.baseUrl}/api/v1/target-keywords/analyze`, {
         method: 'POST',
         headers: {
