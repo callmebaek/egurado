@@ -106,7 +106,7 @@ export default function PlaceActivationModal({ isOpen, onClose, onComplete }: Pl
   const loadStores = async () => {
     setLoadingStores(true)
     try {
-      const token = getToken()
+      const token = await getToken()
       if (!token) return
 
       const response = await fetch(api.stores.list(), {
@@ -133,7 +133,7 @@ export default function PlaceActivationModal({ isOpen, onClose, onComplete }: Pl
     setError('')
 
     try {
-      const token = getToken()
+      const token = await getToken()
       if (!token) throw new Error('인증 토큰이 없습니다')
 
       const response = await fetch(api.naver.activation(selectedStore.id), {
@@ -144,6 +144,21 @@ export default function PlaceActivationModal({ isOpen, onClose, onComplete }: Pl
 
       const data = await response.json()
       setActivationData(data.data)
+      
+      // 🆕 캐싱: 모달에서 가져온 데이터를 localStorage에 저장 (2분간 유효)
+      const cacheKey = `activation_cache_${selectedStore.id}`
+      const cacheData = {
+        data: data.data,
+        timestamp: Date.now(),
+        storeId: selectedStore.id
+      }
+      try {
+        localStorage.setItem(cacheKey, JSON.stringify(cacheData))
+        console.log('[활성화 모달] 캐시 저장 완료:', cacheKey)
+      } catch (err) {
+        console.warn('[활성화 모달] 캐시 저장 실패:', err)
+      }
+      
       setCurrentStep(4)
     } catch (err) {
       console.error('활성화 분석 오류:', err)

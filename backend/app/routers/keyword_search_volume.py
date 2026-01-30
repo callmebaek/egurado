@@ -16,7 +16,7 @@ router = APIRouter()
 
 class KeywordSearchRequest(BaseModel):
     """키워드 검색량 조회 요청"""
-    user_id: UUID
+    # user_id: UUID  # Removed: user_id is now extracted from current_user
     keywords: List[str] = Field(..., max_items=5, description="조회할 키워드 리스트 (최대 5개)")
 
 

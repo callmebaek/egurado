@@ -128,7 +128,7 @@ export default function NaverKeywordsPage() {
             "Authorization": `Bearer ${token}`,
           },
           body: JSON.stringify({
-            user_id: userId,
+            // user_id는 백엔드에서 current_user로부터 추출되므로 제거
             keywords: keywordsToSearch,
           }),
         }

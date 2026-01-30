@@ -207,7 +207,7 @@ export default function ActivationPage() {
   }, [searchParams, stores])
 
   const fetchStores = async () => {
-    const token = getToken()
+    const token = await getToken()
     if (!user || !token) return
 
     setIsLoadingStores(true)
@@ -270,7 +270,53 @@ export default function ActivationPage() {
         throw new Error("인증 토큰이 없습니다.")
       }
 
-      // 활성화 정보와 과거 이력 병렬로 가져오기
+      // 🆕 캐시 확인 (2분 = 120000ms 이내)
+      const cacheKey = `activation_cache_${store.id}`
+      const CACHE_DURATION = 120000 // 2분
+      let cachedData: ActivationData | null = null
+      
+      try {
+        const cached = localStorage.getItem(cacheKey)
+        if (cached) {
+          const parsedCache = JSON.parse(cached)
+          const age = Date.now() - parsedCache.timestamp
+          if (age < CACHE_DURATION && parsedCache.storeId === store.id) {
+            cachedData = parsedCache.data
+            console.log('[활성화] ✅ 캐시 데이터 사용 (중복 API 호출 방지):', Math.round(age / 1000), '초 전')
+          } else {
+            console.log('[활성화] ⏰ 캐시 만료:', Math.round(age / 1000), '초 전')
+            localStorage.removeItem(cacheKey)
+          }
+        }
+      } catch (err) {
+        console.warn('[활성화] 캐시 읽기 실패:', err)
+      }
+
+      // 캐시가 있으면 API 호출 스킵
+      if (cachedData) {
+        console.log('[활성화 디버그] 캐시된 데이터 사용')
+        setActivationData(cachedData)
+        
+        // 이력만 가져오기 (크레딧 차감 없음)
+        try {
+          const historyResponse = await fetch(api.naver.activationHistory(store.id), {
+            headers: { 'Authorization': `Bearer ${token}` }
+          })
+          if (historyResponse.ok) {
+            const historyData = await historyResponse.json()
+            setActivationHistories(historyData.histories || [])
+            console.log('[활성화 이력] ✅ 조회 완료')
+          }
+        } catch (err) {
+          console.log('[활성화 이력] ⚠️ 조회 실패 (계속 진행)')
+        }
+        
+        setIsLoading(false)
+        return
+      }
+
+      // 캐시가 없으면 API 호출 (크레딧 차감)
+      console.log('[활성화] 📡 API 호출 (캐시 없음)')
       const [activationResponse, historyResponse] = await Promise.all([
         fetch(api.naver.activation(store.id), {
           headers: { 'Authorization': `Bearer ${token}` }
@@ -291,6 +337,19 @@ export default function ActivationPage() {
       console.log('[활성화 디버그] summary_cards[0] (visitor):', data.data.summary_cards?.[0])
       console.log('[활성화 디버그] visitor_review_trends:', data.data.visitor_review_trends)
       setActivationData(data.data) // API 응답의 data 필드만 추출
+      
+      // 🆕 캐시에 저장 (2분간 유효)
+      try {
+        const cacheData = {
+          data: data.data,
+          timestamp: Date.now(),
+          storeId: store.id
+        }
+        localStorage.setItem(cacheKey, JSON.stringify(cacheData))
+        console.log('[활성화] 💾 캐시 저장 완료')
+      } catch (err) {
+        console.warn('[활성화] 캐시 저장 실패:', err)
+      }
 
       // 과거 이력 처리
       if (historyResponse && historyResponse.ok) {

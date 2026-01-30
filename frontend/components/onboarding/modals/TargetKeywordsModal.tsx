@@ -157,14 +157,16 @@ export default function TargetKeywordsModal({
         others
       });
 
+      const token = await getToken();
       const response = await fetch(`${api.baseUrl}/api/v1/target-keywords/analyze`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
           store_id: selectedStore.id,
-          user_id: user.id,
+          // user_id는 백엔드에서 current_user로부터 추출되므로 제거
           regions,
           landmarks,
           menus,

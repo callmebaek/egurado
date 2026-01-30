@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/config';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/auth-context';
 
 interface MainKeywordsModalProps {
   opened: boolean;
@@ -41,6 +42,7 @@ interface AnalysisResult {
 
 export default function MainKeywordsModal({ opened, onClose, onComplete }: MainKeywordsModalProps) {
   const router = useRouter();
+  const { getToken } = useAuth();
   const [step, setStep] = useState(1);
   const [keyword, setKeyword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -75,10 +77,12 @@ export default function MainKeywordsModal({ opened, onClose, onComplete }: MainK
     setStep(3); // 분석 진행 단계로 이동
     
     try {
+      const token = await getToken();
       const response = await fetch(api.naver.analyzeMainKeywords(), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
           query: keyword.trim()

@@ -888,7 +888,10 @@ class RankCheckResponseUnofficial(BaseModel):
 
 
 @router.post("/check-rank-unofficial", response_model=RankCheckResponseUnofficial)
-async def check_place_rank_unofficial(request: RankCheckRequest):
+async def check_place_rank_unofficial(
+    request: RankCheckRequest,
+    current_user: dict = Depends(get_current_user)
+):
     """
     네이버 플레이스 키워드 순위 조회 (비공식 API 방식)
     
@@ -904,11 +907,32 @@ async def check_place_rank_unofficial(request: RankCheckRequest):
     - 최초 조회 시: keywords 테이블에 INSERT
     - 재조회 시: keywords 테이블 UPDATE, rank_history에 오늘 날짜 데이터 UPSERT
     
+    크레딧: 5 크레딧 소모
+    
     속도 최적화:
     - 최대 300개까지 확인
     - 타겟 매장 발견 시 즉시 중단 가능
     """
+    user_id = UUID(current_user["id"])
+    
     try:
+        # 🆕 크레딧 체크 (Feature Flag 확인)
+        if settings.CREDIT_SYSTEM_ENABLED and settings.CREDIT_CHECK_STRICT:
+            check_result = await credit_service.check_sufficient_credits(
+                user_id=user_id,
+                feature="rank_check",
+                required_credits=5
+            )
+            
+            if not check_result.sufficient:
+                logger.warning(f"[Credits] User {user_id} has insufficient credits for rank check (unofficial)")
+                raise HTTPException(
+                    status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                    detail="크레딧이 부족합니다. 크레딧을 충전하거나 플랜을 업그레이드해주세요."
+                )
+            
+            logger.info(f"[Credits] User {user_id} has sufficient credits for rank check (unofficial)")
+        
         supabase = get_supabase_client()
         
         # 매장 정보 조회
@@ -1003,23 +1027,7 @@ async def check_place_rank_unofficial(request: RankCheckRequest):
             )
             
         else:
-            # 새 키워드 등록 전에 제한 확인
-            # store를 통해 user_id 가져오기
-            user_id = store_data.get("user_id")
-            if not user_id:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="매장에 연결된 사용자를 찾을 수 없습니다."
-                )
-            
-            is_limit_exceeded, current_count, max_count = check_keyword_limit(supabase, user_id)
-            
-            if is_limit_exceeded:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail=f"키워드 등록 제한에 도달했습니다. (현재: {current_count}/{max_count}개) 구독 플랜을 업그레이드해주세요."
-                )
-            
+            # 새 키워드 등록 (순위조회는 tier 제한 없음, 크레딧만 체크)
             # 새 키워드 등록 (total_results 포함)
             keyword_insert = supabase.table("keywords").insert({
                 "store_id": str(request.store_id),
@@ -1034,7 +1042,7 @@ async def check_place_rank_unofficial(request: RankCheckRequest):
             
             logger.info(
                 f"[Unofficial API Rank] Created new keyword (ID: {keyword_id}), "
-                f"Rank: {rank_result['rank']}, Total: {total_results_int}, User keywords: {current_count + 1}/{max_count}"
+                f"Rank: {rank_result['rank']}, Total: {total_results_int}"
             )
         
         # rank_history 처리 (오늘 날짜 데이터만 유지)
@@ -1061,6 +1069,24 @@ async def check_place_rank_unofficial(request: RankCheckRequest):
         if previous_rank and rank_result["rank"]:
             # 순위가 낮을수록 좋음 (1위가 최고)
             rank_change = previous_rank - rank_result["rank"]  # 양수: 순위 상승
+        
+        # 🆕 크레딧 차감 (성공 시, Feature Flag 확인)
+        if settings.CREDIT_SYSTEM_ENABLED and settings.CREDIT_AUTO_DEDUCT:
+            try:
+                transaction_id = await credit_service.deduct_credits(
+                    user_id=user_id,
+                    feature="rank_check",
+                    credits_amount=5,
+                    metadata={
+                        "store_id": str(request.store_id),
+                        "keyword": request.keyword,
+                        "rank": rank_result["rank"]
+                    }
+                )
+                logger.info(f"[Credits] Deducted 5 credits from user {user_id} for rank check (unofficial) (transaction: {transaction_id})")
+            except Exception as credit_error:
+                logger.error(f"[Credits] Failed to deduct credits for rank check (unofficial): {credit_error}")
+                # 크레딧 차감 실패는 기능 사용을 막지 않음 (이미 조회 완료)
         
         return RankCheckResponseUnofficial(
             status="success",
@@ -1849,7 +1875,7 @@ async def generate_description(
             check_result = await credit_service.check_sufficient_credits(
                 user_id=user_id,
                 feature="business_description",
-                required_credits=5
+                required_credits=15
             )
             
             if not check_result.sufficient:
@@ -2003,7 +2029,7 @@ async def generate_description(
                 transaction_id = await credit_service.deduct_credits(
                     user_id=user_id,
                     feature="business_description",
-                    credits_amount=5,
+                    credits_amount=15,
                     metadata={
                         "store_id": request.store_id,
                         "store_name": store.get("store_name"),
@@ -2070,7 +2096,7 @@ async def generate_directions(
             check_result = await credit_service.check_sufficient_credits(
                 user_id=user_id,
                 feature="directions",
-                required_credits=3
+                required_credits=10
             )
             
             if not check_result.sufficient:
@@ -2216,7 +2242,7 @@ SEO 관점에서 최적화하는 로컬 마케팅 전문가입니다.
                 transaction_id = await credit_service.deduct_credits(
                     user_id=user_id,
                     feature="directions",
-                    credits_amount=3,
+                    credits_amount=10,
                     metadata={
                         "store_id": request.store_id,
                         "store_name": store.get("store_name"),
