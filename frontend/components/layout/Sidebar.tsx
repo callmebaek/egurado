@@ -101,7 +101,7 @@ const navigation: NavItem[] = [
       },
       {
         title: '플레이스 지수',
-        icon: <BarChart3 className="w-3.5 h-3.5" />,
+        icon: <BarChart3 className="w-4 h-4" />,
         badge: '투표',
         children: [
           { title: '주요 KPI현황', href: '/dashboard/feature-voting', icon: null, badge: '투표' },
@@ -228,24 +228,24 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             <Link
               href={item.href}
               className={cn(
-              'flex items-center gap-3 px-3 py-2 rounded-md transition-colors',
-              level > 0 && 'pl-10 text-xs',
-              level > 1 && 'pl-14 text-xs',
-              level === 0 && 'font-semibold text-sm',
-              level > 0 && !level && 'text-sm',
+              'flex items-center gap-3 px-4 py-2.5 rounded-button transition-all duration-200',
+              level > 0 && 'pl-10 text-sm',
+              level > 1 && 'pl-14 text-sm',
+              level === 0 && 'font-bold text-base',
+              level > 0 && !level && 'text-sm font-medium',
                 isActive
-                ? 'bg-primary text-primary-foreground font-semibold'
-                : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                ? 'bg-primary-500 text-white shadow-sm font-bold'
+                : 'text-neutral-700 hover:bg-primary-100 hover:text-primary-700 active:scale-98'
               )}
             >
               {item.icon}
-              <span className="flex-1">{item.title}</span>
+              <span className="flex-1 leading-relaxed">{item.title}</span>
               {item.badge && (
               <span className={cn(
-                "px-1.5 py-0.5 text-[10px] font-semibold rounded",
+                "px-2 py-1 text-xs font-bold rounded-full",
                 isVoting 
-                  ? "bg-blue-100 text-blue-700 border border-blue-300" 
-                  : "bg-gray-100 text-gray-500 border border-gray-200"
+                  ? "bg-info-bg text-info border border-info" 
+                  : "bg-neutral-100 text-neutral-600 border border-neutral-200"
               )}>
                   {item.badge}
                 </span>
@@ -255,20 +255,20 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           <button
             onClick={() => hasChildren && toggleItem(item.title)}
             className={cn(
-              'w-full flex items-center gap-3 px-3 py-2 rounded-md transition-colors',
-              level > 0 && 'pl-10 text-xs',
-              level === 0 && 'font-semibold text-sm text-olive-800',
-              'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+              'w-full flex items-center gap-3 px-4 py-2.5 rounded-button transition-all duration-200',
+              level > 0 && 'pl-10 text-sm font-medium',
+              level === 0 && 'font-bold text-base text-neutral-900',
+              'text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900 active:scale-98'
             )}
           >
             {item.icon}
-            <span className="flex-1 text-left">{item.title}</span>
+            <span className="flex-1 text-left leading-relaxed">{item.title}</span>
             {item.badge && (
               <span className={cn(
-                "px-1.5 py-0.5 text-[10px] font-semibold rounded",
+                "px-2 py-1 text-xs font-bold rounded-full",
                 isVoting 
-                  ? "bg-blue-100 text-blue-700 border border-blue-300" 
-                  : "bg-gray-100 text-gray-500 border border-gray-200"
+                  ? "bg-info-bg text-info border border-info" 
+                  : "bg-neutral-100 text-neutral-600 border border-neutral-200"
               )}>
                 {item.badge}
               </span>
@@ -279,7 +279,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           </button>
         )}
         {hasChildren && isOpen && (
-          <div className="mt-1 space-y-1">
+          <div className="mt-2 space-y-1">
             {item.children!.map((child) => renderNavItem(child, level + 1))}
           </div>
         )}
@@ -298,17 +298,17 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         />
       )}
 
-      {/* 사이드바 */}
+      {/* 사이드바 - 폭 증가 */}
       <aside
         className={cn(
           "fixed lg:static inset-y-0 left-0 z-50",
-          "w-64 h-screen border-r bg-background flex flex-col",
+          "w-72 lg:w-80 h-screen border-r border-neutral-300 bg-white flex flex-col shadow-lg",
           "transition-transform duration-300 ease-in-out lg:translate-x-0",
           isOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
         {/* 로고 및 닫기 버튼 */}
-        <div className="h-16 border-b flex items-center justify-between px-4">
+        <div className="h-16 md:h-20 border-b border-neutral-300 flex items-center justify-between px-4 md:px-6 bg-white">
           <Link href="/dashboard" className="flex items-center justify-center flex-1" onClick={onClose}>
               <Image
                 src="/whiplace-logo.svg"
@@ -323,24 +323,24 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           {/* 모바일 닫기 버튼 */}
           <button
             onClick={onClose}
-            className="lg:hidden p-2 rounded-md hover:bg-accent transition-colors flex-shrink-0"
+            className="lg:hidden p-2 rounded-button hover:bg-neutral-100 active:scale-95 transition-all duration-200 flex-shrink-0"
             aria-label="메뉴 닫기"
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5 text-neutral-700" />
           </button>
         </div>
 
         {/* 네비게이션 */}
-        <nav className="flex-1 p-4 overflow-y-auto">
-          <div className="space-y-1">
+        <nav className="flex-1 p-4 md:p-6 overflow-y-auto">
+          <div className="space-y-2">
             {navigation.map((item) => renderNavItem(item))}
           </div>
         </nav>
 
         {/* 하단 정보 */}
-        <div className="p-4 border-t text-xs text-muted-foreground">
-          <p>© 2026 Egurado</p>
-          <p className="text-olive-600">Version 1.0.0</p>
+        <div className="p-4 md:p-6 border-t border-neutral-300 text-sm text-neutral-600 bg-neutral-50">
+          <p className="font-medium leading-relaxed">© 2026 Egurado</p>
+          <p className="text-neutral-500 leading-relaxed">Version 1.0.0</p>
         </div>
       </aside>
     </>

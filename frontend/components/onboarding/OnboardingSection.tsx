@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ChevronUp, ChevronDown } from 'lucide-react';
+import { ChevronUp, ChevronDown, Sparkles } from 'lucide-react';
 import StepCard from './StepCard';
 import ActionItem from './ActionItem';
 import { ONBOARDING_STEPS, OnboardingProgress, OnboardingPreferences, ACTION_KEYS } from './types';
@@ -276,33 +276,39 @@ export default function OnboardingSection({ onStoreRegistered }: OnboardingSecti
 
   return (
     <>
-      <div className="mb-8">
-        {/* 접어두기 버튼 */}
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold text-gray-900">
-            {isCollapsed ? '빠른 시작 가이드' : '시작하기'}
-          </h2>
-          <button
-            onClick={toggleCollapse}
-            className="flex items-center gap-2 px-4 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            {isCollapsed ? (
-              <>
-                <span>펼치기</span>
-                <ChevronDown className="w-4 h-4" />
-              </>
-            ) : (
-              <>
-                <span>접어두기</span>
-                <ChevronUp className="w-4 h-4" />
-              </>
-            )}
-          </button>
+      {/* 시작하기 섹션 - TurboTax 스타일 */}
+      <div className="bg-white rounded-card border border-neutral-300 shadow-card overflow-hidden mb-6">
+        {/* 헤더 - Compact */}
+        <div className="bg-brand-red p-3 md:p-4">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-white" />
+              <h3 className="text-lg md:text-xl font-bold text-white leading-tight">
+                {isCollapsed ? '빠른 시작 가이드' : '시작하기'}
+              </h3>
+            </div>
+            <button
+              onClick={toggleCollapse}
+              className="px-3 py-1.5 bg-white text-brand-red font-bold rounded-button shadow-button hover:bg-neutral-50 hover:shadow-button-hover active:scale-95 transition-all duration-200 text-xs md:text-sm flex items-center gap-1.5"
+            >
+              {isCollapsed ? (
+                <>
+                  <span>펼치기</span>
+                  <ChevronDown className="w-3 h-3 md:w-4 md:h-4" />
+                </>
+              ) : (
+                <>
+                  <span>접어두기</span>
+                  <ChevronUp className="w-3 h-3 md:w-4 md:h-4" />
+                </>
+              )}
+            </button>
+          </div>
         </div>
 
-        {/* 단계별 카드 - 그룹화된 컨테이너 */}
+        {/* 단계별 카드 */}
         {!isCollapsed && (
-          <div className="bg-gradient-to-br from-purple-500 to-indigo-600 rounded-2xl p-6 shadow-lg">
+          <div className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {ONBOARDING_STEPS.map((step) => {
                 const completedCount = step.actions.filter(
