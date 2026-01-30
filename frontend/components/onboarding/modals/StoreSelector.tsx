@@ -1,7 +1,9 @@
 'use client';
 
-import { CheckCircle2, Store as StoreIcon, MapPin } from 'lucide-react';
+import { CheckCircle2, Store as StoreIcon } from 'lucide-react';
 import Image from 'next/image';
+import { Card, CardContent } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 
 interface Store {
   id: string;
@@ -59,95 +61,60 @@ export default function StoreSelector({
         작업할 매장을 선택해주세요 ({stores.length}개)
       </p>
       
-      <div className="space-y-2 md:space-y-3 max-h-[400px] overflow-y-auto">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[300px] overflow-y-auto pr-2">
         {stores.map((store) => {
           const isSelected = selectedStore?.id === store.id;
           
           return (
-            <button
+            <Card
               key={store.id}
+              className={cn(
+                "cursor-pointer transition-all duration-200 hover:shadow-card-hover",
+                isSelected
+                  ? "border-primary-500 bg-primary-50 ring-2 ring-primary-500/20"
+                  : "border-neutral-200 hover:border-primary-300"
+              )}
               onClick={() => onSelect(store)}
-              className={`
-                w-full p-3 md:p-4 rounded-xl border-2 transition-all duration-200
-                flex items-center gap-3 text-left min-h-[80px]
-                ${
-                  isSelected
-                    ? 'border-primary-500 bg-primary-50 shadow-md'
-                    : 'border-neutral-300 bg-white hover:border-primary-400 hover:bg-primary-50/50'
-                }
-                active:scale-[0.98]
-              `}
             >
-              {/* 썸네일 */}
-              <div className="flex-shrink-0">
-                {store.thumbnail ? (
-                  <div className="w-14 h-14 md:w-16 md:h-16 rounded-lg overflow-hidden border-2 border-neutral-200 bg-neutral-100">
-                    <Image
-                      src={store.thumbnail}
+              <CardContent className="p-3 md:p-4">
+                <div className="flex items-center gap-3">
+                  {/* 썸네일 */}
+                  {store.thumbnail ? (
+                    <Image 
+                      src={store.thumbnail} 
                       alt={store.name}
-                      width={64}
-                      height={64}
-                      className="w-full h-full object-cover"
+                      width={48}
+                      height={48}
+                      className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
                       onError={(e) => {
                         e.currentTarget.style.display = 'none';
                       }}
                     />
+                  ) : (
+                    <div className="w-12 h-12 rounded-lg bg-primary-100 flex items-center justify-center flex-shrink-0">
+                      <StoreIcon className="w-6 h-6 text-primary-500" />
+                    </div>
+                  )}
+                  
+                  {/* 매장 정보 */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm md:text-base font-bold text-neutral-900 truncate">
+                      {store.name}
+                    </p>
+                    <p className="text-xs text-neutral-500 truncate">
+                      {store.category || (store.platform === 'naver' ? '네이버 플레이스' : store.platform === 'google' ? '구글 비즈니스' : '매장')}
+                    </p>
                   </div>
-                ) : (
-                  <div className="w-14 h-14 md:w-16 md:h-16 rounded-lg bg-neutral-100 border-2 border-neutral-200 flex items-center justify-center">
-                    <StoreIcon className="w-6 h-6 md:w-7 md:h-7 text-neutral-400" />
-                  </div>
-                )}
-              </div>
-
-              {/* 매장 정보 */}
-              <div className="flex-1 min-w-0">
-                {/* 매장명 + 플랫폼 뱃지 */}
-                <div className="flex items-center gap-2 mb-1">
-                  <h3 className="text-base md:text-lg font-bold text-neutral-900 truncate leading-tight">
-                    {store.name}
-                  </h3>
-                  {store.platform && (
-                    <span
-                      className={`
-                        px-2 py-0.5 rounded-full text-xs font-bold flex-shrink-0
-                        ${
-                          store.platform === 'naver'
-                            ? 'bg-success text-white'
-                            : 'bg-info text-white'
-                        }
-                      `}
-                    >
-                      {store.platform === 'naver' ? 'N' : 'G'}
-                    </span>
+                  
+                  {/* 선택 표시 */}
+                  {isSelected && (
+                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary-500 flex items-center justify-center">
+                      <CheckCircle2 className="w-5 h-5 text-white" />
+                    </div>
                   )}
                 </div>
-
-                {/* 카테고리 (있으면) */}
-                {store.category && (
-                  <p className="text-xs text-neutral-600 mb-1">
-                    {store.category}
-                  </p>
-                )}
-
-                {/* 주소 */}
-                <div className="flex items-start gap-1">
-                  <MapPin className="w-3.5 h-3.5 text-neutral-500 flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-neutral-600 line-clamp-2 leading-relaxed">
-                    {store.address}
-                  </p>
-                </div>
-              </div>
-
-              {/* 선택 표시 */}
-              <div className="flex-shrink-0 ml-2">
-                {isSelected ? (
-                  <CheckCircle2 className="w-6 h-6 md:w-7 md:h-7 text-primary-500" />
-                ) : (
-                  <div className="w-6 h-6 md:w-7 md:h-7 border-2 border-neutral-300 rounded-full" />
-                )}
-              </div>
-            </button>
+              </CardContent>
+            </Card>
           );
         })}
       </div>

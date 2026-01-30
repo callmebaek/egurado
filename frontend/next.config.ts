@@ -21,6 +21,10 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
+        hostname: 'naverbooking-phinf.pstatic.net', // 네이버 예약 이미지
+      },
+      {
+        protocol: 'https',
         hostname: 'search.pstatic.net', // 네이버 검색 이미지
       },
       {

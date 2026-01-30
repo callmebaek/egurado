@@ -2,28 +2,27 @@
 
 import { useState, useEffect } from 'react'
 import {
-  Modal,
-  Stack,
-  Text,
-  Button,
-  TextInput,
-  Textarea,
-  Paper,
-  Group,
-  Badge,
-  Loader,
-  Progress,
-  ThemeIcon,
-  Grid,
-  Center,
-  Alert,
-  ActionIcon,
-  Divider,
-} from '@mantine/core'
-import { Copy, Sparkles, Store as StoreIcon, MapPin, Navigation, CheckCircle2, ChevronRight, Plus, X } from 'lucide-react'
+  Copy,
+  Sparkles,
+  Store as StoreIcon,
+  MapPin,
+  Navigation,
+  CheckCircle2,
+  Plus,
+  X,
+  Loader2
+} from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import { api } from '@/lib/config'
 import { useToast } from '@/components/ui/use-toast'
+import OnboardingModal from './OnboardingModal'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Badge } from '@/components/ui/badge'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 interface StoreDirectionsModalProps {
   isOpen: boolean
@@ -101,6 +100,13 @@ export default function StoreDirectionsModal({ isOpen, onClose, onComplete }: St
       console.error('매장 로드 오류:', err)
     } finally {
       setLoadingStores(false)
+    }
+  }
+
+  const handleBack = () => {
+    setError('')
+    if (currentStep > 1 && currentStep !== 5) {
+      setCurrentStep(currentStep - 1)
     }
   }
 
@@ -209,13 +215,6 @@ export default function StoreDirectionsModal({ isOpen, onClose, onComplete }: St
     })
   }
 
-  const handleBack = () => {
-    setError('')
-    if (currentStep > 1 && currentStep !== 5) {
-      setCurrentStep(currentStep - 1)
-    }
-  }
-
   const handleClose = () => {
     setCurrentStep(1)
     setSelectedStore(null)
@@ -230,378 +229,361 @@ export default function StoreDirectionsModal({ isOpen, onClose, onComplete }: St
 
   // Step 1: 매장 선택
   const renderStep1 = () => (
-    <Stack gap="md">
-      <Text size="lg" fw={600} ta="center">
-        어떤 매장의 찾아오는길을 만들까요?
-      </Text>
-      <Text size="sm" c="dimmed" ta="center">
-        AI가 고객이 쉽게 찾을 수 있는 안내문을 작성해드려요
-      </Text>
+    <div className="space-y-4 md:space-y-5">
+      <div className="text-center space-y-2 mb-4 md:mb-5">
+        <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
+          어떤 매장의 찾아오는길을 만들까요?
+        </h3>
+        <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
+          AI가 고객이 쉽게 찾을 수 있는 안내문을 작성해드려요
+        </p>
+      </div>
 
       {loadingStores ? (
-        <Center style={{ minHeight: 200 }}>
-          <Loader size="lg" />
-        </Center>
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
+        </div>
       ) : stores.length === 0 ? (
-        <Alert color="yellow" title="등록된 매장이 없습니다">
-          먼저 네이버 플레이스 매장을 등록해주세요
+        <Alert variant="warning">
+          <AlertTitle>등록된 매장이 없습니다</AlertTitle>
+          <AlertDescription>먼저 네이버 플레이스 매장을 등록해주세요</AlertDescription>
         </Alert>
       ) : (
-        <Grid gutter="md">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[300px] overflow-y-auto pr-2">
           {stores.map((store) => (
-            <Grid.Col key={store.id} span={{ base: 12, sm: 6 }}>
-              <Paper
-                p="md"
-                radius="md"
-                style={{
-                  cursor: 'pointer',
-                  border: selectedStore?.id === store.id ? '2px solid #635bff' : '1px solid #e0e7ff',
-                  background: selectedStore?.id === store.id ? 'linear-gradient(135deg, #f0f4ff 0%, #e8eeff 100%)' : '#ffffff',
-                  transition: 'all 0.2s'
-                }}
-                onClick={() => setSelectedStore(store)}
-              >
-                <Group gap="md">
+            <Card
+              key={store.id}
+              className={cn(
+                "cursor-pointer transition-all duration-200 hover:shadow-card-hover",
+                selectedStore?.id === store.id
+                  ? "border-primary-500 bg-primary-50 ring-2 ring-primary-500/20"
+                  : "border-neutral-200 hover:border-primary-300"
+              )}
+              onClick={() => setSelectedStore(store)}
+            >
+              <CardContent className="p-3 md:p-4">
+                <div className="flex items-center gap-3">
                   {store.thumbnail ? (
                     <img 
                       src={store.thumbnail} 
                       alt={store.name}
-                      style={{ width: 48, height: 48, borderRadius: 8, objectFit: 'cover' }}
+                      className="w-12 h-12 rounded-lg object-cover"
                     />
                   ) : (
-                    <ThemeIcon size={48} radius="md" variant="light" color="brand">
-                      <StoreIcon size={24} />
-                    </ThemeIcon>
+                    <div className="w-12 h-12 rounded-lg bg-primary-100 flex items-center justify-center">
+                      <StoreIcon className="w-6 h-6 text-primary-500" />
+                    </div>
                   )}
-                  <div style={{ flex: 1 }}>
-                    <Text fw={600} size="sm">{store.name}</Text>
-                    <Text size="xs" c="dimmed">네이버 플레이스</Text>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm md:text-base font-bold text-neutral-900 truncate">{store.name}</p>
+                    <p className="text-xs text-neutral-500">네이버 플레이스</p>
                   </div>
                   {selectedStore?.id === store.id && (
-                    <ThemeIcon size={32} radius="xl" color="brand">
-                      <CheckCircle2 size={20} />
-                    </ThemeIcon>
+                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary-500 flex items-center justify-center">
+                      <CheckCircle2 className="w-5 h-5 text-white" />
+                    </div>
                   )}
-                </Group>
-              </Paper>
-            </Grid.Col>
+                </div>
+              </CardContent>
+            </Card>
           ))}
-        </Grid>
+        </div>
       )}
 
       {error && (
-        <Alert color="red" title="오류">
-          {error}
+        <Alert variant="destructive">
+          <AlertTitle>오류</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
-    </Stack>
+    </div>
   )
 
   // Step 2: 지역 키워드
   const renderStep2 = () => (
-    <Stack gap="md">
-      <Text size="lg" fw={600} ta="center">
-        매장이 위치한 메인 지역을 알려주세요
-      </Text>
-      <Text size="sm" c="dimmed" ta="center">
-        가장 대표적인 지역 키워드 1개만 입력해주세요
-      </Text>
+    <div className="space-y-4 md:space-y-5">
+      <div className="text-center space-y-2 mb-4 md:mb-5">
+        <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
+          매장이 위치한 메인 지역을 알려주세요
+        </h3>
+        <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
+          가장 대표적인 지역 키워드 1개만 입력해주세요
+        </p>
+      </div>
 
-      <Paper p="md" radius="md" style={{ border: '1px solid #e0e7ff', background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)' }}>
-        <Group gap="xs" mb="xs">
-          <MapPin size={16} color="#635bff" />
-          <Text size="sm" fw={600}>지역 키워드</Text>
-        </Group>
-        <TextInput
-          size="lg"
-          placeholder="예: 합정, 종로, 성수"
-          value={regionKeyword}
-          onChange={(e) => setRegionKeyword(e.target.value)}
-          styles={{
-            input: {
-              borderColor: '#e0e7ff',
-              '&:focus': { borderColor: '#635bff' }
-            }
-          }}
-        />
-      </Paper>
+      <Card className="bg-neutral-50 border-neutral-200 shadow-sm p-4 md:p-5">
+        <CardContent className="p-0 space-y-3">
+          <div className="flex items-center gap-2">
+            <MapPin className="w-4 h-4 text-primary-500" />
+            <p className="text-sm font-bold text-neutral-900">지역 키워드</p>
+          </div>
+          <Input
+            type="text"
+            placeholder="예: 합정, 종로, 성수"
+            value={regionKeyword}
+            onChange={(e) => setRegionKeyword(e.target.value)}
+            className="h-12 md:h-14 text-base"
+          />
+        </CardContent>
+      </Card>
 
-      <Alert color="blue" title="💡 입력 팁">
-        <Text size="xs">
+      <Alert variant="info" className="p-3 md:p-4">
+        <AlertTitle className="text-sm md:text-base font-bold">💡 입력 팁</AlertTitle>
+        <AlertDescription className="text-xs md:text-sm">
           고객이 검색할 때 가장 많이 사용하는 지역명을 입력하세요
-        </Text>
+        </AlertDescription>
       </Alert>
 
       {error && (
-        <Alert color="red" title="오류">
-          {error}
+        <Alert variant="destructive">
+          <AlertTitle>오류</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
-    </Stack>
+    </div>
   )
 
   // Step 3: 랜드마크
   const renderStep3 = () => (
-    <Stack gap="md">
-      <Text size="lg" fw={600} ta="center">
-        근처에 유명한 장소나 역이 있나요?
-      </Text>
-      <Text size="sm" c="dimmed" ta="center">
-        고객이 쉽게 찾을 수 있는 랜드마크를 알려주세요 (선택사항)
-      </Text>
+    <div className="space-y-4 md:space-y-5">
+      <div className="text-center space-y-2 mb-4 md:mb-5">
+        <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
+          근처에 유명한 장소나 역이 있나요?
+        </h3>
+        <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
+          고객이 쉽게 찾을 수 있는 랜드마크를 알려주세요 (선택사항)
+        </p>
+      </div>
 
-      <Paper p="md" radius="md" style={{ border: '1px solid #e0e7ff', background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)' }}>
-        <Group gap="xs" mb="xs">
-          <Navigation size={16} color="#635bff" />
-          <Text size="sm" fw={600}>랜드마크 키워드</Text>
-          <Badge size="sm" variant="light">선택</Badge>
-        </Group>
-        <Group gap="xs">
-          <TextInput
-            size="lg"
-            placeholder="예: 합정역"
-            value={tempInput}
-            onChange={(e) => setTempInput(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && addKeyword(landmarks, setLandmarks)}
-            styles={{
-              root: { flex: 1 },
-              input: {
-                borderColor: '#e0e7ff',
-                '&:focus': { borderColor: '#635bff' }
-              }
-            }}
-          />
-          <Button
-            variant="light"
-            color="brand"
-            onClick={() => addKeyword(landmarks, setLandmarks)}
-          >
-            <Plus size={16} />
-          </Button>
-        </Group>
-        
-        {/* 추가된 키워드 목록 */}
-        {landmarks.length > 0 && (
-          <Group gap="xs" mt="md">
-            {landmarks.map((keyword, index) => (
-              <Badge
-                key={index}
-                size="lg"
-                variant="light"
-                color="blue"
-                rightSection={
+      <Card className="bg-neutral-50 border-neutral-200 shadow-sm p-4 md:p-5">
+        <CardContent className="p-0 space-y-3">
+          <div className="flex items-center gap-2">
+            <Navigation className="w-4 h-4 text-primary-500" />
+            <p className="text-sm font-bold text-neutral-900">랜드마크 키워드</p>
+            <Badge variant="secondary" className="text-xs">선택</Badge>
+          </div>
+          <div className="flex gap-2">
+            <Input
+              type="text"
+              placeholder="예: 합정역"
+              value={tempInput}
+              onChange={(e) => setTempInput(e.target.value)}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') {
+                  addKeyword(landmarks, setLandmarks)
+                }
+              }}
+              className="flex-1 h-12 md:h-14 text-base"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="h-12 md:h-14 w-12 md:w-14 flex-shrink-0"
+              onClick={() => addKeyword(landmarks, setLandmarks)}
+            >
+              <Plus className="w-5 h-5" />
+            </Button>
+          </div>
+          
+          {/* 추가된 키워드 목록 */}
+          {landmarks.length > 0 && (
+            <div className="flex flex-wrap gap-2 pt-2">
+              {landmarks.map((keyword, index) => (
+                <Badge
+                  key={index}
+                  variant="outline"
+                  className="text-xs md:text-sm px-3 py-1.5 gap-1"
+                >
+                  {keyword}
                   <X
-                    size={14}
-                    style={{ cursor: 'pointer' }}
+                    className="w-3 h-3 cursor-pointer hover:text-error"
                     onClick={() => removeKeyword(index, landmarks, setLandmarks)}
                   />
-                }
-                style={{ paddingRight: 8 }}
-              >
-                {keyword}
-              </Badge>
-            ))}
-          </Group>
-        )}
-      </Paper>
+                </Badge>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-      <Alert color="blue" title="💡 입력 팁">
-        <Text size="xs">
+      <Alert variant="info" className="p-3 md:p-4">
+        <AlertTitle className="text-sm md:text-base font-bold">💡 입력 팁</AlertTitle>
+        <AlertDescription className="text-xs md:text-sm">
           지하철역, 유명 건물, 상권 이름 등을 입력하면 좋아요
-        </Text>
+        </AlertDescription>
       </Alert>
-    </Stack>
+    </div>
   )
 
   // Step 4: 찾아오는길 설명
   const renderStep4 = () => (
-    <Stack gap="md">
-      <Text size="lg" fw={600} ta="center">
-        매장까지 오는 길을 자세히 설명해주세요
-      </Text>
-      <Text size="sm" c="dimmed" ta="center">
-        출구 번호, 걷는 시간, 주변 건물, 주차 정보 등을 포함해주세요
-      </Text>
+    <div className="space-y-4 md:space-y-5">
+      <div className="text-center space-y-2 mb-4 md:mb-5">
+        <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
+          매장까지 오는 길을 자세히 설명해주세요
+        </h3>
+        <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
+          출구 번호, 걷는 시간, 주변 건물, 주차 정보 등을 포함해주세요
+        </p>
+      </div>
 
-      <Paper p="md" radius="md" style={{ border: '1px solid #e0e7ff', background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)' }}>
-        <Group gap="xs" mb="xs">
-          <Navigation size={16} color="#635bff" />
-          <Text size="sm" fw={600}>찾아오는길 설명</Text>
-        </Group>
-        <Textarea
-          size="lg"
-          placeholder="예: 합정역 7번 출구에서 직진 200m, GS25 편의점 옆 건물 2층입니다. 주차는 건물 지하 1층에 가능하며, 방문 시 건물 입구에서 연락주시면 안내해드립니다."
-          value={directionsDescription}
-          onChange={(e) => setDirectionsDescription(e.target.value)}
-          minRows={6}
-          styles={{
-            input: {
-              borderColor: '#e0e7ff',
-              '&:focus': { borderColor: '#635bff' }
-            }
-          }}
-        />
-      </Paper>
+      <Card className="bg-neutral-50 border-neutral-200 shadow-sm p-4 md:p-5">
+        <CardContent className="p-0 space-y-3">
+          <div className="flex items-center gap-2">
+            <Navigation className="w-4 h-4 text-primary-500" />
+            <p className="text-sm font-bold text-neutral-900">찾아오는길 설명</p>
+          </div>
+          <Textarea
+            placeholder="예: 합정역 7번 출구에서 직진 200m, GS25 편의점 옆 건물 2층입니다. 주차는 건물 지하 1층에 가능하며, 방문 시 건물 입구에서 연락주시면 안내해드립니다."
+            value={directionsDescription}
+            onChange={(e) => setDirectionsDescription(e.target.value)}
+            rows={6}
+            className="resize-none text-base"
+          />
+        </CardContent>
+      </Card>
 
-      <Alert color="blue" title="💡 입력 팁">
-        <Text size="xs">
+      <Alert variant="info" className="p-3 md:p-4">
+        <AlertTitle className="text-sm md:text-base font-bold">💡 입력 팁</AlertTitle>
+        <AlertDescription className="text-xs md:text-sm">
           자세하게 입력할수록 고객이 매장을 더 쉽게 찾을 수 있어요!
-        </Text>
+        </AlertDescription>
       </Alert>
 
       {error && (
-        <Alert color="red" title="오류">
-          {error}
+        <Alert variant="destructive">
+          <AlertTitle>오류</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
-    </Stack>
+    </div>
   )
 
   // Step 5: 생성 중
   const renderStep5 = () => (
-    <Stack gap="xl" align="center">
-      <ThemeIcon size={80} radius="xl" color="brand" variant="light">
-        <Sparkles size={40} />
-      </ThemeIcon>
+    <div className="text-center py-8 md:py-10 space-y-4 md:space-y-5">
+      <div className="w-16 h-16 md:w-20 md:h-20 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
+        <Sparkles className="w-8 h-8 md:w-10 md:h-10 text-primary-500" />
+      </div>
       
-      <div style={{ textAlign: 'center' }}>
-        <Text size="xl" fw={700} mb="xs">
+      <div>
+        <h3 className="text-xl md:text-2xl font-bold text-neutral-900 mb-2 leading-tight">
           완벽한 찾아오는길을 만들고 있어요
-        </Text>
-        <Text size="sm" c="dimmed">
+        </h3>
+        <p className="text-sm text-neutral-600 leading-relaxed">
           AI가 고객이 쉽게 이해할 수 있는 안내문을 작성중입니다...
-        </Text>
+        </p>
       </div>
 
-      <Loader size="xl" />
+      <Loader2 className="w-12 h-12 md:w-16 md:h-16 animate-spin text-primary-500 mx-auto" />
       
-      <Text size="xs" c="dimmed">
+      <p className="text-xs text-neutral-500">
         보통 10~15초 정도 소요됩니다
-      </Text>
-    </Stack>
+      </p>
+    </div>
   )
 
   // Step 6: 완료
   const renderStep6 = () => (
-    <Stack gap="md">
-      <div style={{ textAlign: 'center' }}>
-        <ThemeIcon size={60} radius="xl" color="brand" variant="light" style={{ margin: '0 auto 1rem' }}>
-          <CheckCircle2 size={30} />
-        </ThemeIcon>
-        <Text size="xl" fw={700} mb="xs">
+    <div className="space-y-4 md:space-y-5">
+      <div className="text-center">
+        <div className="w-16 h-16 md:w-20 md:h-20 bg-success-bg rounded-full flex items-center justify-center mx-auto mb-4">
+          <CheckCircle2 className="w-8 h-8 md:w-10 md:h-10 text-success" />
+        </div>
+        <h3 className="text-xl md:text-2xl font-bold text-neutral-900 mb-2 leading-tight">
           완성되었어요! 🎉
-        </Text>
-        <Text size="sm" c="dimmed">
+        </h3>
+        <p className="text-sm text-neutral-600 leading-relaxed">
           생성된 찾아오는길을 복사해서 사용하세요
-        </Text>
+        </p>
       </div>
 
       {/* AI 생성 콘텐츠 주의사항 */}
-      <Alert color="yellow" title="⚠️ 꼭 확인해주세요">
-        <Text size="sm">
+      <Alert variant="warning" className="p-3 md:p-4">
+        <AlertTitle className="text-sm md:text-base font-bold">⚠️ 꼭 확인해주세요</AlertTitle>
+        <AlertDescription className="text-xs md:text-sm leading-relaxed">
           AI가 작성한 콘텐츠는 입력하신 정보를 기반으로 자동 생성되었습니다. 
           사실과 다르거나 부정확한 내용이 포함될 수 있으니, <strong>반드시 검토 후 수정하여 사용</strong>해주시기 바랍니다.
-        </Text>
+        </AlertDescription>
       </Alert>
 
-      <Paper p="md" withBorder style={{ background: '#f8fafc' }}>
-        <Group justify="space-between" align="center" mb="xs">
-          <Text size="sm" fw={600}>생성된 찾아오는길 ({generatedText.length}자)</Text>
-          <ActionIcon variant="subtle" color="gray" onClick={handleCopy}>
-            <Copy size={16} />
-          </ActionIcon>
-        </Group>
-        <Divider my="xs" />
-        <Paper p="sm" withBorder style={{ background: 'white' }}>
-          <Text size="sm" style={{ whiteSpace: 'pre-wrap', lineHeight: 1.8 }}>
-            {generatedText}
-          </Text>
-        </Paper>
-        <Button
-          fullWidth
-          mt="md"
-          size="lg"
-          leftSection={<Copy size={16} />}
-          onClick={handleCopy}
-          variant="gradient"
-          gradient={{ from: 'brand', to: 'brand.7', deg: 135 }}
-        >
-          클립보드에 복사하기
-        </Button>
-      </Paper>
-    </Stack>
+      <Card className="bg-neutral-50 border-neutral-200 shadow-sm">
+        <CardContent className="p-4 md:p-5 space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-bold text-neutral-900">생성된 찾아오는길 ({generatedText.length}자)</p>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={handleCopy}
+            >
+              <Copy className="w-4 h-4 mr-1" />
+              복사
+            </Button>
+          </div>
+          <div className="border-t border-neutral-200" />
+          <div className="bg-white border border-neutral-200 rounded-lg p-3 md:p-4 max-h-[200px] overflow-y-auto">
+            <p className="text-sm whitespace-pre-wrap leading-relaxed text-neutral-700">
+              {generatedText}
+            </p>
+          </div>
+          <Button
+            type="button"
+            className="w-full"
+            size="lg"
+            onClick={handleCopy}
+          >
+            <Copy className="w-4 h-4 mr-2" />
+            클립보드에 복사하기
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
   )
 
+  const renderCurrentStep = () => {
+    switch (currentStep) {
+      case 1:
+        return renderStep1()
+      case 2:
+        return renderStep2()
+      case 3:
+        return renderStep3()
+      case 4:
+        return renderStep4()
+      case 5:
+        return renderStep5()
+      case 6:
+        return renderStep6()
+      default:
+        return null
+    }
+  }
+
   return (
-    <Modal
-      opened={isOpen}
+    <OnboardingModal
+      isOpen={isOpen}
       onClose={handleClose}
-      size="lg"
-      centered
-      withCloseButton={false}
-      styles={{
-        header: {
-          background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
-        }
-      }}
+      title="찾아오는길 생성"
+      currentStep={currentStep}
+      totalSteps={totalSteps}
+      onBack={handleBack}
+      onNext={handleNext}
+      nextButtonText={
+        currentStep === 4 ? 'AI로 생성하기' : 
+        currentStep === 6 ? '완료' : 
+        '다음'
+      }
+      nextButtonDisabled={
+        isGenerating || 
+        (currentStep === 1 && !selectedStore) ||
+        (currentStep === 2 && !regionKeyword.trim()) ||
+        (currentStep === 4 && !directionsDescription.trim())
+      }
+      showBackButton={currentStep > 1 && currentStep < 5}
     >
-      <Stack gap="xl" p="md">
-        {/* 진행률 표시 */}
-        <div>
-          <Group justify="space-between" mb="xs">
-            <Text size="sm" fw={600} c="brand">
-              {currentStep < 5 ? `${currentStep} / ${totalSteps - 2} 단계` : currentStep === 5 ? '생성 중' : '완료'}
-            </Text>
-            <Text size="sm" c="dimmed">
-              {Math.round((currentStep / totalSteps) * 100)}%
-            </Text>
-          </Group>
-          <Progress 
-            value={(currentStep / totalSteps) * 100} 
-            color="brand"
-            size="sm"
-            radius="xl"
-          />
-        </div>
-
-        {/* 단계별 콘텐츠 */}
-        <div style={{ minHeight: 300 }}>
-          {currentStep === 1 && renderStep1()}
-          {currentStep === 2 && renderStep2()}
-          {currentStep === 3 && renderStep3()}
-          {currentStep === 4 && renderStep4()}
-          {currentStep === 5 && renderStep5()}
-          {currentStep === 6 && renderStep6()}
-        </div>
-
-        {/* 버튼 */}
-        <Group justify="space-between">
-          {currentStep > 1 && currentStep < 5 ? (
-            <Button 
-              variant="light" 
-              color="gray"
-              onClick={handleBack}
-            >
-              이전
-            </Button>
-          ) : (
-            <div />
-          )}
-          
-          {currentStep !== 5 && (
-            <Button
-              variant="gradient"
-              gradient={{ from: 'brand', to: 'brand.7', deg: 135 }}
-              onClick={handleNext}
-              disabled={isGenerating || (currentStep === 1 && !selectedStore)}
-              rightSection={currentStep < 6 ? <ChevronRight size={16} /> : null}
-              style={{ minWidth: 120 }}
-            >
-              {currentStep === 4 ? 'AI로 생성하기' : currentStep === 6 ? '완료' : '다음'}
-            </Button>
-          )}
-        </Group>
-      </Stack>
-    </Modal>
+      {renderCurrentStep()}
+    </OnboardingModal>
   )
 }
