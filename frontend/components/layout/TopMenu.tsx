@@ -31,7 +31,7 @@ export const TopMenu = memo(function TopMenu({ onMenuClick }: TopMenuProps) {
       if (!token) return
 
       try {
-        const response = await fetch('http://3.34.136.255:8000/api/v1/credits/me', {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/credits/me`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
