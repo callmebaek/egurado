@@ -64,7 +64,7 @@ async def get_keyword_search_volume(
             
             print(f"[Credits] User {user_id} has sufficient credits for keyword search volume")
         
-        print(f"[키워드 검색량] 요청 받음: user_id={request.user_id}, keywords={request.keywords}")
+        print(f"[키워드 검색량] 요청 받음: user_id={user_id}, keywords={request.keywords}")
         service = NaverKeywordSearchVolumeService()
         
         # 검색량 조회
@@ -83,7 +83,7 @@ async def get_keyword_search_volume(
         for keyword in request.keywords:
             print(f"[키워드 검색량] 키워드 '{keyword}' 저장 시도...")
             save_result = service.save_search_volume_history(
-                user_id=str(request.user_id),
+                user_id=str(user_id),
                 keyword=keyword,
                 search_result=result["data"]
             )
