@@ -1,179 +1,181 @@
-"use client"
+'use client';
 
-import { useState, useEffect } from 'react'
-import {
-  Modal,
-  Stack,
-  Text,
-  Button,
-  TextInput,
-  Textarea,
-  Paper,
-  Group,
-  Badge,
-  Divider,
-  Loader,
-  Progress,
-  ThemeIcon,
-  Grid,
-  Center,
-  Alert,
-} from '@mantine/core'
-import { Copy, Sparkles, Store as StoreIcon, MapPin, Building2, Package, Heart, CheckCircle2, ChevronRight, Plus, X } from 'lucide-react'
-import { useAuth } from '@/lib/auth-context'
-import { api } from '@/lib/config'
-import { useToast } from '@/components/ui/use-toast'
+import { useState, useEffect } from 'react';
+import { 
+  Copy, 
+  Sparkles, 
+  MapPin, 
+  Building2, 
+  Package, 
+  CheckCircle2, 
+  Plus, 
+  X,
+  Loader2
+} from 'lucide-react';
+import { useAuth } from '@/lib/auth-context';
+import { api } from '@/lib/config';
+import { useToast } from '@/components/ui/use-toast';
+import OnboardingModal from './OnboardingModal';
+import StoreSelector from './StoreSelector';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Card, CardContent } from '@/components/ui/card';
 
 interface StoreDescriptionModalProps {
-  isOpen: boolean
-  onClose: () => void
-  onComplete?: () => void
+  isOpen: boolean;
+  onClose: () => void;
+  onComplete?: () => void;
 }
 
 interface RegisteredStore {
-  id: string
-  name: string
-  place_id: string
-  thumbnail?: string
+  id: string;
+  name: string;
+  place_id: string;
+  thumbnail?: string;
+  address: string;
+  platform?: string;
 }
 
 export default function StoreDescriptionModal({ isOpen, onClose, onComplete }: StoreDescriptionModalProps) {
-  const { getToken } = useAuth()
-  const { toast } = useToast()
+  const { getToken } = useAuth();
+  const { toast } = useToast();
   
-  const [currentStep, setCurrentStep] = useState(1)
-  const totalSteps = 8
+  const [currentStep, setCurrentStep] = useState(1);
+  const totalSteps = 8;
   
-  const [stores, setStores] = useState<RegisteredStore[]>([])
-  const [selectedStore, setSelectedStore] = useState<RegisteredStore | null>(null)
-  const [loadingStores, setLoadingStores] = useState(false)
+  const [stores, setStores] = useState<RegisteredStore[]>([]);
+  const [selectedStore, setSelectedStore] = useState<RegisteredStore | null>(null);
+  const [loadingStores, setLoadingStores] = useState(false);
   
   // 입력 필드
-  const [regionKeyword, setRegionKeyword] = useState('')
-  const [landmarks, setLandmarks] = useState<string[]>([])
-  const [businessTypeKeyword, setBusinessTypeKeyword] = useState('')
-  const [products, setProducts] = useState<string[]>([])
-  const [storeFeatures, setStoreFeatures] = useState('')
+  const [regionKeyword, setRegionKeyword] = useState('');
+  const [landmarks, setLandmarks] = useState<string[]>([]);
+  const [businessTypeKeyword, setBusinessTypeKeyword] = useState('');
+  const [products, setProducts] = useState<string[]>([]);
+  const [storeFeatures, setStoreFeatures] = useState('');
   
   // 임시 입력값
-  const [tempInput, setTempInput] = useState('')
+  const [tempInput, setTempInput] = useState('');
   
   // 생성 결과
-  const [generatedText, setGeneratedText] = useState('')
-  const [isGenerating, setIsGenerating] = useState(false)
-  const [error, setError] = useState('')
+  const [generatedText, setGeneratedText] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [error, setError] = useState('');
 
   // 매장 목록 로드
   useEffect(() => {
     if (isOpen && currentStep === 1) {
-      loadStores()
+      loadStores();
     }
-  }, [isOpen, currentStep])
+  }, [isOpen, currentStep]);
 
   // 키워드 추가
   const addKeyword = (array: string[], setter: React.Dispatch<React.SetStateAction<string[]>>) => {
     if (tempInput.trim()) {
-      setter([...array, tempInput.trim()])
-      setTempInput('')
+      setter([...array, tempInput.trim()]);
+      setTempInput('');
     }
-  }
+  };
 
   // 키워드 제거
   const removeKeyword = (index: number, array: string[], setter: React.Dispatch<React.SetStateAction<string[]>>) => {
-    setter(array.filter((_, i) => i !== index))
-  }
+    setter(array.filter((_, i) => i !== index));
+  };
 
   const loadStores = async () => {
-    setLoadingStores(true)
+    setLoadingStores(true);
     try {
-      const token = getToken()
-      if (!token) return
+      const token = getToken();
+      if (!token) return;
 
       const response = await fetch(api.stores.list(), {
         headers: { 'Authorization': `Bearer ${token}` }
-      })
+      });
 
-      if (!response.ok) throw new Error('매장 목록 조회 실패')
+      if (!response.ok) throw new Error('매장 목록 조회 실패');
 
-      const data = await response.json()
-      const naverStores = data.stores?.filter((s: any) => s.platform === 'naver') || []
-      setStores(naverStores)
+      const data = await response.json();
+      const naverStores = data.stores?.filter((s: any) => s.platform === 'naver') || [];
+      setStores(naverStores);
     } catch (err) {
-      console.error('매장 로드 오류:', err)
+      console.error('매장 로드 오류:', err);
     } finally {
-      setLoadingStores(false)
+      setLoadingStores(false);
     }
-  }
+  };
 
   const handleNext = () => {
-    setError('')
+    setError('');
     
     // Step 1: 매장 선택
     if (currentStep === 1) {
       if (!selectedStore) {
-        setError('매장을 선택해주세요')
-        return
+        setError('매장을 선택해주세요');
+        return;
       }
-      setCurrentStep(2)
-      return
+      setCurrentStep(2);
+      return;
     }
     
     // Step 2: 지역 키워드
     if (currentStep === 2) {
       if (!regionKeyword.trim()) {
-        setError('지역 키워드를 입력해주세요')
-        return
+        setError('지역 키워드를 입력해주세요');
+        return;
       }
-      setCurrentStep(3)
-      return
+      setCurrentStep(3);
+      return;
     }
     
     // Step 3: 랜드마크 (선택사항)
     if (currentStep === 3) {
-      setCurrentStep(4)
-      return
+      setCurrentStep(4);
+      return;
     }
     
     // Step 4: 업종
     if (currentStep === 4) {
       if (!businessTypeKeyword.trim()) {
-        setError('업종을 입력해주세요')
-        return
+        setError('업종을 입력해주세요');
+        return;
       }
-      setCurrentStep(5)
-      return
+      setCurrentStep(5);
+      return;
     }
     
     // Step 5: 상품/서비스 (선택사항)
     if (currentStep === 5) {
-      setCurrentStep(6)
-      return
+      setCurrentStep(6);
+      return;
     }
     
     // Step 6: 매장 특색
     if (currentStep === 6) {
       if (!storeFeatures.trim()) {
-        setError('매장의 특색을 입력해주세요')
-        return
+        setError('매장의 특색을 입력해주세요');
+        return;
       }
-      handleGenerate()
-      return
+      handleGenerate();
+      return;
     }
     
     // Step 8: 완료
     if (currentStep === 8) {
-      handleClose()
-      return
+      handleClose();
+      return;
     }
-  }
+  };
 
   const handleGenerate = async () => {
-    setIsGenerating(true)
-    setCurrentStep(7) // 생성 중 단계
+    setIsGenerating(true);
+    setCurrentStep(7); // 생성 중 단계
     
     try {
-      const token = getToken()
-      if (!token) throw new Error('인증이 필요합니다')
+      const token = getToken();
+      if (!token) throw new Error('인증이 필요합니다');
 
       const response = await fetch(api.naver.generateDescription(), {
         method: 'POST',
@@ -189,562 +191,492 @@ export default function StoreDescriptionModal({ isOpen, onClose, onComplete }: S
           product_keywords: products,
           store_features: storeFeatures
         })
-      })
+      });
 
-      if (!response.ok) throw new Error('생성 실패')
+      if (!response.ok) throw new Error('생성 실패');
 
-      const data = await response.json()
-      setGeneratedText(data.generated_text)
+      const data = await response.json();
+      setGeneratedText(data.generated_text);
 
       toast({
         title: "✅ 생성 완료",
         description: "업체소개글이 성공적으로 생성되었습니다!",
-      })
+      });
       
-      setCurrentStep(8) // 완료 단계
+      setCurrentStep(8); // 완료 단계
       
       // 완료 마킹
       if (onComplete) {
-        onComplete()
+        onComplete();
       }
     } catch (error: any) {
       toast({
         variant: "destructive",
         title: "❌ 오류",
         description: error.message || "업체소개글 생성에 실패했습니다.",
-      })
-      setCurrentStep(6) // 입력 단계로 돌아가기
+      });
+      setCurrentStep(6); // 입력 단계로 돌아가기
     } finally {
-      setIsGenerating(false)
+      setIsGenerating(false);
     }
-  }
+  };
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(generatedText)
+    navigator.clipboard.writeText(generatedText);
     toast({
       title: "✅ 복사 완료",
       description: "클립보드에 복사되었습니다!",
-    })
-  }
+    });
+  };
 
   const handleBack = () => {
-    setError('')
+    setError('');
     if (currentStep > 1 && currentStep !== 7) {
-      setCurrentStep(currentStep - 1)
+      setCurrentStep(currentStep - 1);
     }
-  }
+  };
 
   const handleClose = () => {
-    setCurrentStep(1)
-    setSelectedStore(null)
-    setRegionKeyword('')
-    setLandmarks([])
-    setBusinessTypeKeyword('')
-    setProducts([])
-    setStoreFeatures('')
-    setTempInput('')
-    setGeneratedText('')
-    setError('')
-    onClose()
-  }
+    setCurrentStep(1);
+    setSelectedStore(null);
+    setRegionKeyword('');
+    setLandmarks([]);
+    setBusinessTypeKeyword('');
+    setProducts([]);
+    setStoreFeatures('');
+    setTempInput('');
+    setGeneratedText('');
+    setError('');
+    onClose();
+  };
 
   // Step 1: 매장 선택
   const renderStep1 = () => (
-    <Stack gap="md">
-      <Text size="lg" fw={600} ta="center">
-        어떤 매장의 업체소개글을 만들까요?
-      </Text>
-      <Text size="sm" c="dimmed" ta="center">
-        AI가 매장 특성에 맞는 완벽한 소개글을 작성해드려요
-      </Text>
+    <div className="space-y-4 md:space-y-5">
+      <div className="text-center space-y-2 mb-4 md:mb-5">
+        <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
+          어떤 매장의 업체소개글을 만들까요?
+        </h3>
+        <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
+          AI가 매장 특성에 맞는 완벽한 소개글을 작성해드려요
+        </p>
+      </div>
 
-      {loadingStores ? (
-        <Center style={{ minHeight: 200 }}>
-          <Loader size="lg" />
-        </Center>
-      ) : stores.length === 0 ? (
-        <Alert color="yellow" title="등록된 매장이 없습니다">
-          먼저 네이버 플레이스 매장을 등록해주세요
-        </Alert>
-      ) : (
-        <Grid gutter="md">
-          {stores.map((store) => (
-            <Grid.Col key={store.id} span={{ base: 12, sm: 6 }}>
-              <Paper
-                p="md"
-                radius="md"
-                style={{
-                  cursor: 'pointer',
-                  border: selectedStore?.id === store.id ? '2px solid #635bff' : '1px solid #e0e7ff',
-                  background: selectedStore?.id === store.id ? 'linear-gradient(135deg, #f0f4ff 0%, #e8eeff 100%)' : '#ffffff',
-                  transition: 'all 0.2s'
-                }}
-                onClick={() => setSelectedStore(store)}
-              >
-                <Group gap="md">
-                  {store.thumbnail ? (
-                    <img 
-                      src={store.thumbnail} 
-                      alt={store.name}
-                      style={{ width: 48, height: 48, borderRadius: 8, objectFit: 'cover' }}
-                    />
-                  ) : (
-                    <ThemeIcon size={48} radius="md" variant="light" color="brand">
-                      <StoreIcon size={24} />
-                    </ThemeIcon>
-                  )}
-                  <div style={{ flex: 1 }}>
-                    <Text fw={600} size="sm">{store.name}</Text>
-                    <Text size="xs" c="dimmed">네이버 플레이스</Text>
-                  </div>
-                  {selectedStore?.id === store.id && (
-                    <ThemeIcon size={32} radius="xl" color="brand">
-                      <CheckCircle2 size={20} />
-                    </ThemeIcon>
-                  )}
-                </Group>
-              </Paper>
-            </Grid.Col>
-          ))}
-        </Grid>
-      )}
+      <StoreSelector
+        stores={stores}
+        selectedStore={selectedStore}
+        onSelect={setSelectedStore}
+        loading={loadingStores}
+        emptyMessage="등록된 네이버 플레이스 매장이 없습니다."
+      />
 
       {error && (
-        <Alert color="red" title="오류">
-          {error}
+        <Alert variant="destructive">
+          <AlertTitle>오류</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
-    </Stack>
-  )
+    </div>
+  );
 
   // Step 2: 지역 키워드
   const renderStep2 = () => (
-    <Stack gap="md">
-      <Text size="lg" fw={600} ta="center">
-        매장이 위치한 메인 지역을 알려주세요
-      </Text>
-      <Text size="sm" c="dimmed" ta="center">
-        가장 대표적인 지역 키워드 1개만 입력해주세요
-      </Text>
+    <div className="space-y-4 md:space-y-5">
+      <div className="text-center space-y-2 mb-4 md:mb-5">
+        <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
+          매장이 위치한 메인 지역을 알려주세요
+        </h3>
+        <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
+          가장 대표적인 지역 키워드 1개만 입력해주세요
+        </p>
+      </div>
 
-      <Paper p="md" radius="md" style={{ border: '1px solid #e0e7ff', background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)' }}>
-        <Group gap="xs" mb="xs">
-          <MapPin size={16} color="#635bff" />
-          <Text size="sm" fw={600}>지역 키워드</Text>
-        </Group>
-        <TextInput
-          size="lg"
-          placeholder="예: 합정, 종로, 성수"
-          value={regionKeyword}
-          onChange={(e) => setRegionKeyword(e.target.value)}
-          styles={{
-            input: {
-              borderColor: '#e0e7ff',
-              '&:focus': { borderColor: '#635bff' }
-            }
-          }}
-        />
-      </Paper>
+      <Card className="bg-neutral-50 border-neutral-200 shadow-sm">
+        <CardContent className="p-4 md:p-5 space-y-3">
+          <div className="flex items-center gap-2 mb-2">
+            <MapPin className="w-4 h-4 text-primary-500" />
+            <p className="text-sm font-bold text-neutral-900">지역 키워드</p>
+          </div>
+          <Input
+            placeholder="예: 합정, 종로, 성수"
+            value={regionKeyword}
+            onChange={(e) => {
+              setRegionKeyword(e.target.value);
+              setError('');
+            }}
+            className={`text-base ${error ? 'border-error' : ''}`}
+          />
+        </CardContent>
+      </Card>
 
-      <Alert color="blue" title="💡 입력 팁">
-        <Text size="xs">
+      <Alert variant="info">
+        <AlertTitle>💡 입력 팁</AlertTitle>
+        <AlertDescription className="text-xs md:text-sm">
           동 단위나 역명보다는 더 큰 지역명이 좋아요. (예: 강남동 → 강남)
-        </Text>
+        </AlertDescription>
       </Alert>
 
       {error && (
-        <Alert color="red" title="오류">
-          {error}
+        <Alert variant="destructive">
+          <AlertTitle>오류</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
-    </Stack>
-  )
+    </div>
+  );
 
   // Step 3: 랜드마크
   const renderStep3 = () => (
-    <Stack gap="md">
-      <Text size="lg" fw={600} ta="center">
-        근처에 유명한 장소가 있나요?
-      </Text>
-      <Text size="sm" c="dimmed" ta="center">
-        역, 상권, 건물, 관광지 등 (선택사항)
-      </Text>
+    <div className="space-y-4 md:space-y-5">
+      <div className="text-center space-y-2 mb-4 md:mb-5">
+        <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
+          근처에 유명한 장소가 있나요?
+        </h3>
+        <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
+          역, 상권, 건물, 관광지 등 (선택사항)
+        </p>
+      </div>
 
-      <Paper p="md" radius="md" style={{ border: '1px solid #e0e7ff', background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)' }}>
-        <Group gap="xs" mb="xs">
-          <MapPin size={16} color="#635bff" />
-          <Text size="sm" fw={600}>랜드마크 키워드</Text>
-          <Badge size="sm" variant="light">선택</Badge>
-        </Group>
-        <Group gap="xs">
-          <TextInput
-            size="lg"
-            placeholder="예: 합정역"
-            value={tempInput}
-            onChange={(e) => setTempInput(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && addKeyword(landmarks, setLandmarks)}
-            styles={{
-              root: { flex: 1 },
-              input: {
-                borderColor: '#e0e7ff',
-                '&:focus': { borderColor: '#635bff' }
-              }
-            }}
-          />
-          <Button
-            variant="light"
-            color="brand"
-            onClick={() => addKeyword(landmarks, setLandmarks)}
-          >
-            <Plus size={16} />
-          </Button>
-        </Group>
-        
-        {/* 추가된 키워드 목록 */}
-        {landmarks.length > 0 && (
-          <Group gap="xs" mt="md">
-            {landmarks.map((keyword, index) => (
-              <Badge
-                key={index}
-                size="lg"
-                variant="light"
-                color="blue"
-                rightSection={
-                  <X
-                    size={14}
-                    style={{ cursor: 'pointer' }}
-                    onClick={() => removeKeyword(index, landmarks, setLandmarks)}
-                  />
+      <Card className="bg-neutral-50 border-neutral-200 shadow-sm">
+        <CardContent className="p-4 md:p-5 space-y-3">
+          <div className="flex items-center gap-2 mb-2">
+            <MapPin className="w-4 h-4 text-primary-500" />
+            <p className="text-sm font-bold text-neutral-900">랜드마크 키워드</p>
+            <Badge variant="secondary" className="text-xs">선택</Badge>
+          </div>
+          
+          <div className="flex gap-2">
+            <Input
+              placeholder="예: 합정역"
+              value={tempInput}
+              onChange={(e) => setTempInput(e.target.value)}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  addKeyword(landmarks, setLandmarks);
                 }
-                style={{ paddingRight: 8 }}
-              >
-                {keyword}
-              </Badge>
-            ))}
-          </Group>
-        )}
-      </Paper>
+              }}
+              className="flex-1 text-base"
+            />
+            <Button
+              variant="outline"
+              size="default"
+              onClick={() => addKeyword(landmarks, setLandmarks)}
+              className="flex-shrink-0"
+            >
+              <Plus className="w-4 h-4" />
+            </Button>
+          </div>
+          
+          {/* 추가된 키워드 목록 */}
+          {landmarks.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-3">
+              {landmarks.map((keyword, index) => (
+                <Badge
+                  key={index}
+                  variant="default"
+                  className="text-xs md:text-sm px-2.5 py-1 bg-sky-100 text-sky-700 hover:bg-sky-200 cursor-pointer"
+                  onClick={() => removeKeyword(index, landmarks, setLandmarks)}
+                >
+                  {keyword}
+                  <X className="w-3 h-3 ml-1.5" />
+                </Badge>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-      <Alert color="blue" title="💡 입력 팁">
-        <Text size="xs">
+      <Alert variant="info">
+        <AlertTitle>💡 입력 팁</AlertTitle>
+        <AlertDescription className="text-xs md:text-sm">
           없다면 비워두고 다음으로 넘어가셔도 괜찮아요!
-        </Text>
+        </AlertDescription>
       </Alert>
-    </Stack>
-  )
+    </div>
+  );
 
   // Step 4: 업종
   const renderStep4 = () => (
-    <Stack gap="md">
-      <Text size="lg" fw={600} ta="center">
-        어떤 업종인가요?
-      </Text>
-      <Text size="sm" c="dimmed" ta="center">
-        매장의 업종을 1개만 입력해주세요
-      </Text>
+    <div className="space-y-4 md:space-y-5">
+      <div className="text-center space-y-2 mb-4 md:mb-5">
+        <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
+          어떤 업종인가요?
+        </h3>
+        <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
+          매장의 업종을 1개만 입력해주세요
+        </p>
+      </div>
 
-      <Paper p="md" radius="md" style={{ border: '1px solid #e0e7ff', background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)' }}>
-        <Group gap="xs" mb="xs">
-          <Building2 size={16} color="#635bff" />
-          <Text size="sm" fw={600}>업종</Text>
-        </Group>
-        <TextInput
-          size="lg"
-          placeholder="예: 카페, 식당, 사진관, 헤어샵"
-          value={businessTypeKeyword}
-          onChange={(e) => setBusinessTypeKeyword(e.target.value)}
-          styles={{
-            input: {
-              borderColor: '#e0e7ff',
-              '&:focus': { borderColor: '#635bff' }
-            }
-          }}
-        />
-      </Paper>
+      <Card className="bg-neutral-50 border-neutral-200 shadow-sm">
+        <CardContent className="p-4 md:p-5 space-y-3">
+          <div className="flex items-center gap-2 mb-2">
+            <Building2 className="w-4 h-4 text-primary-500" />
+            <p className="text-sm font-bold text-neutral-900">업종</p>
+          </div>
+          <Input
+            placeholder="예: 카페, 음식점, 헤어샵"
+            value={businessTypeKeyword}
+            onChange={(e) => {
+              setBusinessTypeKeyword(e.target.value);
+              setError('');
+            }}
+            className={`text-base ${error ? 'border-error' : ''}`}
+          />
+        </CardContent>
+      </Card>
+
+      <Alert variant="info">
+        <AlertTitle>💡 입력 팁</AlertTitle>
+        <AlertDescription className="text-xs md:text-sm">
+          대분류보다는 구체적인 업종이 좋아요. (예: 음식점 → 일식당)
+        </AlertDescription>
+      </Alert>
 
       {error && (
-        <Alert color="red" title="오류">
-          {error}
+        <Alert variant="destructive">
+          <AlertTitle>오류</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
-    </Stack>
-  )
+    </div>
+  );
 
   // Step 5: 상품/서비스
   const renderStep5 = () => (
-    <Stack gap="md">
-      <Text size="lg" fw={600} ta="center">
-        어떤 상품이나 서비스를 제공하시나요?
-      </Text>
-      <Text size="sm" c="dimmed" ta="center">
-        대표 메뉴나 서비스를 알려주세요 (선택사항)
-      </Text>
+    <div className="space-y-4 md:space-y-5">
+      <div className="text-center space-y-2 mb-4 md:mb-5">
+        <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
+          어떤 상품이나 서비스를 제공하나요?
+        </h3>
+        <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
+          대표 메뉴, 상품, 서비스 등 (선택사항)
+        </p>
+      </div>
 
-      <Paper p="md" radius="md" style={{ border: '1px solid #e0e7ff', background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)' }}>
-        <Group gap="xs" mb="xs">
-          <Package size={16} color="#635bff" />
-          <Text size="sm" fw={600}>상품/서비스</Text>
-          <Badge size="sm" variant="light">선택</Badge>
-        </Group>
-        <Group gap="xs">
-          <TextInput
-            size="lg"
-            placeholder="예: 칼국수"
-            value={tempInput}
-            onChange={(e) => setTempInput(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && addKeyword(products, setProducts)}
-            styles={{
-              root: { flex: 1 },
-              input: {
-                borderColor: '#e0e7ff',
-                '&:focus': { borderColor: '#635bff' }
-              }
-            }}
-          />
-          <Button
-            variant="light"
-            color="brand"
-            onClick={() => addKeyword(products, setProducts)}
-          >
-            <Plus size={16} />
-          </Button>
-        </Group>
-        
-        {/* 추가된 키워드 목록 */}
-        {products.length > 0 && (
-          <Group gap="xs" mt="md">
-            {products.map((keyword, index) => (
-              <Badge
-                key={index}
-                size="lg"
-                variant="light"
-                color="green"
-                rightSection={
-                  <X
-                    size={14}
-                    style={{ cursor: 'pointer' }}
-                    onClick={() => removeKeyword(index, products, setProducts)}
-                  />
+      <Card className="bg-neutral-50 border-neutral-200 shadow-sm">
+        <CardContent className="p-4 md:p-5 space-y-3">
+          <div className="flex items-center gap-2 mb-2">
+            <Package className="w-4 h-4 text-primary-500" />
+            <p className="text-sm font-bold text-neutral-900">상품/서비스 키워드</p>
+            <Badge variant="secondary" className="text-xs">선택</Badge>
+          </div>
+          
+          <div className="flex gap-2">
+            <Input
+              placeholder="예: 아메리카노, 파스타"
+              value={tempInput}
+              onChange={(e) => setTempInput(e.target.value)}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  addKeyword(products, setProducts);
                 }
-                style={{ paddingRight: 8 }}
-              >
-                {keyword}
-              </Badge>
-            ))}
-          </Group>
-        )}
-      </Paper>
+              }}
+              className="flex-1 text-base"
+            />
+            <Button
+              variant="outline"
+              size="default"
+              onClick={() => addKeyword(products, setProducts)}
+              className="flex-shrink-0"
+            >
+              <Plus className="w-4 h-4" />
+            </Button>
+          </div>
+          
+          {/* 추가된 키워드 목록 */}
+          {products.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-3">
+              {products.map((keyword, index) => (
+                <Badge
+                  key={index}
+                  variant="default"
+                  className="text-xs md:text-sm px-2.5 py-1 bg-emerald-100 text-emerald-700 hover:bg-emerald-200 cursor-pointer"
+                  onClick={() => removeKeyword(index, products, setProducts)}
+                >
+                  {keyword}
+                  <X className="w-3 h-3 ml-1.5" />
+                </Badge>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-      <Alert color="blue" title="💡 입력 팁">
-        <Text size="xs">
+      <Alert variant="info">
+        <AlertTitle>💡 입력 팁</AlertTitle>
+        <AlertDescription className="text-xs md:text-sm">
           없다면 비워두고 다음으로 넘어가셔도 괜찮아요!
-        </Text>
+        </AlertDescription>
       </Alert>
-    </Stack>
-  )
+    </div>
+  );
 
   // Step 6: 매장 특색
   const renderStep6 = () => (
-    <Stack gap="md">
-      <Text size="lg" fw={600} ta="center">
-        매장만의 특별한 점을 알려주세요
-      </Text>
-      <Text size="sm" c="dimmed" ta="center">
-        매장의 강점, 차별화 포인트, 방문해야 하는 이유 등
-      </Text>
+    <div className="space-y-4 md:space-y-5">
+      <div className="text-center space-y-2 mb-4 md:mb-5">
+        <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
+          매장의 특색을 알려주세요
+        </h3>
+        <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
+          고객에게 가장 강조하고 싶은 특징이 무엇인가요?
+        </p>
+      </div>
 
-      <Paper p="md" radius="md" style={{ border: '1px solid #e0e7ff', background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)' }}>
-        <Group gap="xs" mb="xs">
-          <Heart size={16} color="#635bff" />
-          <Text size="sm" fw={600}>매장 특색 및 강점</Text>
-        </Group>
-        <Textarea
-          size="lg"
-          placeholder="예: 저희 매장은 처음 방문하시는 분들도 부담 없이 이용할 수 있도록 공간 동선과 서비스 흐름을 단순하고 편안하게 구성했습니다..."
-          value={storeFeatures}
-          onChange={(e) => setStoreFeatures(e.target.value)}
-          minRows={6}
-          styles={{
-            input: {
-              borderColor: '#e0e7ff',
-              '&:focus': { borderColor: '#635bff' }
-            }
-          }}
-        />
-      </Paper>
+      <Card className="bg-neutral-50 border-neutral-200 shadow-sm">
+        <CardContent className="p-4 md:p-5 space-y-3">
+          <div className="flex items-center gap-2 mb-2">
+            <Sparkles className="w-4 h-4 text-primary-500" />
+            <p className="text-sm font-bold text-neutral-900">매장 특색</p>
+          </div>
+          <Textarea
+            placeholder="예: 신선한 재료만 사용, 프리미엄 커피, 20년 경력 디자이너, 넓고 쾌적한 공간 등"
+            value={storeFeatures}
+            onChange={(e) => {
+              setStoreFeatures(e.target.value);
+              setError('');
+            }}
+            rows={5}
+            className={`resize-none text-sm md:text-base ${error ? 'border-error' : ''}`}
+          />
+        </CardContent>
+      </Card>
 
-      <Alert color="blue" title="💡 입력 팁">
-        <Text size="xs">
-          자세하게 입력할수록 더 좋은 소개글이 만들어져요!
-        </Text>
+      <Alert variant="info">
+        <AlertTitle>💡 입력 팁</AlertTitle>
+        <AlertDescription className="text-xs md:text-sm">
+          구체적이고 차별화된 특징을 자유롭게 작성해주세요!
+        </AlertDescription>
       </Alert>
 
       {error && (
-        <Alert color="red" title="오류">
-          {error}
+        <Alert variant="destructive">
+          <AlertTitle>오류</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
-    </Stack>
-  )
+    </div>
+  );
 
   // Step 7: 생성 중
   const renderStep7 = () => (
-    <Stack gap="xl" align="center">
-      <ThemeIcon size={80} radius="xl" color="brand" variant="light">
-        <Sparkles size={40} />
-      </ThemeIcon>
-      
-      <div style={{ textAlign: 'center' }}>
-        <Text size="xl" fw={700} mb="xs">
-          완벽한 업체소개글을 만들고 있어요
-        </Text>
-        <Text size="sm" c="dimmed">
-          AI가 입력하신 정보를 바탕으로 SEO 최적화된 소개글을 작성중입니다...
-        </Text>
+    <div className="space-y-4 md:space-y-5">
+      <div className="text-center py-8 md:py-12">
+        <div className="w-16 h-16 md:w-20 md:h-20 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+          <Loader2 className="w-8 h-8 md:w-10 md:h-10 text-primary-500 animate-spin" />
+        </div>
+        <h3 className="text-xl md:text-2xl font-bold text-neutral-900 mb-2 leading-tight">
+          AI가 업체소개글을 작성중입니다
+        </h3>
+        <p className="text-sm text-neutral-600 leading-relaxed">
+          입력하신 정보를 바탕으로<br />
+          매력적인 소개글을 만들고 있어요...
+        </p>
       </div>
-
-      <Loader size="xl" />
-      
-      <Text size="xs" c="dimmed">
-        보통 10~15초 정도 소요됩니다
-      </Text>
-    </Stack>
-  )
+    </div>
+  );
 
   // Step 8: 완료
   const renderStep8 = () => (
-    <Stack gap="md">
-      <div style={{ textAlign: 'center' }}>
-        <ThemeIcon size={60} radius="xl" color="brand" variant="light" style={{ margin: '0 auto 1rem' }}>
-          <CheckCircle2 size={30} />
-        </ThemeIcon>
-        <Text size="xl" fw={700} mb="xs">
-          완성되었어요! 🎉
-        </Text>
-        <Text size="sm" c="dimmed">
-          생성된 업체소개글을 복사해서 사용하세요
-        </Text>
+    <div className="space-y-4 md:space-y-5">
+      <div className="text-center space-y-2 mb-4 md:mb-5">
+        <div className="w-16 h-16 md:w-20 md:h-20 bg-success-bg rounded-full flex items-center justify-center mx-auto mb-3">
+          <CheckCircle2 className="w-8 h-8 md:w-10 md:h-10 text-success" />
+        </div>
+        <h3 className="text-xl md:text-2xl font-bold text-neutral-900 leading-tight">
+          업체소개글이 완성되었어요!
+        </h3>
+        <p className="text-sm text-neutral-600 leading-relaxed">
+          아래 내용을 복사해서 네이버 플레이스에 등록하세요
+        </p>
       </div>
 
-      {/* AI 생성 콘텐츠 주의사항 */}
-      <Alert color="yellow" title="⚠️ 꼭 확인해주세요">
-        <Text size="sm">
-          AI가 작성한 콘텐츠는 입력하신 정보를 기반으로 자동 생성되었습니다. 
-          사실과 다르거나 부정확한 내용이 포함될 수 있으니, <strong>반드시 검토 후 수정하여 사용</strong>해주시기 바랍니다.
-        </Text>
-      </Alert>
-
-      <Paper p="md" withBorder style={{ background: '#f8fafc' }}>
-        <Stack gap="md">
-          <Group justify="space-between" align="flex-start">
-            <Text size="sm" fw={600}>생성된 업체소개글</Text>
-            <Group gap="xs">
-              <Badge color="blue" variant="light">
-                {generatedText.length}자
-              </Badge>
-              <Button
-                variant="subtle"
-                size="xs"
-                leftSection={<Copy className="w-3 h-3" />}
-                onClick={handleCopy}
-              >
-                복사
-              </Button>
-            </Group>
-          </Group>
-          <Divider />
-          <Paper p="sm" withBorder style={{ background: 'white' }}>
-            <Text size="sm" style={{ whiteSpace: 'pre-wrap', lineHeight: 1.8 }}>
+      <Card className="border-neutral-200 shadow-card">
+        <CardContent className="p-4 md:p-5 space-y-3">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-bold text-neutral-900">생성된 소개글</p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCopy}
+              className="flex items-center gap-2"
+            >
+              <Copy className="w-4 h-4" />
+              <span className="hidden sm:inline">복사</span>
+            </Button>
+          </div>
+          <div className="p-4 bg-neutral-50 rounded-lg border border-neutral-200">
+            <p className="text-sm md:text-base text-neutral-700 leading-relaxed whitespace-pre-wrap">
               {generatedText}
-            </Text>
-          </Paper>
-          <Button
-            fullWidth
-            size="lg"
-            leftSection={<Copy size={16} />}
-            onClick={handleCopy}
-            variant="gradient"
-            gradient={{ from: 'brand', to: 'brand.7', deg: 135 }}
-          >
-            클립보드에 복사하기
-          </Button>
-        </Stack>
-      </Paper>
-    </Stack>
-  )
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Alert variant="success" className="p-3 md:p-4">
+        <AlertTitle>✨ 팁</AlertTitle>
+        <AlertDescription className="text-xs md:text-sm">
+          생성된 소개글은 그대로 사용하거나 수정해서 사용하실 수 있어요!
+        </AlertDescription>
+      </Alert>
+    </div>
+  );
+
+  const renderCurrentStep = () => {
+    switch (currentStep) {
+      case 1:
+        return renderStep1();
+      case 2:
+        return renderStep2();
+      case 3:
+        return renderStep3();
+      case 4:
+        return renderStep4();
+      case 5:
+        return renderStep5();
+      case 6:
+        return renderStep6();
+      case 7:
+        return renderStep7();
+      case 8:
+        return renderStep8();
+      default:
+        return null;
+    }
+  };
 
   return (
-    <Modal
-      opened={isOpen}
+    <OnboardingModal
+      isOpen={isOpen}
       onClose={handleClose}
-      size="lg"
-      centered
-      withCloseButton={false}
-      styles={{
-        header: {
-          background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
-        }
-      }}
+      title="업체소개글 작성"
+      currentStep={currentStep}
+      totalSteps={totalSteps}
+      onBack={handleBack}
+      onNext={handleNext}
+      nextButtonText={
+        currentStep === 1 ? '다음' :
+        currentStep === 2 ? '다음' :
+        currentStep === 3 ? '다음' :
+        currentStep === 4 ? '다음' :
+        currentStep === 5 ? '다음' :
+        currentStep === 6 ? (isGenerating ? 'AI 작성 중...' : 'AI로 작성하기') :
+        currentStep === 7 ? '' :
+        '확인'
+      }
+      nextButtonDisabled={
+        (currentStep === 1 && !selectedStore) ||
+        (currentStep === 2 && !regionKeyword.trim()) ||
+        (currentStep === 4 && !businessTypeKeyword.trim()) ||
+        (currentStep === 6 && (!storeFeatures.trim() || isGenerating)) ||
+        currentStep === 7
+      }
+      showBackButton={currentStep > 1 && currentStep !== 7 && currentStep !== 8}
+      hideNextButton={currentStep === 7}
     >
-      <Stack gap="xl" p="md">
-        {/* 진행률 표시 */}
-        <div>
-          <Group justify="space-between" mb="xs">
-            <Text size="sm" fw={600} c="brand">
-              {currentStep < 7 ? `${currentStep} / ${totalSteps - 2} 단계` : currentStep === 7 ? '생성 중' : '완료'}
-            </Text>
-            <Text size="sm" c="dimmed">
-              {Math.round((currentStep / totalSteps) * 100)}%
-            </Text>
-          </Group>
-          <Progress 
-            value={(currentStep / totalSteps) * 100} 
-            color="brand"
-            size="sm"
-            radius="xl"
-          />
-        </div>
-
-        {/* 단계별 콘텐츠 */}
-        <div style={{ minHeight: 300 }}>
-          {currentStep === 1 && renderStep1()}
-          {currentStep === 2 && renderStep2()}
-          {currentStep === 3 && renderStep3()}
-          {currentStep === 4 && renderStep4()}
-          {currentStep === 5 && renderStep5()}
-          {currentStep === 6 && renderStep6()}
-          {currentStep === 7 && renderStep7()}
-          {currentStep === 8 && renderStep8()}
-        </div>
-
-        {/* 버튼 */}
-        <Group justify="space-between">
-          {currentStep > 1 && currentStep < 7 ? (
-            <Button 
-              variant="light" 
-              color="gray"
-              onClick={handleBack}
-            >
-              이전
-            </Button>
-          ) : (
-            <div />
-          )}
-          
-          {currentStep !== 7 && (
-            <Button
-              variant="gradient"
-              gradient={{ from: 'brand', to: 'brand.7', deg: 135 }}
-              onClick={handleNext}
-              disabled={isGenerating || (currentStep === 1 && !selectedStore)}
-              rightSection={currentStep < 8 ? <ChevronRight size={16} /> : null}
-              style={{ minWidth: 120 }}
-            >
-              {currentStep === 6 ? 'AI로 생성하기' : currentStep === 8 ? '완료' : '다음'}
-            </Button>
-          )}
-        </Group>
-      </Stack>
-    </Modal>
-  )
+      {renderCurrentStep()}
+    </OnboardingModal>
+  );
 }

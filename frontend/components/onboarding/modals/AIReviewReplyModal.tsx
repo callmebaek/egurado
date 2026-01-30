@@ -1,34 +1,24 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import {
-  Modal,
-  Stack,
-  Text,
-  Button,
-  Paper,
-  Group,
-  Progress,
-  Alert,
-  ThemeIcon,
-  Grid,
-  Center,
-  Loader,
-} from '@mantine/core';
 import { 
   Store, 
   MessageSquare, 
   CheckCircle2, 
-  ChevronRight,
   Sparkles,
   AlertCircle,
+  Loader2
 } from 'lucide-react';
 import { api } from '@/lib/config';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
+import OnboardingModal from './OnboardingModal';
+import StoreSelector from './StoreSelector';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Card, CardContent } from '@/components/ui/card';
 
 interface AIReviewReplyModalProps {
-  opened: boolean;
+  isOpen: boolean;
   onClose: () => void;
   onComplete?: () => void;
 }
@@ -43,7 +33,7 @@ interface RegisteredStore {
 }
 
 export default function AIReviewReplyModal({
-  opened,
+  isOpen,
   onClose,
   onComplete,
 }: AIReviewReplyModalProps) {
@@ -67,10 +57,10 @@ export default function AIReviewReplyModal({
 
   // 매장 목록 로드
   useEffect(() => {
-    if (opened && currentStep === 1) {
+    if (isOpen && currentStep === 1) {
       loadStores();
     }
-  }, [opened, currentStep]);
+  }, [isOpen, currentStep]);
 
   // Step 3: 답글 대기 중인 리뷰 개수 로드
   useEffect(() => {
@@ -199,7 +189,9 @@ export default function AIReviewReplyModal({
 
   const handleBack = () => {
     setError('');
-    setCurrentStep(currentStep - 1);
+    if (currentStep > 1 && !loadingCount) {
+      setCurrentStep(currentStep - 1);
+    }
   };
 
   const handleClose = () => {
@@ -213,313 +205,227 @@ export default function AIReviewReplyModal({
 
   // Step 1: 매장 선택
   const renderStep1 = () => (
-    <Stack gap="md">
-      <Text size="lg" fw={600} ta="center">
-        어떤 매장의 리뷰에<br />답글을 달까요?
-      </Text>
-      <Text size="sm" c="dimmed" ta="center">
-        AI가 자동으로 맞춤형 답글을 생성해드립니다
-      </Text>
+    <div className="space-y-4 md:space-y-5">
+      <div className="text-center space-y-2 mb-4 md:mb-5">
+        <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
+          어떤 매장의 리뷰에<br />답글을 달까요?
+        </h3>
+        <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
+          AI가 자동으로 맞춤형 답글을 생성해드립니다
+        </p>
+      </div>
 
-      {loading ? (
-        <Center style={{ minHeight: 200 }}>
-          <Loader size="lg" />
-        </Center>
-      ) : stores.length === 0 ? (
-        <Alert color="yellow" title="등록된 매장이 없습니다">
-          먼저 네이버 플레이스 매장을 등록해주세요
-        </Alert>
-      ) : (
-        <Grid gutter="md">
-          {stores.map((store) => (
-            <Grid.Col key={store.id} span={{ base: 12, sm: 6 }}>
-              <Paper
-                p="md"
-                radius="md"
-                style={{
-                  cursor: 'pointer',
-                  border: selectedStore?.id === store.id ? '2px solid #635bff' : '1px solid #e0e7ff',
-                  background: selectedStore?.id === store.id ? 'linear-gradient(135deg, #f0f4ff 0%, #e8eeff 100%)' : '#ffffff',
-                  transition: 'all 0.2s'
-                }}
-                onClick={() => setSelectedStore(store)}
-              >
-                <Group gap="md">
-                  {store.thumbnail ? (
-                    <img 
-                      src={store.thumbnail} 
-                      alt={store.name}
-                      style={{ width: 48, height: 48, borderRadius: 8, objectFit: 'cover' }}
-                    />
-                  ) : (
-                    <ThemeIcon size={48} radius="md" variant="light" color="brand">
-                      <Store size={24} />
-                    </ThemeIcon>
-                  )}
-                  <div style={{ flex: 1 }}>
-                    <Text fw={600} size="sm">{store.name}</Text>
-                    <Text size="xs" c="dimmed">{store.address}</Text>
-                  </div>
-                  {selectedStore?.id === store.id && (
-                    <ThemeIcon size={32} radius="xl" color="brand">
-                      <CheckCircle2 size={20} />
-                    </ThemeIcon>
-                  )}
-                </Group>
-              </Paper>
-            </Grid.Col>
-          ))}
-        </Grid>
-      )}
+      <StoreSelector
+        stores={stores}
+        selectedStore={selectedStore}
+        onSelect={setSelectedStore}
+        loading={loading}
+        emptyMessage="등록된 네이버 플레이스 매장이 없습니다."
+      />
 
       {error && (
-        <Alert color="red" title="오류">
-          {error}
+        <Alert variant="destructive">
+          <AlertTitle>오류</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
-    </Stack>
+    </div>
   );
 
   // Step 2: 리뷰 개수 선택
   const renderStep2 = () => (
-    <Stack gap="md">
-      <Text size="lg" fw={600} ta="center">
-        최근 몇 개의 리뷰를<br />검토할까요?
-      </Text>
-      <Text size="sm" c="dimmed" ta="center">
-        선택한 개수만큼 최근 리뷰를 불러와 답글 대기 중인 리뷰를 찾아드립니다
-      </Text>
+    <div className="space-y-4 md:space-y-5">
+      <div className="text-center space-y-2 mb-4 md:mb-5">
+        <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
+          최근 몇 개의 리뷰를<br />검토할까요?
+        </h3>
+        <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
+          선택한 개수만큼 최근 리뷰를 불러와 답글 대기 중인 리뷰를 찾아드립니다
+        </p>
+      </div>
 
-      <Alert color="blue" variant="light" icon={<Sparkles size={16} />}>
-        <Text size="sm" fw={500} mb="xs">
-          💡 리뷰 개수 선택 안내
-        </Text>
-        <Text size="xs" c="dimmed" style={{ lineHeight: 1.5 }}>
+      <Alert variant="info" className="p-3 md:p-4">
+        <Sparkles className="w-4 h-4 text-info-500" />
+        <AlertTitle>💡 리뷰 개수 선택 안내</AlertTitle>
+        <AlertDescription className="text-xs md:text-sm leading-relaxed">
           최근 몇개의 리뷰를 검토해보실것인지를 선택해주세요.<br />
           답글대기중인 리뷰들을 보여드립니다!!
-        </Text>
+        </AlertDescription>
       </Alert>
 
-      <Stack gap="xs">
-        {['10', '20', '50', '100'].map((limit) => (
-          <Paper
-            key={limit}
-            p="md"
-            radius="md"
-            style={{
-              cursor: 'pointer',
-              border: reviewLimit === limit ? '2px solid #635bff' : '1px solid #e0e7ff',
-              background: reviewLimit === limit ? 'linear-gradient(135deg, #f0f4ff 0%, #e8eeff 100%)' : '#ffffff',
-              transition: 'all 0.2s'
-            }}
-            onClick={() => setReviewLimit(limit)}
+      <div className="space-y-2">
+        {[
+          { value: '10', label: '최근 10개 리뷰', desc: '빠르게 최근 리뷰만 확인 (약 5초)' },
+          { value: '20', label: '최근 20개 리뷰', desc: '최근 2-3주 정도의 리뷰 확인 (약 10초)' },
+          { value: '50', label: '최근 50개 리뷰', desc: '최근 1-2개월 정도의 리뷰 확인 (약 15초)' },
+          { value: '100', label: '최근 100개 리뷰', desc: '최근 2-3개월 정도의 리뷰 확인 (약 30초)' },
+        ].map((option) => (
+          <Card
+            key={option.value}
+            className={`cursor-pointer transition-all duration-200 hover:shadow-card-hover ${
+              reviewLimit === option.value
+                ? 'border-primary-500 bg-primary-50 ring-2 ring-primary-500/20'
+                : 'border-neutral-200 hover:border-primary-300'
+            }`}
+            onClick={() => setReviewLimit(option.value)}
           >
-            <Group justify="space-between">
-              <div style={{ flex: 1 }}>
-                <Text fw={600} mb={4}>
-                  최근 {limit}개 리뷰
-                </Text>
-                <Text size="xs" c="dimmed">
-                  {limit === '10' && '빠르게 최근 리뷰만 확인 (약 5초)'}
-                  {limit === '20' && '최근 2-3주 정도의 리뷰 확인 (약 10초)'}
-                  {limit === '50' && '최근 1-2개월 정도의 리뷰 확인 (약 15초)'}
-                  {limit === '100' && '최근 2-3개월 정도의 리뷰 확인 (약 30초)'}
-                </Text>
+            <CardContent className="p-3 md:p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex-1">
+                  <p className="text-sm md:text-base font-bold text-neutral-900 mb-1">
+                    {option.label}
+                  </p>
+                  <p className="text-xs md:text-sm text-neutral-600 leading-relaxed">
+                    {option.desc}
+                  </p>
+                </div>
+                {reviewLimit === option.value && (
+                  <div className="flex-shrink-0 w-7 h-7 rounded-full bg-primary-500 flex items-center justify-center">
+                    <CheckCircle2 className="w-4 h-4 text-white" />
+                  </div>
+                )}
               </div>
-              {reviewLimit === limit && (
-                <ThemeIcon size={28} radius="xl" color="brand">
-                  <CheckCircle2 size={18} />
-                </ThemeIcon>
-              )}
-            </Group>
-          </Paper>
+            </CardContent>
+          </Card>
         ))}
-      </Stack>
+      </div>
 
       {error && (
-        <Alert color="red" title="오류">
-          {error}
+        <Alert variant="destructive">
+          <AlertTitle>오류</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
-    </Stack>
+    </div>
   );
 
   // Step 3: 답글 대기 중인 리뷰 개수 표시
   const renderStep3 = () => (
-    <Stack gap="md">
-      <div style={{ textAlign: 'center' }}>
-        <ThemeIcon
-          size={80}
-          radius="xl"
-          variant="gradient"
-          gradient={{ from: 'brand', to: 'brand.7', deg: 135 }}
-          mb="md"
-          mx="auto"
-        >
-          <MessageSquare size={40} />
-        </ThemeIcon>
-        
-        <Text size="lg" fw={600} mb="sm">
+    <div className="space-y-4 md:space-y-5">
+      <div className="text-center space-y-2 mb-4 md:mb-5">
+        <div className="w-16 h-16 md:w-20 md:h-20 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-full flex items-center justify-center mx-auto mb-3">
+          <MessageSquare className="w-8 h-8 md:w-10 md:h-10 text-white" />
+        </div>
+        <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
           AI로 리뷰답글을<br />생성할까요?
-        </Text>
-        <Text size="sm" c="dimmed">
+        </h3>
+        <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
           답글 대기 중인 리뷰를 확인했습니다
-        </Text>
+        </p>
       </div>
 
       {loadingCount ? (
-        <Center style={{ minHeight: 150 }}>
-          <Stack align="center" gap="md">
-            <Loader size="lg" color="brand" />
-            <Text size="sm" c="dimmed">답글 대기 중인 리뷰 확인 중...</Text>
-          </Stack>
-        </Center>
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <Loader2 className="w-12 h-12 text-primary-500 animate-spin mx-auto mb-3" />
+            <p className="text-sm text-neutral-600">답글 대기 중인 리뷰 확인 중...</p>
+          </div>
+        </div>
       ) : (
         <>
           {/* 답글 대기 중인 리뷰 개수 */}
-          <Paper withBorder p="xl" radius="md" bg="#f9fafb">
-            <Stack gap="md" align="center">
-              <div style={{ textAlign: 'center' }}>
-                <Text size="xs" c="dimmed" mb={4}>답글 대기 중인 리뷰</Text>
-                <Group gap="xs" justify="center">
-                  <Text size="48px" fw={700} c="brand" style={{ lineHeight: 1 }}>
-                    {pendingCount}
-                  </Text>
-                  <Text size="lg" c="dimmed" mt="md">개</Text>
-                </Group>
+          <Card className="bg-neutral-50 border-neutral-200 shadow-sm">
+            <CardContent className="p-5 md:p-6 text-center">
+              <p className="text-xs md:text-sm text-neutral-600 mb-2">답글 대기 중인 리뷰</p>
+              <div className="flex items-end justify-center gap-1 mb-2">
+                <p className="text-4xl md:text-5xl font-bold text-primary-600">
+                  {pendingCount}
+                </p>
+                <p className="text-base md:text-lg text-neutral-600 mb-2">개</p>
               </div>
-
-              <Text size="xs" c="dimmed" ta="center">
+              <p className="text-xs md:text-sm text-neutral-600">
                 최근 {reviewLimit}개 리뷰 중 답글이 없는 리뷰입니다
-              </Text>
-            </Stack>
-          </Paper>
+              </p>
+            </CardContent>
+          </Card>
 
           {/* AI 답글 생성 안내 */}
           {pendingCount > 0 ? (
-            <Paper 
-              p="md" 
-              radius="md" 
-              withBorder
-              style={{ 
-                borderColor: '#ffc078',
-                backgroundColor: '#fff9e6'
-              }}
-            >
-              <Group gap="sm" align="flex-start">
-                <Sparkles size={20} color="#fd7e14" style={{ flexShrink: 0, marginTop: 2 }} />
-                <Stack gap="xs" style={{ flex: 1 }}>
-                  <Text size="sm" fw={600}>
-                    AI가 자동으로 답글을 생성해드립니다
-                  </Text>
-                  <Text size="xs" c="dimmed" style={{ lineHeight: 1.4 }}>
-                    각 리뷰의 내용을 분석하여 맞춤형 답글을 작성합니다.<br />
-                    생성된 답글은 수정할 수 있으며, 직접 게시할 수 있습니다.
-                  </Text>
-                </Stack>
-              </Group>
-            </Paper>
+            <Card className="bg-warning-bg border-warning shadow-sm">
+              <CardContent className="p-3 md:p-4">
+                <div className="flex gap-2">
+                  <Sparkles className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
+                  <div className="space-y-2">
+                    <p className="text-sm md:text-base font-bold text-neutral-900">
+                      AI가 자동으로 답글을 생성해드립니다
+                    </p>
+                    <p className="text-xs md:text-sm text-neutral-600 leading-relaxed">
+                      각 리뷰의 내용을 분석하여 맞춤형 답글을 작성합니다.<br />
+                      생성된 답글은 수정할 수 있으며, 직접 게시할 수 있습니다.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           ) : (
-            <Alert color="blue" icon={<AlertCircle size={16} />}>
-              <Text size="sm">
+            <Alert variant="info">
+              <AlertCircle className="w-4 h-4 text-info-500" />
+              <AlertDescription className="text-xs md:text-sm">
                 답글 대기 중인 리뷰가 없습니다.<br />
                 모든 리뷰에 답글이 달려있어요! 👍
-              </Text>
+              </AlertDescription>
             </Alert>
           )}
 
           {/* 선택 정보 요약 */}
-          <Paper p="sm" radius="md" withBorder bg="#f9fafb">
-            <Group justify="space-between">
-              <Text size="xs" c="dimmed">매장</Text>
-              <Text size="xs" fw={500}>{selectedStore?.name}</Text>
-            </Group>
-            <Group justify="space-between" mt="xs">
-              <Text size="xs" c="dimmed">검토할 리뷰</Text>
-              <Text size="xs" fw={500}>최근 {reviewLimit}개</Text>
-            </Group>
-          </Paper>
+          <Card className="bg-neutral-50 border-neutral-200 shadow-sm">
+            <CardContent className="p-3 md:p-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-xs md:text-sm text-neutral-600">매장</p>
+                <p className="text-xs md:text-sm font-bold text-neutral-900">{selectedStore?.name}</p>
+              </div>
+              <div className="flex items-center justify-between">
+                <p className="text-xs md:text-sm text-neutral-600">검토할 리뷰</p>
+                <p className="text-xs md:text-sm font-bold text-neutral-900">최근 {reviewLimit}개</p>
+              </div>
+            </CardContent>
+          </Card>
         </>
       )}
 
       {error && (
-        <Alert color="red" title="오류">
-          {error}
+        <Alert variant="destructive">
+          <AlertTitle>오류</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
-    </Stack>
+    </div>
   );
 
+  const renderCurrentStep = () => {
+    switch (currentStep) {
+      case 1:
+        return renderStep1();
+      case 2:
+        return renderStep2();
+      case 3:
+        return renderStep3();
+      default:
+        return null;
+    }
+  };
+
   return (
-    <Modal
-      opened={opened}
+    <OnboardingModal
+      isOpen={isOpen}
       onClose={handleClose}
-      size="lg"
-      centered
-      withCloseButton={false}
-      styles={{
-        header: {
-          background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
-        }
-      }}
+      title="AI 리뷰답글"
+      currentStep={currentStep}
+      totalSteps={totalSteps}
+      onBack={handleBack}
+      onNext={handleNext}
+      nextButtonText={
+        currentStep === 3 ? 'AI로 리뷰답글 달기' : '다음'
+      }
+      nextButtonDisabled={
+        loading || 
+        loadingCount ||
+        (currentStep === 1 && !selectedStore) ||
+        (currentStep === 3 && pendingCount === 0)
+      }
+      showBackButton={currentStep > 1 && !loadingCount}
     >
-      <Stack gap="xl" p="md">
-        {/* 진행률 표시 */}
-        <div>
-          <Group justify="space-between" mb="xs">
-            <Text size="sm" fw={600} c="brand">
-              {currentStep} / {totalSteps} 단계
-            </Text>
-            <Text size="sm" c="dimmed">
-              {Math.round((currentStep / totalSteps) * 100)}%
-            </Text>
-          </Group>
-          <Progress 
-            value={(currentStep / totalSteps) * 100} 
-            color="brand"
-            size="sm"
-            radius="xl"
-          />
-        </div>
-
-        {/* 단계별 콘텐츠 */}
-        <div style={{ minHeight: 400 }}>
-          {currentStep === 1 && renderStep1()}
-          {currentStep === 2 && renderStep2()}
-          {currentStep === 3 && renderStep3()}
-        </div>
-
-        {/* 버튼 */}
-        <Group justify="space-between">
-          {currentStep > 1 ? (
-            <Button 
-              variant="light" 
-              color="gray"
-              onClick={handleBack}
-            >
-              이전
-            </Button>
-          ) : (
-            <div />
-          )}
-          
-          <Button
-            variant="gradient"
-            gradient={{ from: 'brand', to: 'brand.7', deg: 135 }}
-            onClick={handleNext}
-            disabled={
-              loading || 
-              loadingCount ||
-              (currentStep === 1 && !selectedStore) ||
-              (currentStep === 3 && pendingCount === 0)
-            }
-            rightSection={currentStep < 3 ? <ChevronRight size={16} /> : <Sparkles size={16} />}
-            style={{ minWidth: 120 }}
-          >
-            {currentStep === 3 ? 'AI로 리뷰답글 달기' : '다음'}
-          </Button>
-        </Group>
-      </Stack>
-    </Modal>
+      {renderCurrentStep()}
+    </OnboardingModal>
   );
 }

@@ -1,13 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { Modal, Text, Button, Stack, Textarea, Group, Card, Alert, FileInput, Badge, Loader } from '@mantine/core';
 import { 
   MessageCircle, 
   Send, 
-  CheckCircle, 
-  AlertCircle,
-  ArrowRight,
+  CheckCircle2,
   Upload,
   X,
   Lightbulb,
@@ -17,9 +14,15 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/config';
 import { useAuth } from '@/lib/auth-context';
+import OnboardingModal from './OnboardingModal';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 
 interface ContactModalProps {
-  opened: boolean;
+  isOpen: boolean;
   onClose: () => void;
   onComplete?: () => void;
 }
@@ -31,9 +34,9 @@ interface AttachmentInfo {
   type: string;
 }
 
-export default function ContactModal({ opened, onClose, onComplete }: ContactModalProps) {
+export default function ContactModal({ isOpen, onClose, onComplete }: ContactModalProps) {
   const { user, getToken } = useAuth();
-  const [step, setStep] = useState(1);
+  const [currentStep, setCurrentStep] = useState(1);
   const [message, setMessage] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   const [attachments, setAttachments] = useState<AttachmentInfo[]>([]);
@@ -42,8 +45,10 @@ export default function ContactModal({ opened, onClose, onComplete }: ContactMod
   const [error, setError] = useState('');
   const [messageId, setMessageId] = useState('');
 
+  const totalSteps = 3;
+
   const handleClose = () => {
-    setStep(1);
+    setCurrentStep(1);
     setMessage('');
     setFiles([]);
     setAttachments([]);
@@ -52,42 +57,53 @@ export default function ContactModal({ opened, onClose, onComplete }: ContactMod
     onClose();
   };
 
+  const handleBack = () => {
+    if (currentStep > 1 && !loading && !uploading) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
   const handleNext = () => {
-    if (step === 2 && !message.trim()) {
+    if (currentStep === 2 && !message.trim()) {
       setError('문의 내용을 입력해주세요.');
       return;
     }
     setError('');
     
-    if (step === 2) {
+    if (currentStep === 2) {
       handleSubmit();
+    } else if (currentStep === 3) {
+      handleClose();
     } else {
-      setStep(step + 1);
+      setCurrentStep(currentStep + 1);
     }
   };
 
-  const handleFileChange = (selectedFiles: File[] | null) => {
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = event.target.files;
     if (!selectedFiles) {
       setFiles([]);
       return;
     }
 
+    const fileArray = Array.from(selectedFiles);
+
     // 최대 3개 제한
-    if (selectedFiles.length > 3) {
+    if (fileArray.length > 3) {
       setError('파일은 최대 3개까지 첨부할 수 있습니다.');
       return;
     }
 
     // 각 파일 크기 체크 (10MB)
     const maxSize = 10 * 1024 * 1024; // 10MB
-    for (const file of selectedFiles) {
+    for (const file of fileArray) {
       if (file.size > maxSize) {
         setError(`파일 크기는 최대 10MB까지 가능합니다. (${file.name})`);
         return;
       }
     }
 
-    setFiles(selectedFiles);
+    setFiles(fileArray);
     setError('');
   };
 
@@ -174,7 +190,7 @@ export default function ContactModal({ opened, onClose, onComplete }: ContactMod
 
       const data = await response.json();
       setMessageId(data.message_id);
-      setStep(3); // 완료 단계로 이동
+      setCurrentStep(3); // 완료 단계로 이동
 
     } catch (err) {
       console.error('문의 제출 오류:', err);
@@ -196,312 +212,266 @@ export default function ContactModal({ opened, onClose, onComplete }: ContactMod
     return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
   };
 
+  // Step 1: 환영 및 안내
+  const renderStep1 = () => (
+    <div className="space-y-4 md:space-y-5">
+      <div className="text-center space-y-2 mb-4 md:mb-5">
+        <div className="w-16 h-16 md:w-20 md:h-20 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-full flex items-center justify-center mx-auto mb-3">
+          <MessageCircle className="w-8 h-8 md:w-10 md:h-10 text-white" />
+        </div>
+        <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
+          윕플에 문의하기
+        </h3>
+        <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
+          궁금한 점이나 불편한 점, 개선 아이디어 등<br />
+          무엇이든 편하게 말씀해주세요!
+        </p>
+      </div>
+
+      <Card className="bg-neutral-50 border-neutral-200 shadow-sm p-4 md:p-5">
+        <CardContent className="p-0 space-y-3 md:space-y-4">
+          <p className="text-sm md:text-base font-bold text-neutral-900 mb-3">
+            이런 것들을 문의할 수 있어요
+          </p>
+          
+          <div className="space-y-3">
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-yellow-400 flex items-center justify-center flex-shrink-0">
+                <Lightbulb className="w-5 h-5 text-white" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm md:text-base font-bold text-neutral-900 mb-0.5">💡 기능 제안</p>
+                <p className="text-xs md:text-sm text-neutral-600 leading-relaxed">
+                  "이런 기능이 있으면 좋겠어요!"
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-red-500 flex items-center justify-center flex-shrink-0">
+                <Bug className="w-5 h-5 text-white" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm md:text-base font-bold text-neutral-900 mb-0.5">🐛 버그 리포트</p>
+                <p className="text-xs md:text-sm text-neutral-600 leading-relaxed">
+                  "이 부분이 제대로 작동하지 않아요"
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-cyan-500 flex items-center justify-center flex-shrink-0">
+                <MessageSquare className="w-5 h-5 text-white" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm md:text-base font-bold text-neutral-900 mb-0.5">💬 일반 문의</p>
+                <p className="text-xs md:text-sm text-neutral-600 leading-relaxed">
+                  "이건 어떻게 사용하나요?"
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
+                <ThumbsUp className="w-5 h-5 text-white" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm md:text-base font-bold text-neutral-900 mb-0.5">👍 칭찬/피드백</p>
+                <p className="text-xs md:text-sm text-neutral-600 leading-relaxed">
+                  "서비스가 정말 좋아요!"
+                </p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Alert variant="info" className="p-3 md:p-4">
+        <AlertTitle className="text-sm md:text-base font-bold text-neutral-900">
+          💌 답변 시간
+        </AlertTitle>
+        <AlertDescription className="text-xs md:text-sm text-neutral-600">
+          보통 1-2일 내에 답변 드립니다. 긴급한 경우 이메일로도 연락주세요!
+        </AlertDescription>
+      </Alert>
+    </div>
+  );
+
+  // Step 2: 문의 작성
+  const renderStep2 = () => (
+    <div className="space-y-4 md:space-y-5">
+      <div className="text-center space-y-2 mb-4 md:mb-5">
+        <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
+          무엇을 도와드릴까요?
+        </h3>
+        <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
+          자세히 적어주실수록 더 정확한 답변을 드릴 수 있어요
+        </p>
+      </div>
+
+      <div className="space-y-2">
+        <label className="text-sm font-bold text-neutral-900">
+          문의 내용 <span className="text-error">*</span>
+        </label>
+        <Textarea
+          placeholder="예: 리뷰 분석 기능에서 날짜 필터가 작동하지 않아요. 어제부터 이 문제가 발생했습니다."
+          value={message}
+          onChange={(e) => {
+            setMessage(e.target.value);
+            setError('');
+          }}
+          rows={6}
+          className={`resize-none text-sm md:text-base ${error && !message.trim() ? 'border-error' : ''}`}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <label className="text-sm font-bold text-neutral-900">
+          파일 첨부 (선택사항)
+        </label>
+        <p className="text-xs md:text-sm text-neutral-600 mb-2">
+          스크린샷이나 관련 파일을 첨부하면 더 빠르게 해결할 수 있어요 (최대 3개, 각 10MB)
+        </p>
+        
+        <div className="relative">
+          <input
+            type="file"
+            multiple
+            accept="image/*,.pdf,.doc,.docx,.txt"
+            onChange={handleFileChange}
+            className="hidden"
+            id="file-upload"
+            disabled={loading || uploading}
+          />
+          <label
+            htmlFor="file-upload"
+            className={`
+              flex items-center justify-center gap-2 h-12 md:h-14 px-4 
+              border-2 border-dashed border-neutral-300 rounded-lg 
+              cursor-pointer transition-all duration-200
+              hover:border-primary-400 hover:bg-primary-50/50
+              ${(loading || uploading) ? 'opacity-50 cursor-not-allowed' : ''}
+            `}
+          >
+            <Upload className="w-5 h-5 text-neutral-500" />
+            <span className="text-sm md:text-base text-neutral-600">
+              파일 선택 ({files.length}/3)
+            </span>
+          </label>
+        </div>
+      </div>
+
+      {/* 선택된 파일 목록 */}
+      {files.length > 0 && (
+        <Card className="border-neutral-200 shadow-sm">
+          <CardContent className="p-3 md:p-4 space-y-2">
+            <p className="text-xs md:text-sm font-bold text-neutral-900">
+              첨부 파일 ({files.length}/3)
+            </p>
+            <div className="space-y-2">
+              {files.map((file, index) => (
+                <div 
+                  key={index}
+                  className="flex items-center justify-between gap-2 p-2 bg-neutral-50 rounded-lg"
+                >
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <p className="text-xs md:text-sm font-medium text-neutral-900 truncate">
+                      {file.name}
+                    </p>
+                    <Badge variant="secondary" className="text-xs flex-shrink-0">
+                      {formatFileSize(file.size)}
+                    </Badge>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeFile(index)}
+                    className="flex-shrink-0 p-1 hover:bg-error-bg rounded transition-colors"
+                    disabled={loading || uploading}
+                  >
+                    <X className="w-4 h-4 text-error" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {error && (
+        <Alert variant="destructive">
+          <AlertTitle>오류</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+    </div>
+  );
+
+  // Step 3: 완료
+  const renderStep3 = () => (
+    <div className="space-y-4 md:space-y-5">
+      <div className="text-center py-6 md:py-8">
+        <div className="w-16 h-16 md:w-20 md:h-20 bg-success-bg rounded-full flex items-center justify-center mx-auto mb-4">
+          <CheckCircle2 className="w-8 h-8 md:w-10 md:h-10 text-success" />
+        </div>
+        <h3 className="text-xl md:text-2xl font-bold text-neutral-900 mb-2 leading-tight">
+          문의가 전달되었어요!
+        </h3>
+        <p className="text-sm text-neutral-600 leading-relaxed mb-4">
+          소중한 의견 감사합니다.<br />
+          빠른 시일 내에 답변 드리겠습니다.
+        </p>
+
+        {attachments.length > 0 && (
+          <Card className="bg-neutral-50 border-neutral-200 shadow-sm p-3 md:p-4 mb-4">
+            <p className="text-xs md:text-sm text-neutral-600">
+              📎 {attachments.length}개 파일 첨부됨
+            </p>
+          </Card>
+        )}
+
+        <Card className="bg-gradient-to-br from-primary-50 to-indigo-50 border-primary-200 shadow-sm p-4 md:p-5">
+          <p className="text-sm md:text-base text-neutral-700 leading-relaxed">
+            💌 이메일이나 대시보드 알림으로<br />
+            답변을 받으실 수 있어요
+          </p>
+        </Card>
+      </div>
+    </div>
+  );
+
+  const renderCurrentStep = () => {
+    switch (currentStep) {
+      case 1:
+        return renderStep1();
+      case 2:
+        return renderStep2();
+      case 3:
+        return renderStep3();
+      default:
+        return null;
+    }
+  };
+
   return (
-    <Modal
-      opened={opened}
+    <OnboardingModal
+      isOpen={isOpen}
       onClose={handleClose}
-      size="xl"
-      padding="xl"
-      centered
-      withCloseButton={!loading && !uploading}
-      closeOnClickOutside={!loading && !uploading}
-      closeOnEscape={!loading && !uploading}
+      title="문의하기"
+      currentStep={currentStep}
+      totalSteps={totalSteps}
+      onBack={handleBack}
+      onNext={handleNext}
+      nextButtonText={
+        currentStep === 1 ? '문의하기' : 
+        currentStep === 2 ? (uploading ? '파일 업로드 중...' : loading ? '전송 중...' : '문의 전송') : 
+        '확인'
+      }
+      nextButtonDisabled={
+        (currentStep === 2 && (!message.trim() || loading || uploading))
+      }
+      showBackButton={currentStep === 2 && !loading && !uploading}
     >
-      <Stack gap="xl">
-        {/* Step 1: 환영 및 안내 */}
-        {step === 1 && (
-          <>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ 
-                display: 'inline-flex', 
-                padding: '16px', 
-                borderRadius: '50%', 
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                marginBottom: '24px'
-              }}>
-                <MessageCircle size={48} color="white" />
-              </div>
-              
-              <Text size="28px" fw={700} mb="md">
-                윕플에 문의하기
-              </Text>
-              
-              <Text size="16px" c="dimmed" mb="xl">
-                궁금한 점이나 불편한 점, 개선 아이디어 등<br />
-                무엇이든 편하게 말씀해주세요!
-              </Text>
-            </div>
-
-            <Card withBorder p="xl" radius="md" style={{ background: '#f8f9fa' }}>
-              <Text size="16px" fw={600} mb="lg">
-                이런 것들을 문의할 수 있어요
-              </Text>
-              
-              <Stack gap="md">
-                <Group gap="sm">
-                  <div style={{ 
-                    width: '40px', 
-                    height: '40px', 
-                    borderRadius: '50%', 
-                    background: '#FFD93D',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}>
-                    <Lightbulb size={20} />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <Text fw={600} size="15px">💡 기능 제안</Text>
-                    <Text size="13px" c="dimmed">
-                      "이런 기능이 있으면 좋겠어요!"
-                    </Text>
-                  </div>
-                </Group>
-
-                <Group gap="sm">
-                  <div style={{ 
-                    width: '40px', 
-                    height: '40px', 
-                    borderRadius: '50%', 
-                    background: '#FF6B6B',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}>
-                    <Bug size={20} color="white" />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <Text fw={600} size="15px">🐛 버그 리포트</Text>
-                    <Text size="13px" c="dimmed">
-                      "이 부분이 제대로 작동하지 않아요"
-                    </Text>
-                  </div>
-                </Group>
-
-                <Group gap="sm">
-                  <div style={{ 
-                    width: '40px', 
-                    height: '40px', 
-                    borderRadius: '50%', 
-                    background: '#4ECDC4',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}>
-                    <MessageSquare size={20} color="white" />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <Text fw={600} size="15px">💬 일반 문의</Text>
-                    <Text size="13px" c="dimmed">
-                      "이건 어떻게 사용하나요?"
-                    </Text>
-                  </div>
-                </Group>
-
-                <Group gap="sm">
-                  <div style={{ 
-                    width: '40px', 
-                    height: '40px', 
-                    borderRadius: '50%', 
-                    background: '#51CF66',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}>
-                    <ThumbsUp size={20} color="white" />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <Text fw={600} size="15px">👍 칭찬/피드백</Text>
-                    <Text size="13px" c="dimmed">
-                      "서비스가 정말 좋아요!"
-                    </Text>
-                  </div>
-                </Group>
-              </Stack>
-            </Card>
-
-            <Alert color="blue" variant="light">
-              <Text size="14px">
-                <strong>💌 답변 시간:</strong> 보통 1-2일 내에 답변 드립니다. 긴급한 경우 이메일로도 연락주세요!
-              </Text>
-            </Alert>
-
-            <Group justify="flex-end" mt="md">
-              <Button variant="default" onClick={handleClose}>
-                취소
-              </Button>
-              <Button
-                onClick={handleNext}
-                size="md"
-                rightSection={<ArrowRight size={18} />}
-                style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}
-              >
-                문의하기
-              </Button>
-            </Group>
-          </>
-        )}
-
-        {/* Step 2: 문의 작성 */}
-        {step === 2 && (
-          <>
-            <div style={{ textAlign: 'center' }}>
-              <Text size="24px" fw={700} mb="sm">
-                무엇을 도와드릴까요?
-              </Text>
-              <Text size="14px" c="dimmed">
-                자세히 적어주실수록 더 정확한 답변을 드릴 수 있어요
-              </Text>
-            </div>
-
-            <Textarea
-              label="문의 내용"
-              placeholder="예: 리뷰 분석 기능에서 날짜 필터가 작동하지 않아요. 어제부터 이 문제가 발생했습니다."
-              value={message}
-              onChange={(e) => {
-                setMessage(e.target.value);
-                setError('');
-              }}
-              error={error}
-              minRows={6}
-              maxRows={10}
-              required
-              styles={{
-                input: {
-                  fontSize: '15px',
-                }
-              }}
-            />
-
-            <div>
-              <Text size="14px" fw={500} mb="xs">
-                파일 첨부 (선택사항)
-              </Text>
-              <Text size="12px" c="dimmed" mb="sm">
-                스크린샷이나 관련 파일을 첨부하면 더 빠르게 해결할 수 있어요 (최대 3개, 각 10MB)
-              </Text>
-              
-              <FileInput
-                placeholder="파일 선택"
-                multiple
-                value={files}
-                onChange={handleFileChange}
-                leftSection={<Upload size={16} />}
-                accept="image/*,.pdf,.doc,.docx,.txt"
-              />
-            </div>
-
-            {/* 선택된 파일 목록 */}
-            {files.length > 0 && (
-              <Card withBorder p="md" radius="md">
-                <Text size="13px" fw={600} mb="sm">
-                  첨부 파일 ({files.length}/3)
-                </Text>
-                <Stack gap="xs">
-                  {files.map((file, index) => (
-                    <Group key={index} justify="space-between" p="xs" style={{ 
-                      background: '#f8f9fa',
-                      borderRadius: '6px'
-                    }}>
-                      <Group gap="xs">
-                        <Text size="13px" fw={500}>{file.name}</Text>
-                        <Badge size="xs" variant="light">
-                          {formatFileSize(file.size)}
-                        </Badge>
-                      </Group>
-                      <Button
-                        variant="subtle"
-                        size="xs"
-                        color="red"
-                        onClick={() => removeFile(index)}
-                        leftSection={<X size={14} />}
-                      >
-                        제거
-                      </Button>
-                    </Group>
-                  ))}
-                </Stack>
-              </Card>
-            )}
-
-            <Group justify="space-between" mt="md">
-              <Button variant="default" onClick={() => setStep(1)} disabled={loading || uploading}>
-                이전
-              </Button>
-              <Button
-                onClick={handleNext}
-                disabled={!message.trim() || loading || uploading}
-                size="md"
-                loading={loading || uploading}
-                rightSection={!loading && !uploading ? <Send size={18} /> : undefined}
-                style={{ background: message.trim() && !loading && !uploading ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : undefined }}
-              >
-                {uploading ? '파일 업로드 중...' : loading ? '전송 중...' : '문의 전송'}
-              </Button>
-            </Group>
-          </>
-        )}
-
-        {/* Step 3: 완료 */}
-        {step === 3 && (
-          <>
-            <div style={{ textAlign: 'center', padding: '20px 0' }}>
-              <div style={{ 
-                display: 'inline-flex', 
-                padding: '16px', 
-                borderRadius: '50%', 
-                background: '#51cf66',
-                marginBottom: '16px'
-              }}>
-                <CheckCircle size={48} color="white" />
-              </div>
-              
-              <Text size="24px" fw={700} mb="sm">
-                문의가 전달되었어요!
-              </Text>
-              <Text size="14px" c="dimmed" mb="xl">
-                소중한 의견 감사합니다.<br />
-                빠른 시일 내에 답변 드리겠습니다.
-              </Text>
-
-              {attachments.length > 0 && (
-                <Card withBorder p="md" radius="md" mb="lg">
-                  <Text size="13px" c="dimmed">
-                    📎 {attachments.length}개 파일 첨부됨
-                  </Text>
-                </Card>
-              )}
-
-              <Card withBorder p="lg" radius="md" style={{ background: '#f8f9fa' }}>
-                <Text size="14px" c="dimmed">
-                  💌 이메일이나 대시보드 알림으로<br />
-                  답변을 받으실 수 있어요
-                </Text>
-              </Card>
-            </div>
-
-            <Group justify="center" mt="md">
-              <Button
-                onClick={() => {
-                  if (onComplete) onComplete();
-                  handleClose();
-                }}
-                size="md"
-                style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}
-              >
-                확인
-              </Button>
-            </Group>
-          </>
-        )}
-
-        {/* Error State */}
-        {error && step === 2 && (
-          <Alert icon={<AlertCircle size={16} />} color="red" variant="light">
-            {error}
-          </Alert>
-        )}
-      </Stack>
-    </Modal>
+      {renderCurrentStep()}
+    </OnboardingModal>
   );
 }

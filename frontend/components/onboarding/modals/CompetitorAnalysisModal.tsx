@@ -1,27 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import {
-  Modal,
-  Stack,
-  Text,
-  Button,
-  Paper,
-  Group,
-  Progress,
-  Alert,
-  ThemeIcon,
-  Grid,
-  Center,
-  Loader,
-  TextInput,
-  Badge,
-  Radio,
-} from '@mantine/core';
 import { 
-  Store, 
   CheckCircle2, 
-  ChevronRight,
   TrendingUp,
   Search,
   Lightbulb,
@@ -31,9 +12,17 @@ import {
 import { api } from '@/lib/config';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
+import OnboardingModal from './OnboardingModal';
+import StoreSelector from './StoreSelector';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
 
 interface CompetitorAnalysisModalProps {
-  opened: boolean;
+  isOpen: boolean;
   onClose: () => void;
   onComplete?: () => void;
 }
@@ -55,7 +44,7 @@ interface KeywordHistory {
 }
 
 export default function CompetitorAnalysisModal({
-  opened,
+  isOpen,
   onClose,
   onComplete,
 }: CompetitorAnalysisModalProps) {
@@ -78,10 +67,10 @@ export default function CompetitorAnalysisModal({
 
   // 매장 목록 로드
   useEffect(() => {
-    if (opened && currentStep === 1) {
+    if (isOpen && currentStep === 1) {
       loadStores();
     }
-  }, [opened, currentStep]);
+  }, [isOpen, currentStep]);
 
   // 타겟키워드 로드
   useEffect(() => {
@@ -186,14 +175,16 @@ export default function CompetitorAnalysisModal({
     // 분석 완료 처리
     if (onComplete) onComplete();
     
-    // 경쟁매장 분석 페이지로 이동 (URL 파라미터로 storeId와 keyword 전달)
+    // 경쟁매장 분석 페이지로 이동
     handleClose();
     router.push(`/dashboard/naver/competitors?storeId=${selectedStore.id}&keyword=${encodeURIComponent(finalKeyword.trim())}&autoStart=true`);
   };
 
   const handleBack = () => {
     setError('');
-    setCurrentStep(currentStep - 1);
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+    }
   };
 
   const handleClose = () => {
@@ -208,203 +199,169 @@ export default function CompetitorAnalysisModal({
 
   // Step 1: 매장 선택
   const renderStep1 = () => (
-    <Stack gap="md">
-      <Text size="lg" fw={600} ta="center">
-        어떤 매장을 기준으로 분석할까요?
-      </Text>
-      <Text size="sm" c="dimmed" ta="center">
-        선택하신 매장의 경쟁 상황을 분석해드립니다
-      </Text>
+    <div className="space-y-4 md:space-y-5">
+      <div className="text-center space-y-2 mb-4 md:mb-5">
+        <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
+          어떤 매장을 기준으로 분석할까요?
+        </h3>
+        <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
+          선택하신 매장의 경쟁 상황을 분석해드립니다
+        </p>
+      </div>
 
-      {loading ? (
-        <Center style={{ minHeight: 200 }}>
-          <Loader size="lg" />
-        </Center>
-      ) : stores.length === 0 ? (
-        <Alert color="yellow" title="등록된 매장이 없습니다">
-          먼저 네이버 플레이스 매장을 등록해주세요
-        </Alert>
-      ) : (
-        <Grid gutter="md">
-          {stores.map((store) => (
-            <Grid.Col key={store.id} span={{ base: 12, sm: 6 }}>
-              <Paper
-                p="md"
-                radius="md"
-                style={{
-                  cursor: 'pointer',
-                  border: selectedStore?.id === store.id ? '2px solid #635bff' : '1px solid #e0e7ff',
-                  background: selectedStore?.id === store.id ? 'linear-gradient(135deg, #f0f4ff 0%, #e8eeff 100%)' : '#ffffff',
-                  transition: 'all 0.2s'
-                }}
-                onClick={() => setSelectedStore(store)}
-              >
-                <Group gap="md">
-                  {store.thumbnail ? (
-                    <img 
-                      src={store.thumbnail} 
-                      alt={store.name}
-                      style={{ width: 48, height: 48, borderRadius: 8, objectFit: 'cover' }}
-                    />
-                  ) : (
-                    <ThemeIcon size={48} radius="md" variant="light" color="brand">
-                      <Store size={24} />
-                    </ThemeIcon>
-                  )}
-                  <div style={{ flex: 1 }}>
-                    <Text fw={600} size="sm">{store.name}</Text>
-                    <Text size="xs" c="dimmed">{store.address}</Text>
-                  </div>
-                  {selectedStore?.id === store.id && (
-                    <ThemeIcon size={32} radius="xl" color="brand">
-                      <CheckCircle2 size={20} />
-                    </ThemeIcon>
-                  )}
-                </Group>
-              </Paper>
-            </Grid.Col>
-          ))}
-        </Grid>
-      )}
+      <StoreSelector
+        stores={stores}
+        selectedStore={selectedStore}
+        onSelect={setSelectedStore}
+        loading={loading}
+        emptyMessage="등록된 네이버 플레이스 매장이 없습니다."
+      />
 
       {error && (
-        <Alert color="red" title="오류">
-          {error}
+        <Alert variant="destructive">
+          <AlertTitle>오류</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
-    </Stack>
+    </div>
   );
 
   // Step 2: 키워드 선택
   const renderStep2 = () => (
-    <Stack gap="md">
-      <Text size="lg" fw={600} ta="center">
-        어떤 키워드로 경쟁사를 찾아볼까요?
-      </Text>
-      <Text size="sm" c="dimmed" ta="center">
-        해당 키워드로 상위 20개 매장을 분석합니다
-      </Text>
+    <div className="space-y-4 md:space-y-5">
+      <div className="text-center space-y-2 mb-4 md:mb-5">
+        <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
+          어떤 키워드로 경쟁사를 찾아볼까요?
+        </h3>
+        <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
+          해당 키워드로 상위 20개 매장을 분석합니다
+        </p>
+      </div>
 
-      <Radio.Group value={keywordMode} onChange={(value) => setKeywordMode(value as 'history' | 'manual')}>
-        <Stack gap="md">
-          <Paper
-            p="md"
-            radius="md"
-            style={{
-              cursor: 'pointer',
-              border: keywordMode === 'history' ? '2px solid #635bff' : '1px solid #e0e7ff',
-              background: keywordMode === 'history' ? 'linear-gradient(135deg, #f0f4ff 0%, #e8eeff 100%)' : '#ffffff',
-              transition: 'all 0.2s'
-            }}
+      <RadioGroup value={keywordMode} onValueChange={(value) => setKeywordMode(value as 'history' | 'manual')}>
+        <div className="space-y-3">
+          <Card
+            className={`cursor-pointer transition-all duration-200 hover:shadow-card-hover ${
+              keywordMode === 'history'
+                ? 'border-primary-500 bg-primary-50 ring-2 ring-primary-500/20'
+                : 'border-neutral-200 hover:border-primary-300'
+            }`}
             onClick={() => setKeywordMode('history')}
           >
-            <Group justify="space-between">
-              <div style={{ flex: 1 }}>
-                <Radio
-                  value="history"
-                  label="과거 추출한 키워드에서 선택"
-                  description="타겟키워드 분석에서 찾은 키워드를 사용합니다"
-                  styles={{ label: { fontWeight: 600 } }}
-                />
+            <CardContent className="p-3 md:p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-start gap-3 flex-1">
+                  <RadioGroupItem value="history" id="history" className="mt-1" />
+                  <div className="flex-1">
+                    <Label htmlFor="history" className="text-sm md:text-base font-bold text-neutral-900 cursor-pointer">
+                      과거 추출한 키워드에서 선택
+                    </Label>
+                    <p className="text-xs md:text-sm text-neutral-600 mt-0.5">
+                      타겟키워드 분석에서 찾은 키워드를 사용합니다
+                    </p>
+                  </div>
+                </div>
+                {keywordMode === 'history' && (
+                  <div className="flex-shrink-0 w-7 h-7 rounded-full bg-primary-500 flex items-center justify-center">
+                    <CheckCircle2 className="w-4 h-4 text-white" />
+                  </div>
+                )}
               </div>
-              {keywordMode === 'history' && (
-                <ThemeIcon size={28} radius="xl" color="brand">
-                  <CheckCircle2 size={18} />
-                </ThemeIcon>
-              )}
-            </Group>
-          </Paper>
+            </CardContent>
+          </Card>
           
-          <Paper
-            p="md"
-            radius="md"
-            style={{
-              cursor: 'pointer',
-              border: keywordMode === 'manual' ? '2px solid #635bff' : '1px solid #e0e7ff',
-              background: keywordMode === 'manual' ? 'linear-gradient(135deg, #f0f4ff 0%, #e8eeff 100%)' : '#ffffff',
-              transition: 'all 0.2s'
-            }}
+          <Card
+            className={`cursor-pointer transition-all duration-200 hover:shadow-card-hover ${
+              keywordMode === 'manual'
+                ? 'border-primary-500 bg-primary-50 ring-2 ring-primary-500/20'
+                : 'border-neutral-200 hover:border-primary-300'
+            }`}
             onClick={() => setKeywordMode('manual')}
           >
-            <Group justify="space-between">
-              <div style={{ flex: 1 }}>
-                <Radio
-                  value="manual"
-                  label="직접 입력"
-                  description="새로운 키워드를 입력합니다"
-                  styles={{ label: { fontWeight: 600 } }}
-                />
+            <CardContent className="p-3 md:p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-start gap-3 flex-1">
+                  <RadioGroupItem value="manual" id="manual" className="mt-1" />
+                  <div className="flex-1">
+                    <Label htmlFor="manual" className="text-sm md:text-base font-bold text-neutral-900 cursor-pointer">
+                      직접 입력
+                    </Label>
+                    <p className="text-xs md:text-sm text-neutral-600 mt-0.5">
+                      새로운 키워드를 입력합니다
+                    </p>
+                  </div>
+                </div>
+                {keywordMode === 'manual' && (
+                  <div className="flex-shrink-0 w-7 h-7 rounded-full bg-primary-500 flex items-center justify-center">
+                    <CheckCircle2 className="w-4 h-4 text-white" />
+                  </div>
+                )}
               </div>
-              {keywordMode === 'manual' && (
-                <ThemeIcon size={28} radius="xl" color="brand">
-                  <CheckCircle2 size={18} />
-                </ThemeIcon>
-              )}
-            </Group>
-          </Paper>
-        </Stack>
-      </Radio.Group>
+            </CardContent>
+          </Card>
+        </div>
+      </RadioGroup>
 
       {keywordMode === 'history' ? (
         keywordHistory.length > 0 ? (
-          <Stack gap="xs">
-            <Text size="sm" fw={500}>추출된 키워드 선택</Text>
-            <Paper p="md" radius="md" withBorder>
-              <Group gap="xs">
-                {keywordHistory.flatMap(history => 
-                  history.extracted_keywords.slice(0, 10).map((kw, idx) => (
-                    <Badge
-                      key={`${history.id}-${idx}`}
-                      size="lg"
-                      variant={selectedHistoryKeyword === kw.keyword ? 'filled' : 'light'}
-                      color="brand"
-                      style={{ cursor: 'pointer' }}
-                      onClick={() => setSelectedHistoryKeyword(kw.keyword)}
-                    >
-                      {kw.keyword}
-                    </Badge>
-                  ))
-                )}
-              </Group>
-            </Paper>
-          </Stack>
+          <div className="space-y-2">
+            <p className="text-sm font-bold text-neutral-900">추출된 키워드 선택</p>
+            <Card className="border-neutral-200 shadow-sm">
+              <CardContent className="p-3 md:p-4">
+                <div className="flex flex-wrap gap-2">
+                  {keywordHistory.flatMap(history => 
+                    history.extracted_keywords.slice(0, 10).map((kw, idx) => (
+                      <Badge
+                        key={`${history.id}-${idx}`}
+                        variant={selectedHistoryKeyword === kw.keyword ? 'default' : 'secondary'}
+                        className="text-xs md:text-sm px-2.5 py-1 cursor-pointer hover:bg-primary-600 transition-colors"
+                        onClick={() => setSelectedHistoryKeyword(kw.keyword)}
+                      >
+                        {kw.keyword}
+                      </Badge>
+                    ))
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         ) : (
-          <Alert icon={<Lightbulb size={16} />} color="blue" variant="light">
-            추출된 키워드가 없습니다. "직접 입력"을 선택하거나 먼저 타겟키워드를 분석해주세요.
+          <Alert variant="info">
+            <Lightbulb className="w-4 h-4 text-info-500" />
+            <AlertDescription className="text-xs md:text-sm">
+              추출된 키워드가 없습니다. "직접 입력"을 선택하거나 먼저 타겟키워드를 분석해주세요.
+            </AlertDescription>
           </Alert>
         )
       ) : (
-        <TextInput
-          size="lg"
-          placeholder="예: 강남맛집, 성수카페"
-          value={keyword}
-          onChange={(e) => {
-            setKeyword(e.target.value);
-            setError('');
-          }}
-          error={error}
-          leftSection={<Search size={20} />}
-          styles={{
-            input: {
-              fontSize: '16px',
-              padding: '24px 16px 24px 44px',
-            }
-          }}
-        />
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
+          <Input
+            placeholder="예: 강남맛집, 성수카페"
+            value={keyword}
+            onChange={(e) => {
+              setKeyword(e.target.value);
+              setError('');
+            }}
+            className={`pl-10 text-base ${error ? 'border-error' : ''}`}
+          />
+        </div>
       )}
 
       {error && (
-        <Alert color="red" title="오류">
-          {error}
+        <Alert variant="destructive">
+          <AlertTitle>오류</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
 
-      <Alert color="blue" title="💡 입력 팁">
-        <Text size="xs">
+      <Alert variant="info">
+        <AlertTitle>💡 입력 팁</AlertTitle>
+        <AlertDescription className="text-xs md:text-sm">
           키워드가 구체적일수록 정확한 경쟁사를 찾을 수 있어요!
-        </Text>
+        </AlertDescription>
       </Alert>
-    </Stack>
+    </div>
   );
 
   // Step 3: 분석 시작
@@ -412,144 +369,100 @@ export default function CompetitorAnalysisModal({
     const finalKeyword = keywordMode === 'history' ? selectedHistoryKeyword : keyword;
     
     return (
-      <Stack gap="md">
-        <div style={{ textAlign: 'center' }}>
-          <ThemeIcon
-            size={80}
-            radius="xl"
-            variant="gradient"
-            gradient={{ from: 'brand', to: 'brand.7', deg: 135 }}
-            mb="md"
-            mx="auto"
-          >
-            <Users size={40} />
-          </ThemeIcon>
-          
-          <Text size="lg" fw={600} mb="sm">
+      <div className="space-y-4 md:space-y-5">
+        <div className="text-center space-y-2 mb-4 md:mb-5">
+          <div className="w-16 h-16 md:w-20 md:h-20 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-full flex items-center justify-center mx-auto mb-3">
+            <Users className="w-8 h-8 md:w-10 md:h-10 text-white" />
+          </div>
+          <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
             지금 바로 분석을 시작할까요?
-          </Text>
-          <Text size="sm" c="dimmed">
+          </h3>
+          <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
             경쟁매장 분석 페이지에서 상세한 분석을 진행합니다
-          </Text>
+          </p>
         </div>
 
-        <Paper withBorder p="xl" radius="md" bg="#f9fafb">
-          <Stack gap="lg">
+        <Card className="bg-neutral-50 border-neutral-200 shadow-sm">
+          <CardContent className="p-4 md:p-5 space-y-4">
             <div>
-              <Text fw={600} size="md" mb="sm" c="brand">📊 분석 내용</Text>
-              <Text size="sm" style={{ lineHeight: 1.6 }}>
+              <p className="text-sm md:text-base font-bold text-primary-600 mb-2">📊 분석 내용</p>
+              <p className="text-xs md:text-sm text-neutral-700 leading-relaxed">
                 선택하신 <strong>"{finalKeyword}"</strong> 키워드로 
                 플레이스 상위노출 중인 <strong>20개 매장</strong>의 현재 플레이스 활동 전반적인 내용을 
                 한번에 보실 수 있습니다.
-              </Text>
+              </p>
             </div>
 
             <div>
-              <Text fw={600} size="md" mb="sm" c="brand">🎯 분석 항목</Text>
-              <Stack gap="xs">
-                <Text size="sm">✓ 매장별 순위 및 기본 정보</Text>
-                <Text size="sm">✓ 리뷰 개수 및 평점</Text>
-                <Text size="sm">✓ 플레이스 진단 점수</Text>
-                <Text size="sm">✓ 경쟁 강도 비교</Text>
-                <Text size="sm">✓ 개선 권장사항</Text>
-              </Stack>
+              <p className="text-sm md:text-base font-bold text-primary-600 mb-2">🎯 분석 항목</p>
+              <div className="space-y-1.5 text-xs md:text-sm text-neutral-700">
+                <p>✓ 매장별 순위 및 기본 정보</p>
+                <p>✓ 리뷰 개수 및 평점</p>
+                <p>✓ 플레이스 진단 점수</p>
+                <p>✓ 경쟁 강도 비교</p>
+                <p>✓ 개선 권장사항</p>
+              </div>
             </div>
-          </Stack>
-        </Paper>
+          </CardContent>
+        </Card>
 
-        <Alert color="grape" variant="light">
-          <Group gap="sm">
-            <Sparkles size={20} />
-            <Text size="sm" fw={500}>
-              💡 "나만 잘하는게 아니라, 남들은 어떻게 하는지 알아야 합니다"
-            </Text>
-          </Group>
+        <Alert variant="default" className="bg-purple-50 border-purple-200">
+          <Sparkles className="w-4 h-4 text-purple-600" />
+          <AlertDescription className="text-xs md:text-sm text-neutral-700">
+            💡 "나만 잘하는게 아니라, 남들은 어떻게 하는지 알아야 합니다"
+          </AlertDescription>
         </Alert>
 
         {/* 선택 정보 요약 */}
-        <Paper p="sm" radius="md" withBorder bg="#f9fafb">
-          <Group justify="space-between">
-            <Text size="xs" c="dimmed">매장</Text>
-            <Text size="xs" fw={500}>{selectedStore?.name}</Text>
-          </Group>
-          <Group justify="space-between" mt="xs">
-            <Text size="xs" c="dimmed">키워드</Text>
-            <Text size="xs" fw={500}>{finalKeyword}</Text>
-          </Group>
-        </Paper>
-      </Stack>
+        <Card className="bg-neutral-50 border-neutral-200 shadow-sm">
+          <CardContent className="p-3 md:p-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="text-xs md:text-sm text-neutral-600">매장</p>
+              <p className="text-xs md:text-sm font-bold text-neutral-900">{selectedStore?.name}</p>
+            </div>
+            <div className="flex items-center justify-between">
+              <p className="text-xs md:text-sm text-neutral-600">키워드</p>
+              <p className="text-xs md:text-sm font-bold text-neutral-900">{finalKeyword}</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     );
   };
 
+  const renderCurrentStep = () => {
+    switch (currentStep) {
+      case 1:
+        return renderStep1();
+      case 2:
+        return renderStep2();
+      case 3:
+        return renderStep3();
+      default:
+        return null;
+    }
+  };
+
   return (
-    <Modal
-      opened={opened}
+    <OnboardingModal
+      isOpen={isOpen}
       onClose={handleClose}
-      size="lg"
-      centered
-      withCloseButton={false}
-      styles={{
-        header: {
-          background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
-        }
-      }}
+      title="경쟁매장 분석"
+      currentStep={currentStep}
+      totalSteps={totalSteps}
+      onBack={handleBack}
+      onNext={handleNext}
+      nextButtonText={
+        currentStep === 3 ? '분석 시작' : '다음'
+      }
+      nextButtonDisabled={
+        loading || 
+        (currentStep === 1 && !selectedStore) ||
+        (currentStep === 2 && (keywordMode === 'history' ? !selectedHistoryKeyword : !keyword.trim()))
+      }
+      showBackButton={currentStep > 1}
     >
-      <Stack gap="xl" p="md">
-        {/* 진행률 표시 */}
-        <div>
-          <Group justify="space-between" mb="xs">
-            <Text size="sm" fw={600} c="brand">
-              {currentStep} / {totalSteps} 단계
-            </Text>
-            <Text size="sm" c="dimmed">
-              {Math.round((currentStep / totalSteps) * 100)}%
-            </Text>
-          </Group>
-          <Progress 
-            value={(currentStep / totalSteps) * 100} 
-            color="brand"
-            size="sm"
-            radius="xl"
-          />
-        </div>
-
-        {/* 단계별 콘텐츠 */}
-        <div style={{ minHeight: 400 }}>
-          {currentStep === 1 && renderStep1()}
-          {currentStep === 2 && renderStep2()}
-          {currentStep === 3 && renderStep3()}
-        </div>
-
-        {/* 버튼 */}
-        <Group justify="space-between">
-          {currentStep > 1 ? (
-            <Button 
-              variant="light" 
-              color="gray"
-              onClick={handleBack}
-            >
-              이전
-            </Button>
-          ) : (
-            <div />
-          )}
-          
-          <Button
-            variant="gradient"
-            gradient={{ from: 'brand', to: 'brand.7', deg: 135 }}
-            onClick={handleNext}
-            disabled={
-              loading || 
-              (currentStep === 1 && !selectedStore) ||
-              (currentStep === 2 && (keywordMode === 'history' ? !selectedHistoryKeyword : !keyword.trim()))
-            }
-            rightSection={currentStep < 3 ? <ChevronRight size={16} /> : <TrendingUp size={16} />}
-            style={{ minWidth: 120 }}
-          >
-            {currentStep === 3 ? '분석 시작' : '다음'}
-          </Button>
-        </Group>
-      </Stack>
-    </Modal>
+      {renderCurrentStep()}
+    </OnboardingModal>
   );
 }

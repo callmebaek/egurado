@@ -1,14 +1,27 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Modal, Stack, Text, Paper, Grid, Group, ThemeIcon, Alert, Button, Loader, Center, Badge, Box, Switch, Progress } from '@mantine/core';
-import { Store, CheckCircle2, ChevronRight, TrendingUp, Bell, Sparkles, Clock } from 'lucide-react';
+import { 
+  Store, 
+  CheckCircle2, 
+  TrendingUp, 
+  Bell, 
+  Sparkles, 
+  Clock,
+  Loader2
+} from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { api } from '@/lib/config';
+import OnboardingModal from './OnboardingModal';
+import StoreSelector from './StoreSelector';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 
 interface RankAlertsModalProps {
-  opened: boolean;
+  isOpen: boolean;
   onClose: () => void;
   onComplete?: () => void;
 }
@@ -18,6 +31,7 @@ interface RegisteredStore {
   name: string;
   thumbnail?: string;
   platform: string;
+  address: string;
 }
 
 interface MetricTracker {
@@ -44,7 +58,7 @@ const FREQUENCY_LABELS = {
   daily_thrice: '하루 3회',
 };
 
-export default function RankAlertsModal({ opened, onClose, onComplete }: RankAlertsModalProps) {
+export default function RankAlertsModal({ isOpen, onClose, onComplete }: RankAlertsModalProps) {
   const router = useRouter();
   const { getToken } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
@@ -59,12 +73,14 @@ export default function RankAlertsModal({ opened, onClose, onComplete }: RankAle
   const [loadingTrackers, setLoadingTrackers] = useState(false);
   const [error, setError] = useState('');
 
+  const totalSteps = 4;
+
   // 매장 목록 로드
   useEffect(() => {
-    if (opened) {
+    if (isOpen) {
       loadStores();
     }
-  }, [opened]);
+  }, [isOpen]);
 
   const loadStores = async () => {
     setLoadingStores(true);
@@ -207,7 +223,7 @@ export default function RankAlertsModal({ opened, onClose, onComplete }: RankAle
 
   const handleBack = () => {
     setError('');
-    if (currentStep > 1) {
+    if (currentStep > 1 && !loadingTrackers && !loading) {
       setCurrentStep(currentStep - 1);
     }
   };
@@ -232,415 +248,317 @@ export default function RankAlertsModal({ opened, onClose, onComplete }: RankAle
     return times.map(t => `${t}시`).join(', ');
   };
 
+  // Step 1: 매장 선택
   const renderStep1 = () => (
-    <Stack gap="md">
-      <Text size="lg" fw={600} ta="center">
-        어떤 매장의 알림을 설정할까요?
-      </Text>
-      <Text size="sm" c="dimmed" ta="center">
-        순위 추적 중인 키워드의 알림 설정을 변경할 매장을 선택해주세요
-      </Text>
+    <div className="space-y-4 md:space-y-5">
+      <div className="text-center space-y-2 mb-4 md:mb-5">
+        <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
+          어떤 매장의 알림을 설정할까요?
+        </h3>
+        <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
+          순위 추적 중인 키워드의 알림 설정을 변경할 매장을 선택해주세요
+        </p>
+      </div>
 
-      {loadingStores ? (
-        <Center style={{ minHeight: 200 }}>
-          <Loader size="lg" />
-        </Center>
-      ) : stores.length === 0 ? (
-        <Alert color="yellow" title="등록된 매장이 없습니다">
-          먼저 네이버 플레이스 매장을 등록해주세요
-        </Alert>
-      ) : (
-        <Grid gutter="md">
-          {stores.map((store) => (
-            <Grid.Col key={store.id} span={{ base: 12, sm: 6 }}>
-              <Paper
-                p="md"
-                radius="md"
-                style={{
-                  cursor: 'pointer',
-                  border: selectedStore?.id === store.id 
-                    ? '2px solid #635bff' 
-                    : '1px solid #e0e7ff',
-                  background: selectedStore?.id === store.id
-                    ? 'linear-gradient(135deg, #f0f4ff 0%, #e8eeff 100%)'
-                    : '#ffffff',
-                  transition: 'all 0.2s'
-                }}
-                onClick={() => setSelectedStore(store)}
-              >
-                <Group gap="md">
-                  {store.thumbnail ? (
-                    <img 
-                      src={store.thumbnail} 
-                      alt={store.name}
-                      style={{ 
-                        width: 48, 
-                        height: 48, 
-                        borderRadius: 8,
-                        objectFit: 'cover'
-                      }}
-                    />
-                  ) : (
-                    <ThemeIcon size={48} radius="md" variant="light" color="brand">
-                      <Store size={24} />
-                    </ThemeIcon>
-                  )}
-                  <div style={{ flex: 1 }}>
-                    <Text fw={600} size="sm">{store.name}</Text>
-                    <Text size="xs" c="dimmed">네이버 플레이스</Text>
-                  </div>
-                  {selectedStore?.id === store.id && (
-                    <ThemeIcon size={32} radius="xl" color="brand">
-                      <CheckCircle2 size={20} />
-                    </ThemeIcon>
-                  )}
-                </Group>
-              </Paper>
-            </Grid.Col>
-          ))}
-        </Grid>
-      )}
+      <StoreSelector
+        stores={stores}
+        selectedStore={selectedStore}
+        onSelect={setSelectedStore}
+        loading={loadingStores}
+        emptyMessage="등록된 네이버 플레이스 매장이 없습니다."
+      />
 
       {error && (
-        <Alert color="red" title="오류">
-          {error}
+        <Alert variant="destructive">
+          <AlertTitle>오류</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
-    </Stack>
+    </div>
   );
 
+  // Step 2: 추적 키워드 선택
   const renderStep2 = () => (
-    <Stack gap="md">
-      <Text size="lg" fw={600} ta="center">
-        어떤 키워드의 알림을 받으실래요?
-      </Text>
-      <Text size="sm" c="dimmed" ta="center">
-        현재 추적 중인 키워드 중 하나를 선택해주세요
-      </Text>
+    <div className="space-y-4 md:space-y-5">
+      <div className="text-center space-y-2 mb-4 md:mb-5">
+        <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
+          어떤 키워드의 알림을 받으실래요?
+        </h3>
+        <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
+          현재 추적 중인 키워드 중 하나를 선택해주세요
+        </p>
+      </div>
 
       {loadingTrackers ? (
-        <Center style={{ minHeight: 200 }}>
-          <Loader size="lg" />
-        </Center>
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+            <p className="text-sm text-neutral-600">추적 키워드 목록을 불러오는 중...</p>
+          </div>
+        </div>
       ) : trackers.length === 0 ? (
-        <Alert color="yellow" title="추적 중인 키워드가 없습니다">
-          먼저 "플레이스 순위 추적하기"를 통해 키워드를 추적 등록해주세요
+        <Alert variant="warning">
+          <AlertTitle>추적 중인 키워드가 없습니다</AlertTitle>
+          <AlertDescription className="text-xs md:text-sm">
+            먼저 "플레이스 순위 추적하기"를 통해 키워드를 추적 등록해주세요
+          </AlertDescription>
         </Alert>
       ) : (
-        <Stack gap="xs">
+        <div className="space-y-2">
           {trackers.map((tracker) => (
-            <Paper
+            <Card
               key={tracker.id}
-              p="md"
-              radius="md"
-              style={{
-                cursor: 'pointer',
-                border: selectedTracker?.id === tracker.id 
-                  ? '2px solid #635bff' 
-                  : '1px solid #e0e7ff',
-                background: selectedTracker?.id === tracker.id
-                  ? 'linear-gradient(135deg, #f0f4ff 0%, #e8eeff 100%)'
-                  : '#ffffff',
-                transition: 'all 0.2s'
-              }}
+              className={`cursor-pointer transition-all duration-200 hover:shadow-card-hover ${
+                selectedTracker?.id === tracker.id
+                  ? 'border-primary-500 bg-primary-50 ring-2 ring-primary-500/20'
+                  : 'border-neutral-200 hover:border-primary-300'
+              }`}
               onClick={() => setSelectedTracker(tracker)}
             >
-              <Group justify="space-between">
-                <div style={{ flex: 1 }}>
-                  <Group gap="xs" mb={4}>
-                    <Text fw={600} size="sm">
-                      {tracker.keyword}
-                    </Text>
-                    <Badge 
-                      size="sm" 
-                      variant="light" 
-                      color={tracker.notification_enabled ? 'green' : 'gray'}
-                      leftSection={tracker.notification_enabled ? <Bell size={12} /> : undefined}
-                    >
-                      {tracker.notification_enabled ? '알림 켜짐' : '알림 꺼짐'}
-                    </Badge>
-                  </Group>
-                  <Group gap="md">
-                    <Text size="xs" c="dimmed">
-                      {FREQUENCY_LABELS[tracker.update_frequency]}
-                    </Text>
-                    <Text size="xs" c="dimmed">
-                      수집시간: {formatUpdateTimes(tracker.update_times)}
-                    </Text>
-                  </Group>
+              <CardContent className="p-3 md:p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <p className="text-sm md:text-base font-bold text-neutral-900">
+                        {tracker.keyword}
+                      </p>
+                      <Badge 
+                        variant={tracker.notification_enabled ? 'default' : 'secondary'}
+                        className="text-xs"
+                      >
+                        {tracker.notification_enabled ? (
+                          <><Bell className="w-3 h-3 mr-1" /> 알림 켜짐</>
+                        ) : (
+                          '알림 꺼짐'
+                        )}
+                      </Badge>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3 text-xs text-neutral-600">
+                      <span>{FREQUENCY_LABELS[tracker.update_frequency]}</span>
+                      <span className="text-neutral-400">•</span>
+                      <span>수집시간: {formatUpdateTimes(tracker.update_times)}</span>
+                    </div>
+                  </div>
+                  {selectedTracker?.id === tracker.id && (
+                    <div className="flex-shrink-0 w-7 h-7 rounded-full bg-primary-500 flex items-center justify-center">
+                      <CheckCircle2 className="w-4 h-4 text-white" />
+                    </div>
+                  )}
                 </div>
-                {selectedTracker?.id === tracker.id && (
-                  <ThemeIcon size={28} radius="xl" color="brand">
-                    <CheckCircle2 size={18} />
-                  </ThemeIcon>
-                )}
-              </Group>
-            </Paper>
+              </CardContent>
+            </Card>
           ))}
-        </Stack>
+        </div>
       )}
 
       {error && (
-        <Alert color="red" title="오류">
-          {error}
+        <Alert variant="destructive">
+          <AlertTitle>오류</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
-    </Stack>
+    </div>
   );
 
+  // Step 3: 알림 설정
   const renderStep3 = () => (
-    <Stack gap="md">
-      <Text size="lg" fw={600} ta="center">
-        순위 변동 시 알림을 받으시겠어요?
-      </Text>
-      <Text size="sm" c="dimmed" ta="center">
-        순위가 변동되면 즉시 알림을 받을 수 있습니다
-      </Text>
+    <div className="space-y-4 md:space-y-5">
+      <div className="text-center space-y-2 mb-4 md:mb-5">
+        <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
+          순위 변동 시 알림을 받으시겠어요?
+        </h3>
+        <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
+          순위가 변동되면 즉시 알림을 받을 수 있습니다
+        </p>
+      </div>
 
-      <Paper p="md" radius="md" style={{ border: '1px solid #e0e7ff' }}>
-        <Group justify="space-between" mb="md">
-          <div>
-            <Text size="sm" fw={600}>알림 받기</Text>
-            <Text size="xs" c="dimmed">순위 변동 시 알림을 받습니다</Text>
+      <Card className="border-neutral-200 shadow-sm">
+        <CardContent className="p-4 md:p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <p className="text-sm md:text-base font-bold text-neutral-900 mb-1">알림 받기</p>
+              <p className="text-xs md:text-sm text-neutral-600">순위 변동 시 알림을 받습니다</p>
+            </div>
+            <Switch
+              checked={notificationEnabled}
+              onCheckedChange={(checked) => {
+                setNotificationEnabled(checked);
+                if (!checked) {
+                  setNotificationType('');
+                  setError('');
+                }
+              }}
+              className="ml-4"
+            />
           </div>
-          <Switch
-            size="lg"
-            color="brand"
-            checked={notificationEnabled}
-            onChange={(event) => {
-              const checked = event.currentTarget.checked;
-              setNotificationEnabled(checked);
-              if (!checked) {
-                setNotificationType('');
-                setError('');
-              }
-            }}
-          />
-        </Group>
 
-        {notificationEnabled && (
-          <Box pl="md" style={{ borderLeft: '2px solid #635bff' }}>
-            <Text size="sm" fw={500} mb="xs">알림 방법</Text>
-            <Stack gap="xs">
-              {[
-                { value: 'email' as const, label: '📧 이메일', desc: '이메일로 알림 받기' },
-                { value: 'sms' as const, label: '📱 SMS', desc: '문자 메시지로 알림 받기' },
-                { value: 'kakao' as const, label: '💬 카카오톡', desc: '카카오톡으로 알림 받기' },
-              ].map((option) => (
-                <Paper
-                  key={option.value}
-                  p="sm"
-                  radius="md"
-                  style={{
-                    cursor: 'pointer',
-                    border: notificationType === option.value 
-                      ? '2px solid #635bff' 
-                      : '1px solid #e8e8e8',
-                    background: notificationType === option.value
-                      ? 'rgba(99, 91, 255, 0.05)'
-                      : '#ffffff',
-                    transition: 'all 0.2s'
-                  }}
-                  onClick={() => setNotificationType(option.value)}
-                >
-                  <Group justify="space-between">
-                    <div>
-                      <Text fw={600} size="sm">{option.label}</Text>
-                      <Text size="xs" c="dimmed">{option.desc}</Text>
-                    </div>
-                    {notificationType === option.value && (
-                      <ThemeIcon size={24} radius="xl" color="brand" variant="light">
-                        <CheckCircle2 size={16} />
-                      </ThemeIcon>
-                    )}
-                  </Group>
-                </Paper>
-              ))}
-            </Stack>
-          </Box>
-        )}
-      </Paper>
+          {notificationEnabled && (
+            <div className="pl-4 border-l-2 border-primary-500 space-y-2">
+              <p className="text-sm font-bold text-neutral-900 mb-3">알림 방법</p>
+              <div className="space-y-2">
+                {[
+                  { value: 'email' as const, label: '📧 이메일', desc: '이메일로 알림 받기' },
+                  { value: 'sms' as const, label: '📱 SMS', desc: '문자 메시지로 알림 받기' },
+                  { value: 'kakao' as const, label: '💬 카카오톡', desc: '카카오톡으로 알림 받기' },
+                ].map((option) => (
+                  <Card
+                    key={option.value}
+                    className={`cursor-pointer transition-all duration-200 hover:shadow-card-hover ${
+                      notificationType === option.value
+                        ? 'border-primary-500 bg-primary-50 ring-2 ring-primary-500/20'
+                        : 'border-neutral-200 hover:border-primary-300'
+                    }`}
+                    onClick={() => setNotificationType(option.value)}
+                  >
+                    <CardContent className="p-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex-1">
+                          <p className="text-sm font-bold text-neutral-900 mb-0.5">{option.label}</p>
+                          <p className="text-xs text-neutral-600">{option.desc}</p>
+                        </div>
+                        {notificationType === option.value && (
+                          <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary-500 flex items-center justify-center">
+                            <CheckCircle2 className="w-4 h-4 text-white" />
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {error && (
-        <Alert color="red" title="오류">
-          {error}
+        <Alert variant="destructive">
+          <AlertTitle>오류</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
 
       {!notificationEnabled && (
-        <Alert color="gray" title="💡 알림 설정">
-          <Text size="xs">
+        <Alert variant="default" className="bg-neutral-50">
+          <AlertTitle>💡 알림 설정</AlertTitle>
+          <AlertDescription className="text-xs md:text-sm">
             알림을 받지 않아도 언제든지 대시보드에서 순위를 확인할 수 있습니다
-          </Text>
+          </AlertDescription>
         </Alert>
       )}
-    </Stack>
+    </div>
   );
 
+  // Step 4: 완료
   const renderStep4 = () => (
-    <Stack gap="xl" align="center">
-      <ThemeIcon size={80} radius="xl" color="brand" variant="light">
-        <Sparkles size={40} />
-      </ThemeIcon>
-      
-      <div style={{ textAlign: 'center' }}>
-        <Text size="xl" fw={700} mb="xs">
+    <div className="space-y-4 md:space-y-5">
+      <div className="text-center py-6 md:py-8">
+        <div className="w-16 h-16 md:w-20 md:h-20 bg-success-bg rounded-full flex items-center justify-center mx-auto mb-4">
+          <Sparkles className="w-8 h-8 md:w-10 md:h-10 text-success" />
+        </div>
+        <h3 className="text-xl md:text-2xl font-bold text-neutral-900 mb-2 leading-tight">
           알림 설정이 완료되었습니다!
-        </Text>
-        <Text size="sm" c="dimmed">
+        </h3>
+        <p className="text-sm text-neutral-600 leading-relaxed">
           순위 변동 시 선택하신 방법으로 알림을 받으실 수 있습니다
-        </Text>
+        </p>
       </div>
 
       {selectedTracker && (
-        <Paper p="xl" radius="md" style={{ border: '1px solid #e0e7ff', width: '100%' }}>
-          <Stack gap="md">
-            <Group gap="sm">
-              <ThemeIcon size={40} radius="md" variant="light" color="brand">
-                <TrendingUp size={20} />
-              </ThemeIcon>
+        <Card className="border-neutral-200 shadow-card">
+          <CardContent className="p-4 md:p-5 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-primary-100 flex items-center justify-center flex-shrink-0">
+                <TrendingUp className="w-5 h-5 text-primary-500" />
+              </div>
+              <div className="flex-1">
+                <p className="text-xs md:text-sm text-neutral-600 mb-0.5">추적 키워드</p>
+                <p className="text-base md:text-lg font-bold text-neutral-900">{selectedTracker.keyword}</p>
+              </div>
+            </div>
+
+            <div className="h-px bg-neutral-200" />
+
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <Text fw={600} size="sm" c="dimmed">추적 키워드</Text>
-                <Text fw={700} size="lg">{selectedTracker.keyword}</Text>
-              </div>
-            </Group>
-
-            <div style={{ height: 1, background: '#e0e7ff' }} />
-
-            <Group gap="md">
-              <div style={{ flex: 1 }}>
-                <Group gap="xs" mb={4}>
-                  <Clock size={16} color="#635bff" />
-                  <Text size="sm" fw={600}>수집 시간</Text>
-                </Group>
-                <Text size="sm" c="dimmed">
+                <div className="flex items-center gap-2 mb-1">
+                  <Clock className="w-4 h-4 text-primary-500" />
+                  <p className="text-xs md:text-sm font-bold text-neutral-900">수집 시간</p>
+                </div>
+                <p className="text-xs md:text-sm text-neutral-600">
                   {formatUpdateTimes(selectedTracker.update_times)}
-                </Text>
+                </p>
               </div>
 
-              <div style={{ flex: 1 }}>
-                <Group gap="xs" mb={4}>
-                  <Bell size={16} color="#635bff" />
-                  <Text size="sm" fw={600}>알림 설정</Text>
-                </Group>
-                <Text size="sm" c="dimmed">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <Bell className="w-4 h-4 text-primary-500" />
+                  <p className="text-xs md:text-sm font-bold text-neutral-900">알림 설정</p>
+                </div>
+                <p className="text-xs md:text-sm text-neutral-600">
                   {notificationEnabled 
                     ? `${notificationType === 'email' ? '이메일' : notificationType === 'sms' ? 'SMS' : '카카오톡'} 알림`
                     : '알림 꺼짐'
                   }
-                </Text>
+                </p>
               </div>
-            </Group>
-          </Stack>
-        </Paper>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
-      <Alert color="blue" title="💡 알림 설정 변경">
-        <Text size="sm">
+      <Alert variant="info" className="p-3 md:p-4">
+        <AlertTitle>💡 알림 설정 변경</AlertTitle>
+        <AlertDescription className="text-xs md:text-sm leading-relaxed">
           설정한 시간에 자동으로 순위를 수집합니다.<br />
           순위가 변동되면 선택하신 방법으로 알림을 받으실 수 있습니다.<br />
           언제든지 키워드 순위추적 페이지에서 알림 설정을 변경하실 수 있습니다.
-        </Text>
+        </AlertDescription>
       </Alert>
-    </Stack>
+    </div>
   );
 
-  const progress = (currentStep / 4) * 100;
+  const renderCurrentStep = () => {
+    switch (currentStep) {
+      case 1:
+        return renderStep1();
+      case 2:
+        return renderStep2();
+      case 3:
+        return renderStep3();
+      case 4:
+        return renderStep4();
+      default:
+        return null;
+    }
+  };
 
   return (
-    <Modal
-      opened={opened}
+    <OnboardingModal
+      isOpen={isOpen}
       onClose={handleClose}
-      size="xl"
-      centered
-      padding="xl"
-      radius="md"
-      title={
-        <div>
-          <Text size="xl" fw={700} style={{ 
-            background: 'linear-gradient(135deg, #635bff 0%, #9b87ff 100%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            backgroundClip: 'text'
-          }}>
-            순위추적 알림 설정하기
-          </Text>
-          <Text size="sm" c="dimmed" mt={4}>
-            {currentStep === 1 && '매장 선택'}
-            {currentStep === 2 && '키워드 선택'}
-            {currentStep === 3 && '알림 설정'}
-            {currentStep === 4 && '설정 완료'}
-          </Text>
-        </div>
+      title="순위추적 알림 설정하기"
+      currentStep={currentStep}
+      totalSteps={totalSteps}
+      onBack={handleBack}
+      onNext={handleNext}
+      nextButtonText={
+        loading ? '처리 중...' :
+        currentStep === 1 ? '다음' :
+        currentStep === 2 ? '다음' :
+        currentStep === 3 ? '알림 설정 완료' :
+        '확인'
       }
+      nextButtonDisabled={
+        loading || 
+        loadingStores || 
+        loadingTrackers ||
+        (currentStep === 1 && !selectedStore) ||
+        (currentStep === 2 && !selectedTracker)
+      }
+      showBackButton={currentStep > 1 && currentStep < 4 && !loadingTrackers && !loading}
     >
-      <Stack gap="lg">
-        {/* Progress Bar */}
-        <Progress 
-          value={progress} 
-          size="sm" 
-          radius="xl" 
-          color="brand"
-          style={{ 
-            background: '#f0f4ff'
-          }}
-        />
-
-        {/* Step Content */}
-        <div style={{ minHeight: 400 }}>
-          {currentStep === 1 && renderStep1()}
-          {currentStep === 2 && renderStep2()}
-          {currentStep === 3 && renderStep3()}
-          {currentStep === 4 && renderStep4()}
-        </div>
-
-        {/* Navigation Buttons */}
-        <Group justify="space-between">
-          {currentStep > 1 && currentStep < 4 ? (
-            <Button 
-              variant="light" 
-              color="gray"
-              onClick={handleBack}
-              disabled={loading || loadingTrackers}
-            >
-              이전
-            </Button>
-          ) : (
-            <div />
-          )}
-          
-          <Button
-            variant="gradient"
-            gradient={{ from: 'brand', to: 'brand.7', deg: 135 }}
-            onClick={handleNext}
-            disabled={
-              loading || 
-              loadingStores || 
-              loadingTrackers ||
-              (currentStep === 1 && !selectedStore) ||
-              (currentStep === 2 && !selectedTracker)
-            }
-            rightSection={
-              loading ? (
-                <Loader size={16} color="white" />
-              ) : currentStep < 4 ? (
-                <ChevronRight size={16} />
-              ) : null
-            }
-            style={{ minWidth: 140 }}
-          >
-            {loading 
-              ? '처리 중...' 
-              : currentStep === 1
-                ? '다음'
-                : currentStep === 2
-                  ? '다음'
-                  : currentStep === 3
-                    ? '알림 설정 완료'
-                    : '네 알겠습니다'}
-          </Button>
-        </Group>
-      </Stack>
-    </Modal>
+      {renderCurrentStep()}
+    </OnboardingModal>
   );
 }

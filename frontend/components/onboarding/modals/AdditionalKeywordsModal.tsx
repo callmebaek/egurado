@@ -1,162 +1,131 @@
-"use client"
+'use client';
 
-import { useState } from 'react'
-import {
-  Modal,
-  Stack,
-  Text,
-  Button,
-  TextInput,
-  Paper,
-  Group,
-  Badge,
-  Loader,
-  Progress,
-  ThemeIcon,
-  Center,
-  Alert,
-  Grid,
-  Divider,
-} from '@mantine/core'
+import { useState } from 'react';
 import {
   Lightbulb,
   MapPin,
   Package,
   Building2,
   Sparkles,
-  ChevronRight,
-  Plus,
-  X,
-  CheckCircle2,
   Search,
   TrendingUp,
   Monitor,
   Smartphone,
-  ChevronLeft,
-} from 'lucide-react'
-import { useAuth } from '@/lib/auth-context'
-import { api } from '@/lib/config'
-import { useToast } from '@/components/ui/use-toast'
-import { useRouter } from 'next/navigation'
+  Loader2,
+  CheckCircle2,
+} from 'lucide-react';
+import { useAuth } from '@/lib/auth-context';
+import { api } from '@/lib/config';
+import { useToast } from '@/components/ui/use-toast';
+import { useRouter } from 'next/navigation';
+import OnboardingModal from './OnboardingModal';
+import KeywordInput from './KeywordInput';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 
 interface AdditionalKeywordsModalProps {
-  isOpen: boolean
-  onClose: () => void
-  onComplete?: () => void
+  isOpen: boolean;
+  onClose: () => void;
+  onComplete?: () => void;
 }
 
 interface SearchVolumeData {
-  id: string
-  keyword: string
-  monthly_pc_qc_cnt: number | string
-  monthly_mobile_qc_cnt: number | string
-  monthly_ave_pc_clk_cnt: number
-  monthly_ave_mobile_clk_cnt: number
-  monthly_ave_pc_ctr: number
-  monthly_ave_mobile_ctr: number
-  comp_idx: string
-  created_at: string
+  id: string;
+  keyword: string;
+  monthly_pc_qc_cnt: number | string;
+  monthly_mobile_qc_cnt: number | string;
+  monthly_ave_pc_clk_cnt: number;
+  monthly_ave_mobile_clk_cnt: number;
+  monthly_ave_pc_ctr: number;
+  monthly_ave_mobile_ctr: number;
+  comp_idx: string;
+  created_at: string;
 }
 
 export default function AdditionalKeywordsModal({ isOpen, onClose, onComplete }: AdditionalKeywordsModalProps) {
-  const { user, getToken } = useAuth()
-  const { toast } = useToast()
-  const router = useRouter()
+  const { user, getToken } = useAuth();
+  const { toast } = useToast();
+  const router = useRouter();
   
-  const [currentStep, setCurrentStep] = useState(1)
-  const totalSteps = 8
+  const [currentStep, setCurrentStep] = useState(1);
+  const totalSteps = 8;
   
   // 입력 필드
-  const [locationKeywords, setLocationKeywords] = useState<string[]>([])
-  const [productKeywords, setProductKeywords] = useState<string[]>([])
-  const [industryKeywords, setIndustryKeywords] = useState<string[]>([])
-  
-  // 임시 입력값
-  const [tempInput, setTempInput] = useState('')
+  const [locationKeywords, setLocationKeywords] = useState<string[]>([]);
+  const [productKeywords, setProductKeywords] = useState<string[]>([]);
+  const [industryKeywords, setIndustryKeywords] = useState<string[]>([]);
   
   // 조합 결과
-  const [combinations, setCombinations] = useState<string[]>([])
-  const [selectedKeywords, setSelectedKeywords] = useState<Set<string>>(new Set())
+  const [combinations, setCombinations] = useState<string[]>([]);
+  const [selectedKeywords, setSelectedKeywords] = useState<Set<string>>(new Set());
   
   // 검색 결과
-  const [searchResults, setSearchResults] = useState<SearchVolumeData[]>([])
-  const [isSearching, setIsSearching] = useState(false)
-  const [error, setError] = useState('')
+  const [searchResults, setSearchResults] = useState<SearchVolumeData[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [error, setError] = useState('');
 
   // 모달 닫기 및 초기화
   const handleClose = () => {
-    setCurrentStep(1)
-    setLocationKeywords([])
-    setProductKeywords([])
-    setIndustryKeywords([])
-    setTempInput('')
-    setCombinations([])
-    setSelectedKeywords(new Set())
-    setSearchResults([])
-    setIsSearching(false)
-    setError('')
-    onClose()
-  }
-
-  // 키워드 추가
-  const addKeyword = (array: string[], setter: React.Dispatch<React.SetStateAction<string[]>>) => {
-    if (tempInput.trim()) {
-      setter([...array, tempInput.trim()])
-      setTempInput('')
-    }
-  }
-
-  // 키워드 제거
-  const removeKeyword = (index: number, array: string[], setter: React.Dispatch<React.SetStateAction<string[]>>) => {
-    setter(array.filter((_, i) => i !== index))
-  }
+    setCurrentStep(1);
+    setLocationKeywords([]);
+    setProductKeywords([]);
+    setIndustryKeywords([]);
+    setCombinations([]);
+    setSelectedKeywords(new Set());
+    setSearchResults([]);
+    setIsSearching(false);
+    setError('');
+    onClose();
+  };
 
   // 조합 생성
   const generateCombinations = () => {
-    const locations = locationKeywords
-    const products = productKeywords
-    const industries = industryKeywords
+    const locations = locationKeywords;
+    const products = productKeywords;
+    const industries = industryKeywords;
 
     if (locations.length === 0 || products.length === 0 || industries.length === 0) {
-      setError('모든 카테고리에 최소 1개 이상의 키워드를 입력해주세요')
-      return []
+      setError('모든 카테고리에 최소 1개 이상의 키워드를 입력해주세요');
+      return [];
     }
 
-    const newCombinations: string[] = []
+    const newCombinations: string[] = [];
 
     // A + B (지역 + 상품)
     locations.forEach(loc => {
       products.forEach(prod => {
-        newCombinations.push(`${loc} ${prod}`)
-      })
-    })
+        newCombinations.push(`${loc} ${prod}`);
+      });
+    });
 
     // A + B + C (지역 + 상품 + 업종)
     locations.forEach(loc => {
       products.forEach(prod => {
         industries.forEach(ind => {
-          newCombinations.push(`${loc} ${prod} ${ind}`)
-        })
-      })
-    })
+          newCombinations.push(`${loc} ${prod} ${ind}`);
+        });
+      });
+    });
 
     // A + C (지역 + 업종)
     locations.forEach(loc => {
       industries.forEach(ind => {
-        newCombinations.push(`${loc} ${ind}`)
-      })
-    })
+        newCombinations.push(`${loc} ${ind}`);
+      });
+    });
 
     // B + C (상품 + 업종)
     products.forEach(prod => {
       industries.forEach(ind => {
-        newCombinations.push(`${prod} ${ind}`)
-      })
-    })
+        newCombinations.push(`${prod} ${ind}`);
+      });
+    });
 
     // 중복 제거
-    return Array.from(new Set(newCombinations))
-  }
+    return Array.from(new Set(newCombinations));
+  };
 
   // 키워드 검색
   const handleSearch = async () => {
@@ -165,35 +134,35 @@ export default function AdditionalKeywordsModal({ isOpen, onClose, onComplete }:
         title: "오류",
         description: "사용자 정보를 불러올 수 없습니다.",
         variant: "destructive",
-      })
-      return
+      });
+      return;
     }
 
-    const keywordsToSearch = Array.from(selectedKeywords)
+    const keywordsToSearch = Array.from(selectedKeywords);
     
     if (keywordsToSearch.length === 0) {
-      setError('최소 1개 이상의 키워드를 선택해주세요')
-      return
+      setError('최소 1개 이상의 키워드를 선택해주세요');
+      return;
     }
 
     if (keywordsToSearch.length > 5) {
-      setError('한 번에 최대 5개의 키워드만 검색할 수 있습니다')
-      return
+      setError('한 번에 최대 5개의 키워드만 검색할 수 있습니다');
+      return;
     }
 
-    setIsSearching(true)
-    setError('')
+    setIsSearching(true);
+    setError('');
     
     try {
-      const token = await getToken()
+      const token = await getToken();
       if (!token) {
         toast({
           title: "인증 오류",
           description: "로그인이 필요합니다.",
           variant: "destructive",
-        })
-        setIsSearching(false)
-        return
+        });
+        setIsSearching(false);
+        return;
       }
 
       const response = await fetch(
@@ -208,19 +177,19 @@ export default function AdditionalKeywordsModal({ isOpen, onClose, onComplete }:
             keywords: keywordsToSearch,
           }),
         }
-      )
+      );
 
-      if (!response.ok) throw new Error("검색 실패")
+      if (!response.ok) throw new Error("검색 실패");
 
-      const result = await response.json()
+      const result = await response.json();
       
       // API 응답에서 키워드 데이터 추출 및 변환
-      const keywordList = result.data?.keywordList || []
-      const displayResults: SearchVolumeData[] = []
+      const keywordList = result.data?.keywordList || [];
+      const displayResults: SearchVolumeData[] = [];
       
       // saved_history가 있으면 우선 사용
       if (result.saved_history && result.saved_history.length > 0) {
-        displayResults.push(...result.saved_history)
+        displayResults.push(...result.saved_history);
       } 
       // saved_history가 없어도 keywordList가 있으면 임시로 표시
       else if (keywordList.length > 0) {
@@ -236,676 +205,500 @@ export default function AdditionalKeywordsModal({ isOpen, onClose, onComplete }:
             monthly_ave_mobile_ctr: item.monthlyAveMobileCtr || 0,
             comp_idx: item.compIdx || '-',
             created_at: new Date().toISOString(),
-          })
-        })
+          });
+        });
       }
       
-      setSearchResults(displayResults)
-      setCurrentStep(8)
+      setSearchResults(displayResults);
+      setCurrentStep(8);
       
     } catch (err) {
-      console.error('검색 오류:', err)
-      setError('검색 중 오류가 발생했습니다. 다시 시도해주세요.')
+      console.error('검색 오류:', err);
+      setError('검색 중 오류가 발생했습니다. 다시 시도해주세요.');
     } finally {
-      setIsSearching(false)
+      setIsSearching(false);
     }
-  }
+  };
 
   const handleNext = () => {
-    setError('')
+    setError('');
     
     // Step 1 → 2
     if (currentStep === 1) {
-      setCurrentStep(2)
-      return
+      setCurrentStep(2);
+      return;
     }
     
     // Step 2: 지역 키워드
     if (currentStep === 2) {
       if (locationKeywords.length === 0) {
-        setError('최소 1개 이상의 지역 키워드를 추가해주세요')
-        return
+        setError('최소 1개 이상의 지역 키워드를 추가해주세요');
+        return;
       }
-      setCurrentStep(3)
-      return
+      setCurrentStep(3);
+      return;
     }
     
     // Step 3: 상품 키워드
     if (currentStep === 3) {
       if (productKeywords.length === 0) {
-        setError('최소 1개 이상의 상품 키워드를 추가해주세요')
-        return
+        setError('최소 1개 이상의 상품 키워드를 추가해주세요');
+        return;
       }
-      setCurrentStep(4)
-      return
+      setCurrentStep(4);
+      return;
     }
     
     // Step 4: 업종 키워드
     if (currentStep === 4) {
       if (industryKeywords.length === 0) {
-        setError('최소 1개 이상의 업종 키워드를 추가해주세요')
-        return
+        setError('최소 1개 이상의 업종 키워드를 추가해주세요');
+        return;
       }
       // 조합 생성
-      const generated = generateCombinations()
-      if (generated.length === 0) return
-      setCombinations(generated)
-      setCurrentStep(5)
-      return
+      const generated = generateCombinations();
+      if (generated.length === 0) return;
+      setCombinations(generated);
+      setCurrentStep(5);
+      return;
     }
     
     // Step 5: 조합 결과 확인 → 선택
     if (currentStep === 5) {
-      setCurrentStep(6)
-      return
+      setCurrentStep(6);
+      return;
     }
     
     // Step 6: 키워드 선택 → 검색
     if (currentStep === 6) {
       if (selectedKeywords.size === 0) {
-        setError('최소 1개 이상의 키워드를 선택해주세요')
-        return
+        setError('최소 1개 이상의 키워드를 선택해주세요');
+        return;
       }
-      setCurrentStep(7)
-      handleSearch()
-      return
+      setCurrentStep(7);
+      handleSearch();
+      return;
     }
-  }
+    
+    // Step 8: 완료 → 검색 이력 페이지로 이동
+    if (currentStep === 8) {
+      if (onComplete) onComplete();
+      handleClose();
+      router.push('/dashboard/naver/keyword-search-volume');
+      return;
+    }
+  };
 
   const handleBack = () => {
-    setError('')
-    if (currentStep > 1) {
-      setCurrentStep(currentStep - 1)
+    setError('');
+    if (currentStep > 1 && currentStep !== 7) {
+      setCurrentStep(currentStep - 1);
     }
-  }
+  };
 
   const toggleKeywordSelection = (keyword: string) => {
-    const newSelected = new Set(selectedKeywords)
+    const newSelected = new Set(selectedKeywords);
     if (newSelected.has(keyword)) {
-      newSelected.delete(keyword)
+      newSelected.delete(keyword);
     } else {
       if (newSelected.size >= 5) {
-        setError('최대 5개까지만 선택할 수 있습니다')
-        return
+        setError('최대 5개까지만 선택할 수 있습니다');
+        return;
       }
-      newSelected.add(keyword)
+      newSelected.add(keyword);
     }
-    setSelectedKeywords(newSelected)
-    setError('')
-  }
+    setSelectedKeywords(newSelected);
+    setError('');
+  };
 
   // Step 1: 환영 메시지
   const renderStep1 = () => (
-    <Stack gap="lg" py="xs">
-      <Center>
-        <ThemeIcon size={90} radius={90} variant="light" color="yellow" style={{ background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)' }}>
-          <Lightbulb size={45} />
-        </ThemeIcon>
-      </Center>
-      
-      <Stack gap="xs" ta="center" px="sm">
-        <Text size="24px" fw={700} style={{ lineHeight: 1.3 }}>
+    <div className="space-y-4 md:space-y-5">
+      <div className="text-center py-4">
+        <div className="w-20 h-20 bg-gradient-to-br from-yellow-100 to-yellow-200 rounded-full flex items-center justify-center mx-auto mb-4">
+          <Lightbulb className="w-10 h-10 text-yellow-600" />
+        </div>
+        <h3 className="text-xl md:text-2xl font-bold text-neutral-900 mb-3 leading-tight">
           숨은 알짜 키워드를<br />찾아보세요!
-        </Text>
-        <Text size="sm" c="dimmed" style={{ lineHeight: 1.5 }}>
+        </h3>
+        <p className="text-sm text-neutral-600 leading-relaxed px-4">
           우리 고객들은 항상 대형키워드로만 움직이지 않습니다.<br />
           숨은 알짜키워드를 찾기 위해서 다양한 키워드를 고민하고<br />
           유의미한 검색량을 찾아야 합니다.
-        </Text>
-      </Stack>
+        </p>
+      </div>
 
-      <Stack gap="sm">
-        <Paper p="md" radius="md" style={{ background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)', border: 'none' }}>
-          <Group gap="sm" wrap="nowrap">
-            <ThemeIcon size={40} radius="md" variant="light" color="blue">
-              <Sparkles size={20} />
-            </ThemeIcon>
-            <div>
-              <Text fw={600} size="sm">키워드 조합으로 기회 발굴</Text>
-              <Text size="xs" c="dimmed">지역, 상품, 업종을 조합하여 숨은 키워드를 찾습니다</Text>
+      <div className="space-y-3">
+        <Card className="bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-200 shadow-sm">
+          <CardContent className="p-4 flex gap-3">
+            <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+              <Sparkles className="w-5 h-5 text-blue-600" />
             </div>
-          </Group>
-        </Paper>
+            <div>
+              <p className="text-sm font-bold text-neutral-900 mb-0.5">키워드 조합으로 기회 발굴</p>
+              <p className="text-xs text-neutral-600">지역, 상품, 업종을 조합하여 숨은 키워드를 찾습니다</p>
+            </div>
+          </CardContent>
+        </Card>
         
-        <Paper p="md" radius="md" style={{ background: 'linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)', border: 'none' }}>
-          <Group gap="sm" wrap="nowrap">
-            <ThemeIcon size={40} radius="md" variant="light" color="grape">
-              <Search size={20} />
-            </ThemeIcon>
-            <div>
-              <Text fw={600} size="sm">실시간 검색량 확인</Text>
-              <Text size="xs" c="dimmed">네이버 검색광고 API로 정확한 검색량을 조회합니다</Text>
+        <Card className="bg-gradient-to-br from-purple-50 to-indigo-50 border-purple-200 shadow-sm">
+          <CardContent className="p-4 flex gap-3">
+            <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center flex-shrink-0">
+              <Search className="w-5 h-5 text-purple-600" />
             </div>
-          </Group>
-        </Paper>
+            <div>
+              <p className="text-sm font-bold text-neutral-900 mb-0.5">실시간 검색량 확인</p>
+              <p className="text-xs text-neutral-600">네이버 검색광고 API로 정확한 검색량을 조회합니다</p>
+            </div>
+          </CardContent>
+        </Card>
         
-        <Paper p="md" radius="md" style={{ background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)', border: 'none' }}>
-          <Group gap="sm" wrap="nowrap">
-            <ThemeIcon size={40} radius="md" variant="light" color="green">
-              <TrendingUp size={20} />
-            </ThemeIcon>
-            <div>
-              <Text fw={600} size="sm">검색 이력 자동 저장</Text>
-              <Text size="xs" c="dimmed">조회한 키워드는 검색 이력에 자동으로 저장됩니다</Text>
+        <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200 shadow-sm">
+          <CardContent className="p-4 flex gap-3">
+            <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
+              <TrendingUp className="w-5 h-5 text-green-600" />
             </div>
-          </Group>
-        </Paper>
-      </Stack>
-    </Stack>
-  )
+            <div>
+              <p className="text-sm font-bold text-neutral-900 mb-0.5">검색 이력 자동 저장</p>
+              <p className="text-xs text-neutral-600">조회한 키워드는 검색 이력에 자동으로 저장됩니다</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
 
   // Step 2: 지역 키워드 입력
   const renderStep2 = () => (
-    <Stack gap="xl" py="md">
-      <Stack gap="xs" ta="center">
-        <Group justify="center" gap="sm">
-          <ThemeIcon size={36} radius="xl" variant="light" color="blue">
-            <MapPin size={20} />
-          </ThemeIcon>
-        </Group>
-        <Text size="24px" fw={700}>지역 키워드를 추가해주세요</Text>
-        <Text size="sm" c="dimmed">
-          고객들이 검색할 것 같은 지역명을 입력해주세요
-        </Text>
-        <Text size="xs" c="dimmed" fs="italic">
-          예: 강남, 강남역, 서초, 역삼동
-        </Text>
-      </Stack>
+    <div className="space-y-4 md:space-y-5">
+      <div className="text-center space-y-2 mb-4 md:mb-5">
+        <div className="w-12 h-12 rounded-full bg-primary-100 flex items-center justify-center mx-auto mb-2">
+          <MapPin className="w-6 h-6 text-primary-500" />
+        </div>
+        <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
+          지역 키워드를 입력해주세요
+        </h3>
+        <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
+          매장이 위치한 지역이나 타겟하는 지역을 입력하세요
+        </p>
+      </div>
 
-      <Stack gap="sm">
-        <Group grow>
-          <TextInput
-            placeholder="지역명 입력 후 추가 버튼 클릭"
-            value={tempInput}
-            onChange={(e) => setTempInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault()
-                addKeyword(locationKeywords, setLocationKeywords)
-              }
-            }}
-            size="md"
-            radius="md"
-          />
-          <Button
-            leftSection={<Plus size={18} />}
-            onClick={() => addKeyword(locationKeywords, setLocationKeywords)}
-            disabled={!tempInput.trim()}
-            size="md"
-            radius="md"
-            style={{ minWidth: 100 }}
-          >
-            추가
-          </Button>
-        </Group>
+      <KeywordInput
+        keywords={locationKeywords}
+        onChange={setLocationKeywords}
+        placeholder="예: 강남, 홍대, 명동"
+        label="지역 키워드"
+        icon={<MapPin className="w-4 h-4" />}
+      />
 
-        {locationKeywords.length > 0 && (
-          <Paper p="md" radius="md" withBorder>
-            <Text size="sm" fw={600} mb="xs" c="dimmed">추가된 키워드 ({locationKeywords.length}개)</Text>
-            <Group gap="xs">
-              {locationKeywords.map((keyword, index) => (
-                <Badge
-                  key={index}
-                  size="lg"
-                  variant="light"
-                  color="blue"
-                  rightSection={
-                    <X
-                      size={14}
-                      style={{ cursor: 'pointer' }}
-                      onClick={() => removeKeyword(index, locationKeywords, setLocationKeywords)}
-                    />
-                  }
-                  style={{ paddingRight: 4 }}
-                >
-                  {keyword}
-                </Badge>
-              ))}
-            </Group>
-          </Paper>
-        )}
-      </Stack>
+      <Alert variant="info">
+        <AlertTitle>💡 입력 팁</AlertTitle>
+        <AlertDescription className="text-xs md:text-sm">
+          동 단위보다는 큰 지역명이 좋아요 (예: 역삼동 → 강남)
+        </AlertDescription>
+      </Alert>
 
       {error && (
-        <Alert color="red" radius="md">
-          {error}
+        <Alert variant="destructive">
+          <AlertTitle>오류</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
-    </Stack>
-  )
+    </div>
+  );
 
   // Step 3: 상품 키워드 입력
   const renderStep3 = () => (
-    <Stack gap="xl" py="md">
-      <Stack gap="xs" ta="center">
-        <Group justify="center" gap="sm">
-          <ThemeIcon size={36} radius="xl" variant="light" color="grape">
-            <Package size={20} />
-          </ThemeIcon>
-        </Group>
-        <Text size="24px" fw={700}>상품/서비스 키워드를 추가해주세요</Text>
-        <Text size="sm" c="dimmed">
-          제공하는 상품이나 서비스를 입력해주세요
-        </Text>
-        <Text size="xs" c="dimmed" fs="italic">
-          예: 커피, 아메리카노, 케이크, 브런치
-        </Text>
-      </Stack>
+    <div className="space-y-4 md:space-y-5">
+      <div className="text-center space-y-2 mb-4 md:mb-5">
+        <div className="w-12 h-12 rounded-full bg-primary-100 flex items-center justify-center mx-auto mb-2">
+          <Package className="w-6 h-6 text-primary-500" />
+        </div>
+        <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
+          상품/서비스 키워드를 입력해주세요
+        </h3>
+        <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
+          판매하는 상품이나 제공하는 서비스를 입력하세요
+        </p>
+      </div>
 
-      <Stack gap="sm">
-        <Group grow>
-          <TextInput
-            placeholder="상품/서비스 입력 후 추가 버튼 클릭"
-            value={tempInput}
-            onChange={(e) => setTempInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault()
-                addKeyword(productKeywords, setProductKeywords)
-              }
-            }}
-            size="md"
-            radius="md"
-          />
-          <Button
-            leftSection={<Plus size={18} />}
-            onClick={() => addKeyword(productKeywords, setProductKeywords)}
-            disabled={!tempInput.trim()}
-            size="md"
-            radius="md"
-            style={{ minWidth: 100 }}
-          >
-            추가
-          </Button>
-        </Group>
+      <KeywordInput
+        keywords={productKeywords}
+        onChange={setProductKeywords}
+        placeholder="예: 커피, 파스타, 디저트"
+        label="상품/서비스 키워드"
+        icon={<Package className="w-4 h-4" />}
+      />
 
-        {productKeywords.length > 0 && (
-          <Paper p="md" radius="md" withBorder>
-            <Text size="sm" fw={600} mb="xs" c="dimmed">추가된 키워드 ({productKeywords.length}개)</Text>
-            <Group gap="xs">
-              {productKeywords.map((keyword, index) => (
-                <Badge
-                  key={index}
-                  size="lg"
-                  variant="light"
-                  color="grape"
-                  rightSection={
-                    <X
-                      size={14}
-                      style={{ cursor: 'pointer' }}
-                      onClick={() => removeKeyword(index, productKeywords, setProductKeywords)}
-                    />
-                  }
-                  style={{ paddingRight: 4 }}
-                >
-                  {keyword}
-                </Badge>
-              ))}
-            </Group>
-          </Paper>
-        )}
-      </Stack>
+      <Alert variant="info">
+        <AlertTitle>💡 입력 팁</AlertTitle>
+        <AlertDescription className="text-xs md:text-sm">
+          구체적인 상품명이 좋아요 (예: 음식 → 파스타)
+        </AlertDescription>
+      </Alert>
 
       {error && (
-        <Alert color="red" radius="md">
-          {error}
+        <Alert variant="destructive">
+          <AlertTitle>오류</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
-    </Stack>
-  )
+    </div>
+  );
 
   // Step 4: 업종 키워드 입력
   const renderStep4 = () => (
-    <Stack gap="xl" py="md">
-      <Stack gap="xs" ta="center">
-        <Group justify="center" gap="sm">
-          <ThemeIcon size={36} radius="xl" variant="light" color="green">
-            <Building2 size={20} />
-          </ThemeIcon>
-        </Group>
-        <Text size="24px" fw={700}>업종 키워드를 추가해주세요</Text>
-        <Text size="sm" c="dimmed">
-          업종이나 카테고리를 입력해주세요
-        </Text>
-        <Text size="xs" c="dimmed" fs="italic">
-          예: 카페, 맛집, 디저트카페, 브런치카페
-        </Text>
-      </Stack>
+    <div className="space-y-4 md:space-y-5">
+      <div className="text-center space-y-2 mb-4 md:mb-5">
+        <div className="w-12 h-12 rounded-full bg-primary-100 flex items-center justify-center mx-auto mb-2">
+          <Building2 className="w-6 h-6 text-primary-500" />
+        </div>
+        <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
+          업종 키워드를 입력해주세요
+        </h3>
+        <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
+          매장의 업종이나 카테고리를 입력하세요
+        </p>
+      </div>
 
-      <Stack gap="sm">
-        <Group grow>
-          <TextInput
-            placeholder="업종 입력 후 추가 버튼 클릭"
-            value={tempInput}
-            onChange={(e) => setTempInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault()
-                addKeyword(industryKeywords, setIndustryKeywords)
-              }
-            }}
-            size="md"
-            radius="md"
-          />
-          <Button
-            leftSection={<Plus size={18} />}
-            onClick={() => addKeyword(industryKeywords, setIndustryKeywords)}
-            disabled={!tempInput.trim()}
-            size="md"
-            radius="md"
-            style={{ minWidth: 100 }}
-          >
-            추가
-          </Button>
-        </Group>
+      <KeywordInput
+        keywords={industryKeywords}
+        onChange={setIndustryKeywords}
+        placeholder="예: 맛집, 카페, 레스토랑"
+        label="업종 키워드"
+        icon={<Building2 className="w-4 h-4" />}
+      />
 
-        {industryKeywords.length > 0 && (
-          <Paper p="md" radius="md" withBorder>
-            <Text size="sm" fw={600} mb="xs" c="dimmed">추가된 키워드 ({industryKeywords.length}개)</Text>
-            <Group gap="xs">
-              {industryKeywords.map((keyword, index) => (
-                <Badge
-                  key={index}
-                  size="lg"
-                  variant="light"
-                  color="green"
-                  rightSection={
-                    <X
-                      size={14}
-                      style={{ cursor: 'pointer' }}
-                      onClick={() => removeKeyword(index, industryKeywords, setIndustryKeywords)}
-                    />
-                  }
-                  style={{ paddingRight: 4 }}
-                >
-                  {keyword}
-                </Badge>
-              ))}
-            </Group>
-          </Paper>
-        )}
-      </Stack>
+      <Alert variant="info">
+        <AlertTitle>💡 입력 팁</AlertTitle>
+        <AlertDescription className="text-xs md:text-sm">
+          고객이 검색할 만한 업종명을 입력하세요
+        </AlertDescription>
+      </Alert>
 
       {error && (
-        <Alert color="red" radius="md">
-          {error}
+        <Alert variant="destructive">
+          <AlertTitle>오류</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
-    </Stack>
-  )
+    </div>
+  );
 
-  // Step 5: 조합 결과 미리보기
+  // Step 5: 조합 결과
   const renderStep5 = () => (
-    <Stack gap="xl" py="md">
-      <Center>
-        <ThemeIcon size={80} radius={80} variant="light" color="yellow" style={{ background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)' }}>
-          <Sparkles size={40} />
-        </ThemeIcon>
-      </Center>
+    <div className="space-y-4 md:space-y-5">
+      <div className="text-center space-y-2 mb-4 md:mb-5">
+        <div className="w-12 h-12 rounded-full bg-success-bg flex items-center justify-center mx-auto mb-2">
+          <CheckCircle2 className="w-6 h-6 text-success" />
+        </div>
+        <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
+          총 {combinations.length}개의<br />키워드 조합이 생성되었어요!
+        </h3>
+        <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
+          입력하신 키워드로 다양한 조합을 만들었습니다
+        </p>
+      </div>
 
-      <Stack gap="xs" ta="center">
-        <Text size="24px" fw={700}>
-          키워드 조합이 완성되었습니다!
-        </Text>
-        <Text size="sm" c="dimmed">
-          총 {combinations.length}개의 키워드 조합이 생성되었습니다
-        </Text>
-      </Stack>
-
-      <Paper p="xl" radius="md" style={{ background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)', border: 'none' }}>
-        <Stack gap="md">
-          <Group justify="center" gap="xs">
-            <Badge size="lg" variant="filled" color="blue">지역: {locationKeywords.length}개</Badge>
-            <Badge size="lg" variant="filled" color="grape">상품: {productKeywords.length}개</Badge>
-            <Badge size="lg" variant="filled" color="green">업종: {industryKeywords.length}개</Badge>
-          </Group>
-          
-          <Divider />
-          
-          <div>
-            <Text size="sm" fw={600} mb="xs" ta="center">조합 예시 (일부)</Text>
-            <Stack gap="xs">
-              {combinations.slice(0, 8).map((combo, index) => (
-                <Paper key={index} p="sm" withBorder style={{ textAlign: 'center' }}>
-                  <Text size="sm">{combo}</Text>
-                </Paper>
-              ))}
-              {combinations.length > 8 && (
-                <Text size="xs" c="dimmed" ta="center">
-                  외 {combinations.length - 8}개...
-                </Text>
-              )}
-            </Stack>
+      <Card className="bg-neutral-50 border-neutral-200 shadow-sm">
+        <CardContent className="p-4 md:p-5">
+          <p className="text-sm font-bold text-neutral-900 mb-3">생성된 조합 (일부)</p>
+          <div className="flex flex-wrap gap-2 max-h-[200px] overflow-y-auto">
+            {combinations.slice(0, 20).map((combo, index) => (
+              <Badge key={index} variant="secondary" className="text-xs">
+                {combo}
+              </Badge>
+            ))}
           </div>
-        </Stack>
-      </Paper>
+          {combinations.length > 20 && (
+            <p className="text-xs text-neutral-600 mt-2">
+              ... 외 {combinations.length - 20}개
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
-      <Alert color="blue" radius="md" title="다음 단계">
-        검색량을 조회할 키워드를 선택해주세요 (최대 5개)
+      <Alert variant="success">
+        <AlertTitle>✨ 다음 단계</AlertTitle>
+        <AlertDescription className="text-xs md:text-sm">
+          이 중에서 검색량을 확인할 키워드를 선택할 수 있습니다!
+        </AlertDescription>
       </Alert>
-    </Stack>
-  )
+    </div>
+  );
 
   // Step 6: 키워드 선택
   const renderStep6 = () => (
-    <Stack gap="xl" py="md">
-      <Stack gap="xs" ta="center">
-        <Text size="24px" fw={700}>
-          검색량을 조회할 키워드를<br />선택해주세요
-        </Text>
-        <Text size="sm" c="dimmed">
-          최대 5개까지 선택 가능합니다
-        </Text>
-        <Badge size="lg" color="blue">
-          선택: {selectedKeywords.size} / 5개
-        </Badge>
-      </Stack>
-
-      <div style={{ maxHeight: 400, overflowY: 'auto' }}>
-        <Stack gap="xs">
-          {combinations.map((combo, index) => (
-            <Paper
-              key={index}
-              p="md"
-              radius="md"
-              withBorder
-              style={{
-                cursor: 'pointer',
-                borderColor: selectedKeywords.has(combo) ? '#228be6' : '#dee2e6',
-                background: selectedKeywords.has(combo) ? 'linear-gradient(135deg, #e7f5ff 0%, #d0ebff 100%)' : 'white',
-                transition: 'all 0.2s'
-              }}
-              onClick={() => toggleKeywordSelection(combo)}
-            >
-              <Group justify="space-between">
-                <Text size="sm">{combo}</Text>
-                {selectedKeywords.has(combo) && (
-                  <ThemeIcon size="sm" color="blue" variant="light" radius="xl">
-                    <CheckCircle2 size={16} />
-                  </ThemeIcon>
-                )}
-              </Group>
-            </Paper>
-          ))}
-        </Stack>
+    <div className="space-y-4 md:space-y-5">
+      <div className="text-center space-y-2 mb-4 md:mb-5">
+        <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
+          검색량을 확인할 키워드를<br />선택해주세요
+        </h3>
+        <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
+          최대 5개까지 선택 가능 (현재 {selectedKeywords.size}개 선택)
+        </p>
       </div>
 
+      <Card className="border-neutral-200 shadow-sm">
+        <CardContent className="p-4 md:p-5">
+          <div className="flex flex-wrap gap-2 max-h-[300px] overflow-y-auto">
+            {combinations.map((combo, index) => {
+              const isSelected = selectedKeywords.has(combo);
+              return (
+                <Badge
+                  key={index}
+                  variant={isSelected ? 'default' : 'outline'}
+                  className={`text-xs cursor-pointer transition-colors ${
+                    isSelected ? 'bg-primary-500 text-white' : 'hover:bg-primary-100'
+                  }`}
+                  onClick={() => toggleKeywordSelection(combo)}
+                >
+                  {combo}
+                </Badge>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
       {error && (
-        <Alert color="red" radius="md">
-          {error}
+        <Alert variant="destructive">
+          <AlertTitle>오류</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
-    </Stack>
-  )
+
+      <Alert variant="info">
+        <AlertTitle>💡 선택 팁</AlertTitle>
+        <AlertDescription className="text-xs md:text-sm">
+          관심있는 키워드를 클릭하여 선택하세요
+        </AlertDescription>
+      </Alert>
+    </div>
+  );
 
   // Step 7: 검색 중
   const renderStep7 = () => (
-    <Center style={{ minHeight: 300 }}>
-      <Stack gap="xl" align="center">
-        <Loader size={80} />
-        <Stack gap="xs" align="center">
-          <Text size="24px" fw={700}>검색량을 조회하고 있습니다...</Text>
-          <Text size="sm" c="dimmed" ta="center">
-            네이버 검색광고 API에서 데이터를 가져오는 중입니다
-          </Text>
-        </Stack>
-        <div style={{ width: '100%', maxWidth: 400 }}>
-          <Progress value={100} animated radius="md" size="lg" />
+    <div className="space-y-4 md:space-y-5">
+      <div className="text-center py-12">
+        <Loader2 className="w-12 h-12 text-primary-500 animate-spin mx-auto mb-4" />
+        <h3 className="text-xl font-bold text-neutral-900 mb-2 leading-tight">
+          검색량을 조회하고 있어요
+        </h3>
+        <p className="text-sm text-neutral-600 leading-relaxed">
+          네이버 검색광고 API에서 데이터를 가져오는 중입니다...
+        </p>
+      </div>
+    </div>
+  );
+
+  // Step 8: 결과 표시
+  const renderStep8 = () => (
+    <div className="space-y-4 md:space-y-5">
+      <div className="text-center space-y-2 mb-4 md:mb-5">
+        <div className="w-12 h-12 rounded-full bg-success-bg flex items-center justify-center mx-auto mb-2">
+          <CheckCircle2 className="w-6 h-6 text-success" />
         </div>
-      </Stack>
-    </Center>
-  )
+        <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
+          검색량 조회가 완료되었어요!
+        </h3>
+        <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
+          {searchResults.length}개 키워드의 검색량을 확인했습니다
+        </p>
+      </div>
 
-  // Step 8: 검색 결과
-  const renderStep8 = () => {
-    const formatNumber = (num: number | string) => {
-      if (typeof num === 'string') return num
-      return num.toLocaleString()
+      <div className="space-y-2 max-h-[400px] overflow-y-auto">
+        {searchResults.map((result) => (
+          <Card key={result.id} className="border-neutral-200 shadow-sm">
+            <CardContent className="p-3 md:p-4">
+              <div className="space-y-2">
+                <p className="text-sm md:text-base font-bold text-neutral-900">{result.keyword}</p>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="flex items-center gap-1">
+                    <Monitor className="w-3 h-3 text-neutral-500" />
+                    <span className="text-neutral-600">PC:</span>
+                    <span className="font-bold text-neutral-900">
+                      {typeof result.monthly_pc_qc_cnt === 'string' 
+                        ? result.monthly_pc_qc_cnt 
+                        : result.monthly_pc_qc_cnt.toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Smartphone className="w-3 h-3 text-neutral-500" />
+                    <span className="text-neutral-600">모바일:</span>
+                    <span className="font-bold text-neutral-900">
+                      {typeof result.monthly_mobile_qc_cnt === 'string' 
+                        ? result.monthly_mobile_qc_cnt 
+                        : result.monthly_mobile_qc_cnt.toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <Alert variant="success">
+        <AlertTitle>✨ 완료</AlertTitle>
+        <AlertDescription className="text-xs md:text-sm">
+          검색 이력 페이지에서 언제든지 다시 확인할 수 있습니다!
+        </AlertDescription>
+      </Alert>
+    </div>
+  );
+
+  const renderCurrentStep = () => {
+    switch (currentStep) {
+      case 1:
+        return renderStep1();
+      case 2:
+        return renderStep2();
+      case 3:
+        return renderStep3();
+      case 4:
+        return renderStep4();
+      case 5:
+        return renderStep5();
+      case 6:
+        return renderStep6();
+      case 7:
+        return renderStep7();
+      case 8:
+        return renderStep8();
+      default:
+        return null;
     }
-
-    const getTotalVolume = (item: SearchVolumeData) => {
-      const pc = typeof item.monthly_pc_qc_cnt === 'string' ? 5 : item.monthly_pc_qc_cnt
-      const mobile = typeof item.monthly_mobile_qc_cnt === 'string' ? 5 : item.monthly_mobile_qc_cnt
-      return pc + mobile
-    }
-
-    return (
-      <Stack gap="lg" py="xs">
-        <Center>
-          <ThemeIcon size={80} radius={80} variant="light" color="green" style={{ background: 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)' }}>
-            <CheckCircle2 size={40} />
-          </ThemeIcon>
-        </Center>
-
-        <Stack gap={4} ta="center">
-          <Text size="24px" fw={700}>검색량 조회 완료!</Text>
-          <Text size="sm" c="dimmed">
-            {searchResults.length}개 키워드의 검색량을 조회했습니다
-          </Text>
-        </Stack>
-
-        <div style={{ maxHeight: 400, overflowY: 'auto' }}>
-          <Stack gap="xs">
-            {searchResults.map((result, index) => (
-              <Paper key={index} p="sm" radius="md" withBorder>
-                <Group justify="space-between" mb={4}>
-                  <Text fw={600} size="sm">{result.keyword}</Text>
-                  <Badge size="lg" variant="light" color="blue">
-                    월 {formatNumber(getTotalVolume(result))}회
-                  </Badge>
-                </Group>
-                
-                <Group gap="lg" mb={4}>
-                  <Group gap={6}>
-                    <Monitor size={14} color="#228be6" />
-                    <Text size="xs" c="dimmed">
-                      PC: {formatNumber(result.monthly_pc_qc_cnt)}
-                    </Text>
-                  </Group>
-                  <Group gap={6}>
-                    <Smartphone size={14} color="#228be6" />
-                    <Text size="xs" c="dimmed">
-                      모바일: {formatNumber(result.monthly_mobile_qc_cnt)}
-                    </Text>
-                  </Group>
-                  <Group gap={6}>
-                    <Text size="xs" c="dimmed">경쟁: {result.comp_idx}</Text>
-                  </Group>
-                </Group>
-              </Paper>
-            ))}
-          </Stack>
-        </div>
-
-        <Alert color="blue" radius="md" title="💡 이제 어떻게 하나요?" p="sm">
-          <Text size="xs">조회한 키워드는 "키워드 검색량조회" 페이지의 검색 이력에서 언제든지 다시 확인할 수 있습니다!</Text>
-        </Alert>
-
-        <Button
-          size="md"
-          fullWidth
-          radius="md"
-          onClick={() => {
-            router.push('/dashboard/naver/keywords')
-            handleClose()
-            onComplete?.()
-          }}
-        >
-          검색 이력 보러가기
-        </Button>
-      </Stack>
-    )
-  }
+  };
 
   return (
-    <Modal
-      opened={isOpen}
+    <OnboardingModal
+      isOpen={isOpen}
       onClose={handleClose}
-      size="lg"
-      centered
-      padding="xl"
-      radius="md"
-      title={
-        currentStep <= 7 ? (
-          <Stack gap={8}>
-            <Text size="sm" c="dimmed">
-              추가 키워드 발굴하기 ({currentStep}/{totalSteps})
-            </Text>
-            <Progress value={(currentStep / totalSteps) * 100} radius="md" />
-          </Stack>
-        ) : null
+      title="추가 키워드 찾기"
+      currentStep={currentStep}
+      totalSteps={totalSteps}
+      onBack={handleBack}
+      onNext={handleNext}
+      nextButtonText={
+        currentStep === 1 ? '시작하기' :
+        currentStep === 6 ? (isSearching ? '검색 중...' : '검색량 조회') :
+        currentStep === 7 ? '' :
+        currentStep === 8 ? '검색 이력 보기' :
+        '다음'
       }
-      closeOnClickOutside={false}
-      closeOnEscape={false}
-      styles={{
-        body: {
-          maxHeight: '70vh',
-          overflowY: 'auto'
-        }
-      }}
+      nextButtonDisabled={
+        (currentStep === 2 && locationKeywords.length === 0) ||
+        (currentStep === 3 && productKeywords.length === 0) ||
+        (currentStep === 4 && industryKeywords.length === 0) ||
+        (currentStep === 6 && selectedKeywords.size === 0) ||
+        (currentStep === 6 && isSearching) ||
+        currentStep === 7
+      }
+      showBackButton={currentStep > 1 && currentStep !== 7 && currentStep !== 8}
+      hideNextButton={currentStep === 7}
     >
-      <Stack gap="xl">
-        {currentStep === 1 && renderStep1()}
-        {currentStep === 2 && renderStep2()}
-        {currentStep === 3 && renderStep3()}
-        {currentStep === 4 && renderStep4()}
-        {currentStep === 5 && renderStep5()}
-        {currentStep === 6 && renderStep6()}
-        {currentStep === 7 && renderStep7()}
-        {currentStep === 8 && renderStep8()}
-
-        {currentStep > 1 && currentStep < 7 && (
-          <Group justify="space-between">
-            <Button
-              variant="subtle"
-              onClick={handleBack}
-              leftSection={<ChevronLeft size={18} />}
-              radius="md"
-            >
-              이전
-            </Button>
-            <Button
-              onClick={handleNext}
-              rightSection={<ChevronRight size={18} />}
-              radius="md"
-            >
-              {currentStep === 4 ? '조합 생성하기' : currentStep === 6 ? '검색량 조회하기' : '다음'}
-            </Button>
-          </Group>
-        )}
-
-        {currentStep === 1 && (
-          <Button
-            size="lg"
-            fullWidth
-            rightSection={<ChevronRight size={20} />}
-            onClick={handleNext}
-            radius="md"
-          >
-            시작하기
-          </Button>
-        )}
-      </Stack>
-    </Modal>
-  )
+      {renderCurrentStep()}
+    </OnboardingModal>
+  );
 }
