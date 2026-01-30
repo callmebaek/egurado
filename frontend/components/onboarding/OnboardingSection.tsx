@@ -363,13 +363,13 @@ export default function OnboardingSection({ onStoreRegistered }: OnboardingSecti
       />
       
       <RankTrackingModal
-        opened={showRankTrackingModal}
+        isOpen={showRankTrackingModal}
         onClose={() => setShowRankTrackingModal(false)}
         onComplete={() => markActionComplete(ACTION_KEYS.METRICS_TRACKING)}
       />
 
       <RankAlertsModal
-        opened={showRankAlertsModal}
+        isOpen={showRankAlertsModal}
         onClose={() => setShowRankAlertsModal(false)}
         onComplete={() => markActionComplete(ACTION_KEYS.RANK_ALERTS)}
       />
@@ -405,31 +405,31 @@ export default function OnboardingSection({ onStoreRegistered }: OnboardingSecti
       />
 
       <MainKeywordsModal
-        opened={showMainKeywordsModal}
+        isOpen={showMainKeywordsModal}
         onClose={() => setShowMainKeywordsModal(false)}
         onComplete={() => markActionComplete(selectedAction || '')}
       />
 
       <ContactModal
-        opened={showContactModal}
+        isOpen={showContactModal}
         onClose={() => setShowContactModal(false)}
         onComplete={() => markActionComplete(ACTION_KEYS.CONTACT_WHIPLACE)}
       />
 
       <CompetitorAnalysisModal
-        opened={showCompetitorAnalysisModal}
+        isOpen={showCompetitorAnalysisModal}
         onClose={() => setShowCompetitorAnalysisModal(false)}
         onComplete={() => markActionComplete(ACTION_KEYS.COMPETITOR_ANALYSIS)}
       />
 
       <FeatureVoteModal
-        opened={showFeatureVoteModal}
+        isOpen={showFeatureVoteModal}
         onClose={() => setShowFeatureVoteModal(false)}
         onComplete={() => markActionComplete(ACTION_KEYS.FEATURE_VOTING)}
       />
 
       <AIReviewReplyModal
-        opened={showAIReviewReplyModal}
+        isOpen={showAIReviewReplyModal}
         onClose={() => setShowAIReviewReplyModal(false)}
         onComplete={() => markActionComplete(ACTION_KEYS.REVIEW_REPLY_AI)}
       />
