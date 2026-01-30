@@ -494,11 +494,11 @@ export default function NaverAIReplyPage() {
         })
       })
 
-      if (!response.ok) {
-        throw new Error("답글 게시 요청 실패")
-      }
-
       const data = await response.json()
+      
+      if (!response.ok) {
+        throw new Error(data.detail || "답글 게시 요청 실패")
+      }
       
       if (data.success && data.job_id) {
         // 큐에 추가 성공 - 폴링 시작
