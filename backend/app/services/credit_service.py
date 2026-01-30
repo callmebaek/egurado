@@ -112,6 +112,28 @@ class CreditService:
             
             result = response.data
             
+            # 🆕 result가 None이거나 비어있는 경우 처리
+            if not result:
+                logger.warning(f"No credit data found for user {user_id}. User credits record may not exist.")
+                # user_credits 레코드가 없는 경우 - STRICT 모드 확인
+                if settings.CREDIT_CHECK_STRICT:
+                    return CreditCheckResponse(
+                        sufficient=False,
+                        current_credits=0,
+                        required_credits=required_credits,
+                        shortage=required_credits,
+                        is_god_tier=False
+                    )
+                else:
+                    # 느슨한 모드: 통과
+                    return CreditCheckResponse(
+                        sufficient=True,
+                        current_credits=-1,
+                        required_credits=required_credits,
+                        shortage=0,
+                        is_god_tier=False
+                    )
+            
             return CreditCheckResponse(
                 sufficient=result["sufficient"],
                 current_credits=result["current_credits"],

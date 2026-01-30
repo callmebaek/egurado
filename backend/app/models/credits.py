@@ -89,13 +89,13 @@ class CreditCheckResponse(BaseModel):
     """크레딧 체크 응답"""
     sufficient: bool = Field(description="크레딧 충분 여부")
     current_credits: int = Field(description="현재 크레딧 잔액")
-    monthly_remaining: Optional[int] = Field(description="월 구독 크레딧 잔액")
-    manual_credits: Optional[int] = Field(description="수동 충전 크레딧")
+    monthly_remaining: Optional[int] = Field(default=None, description="월 구독 크레딧 잔액")
+    manual_credits: Optional[int] = Field(default=None, description="수동 충전 크레딧")
     required_credits: int = Field(description="필요한 크레딧")
     shortage: int = Field(description="부족한 크레딧 (0이면 충분)")
-    tier: Optional[str] = Field(description="사용자 Tier")
-    next_reset: Optional[datetime] = Field(description="다음 리셋일")
-    is_god_tier: bool = Field(False, description="God Tier 여부")
+    tier: Optional[str] = Field(default=None, description="사용자 Tier")
+    next_reset: Optional[datetime] = Field(default=None, description="다음 리셋일")
+    is_god_tier: bool = Field(default=False, description="God Tier 여부")
 
 
 class CreditDeductRequest(BaseModel):

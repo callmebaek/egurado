@@ -9582,3 +9582,207 @@ bg-gradient-to-br from-gray-50 to-white border border-gray-200 rounded-lg p-2
 **코드 품질:** ✅ (Linter 에러 0개, 타입 안정성)
 
 =====================================
+
+## 2026-01-30 (목) - God Tier 크레딧 시스템 수정
+
+### 🐛 문제 발견
+**현상:**
+- God tier 계정 (test@whiplace.com)으로 순위 조회 시 500 에러 발생
+- Free tier 계정은 정상 작동
+
+**에러 메시지:**
+```
+수집 실패: Error: 지표 수집 중 오류가 발생했습니다: 4 validation errors for CreditCheckResponse
+monthly_remaining: Field required
+manual_credits: Field required
+tier: Field required
+next_reset: Field required
+```
+
+**근본 원인:**
+1. God tier 계정의 `user_credits` 테이블 레코드가 존재하지 않음
+2. Supabase RPC `check_sufficient_credits`가 레코드 없을 때 `None` 반환
+3. `CreditCheckResponse` Pydantic 모델의 Optional 필드들이 `default` 값 없음
+4. `credit_service.py`에서 `result`가 `None`일 때 처리 로직 누락
+
+**백엔드 로그:**
+```
+ERROR: app.services.credit_service - Failed to check credits: 3 validation errors for CreditCheckResponse
+sufficient: Input should be a valid boolean [type=bool_type, input_value=None]
+current_credits: Input should be a valid integer [type=int_type, input_value=None]
+```
+
+---
+
+### ✅ 해결 방법
+
+#### 1️⃣ **Pydantic 모델 수정** (`backend/app/models/credits.py`)
+
+**변경 전:**
+```python
+class CreditCheckResponse(BaseModel):
+    """크레딧 체크 응답"""
+    sufficient: bool = Field(description="크레딧 충분 여부")
+    current_credits: int = Field(description="현재 크레딧 잔액")
+    monthly_remaining: Optional[int] = Field(description="월 구독 크레딧 잔액")  # ❌ default 없음
+    manual_credits: Optional[int] = Field(description="수동 충전 크레딧")  # ❌
+    required_credits: int = Field(description="필요한 크레딧")
+    shortage: int = Field(description="부족한 크레딧 (0이면 충분)")
+    tier: Optional[str] = Field(description="사용자 Tier")  # ❌
+    next_reset: Optional[datetime] = Field(description="다음 리셋일")  # ❌
+    is_god_tier: bool = Field(False, description="God Tier 여부")
+```
+
+**변경 후:**
+```python
+class CreditCheckResponse(BaseModel):
+    """크레딧 체크 응답"""
+    sufficient: bool = Field(description="크레딧 충분 여부")
+    current_credits: int = Field(description="현재 크레딧 잔액")
+    monthly_remaining: Optional[int] = Field(default=None, description="월 구독 크레딧 잔액")  # ✅
+    manual_credits: Optional[int] = Field(default=None, description="수동 충전 크레딧")  # ✅
+    required_credits: int = Field(description="필요한 크레딧")
+    shortage: int = Field(description="부족한 크레딧 (0이면 충분)")
+    tier: Optional[str] = Field(default=None, description="사용자 Tier")  # ✅
+    next_reset: Optional[datetime] = Field(default=None, description="다음 리셋일")  # ✅
+    is_god_tier: bool = Field(default=False, description="God Tier 여부")
+```
+
+**효과:**
+- DB에서 `None` 반환되어도 Pydantic 검증 통과
+- 에러 발생 시에도 부분 필드만 제공 가능
+
+---
+
+#### 2️⃣ **크레딧 서비스 로직 개선** (`backend/app/services/credit_service.py`)
+
+**추가된 로직:**
+```python
+# DB 함수 호출
+response = self.supabase.rpc(
+    "check_sufficient_credits",
+    {
+        "p_user_id": str(user_id),
+        "p_required_credits": required_credits
+    }
+).execute()
+
+result = response.data
+
+# 🆕 result가 None이거나 비어있는 경우 처리
+if not result:
+    logger.warning(f"No credit data found for user {user_id}. User credits record may not exist.")
+    # user_credits 레코드가 없는 경우 - STRICT 모드 확인
+    if settings.CREDIT_CHECK_STRICT:
+        return CreditCheckResponse(
+            sufficient=False,
+            current_credits=0,
+            required_credits=required_credits,
+            shortage=required_credits,
+            is_god_tier=False
+        )
+    else:
+        # 느슨한 모드: 통과
+        return CreditCheckResponse(
+            sufficient=True,
+            current_credits=-1,
+            required_credits=required_credits,
+            shortage=0,
+            is_god_tier=False
+        )
+```
+
+**효과:**
+- `user_credits` 레코드 없을 때 명확한 로그 출력
+- STRICT 모드에 따라 적절히 처리 (차단 또는 통과)
+
+---
+
+#### 3️⃣ **God Tier 계정 크레딧 초기화**
+
+**실행 스크립트:**
+```python
+# init_god_tier_credits.py
+# test@whiplace.com (user_id: 2b19b314-d7ce-44c2-8755-374e63938c87)
+
+# 1. profiles 테이블에서 tier 확인 (이미 god로 설정되어 있음)
+# 2. user_credits 레코드 생성
+INSERT INTO user_credits (
+    user_id,
+    tier,
+    monthly_credits,
+    monthly_used,
+    manual_credits,
+    reset_date,
+    last_reset_at,
+    next_reset_at
+) VALUES (
+    '2b19b314-d7ce-44c2-8755-374e63938c87',
+    'god',
+    999999999,  -- God tier는 사실상 무제한
+    0,
+    0,
+    1,  -- 매월 1일 리셋
+    NOW(),
+    '2026-02-01'
+)
+```
+
+**실행 결과:**
+```
+✅ user_credits 생성 완료
+
+📊 최종 크레딧 정보:
+   Tier: god
+   월 크레딧: 999,999,999
+   잔여 크레딧: 999,999,999
+   다음 리셋: 2026-02-01T05:45:17.064968+00:00
+```
+
+---
+
+### 📋 변경된 파일
+
+1. **`backend/app/models/credits.py`**
+   - `CreditCheckResponse`의 Optional 필드에 `default=None` 추가
+   
+2. **`backend/app/services/credit_service.py`**
+   - `check_sufficient_credits` 함수에 `result` None 체크 로직 추가
+
+3. **Database**
+   - God tier 계정 (`test@whiplace.com`)의 `user_credits` 레코드 생성
+
+---
+
+### 🧪 테스트 요청
+
+**God tier 계정 (`test@whiplace.com`)으로:**
+1. ✅ 대시보드 > 추적중인 키워드 > "전체 수집" 버튼
+2. ✅ 키워드 순위 추적 페이지 > "지금 수집" 버튼
+3. ✅ 플레이스 활성화
+4. ✅ 대표 키워드 분석
+5. ✅ 타겟 키워드 추출
+6. ✅ 경쟁매장 분석
+7. ✅ 크레딧 차감이 되지 않는지 확인 (God tier는 무제한)
+
+**Free tier 계정으로:**
+- ✅ 기존 기능들이 여전히 정상 작동하는지 확인
+
+---
+
+### 🎯 기대 효과
+
+1. **에러 방지:** DB 레코드 없을 때도 안정적으로 처리
+2. **God Tier 지원:** 무제한 크레딧으로 모든 기능 사용 가능
+3. **로깅 개선:** user_credits 레코드 누락 시 명확한 경고 로그
+4. **유연한 처리:** STRICT 모드에 따라 차단 또는 통과 선택 가능
+
+---
+
+**배포 완료:** ✅  
+**백엔드 재시작:** ✅  
+**God tier 크레딧 초기화:** ✅  
+**독립성 보장:** ✅ (다른 기능에 영향 없음)  
+**코드 품질:** ✅ (에러 핸들링 강화)
+
+=====================================
