@@ -236,6 +236,7 @@ export default function ReviewManagementPage() {
   const [loadingPlaceInfo, setLoadingPlaceInfo] = useState(false)
   const [extracting, setExtracting] = useState(false) // 리뷰 추출 중
   const [analyzing, setAnalyzing] = useState(false) // 리뷰 분석 중
+  const [extractingSummary, setExtractingSummary] = useState(false) // AI 요약 추출 중
   const [loadingReviews, setLoadingReviews] = useState(false)
   
   // 분석 진행률 상태
@@ -692,15 +693,19 @@ export default function ReviewManagementPage() {
               
               setAnalysisProgress(100)
               
+              // AI 요약 추출 시작
+              setAnalyzing(false) // 분석은 완료
+              setExtractingSummary(true) // AI 요약 추출 중
+              
               // 통계 및 리뷰 목록 새로고침 (백엔드가 저장한 날짜로 조회)
               const savedDate = data.saved_date || dateRange.end_date
-              console.log("📊 통계 로딩 시작")
+              console.log("📊 통계 로딩 시작 (AI 요약 포함)")
               console.log("   - 백엔드가 저장한 날짜:", data.saved_date)
               console.log("   - dateRange.end_date:", dateRange.end_date)
               console.log("   - 사용할 날짜:", savedDate)
               console.log("   - API URL:", api.reviews.stats(selectedStoreId, savedDate))
               await loadStats(savedDate)
-              console.log("✅ 통계 로딩 완료")
+              console.log("✅ 통계 로딩 완료 (AI 요약 포함)")
               
               // DB에서 분석된 리뷰 목록 다시 로드 (날짜별로 필터링됨)
               console.log("📝 리뷰 목록 다시 로드 중 (날짜:", savedDate, ")")
@@ -731,7 +736,7 @@ export default function ReviewManagementPage() {
                 description: `${data.total_analyzed}개의 리뷰를 분석했습니다.`,
               })
               
-              setAnalyzing(false)
+              setExtractingSummary(false) // AI 요약 추출 완료
               setTimeout(() => setAnalysisProgress(0), 1000)
               break
               
@@ -1150,6 +1155,21 @@ export default function ReviewManagementPage() {
                   className="bg-gradient-to-r from-blue-500 to-blue-600 h-2 rounded-full transition-all duration-500 ease-out"
                   style={{ width: `${analysisProgress}%` }}
                 />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      
+      {/* AI 요약 추출 중 로딩 UI - Compact */}
+      {extractingSummary && (
+        <Card className="border-purple-200 bg-purple-50 shadow-sm">
+          <CardContent className="pt-4 pb-4">
+            <div className="flex items-center gap-3 md:gap-4">
+              <RefreshCw className="w-6 h-6 md:w-8 md:h-8 text-purple-500 animate-spin flex-shrink-0" />
+              <div className="flex-1">
+                <h3 className="text-sm md:text-base font-semibold text-purple-900">리뷰 분석결과를 추출 중입니다</h3>
+                <p className="text-xs md:text-sm text-purple-700">잠시만 기다려주세요! ✨</p>
               </div>
             </div>
           </CardContent>
