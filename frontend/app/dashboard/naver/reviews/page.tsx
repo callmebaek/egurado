@@ -699,11 +699,14 @@ export default function ReviewManagementPage() {
               const totalAnalyzed = data.total_analyzed
               
               // AI 요약 추출 시작 (analyzing은 true로 유지, extractingSummary도 true로 설정)
+              console.log("✨ AI 요약 추출 시작 - extractingSummary를 true로 설정")
               setExtractingSummary(true) // AI 요약 추출 중
               
               // React가 UI를 업데이트할 시간을 주고 데이터 로드 시작
               setTimeout(async () => {
                 try {
+                  const startTime = Date.now()
+                  
                   // 통계 및 리뷰 목록 새로고침 (백엔드가 저장한 날짜로 조회)
                   console.log("📊 통계 로딩 시작 (AI 요약 포함)")
                   console.log("   - 사용할 날짜:", savedDate)
@@ -735,20 +738,31 @@ export default function ReviewManagementPage() {
                     console.error("❌ 리뷰 로드 에러:", error)
                   }
                   
-                  toast({
-                    title: "리뷰 분석 완료",
-                    description: `${totalAnalyzed}개의 리뷰를 분석했습니다.`,
-                  })
+                  // 최소 1초 표시 보장 (사용자가 메시지를 읽을 시간 확보)
+                  const elapsed = Date.now() - startTime
+                  const minDisplayTime = 1000 // 최소 1초
+                  const remainingTime = Math.max(0, minDisplayTime - elapsed)
                   
-                  setExtractingSummary(false) // AI 요약 추출 완료
-                  setAnalyzing(false) // 전체 분석 프로세스 완료
-                  setTimeout(() => setAnalysisProgress(0), 1000)
+                  console.log(`⏱️ 경과 시간: ${elapsed}ms, 남은 대기 시간: ${remainingTime}ms`)
+                  
+                  setTimeout(() => {
+                    console.log("✅ AI 요약 추출 완료 - extractingSummary를 false로 설정")
+                    
+                    toast({
+                      title: "리뷰 분석 완료",
+                      description: `${totalAnalyzed}개의 리뷰를 분석했습니다.`,
+                    })
+                    
+                    setExtractingSummary(false) // AI 요약 추출 완료
+                    setAnalyzing(false) // 전체 분석 프로세스 완료
+                    setTimeout(() => setAnalysisProgress(0), 1000)
+                  }, remainingTime)
                 } catch (error) {
                   console.error("❌ 완료 처리 중 오류:", error)
                   setExtractingSummary(false)
                   setAnalyzing(false)
                 }
-              }, 100) // 100ms 딜레이로 UI 업데이트 시간 확보
+              }, 200) // 200ms 딜레이로 UI 업데이트 시간 확보
               break
               
             case 'error':
