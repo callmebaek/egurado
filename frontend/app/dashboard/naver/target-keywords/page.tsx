@@ -4,7 +4,7 @@
  * 타겟 키워드 추출 및 진단 페이지
  * 매장의 최적 키워드를 추천하고 SEO 최적화 상태를 분석
  */
-import { useState, useEffect } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import { useStores } from "@/lib/hooks/useStores"
 import { useAuth } from "@/lib/auth-context"
 import { EmptyStoreMessage } from "@/components/EmptyStoreMessage"
@@ -123,6 +123,9 @@ export default function TargetKeywordsPage() {
   const [currentHistoryId, setCurrentHistoryId] = useState<string | null>(null)
   const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null)
   const [expandedHistoryData, setExpandedHistoryData] = useState<any>(null)
+
+  // 분석 결과 섹션 ref (자동 스크롤용)
+  const analysisResultRef = useRef<HTMLDivElement>(null)
 
   // 등록된 매장 불러오기
   useEffect(() => {
@@ -291,6 +294,20 @@ export default function TargetKeywordsPage() {
     setter((prev) => prev.filter((_, i) => i !== index))
   }
 
+  // 총 키워드 개수 계산
+  const getTotalKeywordCount = () => {
+    return regions.length + landmarks.length + menus.length + industries.length + others.length
+  }
+
+  // 예상 소요시간 계산 (키워드 개수 기반)
+  const getEstimatedTime = () => {
+    const totalCount = getTotalKeywordCount()
+    if (totalCount <= 5) return "약 30초"
+    if (totalCount <= 10) return "약 1분"
+    if (totalCount <= 15) return "약 1-2분"
+    return "약 2분"
+  }
+
   // 분석 시작
   const handleAnalyze = async () => {
     if (!selectedStore) {
@@ -331,7 +348,11 @@ export default function TargetKeywordsPage() {
         }),
       })
 
-      if (!response.ok) throw new Error("분석 실패")
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        console.error("분석 실패 응답:", errorData)
+        throw new Error(errorData.detail || errorData.message || `분석 실패 (${response.status})`)
+      }
 
       const result = await response.json()
       
@@ -354,6 +375,14 @@ export default function TargetKeywordsPage() {
           title: "분석 완료",
           description: `총 ${result.data.top_keywords.length}개의 타겟 키워드를 추출했습니다.`,
         })
+
+        // 분석 결과로 자동 스크롤 (약간의 딜레이 후)
+        setTimeout(() => {
+          analysisResultRef.current?.scrollIntoView({ 
+            behavior: "smooth", 
+            block: "start" 
+          })
+        }, 500)
       } else {
         throw new Error(result.message || "분석 실패")
       }
@@ -370,14 +399,12 @@ export default function TargetKeywordsPage() {
   }
 
   // 로딩 중
-  if (storesLoading || isLoadingHistory) {
+  if (storesLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
           <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
-          <p className="text-muted-foreground">
-            {isLoadingHistory ? "히스토리를 불러오는 중..." : "페이지를 불러오는 중..."}
-          </p>
+          <p className="text-muted-foreground">페이지를 불러오는 중...</p>
         </div>
       </div>
     )
@@ -404,10 +431,10 @@ export default function TargetKeywordsPage() {
       <div className="space-y-6 md:space-y-8">
 
       {/* 안내 메시지 */}
-      <Alert>
-        <Info className="h-4 w-4" />
-        <AlertTitle>사용 방법</AlertTitle>
-        <AlertDescription>
+      <Alert className="border-primary-200 bg-primary-50">
+        <Info className="h-4 w-4 text-primary-600" />
+        <AlertTitle className="text-neutral-900 font-semibold">사용 방법</AlertTitle>
+        <AlertDescription className="text-neutral-700 text-sm md:text-base leading-relaxed">
           1. 매장을 선택하세요 (주소에서 자동으로 지역명이 추출됩니다)<br />
           2. 지역명, 랜드마크, 메뉴/상품명, 업종, 기타 키워드를 입력하세요<br />
           3. 분석 시작 버튼을 클릭하면 최적의 타겟 키워드 10개를 추천해드립니다
@@ -416,18 +443,154 @@ export default function TargetKeywordsPage() {
 
       {/* 과거 추출된 키워드 보기 */}
       {selectedStore && histories.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <History className="h-5 w-5 text-blue-600" />
+        <Card className="rounded-card border-neutral-300 shadow-card">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base md:text-lg font-bold text-neutral-900 flex items-center gap-2">
+              <History className="h-4 h-4 md:h-5 md:w-5 text-primary-500" />
               과거 추출된 키워드 보기
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-xs md:text-sm text-neutral-600">
               이 매장의 최근 {histories.length}개 키워드 추출 히스토리 (최신순)
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
+          <CardContent className="pt-0">
+            {/* 모바일: 카드 레이아웃 */}
+            <div className="md:hidden space-y-3">
+              {histories.map((history) => {
+                const isExpanded = expandedHistoryId === history.id
+                const allInputKeywords = [
+                  ...(history.regions || []),
+                  ...(history.landmarks || []),
+                  ...(history.menus || []),
+                  ...(history.industries || []),
+                  ...(history.other_keywords || [])
+                ]
+                
+                return (
+                  <div key={history.id}>
+                    <Card 
+                      className={`transition-all ${isExpanded ? 'border-primary-500 bg-primary-50' : 'border-neutral-200'}`}
+                    >
+                      <CardContent className="p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-3 w-3 text-neutral-500" />
+                            <span className="text-xs text-neutral-900 font-medium">
+                              {new Date(history.created_at).toLocaleDateString('ko-KR', {
+                                year: 'numeric',
+                                month: '2-digit',
+                                day: '2-digit',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </span>
+                          </div>
+                          <Badge variant="default" className="font-semibold text-xs bg-primary-500 hover:bg-primary-600 text-white">
+                            {history.total_keywords}개
+                          </Badge>
+                        </div>
+                        
+                        <div>
+                          <p className="text-xs text-neutral-600 mb-1.5 font-medium">입력 키워드</p>
+                          <div className="flex flex-wrap gap-1">
+                            {allInputKeywords.slice(0, 5).map((keyword, idx) => (
+                              <Badge key={idx} variant="secondary" className="text-xs bg-neutral-100 text-neutral-700 font-medium">
+                                {keyword}
+                              </Badge>
+                            ))}
+                            {allInputKeywords.length > 5 && (
+                              <Badge variant="outline" className="text-xs border-neutral-300 text-neutral-700 font-medium">
+                                +{allInputKeywords.length - 5}개
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={isExpanded ? "default" : "outline"}
+                          disabled={isLoadingHistory}
+                          className="w-full font-semibold text-xs h-9 border-neutral-300 hover:border-primary-400"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            loadHistoryDetail(history.id)
+                          }}
+                        >
+                          {isLoadingHistory && expandedHistoryId === history.id ? (
+                            <>
+                              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                              로딩...
+                            </>
+                          ) : isExpanded ? (
+                            <>
+                              <CheckCircle2 className="h-3 w-3 mr-1" />
+                              접기
+                            </>
+                          ) : (
+                            <>
+                              <Eye className="h-3 w-3 mr-1" />
+                              보기
+                            </>
+                          )}
+                        </Button>
+                      </CardContent>
+                    </Card>
+                    
+                    {/* 펼쳐진 상세 정보 - 모바일 */}
+                    {isExpanded && expandedHistoryData && (
+                      <Card className="mt-2 border-primary-200 bg-primary-50">
+                        <CardContent className="p-4 space-y-3">
+                          <h4 className="text-sm font-bold text-neutral-900 flex items-center gap-2">
+                            <Target className="h-4 w-4 text-primary-600" />
+                            추출된 키워드 ({expandedHistoryData.total_keywords}개)
+                          </h4>
+                          
+                          <div className="grid grid-cols-1 gap-3">
+                            {expandedHistoryData.extracted_keywords.map((kw: any, idx: number) => (
+                              <div
+                                key={idx}
+                                className="bg-white p-3 rounded-lg border border-primary-200 shadow-sm"
+                              >
+                                <div className="flex items-start justify-between gap-2 mb-2">
+                                  <span className="text-sm font-semibold text-neutral-900 flex-1">
+                                    {kw.keyword}
+                                  </span>
+                                  {kw.rank > 0 && (
+                                    <Badge variant="default" className="text-xs font-semibold bg-primary-500 text-white flex-shrink-0">
+                                      {kw.rank}위
+                                    </Badge>
+                                  )}
+                                </div>
+                                <div className="grid grid-cols-2 gap-2 text-xs">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-neutral-600">검색량</span>
+                                    <span className="font-semibold text-primary-600">
+                                      {kw.total_volume?.toLocaleString() || 0}
+                                    </span>
+                                  </div>
+                                  {kw.total_count > 0 && (
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-neutral-600">전체</span>
+                                      <span className="font-semibold text-neutral-900">
+                                        {kw.total_count?.toLocaleString()}개
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* 데스크톱: 테이블 레이아웃 */}
+            <div className="hidden md:block overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -449,16 +612,14 @@ export default function TargetKeywordsPage() {
                     ]
                     
                     return (
-                      <>
+                      <React.Fragment key={history.id}>
                         <TableRow 
-                          key={history.id} 
-                          className={`${isExpanded ? "bg-blue-50" : ""} cursor-pointer hover:bg-gray-50`}
-                          onClick={() => loadHistoryDetail(history.id)}
+                          className={`${isExpanded ? "bg-primary-50" : ""} transition-colors`}
                         >
                           <TableCell className="font-medium">
                             <div className="flex items-center gap-2">
-                              <Calendar className="h-4 w-4 text-gray-500" />
-                              <span className="text-sm">
+                              <Calendar className="h-3 h-3 md:h-4 md:w-4 text-neutral-500" />
+                              <span className="text-xs md:text-sm text-neutral-900">
                                 {new Date(history.created_at).toLocaleDateString('ko-KR', {
                                   year: 'numeric',
                                   month: '2-digit',
@@ -472,42 +633,47 @@ export default function TargetKeywordsPage() {
                           <TableCell>
                             <div className="flex flex-wrap gap-1">
                               {allInputKeywords.slice(0, 5).map((keyword, idx) => (
-                                <Badge key={idx} variant="secondary" className="text-xs">
+                                <Badge key={idx} variant="secondary" className="text-xs bg-neutral-100 text-neutral-700 hover:bg-neutral-200 font-medium">
                                   {keyword}
                                 </Badge>
                               ))}
                               {allInputKeywords.length > 5 && (
-                                <Badge variant="outline" className="text-xs">
+                                <Badge variant="outline" className="text-xs border-neutral-300 text-neutral-700 font-medium">
                                   +{allInputKeywords.length - 5}개
                                 </Badge>
                               )}
                             </div>
                           </TableCell>
                           <TableCell className="text-center">
-                            <Badge variant="default" className="font-bold">
+                            <Badge variant="default" className="font-semibold text-xs bg-primary-500 hover:bg-primary-600 text-white">
                               {history.total_keywords}개
                             </Badge>
                           </TableCell>
                           <TableCell className="text-center">
                             <Button
+                              type="button"
                               size="sm"
                               variant={isExpanded ? "default" : "outline"}
                               disabled={isLoadingHistory}
-                              className="w-full"
+                              className="w-full font-semibold text-xs h-8 border-neutral-300 hover:border-primary-400"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                loadHistoryDetail(history.id)
+                              }}
                             >
                               {isLoadingHistory && expandedHistoryId === history.id ? (
                                 <>
-                                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                                  <Loader2 className="h-3 w-3 md:h-4 md:w-4 mr-1 animate-spin" />
                                   로딩...
                                 </>
                               ) : isExpanded ? (
                                 <>
-                                  <CheckCircle2 className="h-4 w-4 mr-1" />
+                                  <CheckCircle2 className="h-3 w-3 md:h-4 md:w-4 mr-1" />
                                   접기
                                 </>
                               ) : (
                                 <>
-                                  <Eye className="h-4 w-4 mr-1" />
+                                  <Eye className="h-3 w-3 md:h-4 md:w-4 mr-1" />
                                   보기
                                 </>
                               )}
@@ -517,42 +683,42 @@ export default function TargetKeywordsPage() {
                         
                         {/* 펼쳐진 상세 정보 */}
                         {isExpanded && expandedHistoryData && (
-                          <TableRow key={`${history.id}-detail`} className="bg-blue-50">
-                            <TableCell colSpan={4} className="p-6">
+                          <TableRow key={`${history.id}-detail`} className="bg-primary-50">
+                            <TableCell colSpan={4} className="p-4 md:p-6">
                               <div className="space-y-4">
                                 <div className="flex items-center justify-between mb-4">
-                                  <h4 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                                    <Target className="h-5 w-5 text-blue-600" />
+                                  <h4 className="text-base md:text-lg font-bold text-neutral-900 flex items-center gap-2">
+                                    <Target className="h-4 w-4 md:h-5 md:w-5 text-primary-600" />
                                     추출된 키워드 ({expandedHistoryData.total_keywords}개)
                                   </h4>
                                 </div>
                                 
-                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                                   {expandedHistoryData.extracted_keywords.map((kw: any, idx: number) => (
                                     <div
                                       key={idx}
-                                      className="bg-white p-3 rounded-lg border border-blue-200 shadow-sm"
+                                      className="bg-white p-3 rounded-lg border border-primary-200 shadow-sm hover:shadow-md transition-shadow"
                                     >
                                       <div className="flex items-start justify-between gap-2">
-                                        <span className="text-sm font-semibold text-gray-900 flex-1">
+                                        <span className="text-sm font-semibold text-neutral-900 flex-1 line-clamp-1">
                                           {kw.keyword}
                                         </span>
                                         {kw.rank > 0 && (
-                                          <Badge variant="default" className="text-xs">
+                                          <Badge variant="default" className="text-xs font-semibold bg-primary-500 hover:bg-primary-600 text-white flex-shrink-0">
                                             {kw.rank}위
                                           </Badge>
                                         )}
                                       </div>
-                                      <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
+                                      <div className="mt-2 flex items-center justify-between text-xs text-neutral-600">
                                         <span>검색량</span>
-                                        <span className="font-medium text-blue-600">
+                                        <span className="font-semibold text-primary-600">
                                           {kw.total_volume?.toLocaleString() || 0}
                                         </span>
                                       </div>
                                       {kw.total_count > 0 && (
-                                        <div className="mt-1 flex items-center justify-between text-xs text-gray-500">
+                                        <div className="mt-1 flex items-center justify-between text-xs text-neutral-600">
                                           <span>전체</span>
-                                          <span className="font-medium">
+                                          <span className="font-semibold text-neutral-900">
                                             {kw.total_count?.toLocaleString()}개
                                           </span>
                                         </div>
@@ -564,7 +730,7 @@ export default function TargetKeywordsPage() {
                             </TableCell>
                           </TableRow>
                         )}
-                      </>
+                      </React.Fragment>
                     )
                   })}
                 </TableBody>
@@ -575,10 +741,10 @@ export default function TargetKeywordsPage() {
       )}
 
       {/* 입력 폼 */}
-      <Card>
-        <CardHeader>
-          <CardTitle>분석 설정</CardTitle>
-          <CardDescription>매장과 키워드 정보를 입력하세요</CardDescription>
+      <Card className="rounded-card border-neutral-300 shadow-card">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base md:text-lg font-bold text-neutral-900">분석 설정</CardTitle>
+          <CardDescription className="text-xs md:text-sm text-neutral-600">매장과 키워드 정보를 입력하세요</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* 매장 선택 */}
@@ -782,64 +948,168 @@ export default function TargetKeywordsPage() {
           </div>
 
           {/* 분석 버튼 */}
-          <Button
-            onClick={handleAnalyze}
-            disabled={isAnalyzing || !selectedStore}
-            className="w-full"
-            size="lg"
-          >
-            {isAnalyzing ? (
-              <>
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                분석 중...
-              </>
-            ) : (
-              <>
-                <Search className="mr-2 h-5 w-5" />
-                타겟 키워드 분석 시작
-              </>
+          <div className="space-y-2">
+            <Button
+              onClick={handleAnalyze}
+              disabled={isAnalyzing || !selectedStore}
+              className="w-full font-semibold h-11 md:h-12"
+              size="lg"
+            >
+              {isAnalyzing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 md:h-5 md:w-5 animate-spin" />
+                  분석 중...
+                </>
+              ) : (
+                <>
+                  <Search className="mr-2 h-4 w-4 md:h-5 md:w-5" />
+                  타겟 키워드 분석 시작
+                </>
+              )}
+            </Button>
+            {isAnalyzing && (
+              <div className="text-center">
+                <p className="text-sm text-neutral-600">
+                  잠시만 기다려주세요! ⏱️ <span className="font-semibold text-primary-600">{getEstimatedTime()}</span> 걸립니다
+                </p>
+              </div>
             )}
-          </Button>
+          </div>
         </CardContent>
       </Card>
 
       {/* 분석 결과 */}
       {analysisResult && (
-        <div className="space-y-6">
+        <div ref={analysisResultRef} className="space-y-6 md:space-y-8">
           {/* 요약 정보 */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5 text-green-600" />
+          <Card className="rounded-card border-neutral-300 shadow-card">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base md:text-lg font-bold text-neutral-900 flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 md:h-5 md:w-5 text-green-600" />
                 분석 결과 요약
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="p-4 bg-olive-50 rounded-lg border border-olive-200">
-                  <p className="text-sm text-olive-700 font-medium">매장명</p>
-                  <p className="text-xl font-bold text-olive-900">{analysisResult.store_info.store_name}</p>
+            <CardContent className="pt-0">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
+                <div className="p-4 md:p-5 bg-primary-50 rounded-lg border border-primary-200">
+                  <p className="text-xs md:text-sm text-primary-700 font-semibold mb-1">매장명</p>
+                  <p className="text-lg md:text-xl font-bold text-neutral-900 line-clamp-1">{analysisResult.store_info.store_name}</p>
                 </div>
-                <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                  <p className="text-sm text-blue-700 font-medium">생성된 조합</p>
-                  <p className="text-xl font-bold text-blue-900">{analysisResult.total_combinations}개</p>
+                <div className="p-4 md:p-5 bg-green-50 rounded-lg border border-green-200">
+                  <p className="text-xs md:text-sm text-green-700 font-semibold mb-1">생성된 조합</p>
+                  <p className="text-lg md:text-xl font-bold text-neutral-900">{analysisResult.total_combinations}개</p>
                 </div>
-                <div className="p-4 bg-green-50 rounded-lg border border-green-200">
-                  <p className="text-sm text-green-700 font-medium">타겟 키워드</p>
-                  <p className="text-xl font-bold text-green-900">{analysisResult.top_keywords.length}개</p>
+                <div className="p-4 md:p-5 bg-purple-50 rounded-lg border border-purple-200">
+                  <p className="text-xs md:text-sm text-purple-700 font-semibold mb-1">타겟 키워드</p>
+                  <p className="text-lg md:text-xl font-bold text-neutral-900">{analysisResult.top_keywords.length}개</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
           {/* 타겟 키워드 테이블 */}
-          <Card>
-            <CardHeader>
-              <CardTitle>타겟 키워드 (검색량 상위 20개)</CardTitle>
-              <CardDescription>검색량이 높은 순서로 정렬되었습니다</CardDescription>
+          <Card className="rounded-card border-neutral-300 shadow-card">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base md:text-lg font-bold text-neutral-900">타겟 키워드 (검색량 상위 20개)</CardTitle>
+              <CardDescription className="text-xs md:text-sm text-neutral-600">검색량이 높은 순서로 정렬되었습니다</CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
+            <CardContent className="pt-0">
+              {/* 모바일: 카드 레이아웃 */}
+              <div className="md:hidden space-y-3">
+                {analysisResult.top_keywords.map((keyword, index) => {
+                  const fieldMatches = analysisResult.seo_analysis.keyword_field_matches?.[keyword.keyword] || {
+                    menu: 0,
+                    conveniences: 0,
+                    microReviews: 0,
+                    description: 0,
+                    ai_briefing: 0,
+                    road: 0,
+                    visitor_reviews: 0,
+                    total: 0
+                  }
+                  
+                  const rankInfo = analysisResult.rank_data?.[keyword.keyword] || { rank: 0, total_count: 0 }
+                  const rank = rankInfo.rank || 0
+                  const totalCount = rankInfo.total_count || 0
+                  
+                  return (
+                    <Card key={index} className="border-neutral-200 hover:border-primary-300 transition-colors">
+                      <CardContent className="p-4 space-y-3">
+                        {/* 헤더: 순위 & 키워드 & 경쟁도 */}
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-sm text-primary-700">
+                                #{index + 1}
+                              </span>
+                              {rank > 0 && (
+                                <span className="font-semibold text-xs text-primary-600">
+                                  ({rank}위)
+                                </span>
+                              )}
+                            </div>
+                            <Badge
+                              variant={
+                                keyword.comp_idx === "높음" ? "destructive" :
+                                keyword.comp_idx === "중간" ? "default" : "secondary"
+                              }
+                              className={`font-semibold text-xs flex-shrink-0 ${
+                                keyword.comp_idx === "높음" ? "bg-red-500 hover:bg-red-600 text-white" :
+                                keyword.comp_idx === "중간" ? "bg-orange-500 hover:bg-orange-600 text-white" : 
+                                "bg-green-500 hover:bg-green-600 text-white"
+                              }`}
+                            >
+                              {keyword.comp_idx}
+                            </Badge>
+                          </div>
+                          <h4 className="text-base font-bold text-neutral-900">{keyword.keyword}</h4>
+                          <div className="flex flex-wrap gap-1">
+                            {Object.entries(keyword.components).map(([key, value]) => (
+                              <Badge key={key} variant="secondary" className="text-xs font-medium bg-neutral-100 text-neutral-700">
+                                {value}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                        
+                        {/* 통계 */}
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="bg-primary-50 rounded-lg p-3 border border-primary-200">
+                            <p className="text-xs text-primary-700 font-semibold mb-1">전체 검색량</p>
+                            <p className="text-lg font-bold text-neutral-900">{keyword.total_volume.toLocaleString()}</p>
+                          </div>
+                          <div className="bg-neutral-50 rounded-lg p-3 border border-neutral-200">
+                            <p className="text-xs text-neutral-600 font-semibold mb-1">검색 업체수</p>
+                            <p className="text-lg font-bold text-neutral-900">{totalCount > 0 ? totalCount.toLocaleString() : '-'}</p>
+                          </div>
+                        </div>
+                        
+                        {/* 상세 정보 */}
+                        <div className="pt-2 border-t border-neutral-200 space-y-1.5">
+                          <div className="flex justify-between text-xs">
+                            <span className="text-neutral-600">PC 검색량</span>
+                            <span className="font-semibold text-neutral-900">{keyword.monthly_pc_qc_cnt.toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between text-xs">
+                            <span className="text-neutral-600">모바일 검색량</span>
+                            <span className="font-semibold text-neutral-900">{keyword.monthly_mobile_qc_cnt.toLocaleString()}</span>
+                          </div>
+                          {rank === 0 && (
+                            <div className="pt-1">
+                              <Badge variant="outline" className="text-xs border-red-300 text-red-600 bg-red-50 font-medium">
+                                300위권 밖
+                              </Badge>
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )
+                })}
+              </div>
+
+              {/* 데스크톱: 테이블 레이아웃 */}
+              <div className="hidden md:block overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -850,8 +1120,8 @@ export default function TargetKeywordsPage() {
                       <TableHead className="text-right">모바일 검색량</TableHead>
                       <TableHead className="text-right">전체 검색량</TableHead>
                       <TableHead className="text-right">검색 업체수</TableHead>
-                      <TableHead>경쟁도</TableHead>
-                      <TableHead className="w-[80px] text-center bg-indigo-50 font-semibold">순위</TableHead>
+                      <TableHead className="w-[80px]">경쟁도</TableHead>
+                      <TableHead className="w-[80px] text-center bg-primary-50 font-semibold text-primary-900">순위</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -872,28 +1142,28 @@ export default function TargetKeywordsPage() {
                       const totalCount = rankInfo.total_count || 0
                       
                       return (
-                        <TableRow key={index}>
-                          <TableCell className="font-bold">{index + 1}</TableCell>
-                          <TableCell className="font-semibold text-olive-900">{keyword.keyword}</TableCell>
+                        <TableRow key={index} className="hover:bg-neutral-50 transition-colors">
+                          <TableCell className="font-bold text-neutral-900">{index + 1}</TableCell>
+                          <TableCell className="font-semibold text-neutral-900">{keyword.keyword}</TableCell>
                           <TableCell>
                             <div className="flex flex-wrap gap-1">
                               {Object.entries(keyword.components).map(([key, value]) => (
-                                <Badge key={key} variant="secondary" className="text-xs">
+                                <Badge key={key} variant="secondary" className="text-xs font-medium bg-neutral-100 text-neutral-700 hover:bg-neutral-200">
                                   {value}
                                 </Badge>
                               ))}
                             </div>
                           </TableCell>
-                          <TableCell className="text-right text-gray-600">
+                          <TableCell className="text-right text-neutral-600 text-sm">
                             {keyword.monthly_pc_qc_cnt.toLocaleString()}
                           </TableCell>
-                          <TableCell className="text-right text-gray-600">
+                          <TableCell className="text-right text-neutral-600 text-sm">
                             {keyword.monthly_mobile_qc_cnt.toLocaleString()}
                           </TableCell>
-                          <TableCell className="text-right font-bold text-olive-900">
+                          <TableCell className="text-right font-bold text-primary-600">
                             {keyword.total_volume.toLocaleString()}
                           </TableCell>
-                          <TableCell className="text-right text-blue-600 font-semibold">
+                          <TableCell className="text-right text-neutral-900 font-semibold text-sm">
                             {totalCount > 0 ? totalCount.toLocaleString() : '-'}
                           </TableCell>
                           <TableCell>
@@ -902,15 +1172,20 @@ export default function TargetKeywordsPage() {
                                 keyword.comp_idx === "높음" ? "destructive" :
                                 keyword.comp_idx === "중간" ? "default" : "secondary"
                               }
+                              className={`font-semibold text-xs whitespace-nowrap ${
+                                keyword.comp_idx === "높음" ? "bg-red-500 hover:bg-red-600 text-white" :
+                                keyword.comp_idx === "중간" ? "bg-orange-500 hover:bg-orange-600 text-white" : 
+                                "bg-green-500 hover:bg-green-600 text-white"
+                              }`}
                             >
                               {keyword.comp_idx}
                             </Badge>
                           </TableCell>
-                          <TableCell className="text-center bg-indigo-50">
+                          <TableCell className="text-center bg-primary-50">
                             {rank > 0 ? (
-                              <span className="text-indigo-700 font-bold">{rank}위</span>
+                              <span className="text-primary-700 font-bold">{rank}위</span>
                             ) : (
-                              <span className="text-red-500 text-xs">300위권 밖</span>
+                              <span className="text-red-600 text-xs font-semibold">300위권 밖</span>
                             )}
                           </TableCell>
                         </TableRow>
@@ -923,13 +1198,13 @@ export default function TargetKeywordsPage() {
           </Card>
 
           {/* SEO 분석 */}
-          <Card>
-            <CardHeader>
-              <CardTitle>플레이스 SEO 분석</CardTitle>
-              <CardDescription>키워드가 플레이스 정보에 포함된 횟수를 분석합니다</CardDescription>
+          <Card className="rounded-card border-neutral-300 shadow-card">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base md:text-lg font-bold text-neutral-900">플레이스 SEO 분석</CardTitle>
+              <CardDescription className="text-xs md:text-sm text-neutral-600">키워드가 플레이스 정보에 포함된 횟수를 분석합니다</CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
+            <CardContent className="pt-0">
+              <div className="space-y-3 md:space-y-4">
                 {Object.entries(analysisResult.seo_analysis.field_analysis).map(([field, data]) => {
                   const fieldNames: Record<string, string> = {
                     menu: "메뉴",
@@ -942,17 +1217,17 @@ export default function TargetKeywordsPage() {
                   }
                   
                   return (
-                    <div key={field} className="border rounded-lg p-4">
+                    <div key={field} className="border border-neutral-200 rounded-lg p-3 md:p-4 hover:border-primary-300 hover:bg-neutral-50 transition-all">
                       <div className="flex items-center justify-between mb-2">
-                        <h4 className="font-semibold text-olive-900">{fieldNames[field] || field}</h4>
-                        <Badge variant={data.total_matches > 0 ? "default" : "secondary"}>
+                        <h4 className="font-semibold text-neutral-900 text-sm md:text-base">{fieldNames[field] || field}</h4>
+                        <span className={`text-xs md:text-sm font-semibold ${data.total_matches > 0 ? 'text-green-600' : 'text-neutral-500'}`}>
                           {data.total_matches > 0 ? `${data.total_matches}회 매칭` : "매칭 없음"}
-                        </Badge>
+                        </span>
                       </div>
                       {data.total_matches > 0 && (
-                        <div className="flex flex-wrap gap-2 mt-2">
+                        <div className="flex flex-wrap gap-1.5 md:gap-2 mt-2">
                           {Object.entries(data.keyword_counts).map(([keyword, count]) => (
-                            <Badge key={keyword} variant="outline" className="text-xs">
+                            <Badge key={keyword} variant="outline" className="text-xs font-medium border-primary-200 text-primary-700 bg-primary-50">
                               {keyword}: {count}회
                             </Badge>
                           ))}
@@ -966,10 +1241,28 @@ export default function TargetKeywordsPage() {
           </Card>
 
           {/* 개선 제안 */}
-          <Alert>
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>SEO 최적화 제안</AlertTitle>
-            <AlertDescription>
+          <Alert className={`${(() => {
+            const totalMatches = Object.values(analysisResult.seo_analysis.field_analysis).reduce(
+              (sum, field) => sum + field.total_matches,
+              0
+            )
+            if (totalMatches === 0) return "border-red-200 bg-red-50"
+            if (totalMatches < 10) return "border-orange-200 bg-orange-50"
+            if (totalMatches < 30) return "border-blue-200 bg-blue-50"
+            return "border-green-200 bg-green-50"
+          })()}`}>
+            <AlertCircle className={`h-4 w-4 ${(() => {
+              const totalMatches = Object.values(analysisResult.seo_analysis.field_analysis).reduce(
+                (sum, field) => sum + field.total_matches,
+                0
+              )
+              if (totalMatches === 0) return "text-red-600"
+              if (totalMatches < 10) return "text-orange-600"
+              if (totalMatches < 30) return "text-blue-600"
+              return "text-green-600"
+            })()}`} />
+            <AlertTitle className="text-neutral-900 font-semibold">SEO 최적화 제안</AlertTitle>
+            <AlertDescription className="text-neutral-700 text-sm md:text-base leading-relaxed">
               {(() => {
                 const totalMatches = Object.values(analysisResult.seo_analysis.field_analysis).reduce(
                   (sum, field) => sum + field.total_matches,

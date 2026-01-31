@@ -210,10 +210,7 @@ export default function MetricsTrackerPage() {
         const data = await response.json()
         setTrackers(data.trackers || [])
         
-        // 각 tracker의 최근 지표 로드
-        if (data.trackers && data.trackers.length > 0) {
-          loadAllLatestMetrics(data.trackers)
-        }
+        // 각 tracker의 최근 지표는 개별 트래커 선택 시 로드됨
       }
     } catch (error) {
       console.error("추적 설정 로드 실패:", error)
