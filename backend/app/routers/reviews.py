@@ -1076,6 +1076,15 @@ async def get_place_info(store_id: str):
         if not place_info.get("name"):
             place_info["name"] = store.get("name", "")
         
+        # 썸네일이 없으면 stores 테이블의 thumbnail_url 사용 (fallback)
+        if not place_info.get("image_url") and not place_info.get("thumbnail"):
+            fallback_thumbnail = store.get("thumbnail_url") or store.get("thumbnail")
+            if fallback_thumbnail:
+                place_info["image_url"] = fallback_thumbnail
+                place_info["thumbnail"] = fallback_thumbnail
+                print(f"[DEBUG] Supabase thumbnail_url 사용: {fallback_thumbnail}", flush=True)
+                logger.info(f"📸 Supabase thumbnail_url fallback 적용: {fallback_thumbnail}")
+        
         logger.info(f"매장 정보 조회 완료: {place_info}")
         return {
             "status": "success",
