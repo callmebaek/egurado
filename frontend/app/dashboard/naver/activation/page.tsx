@@ -1,32 +1,12 @@
 'use client'
 
+/**
+ * 플레이스 활성화 페이지
+ * 매장의 플레이스 활성화 현황을 분석하고 개선 방안 제시
+ */
+
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { 
-  Container, 
-  Title, 
-  Text, 
-  Button, 
-  Card, 
-  Grid, 
-  Stack, 
-  Group,
-  Badge,
-  Loader,
-  Center,
-  Alert,
-  Divider,
-  Paper,
-  Textarea,
-  Modal,
-  Box,
-  SimpleGrid,
-  ThemeIcon,
-  Progress,
-  Tooltip,
-  TextInput,
-  ActionIcon
-} from '@mantine/core'
 import { 
   Store, 
   TrendingUp, 
@@ -50,12 +30,27 @@ import {
   Calendar,
   MessageCircle,
   Award,
-  Copy
+  Copy,
+  Loader2,
+  ChevronDown,
+  ChevronUp,
+  Sparkles,
+  MapPin
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/components/ui/use-toast'
 import { api } from '@/lib/config'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import Image from 'next/image'
 
+// ===== 인터페이스 정의 =====
 interface RegisteredStore {
   id: string
   name: string
@@ -152,42 +147,40 @@ export default function ActivationPage() {
   const { toast } = useToast()
   const searchParams = useSearchParams()
   
+  // 상태 관리
   const [stores, setStores] = useState<RegisteredStore[]>([])
   const [isLoadingStores, setIsLoadingStores] = useState(false)
   const [selectedStore, setSelectedStore] = useState<RegisteredStore | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [activationData, setActivationData] = useState<ActivationData | null>(null)
   
+  // AI 생성 모달 상태
   const [showDescriptionModal, setShowDescriptionModal] = useState(false)
   const [showDirectionsModal, setShowDirectionsModal] = useState(false)
-  const [descriptionPrompt, setDescriptionPrompt] = useState('')
-  const [directionsPrompt, setDirectionsPrompt] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
   const [generatedText, setGeneratedText] = useState('')
+  const [generatedTextCharCount, setGeneratedTextCharCount] = useState(0)
   
-  // 업체소개글 생성을 위한 5개 입력 필드
+  // 업체소개글 생성 필드
   const [regionKeyword, setRegionKeyword] = useState('')
   const [landmarkKeywords, setLandmarkKeywords] = useState('')
   const [businessTypeKeyword, setBusinessTypeKeyword] = useState('')
   const [productKeywords, setProductKeywords] = useState('')
   const [storeFeatures, setStoreFeatures] = useState('')
-  const [generatedTextCharCount, setGeneratedTextCharCount] = useState(0)
   
-  // 찾아오는길용 state
+  // 찾아오는길 생성 필드
   const [directionsRegionKeyword, setDirectionsRegionKeyword] = useState('')
   const [directionsLandmarkKeywords, setDirectionsLandmarkKeywords] = useState('')
   const [directionsDescription, setDirectionsDescription] = useState('')
   const [generatedDirectionsText, setGeneratedDirectionsText] = useState('')
   const [generatedDirectionsCharCount, setGeneratedDirectionsCharCount] = useState(0)
 
-  // 과거 이력 관련 state
+  // 과거 이력
   const [activationHistories, setActivationHistories] = useState<any[]>([])
-  const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null)
   const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null)
   const [isLoadingHistories, setIsLoadingHistories] = useState(false)
-  const [storeHistoryCounts, setStoreHistoryCounts] = useState<Record<string, number>>({})
 
-  // 등록된 매장 목록 가져오기
+  // ===== 데이터 로딩 =====
   useEffect(() => {
     if (user) {
       fetchStores()
@@ -197,1708 +190,1353 @@ export default function ActivationPage() {
   // URL 파라미터로부터 storeId 읽어서 자동 선택
   useEffect(() => {
     const storeId = searchParams.get('storeId')
-    if (storeId && stores.length > 0 && !selectedStore) {
-      const targetStore = stores.find(s => s.id === storeId)
-      if (targetStore) {
-        console.log('[활성화] URL에서 매장 자동 선택:', targetStore.name)
-        handleStoreSelect(targetStore)
+    if (storeId && stores.length > 0) {
+      const store = stores.find(s => s.id === storeId)
+      if (store) {
+        setSelectedStore(store)
+        loadActivationData(store.id)
       }
     }
   }, [searchParams, stores])
 
+  // 매장 목록 조회
   const fetchStores = async () => {
-    const token = await getToken()
-    if (!user || !token) return
-
     setIsLoadingStores(true)
     try {
+      const token = await getToken()
+      if (!token) throw new Error('인증 토큰 없음')
+      
       const response = await fetch(api.stores.list(), {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       })
-
-      if (!response.ok) {
-        throw new Error("매장 목록 조회에 실패했습니다.")
-      }
-
-      const data = await response.json()
-      const naverStores = data.stores.filter((store: RegisteredStore) => store.platform === "naver")
+      
+      if (!response.ok) throw new Error('매장 조회 실패')
+      
+      const result = await response.json()
+      const allStores = result.stores || []
+      const naverStores = allStores.filter((s: RegisteredStore) => s.platform === 'naver')
       setStores(naverStores)
-
-      // 각 매장별 이력 개수 조회
-      const counts: Record<string, number> = {}
-      await Promise.all(
-        naverStores.map(async (store: RegisteredStore) => {
-          try {
-            const historyResponse = await fetch(api.naver.activationHistory(store.id), {
-              headers: { 'Authorization': `Bearer ${token}` }
-            })
-            if (historyResponse.ok) {
-              const historyData = await historyResponse.json()
-              counts[store.id] = historyData.histories?.length || 0
-            } else {
-              counts[store.id] = 0
-            }
-          } catch {
-            counts[store.id] = 0
-          }
-        })
-      )
-      setStoreHistoryCounts(counts)
-      console.log('[활성화 이력 개수]', counts)
     } catch (error) {
-      console.error("Error fetching stores:", error)
+      console.error('매장 조회 에러:', error)
       toast({
-        variant: "destructive",
-        title: "❌ 오류",
-        description: "등록된 매장 목록을 불러오는데 실패했습니다.",
+        title: '오류',
+        description: '매장 목록을 불러오지 못했습니다.',
+        variant: 'destructive',
       })
     } finally {
       setIsLoadingStores(false)
     }
   }
 
-  const handleStoreSelect = async (store: RegisteredStore) => {
-    setSelectedStore(store)
-    setActivationData(null)
+  // 활성화 데이터 로드
+  const loadActivationData = async (storeId: string) => {
     setIsLoading(true)
-
     try {
-      const token = getToken()
-      if (!token) {
-        throw new Error("인증 토큰이 없습니다.")
-      }
-
-      // 🆕 캐시 확인 (2분 = 120000ms 이내)
-      const cacheKey = `activation_cache_${store.id}`
-      const CACHE_DURATION = 120000 // 2분
-      let cachedData: ActivationData | null = null
+      const token = await getToken()
+      if (!token) throw new Error('인증 토큰 없음')
       
-      try {
-        const cached = localStorage.getItem(cacheKey)
-        if (cached) {
-          const parsedCache = JSON.parse(cached)
-          const age = Date.now() - parsedCache.timestamp
-          if (age < CACHE_DURATION && parsedCache.storeId === store.id) {
-            cachedData = parsedCache.data
-            console.log('[활성화] ✅ 캐시 데이터 사용 (중복 API 호출 방지):', Math.round(age / 1000), '초 전')
-          } else {
-            console.log('[활성화] ⏰ 캐시 만료:', Math.round(age / 1000), '초 전')
-            localStorage.removeItem(cacheKey)
-          }
-        }
-      } catch (err) {
-        console.warn('[활성화] 캐시 읽기 실패:', err)
-      }
-
-      // 캐시가 있으면 API 호출 스킵
-      if (cachedData) {
-        console.log('[활성화 디버그] 캐시된 데이터 사용')
-        setActivationData(cachedData)
-        
-        // 이력만 가져오기 (크레딧 차감 없음)
-        try {
-          const historyResponse = await fetch(api.naver.activationHistory(store.id), {
-            headers: { 'Authorization': `Bearer ${token}` }
-          })
-          if (historyResponse.ok) {
-            const historyData = await historyResponse.json()
-            setActivationHistories(historyData.histories || [])
-            console.log('[활성화 이력] ✅ 조회 완료')
-          }
-        } catch (err) {
-          console.log('[활성화 이력] ⚠️ 조회 실패 (계속 진행)')
-        }
-        
-        setIsLoading(false)
-        return
-      }
-
-      // 캐시가 없으면 API 호출 (크레딧 차감)
-      console.log('[활성화] 📡 API 호출 (캐시 없음)')
-      const [activationResponse, historyResponse] = await Promise.all([
-        fetch(api.naver.activation(store.id), {
-          headers: { 'Authorization': `Bearer ${token}` }
-        }),
-        fetch(api.naver.activationHistory(store.id), {
-          headers: { 'Authorization': `Bearer ${token}` }
-        }).catch(() => null) // 이력 조회 실패해도 계속 진행
-      ])
-
-      const response = activationResponse
-
+      const url = `${api.baseUrl}/api/v1/naver/activation/${storeId}`
+      console.log('🔍 활성화 분석 요청:', url)
+      
+      const response = await fetch(url, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      
+      console.log('📡 응답 상태:', response.status)
+      
       if (!response.ok) {
-        throw new Error("플레이스 활성화 정보 조회에 실패했습니다.")
+        const errorData = await response.json().catch(() => ({}))
+        console.error('❌ 활성화 분석 실패')
+        console.error('Status:', response.status)
+        console.error('Error Data:', errorData)
+        throw new Error(errorData.detail || errorData.message || `활성화 분석 실패 (${response.status})`)
       }
-
-      const data = await response.json()
-      console.log('[활성화 디버그] API 응답:', data.data)
-      console.log('[활성화 디버그] summary_cards[0] (visitor):', data.data.summary_cards?.[0])
-      console.log('[활성화 디버그] visitor_review_trends:', data.data.visitor_review_trends)
-      setActivationData(data.data) // API 응답의 data 필드만 추출
       
-      // 🆕 캐시에 저장 (2분간 유효)
-      try {
-        const cacheData = {
-          data: data.data,
-          timestamp: Date.now(),
-          storeId: store.id
-        }
-        localStorage.setItem(cacheKey, JSON.stringify(cacheData))
-        console.log('[활성화] 💾 캐시 저장 완료')
-      } catch (err) {
-        console.warn('[활성화] 캐시 저장 실패:', err)
-      }
-
-      // 과거 이력 처리
-      if (historyResponse && historyResponse.ok) {
-        const historyData = await historyResponse.json()
-        const histories = historyData.histories || []
-        setActivationHistories(histories)
-        console.log('[활성화 이력] ✅ 조회 완료:', histories.length, '개')
-        console.log('[활성화 이력] 데이터:', histories)
-      } else {
-        setActivationHistories([])
-        console.log('[활성화 이력] ❌ 조회 실패 또는 응답 없음')
-      }
-    } catch (error) {
-      console.error("Error fetching activation data:", error)
+      const result = await response.json()
+      console.log('활성화 분석 성공:', result)
+      setActivationData(result.data)
+      
+      // 과거 이력도 로드
+      loadActivationHistories(storeId)
+      
       toast({
-        variant: "destructive",
-        title: "❌ 오류",
-        description: "플레이스 활성화 정보를 불러오는데 실패했습니다.",
+        title: '분석 완료',
+        description: '플레이스 활성화 현황을 성공적으로 조회했습니다.',
+      })
+    } catch (error) {
+      console.error('활성화 분석 에러:', error)
+      toast({
+        title: '오류',
+        description: error instanceof Error ? error.message : '활성화 분석에 실패했습니다.',
+        variant: 'destructive',
       })
     } finally {
       setIsLoading(false)
     }
   }
 
-  const getTrendIcon = (direction: string) => {
-    if (direction === 'up') return <ArrowUp className="w-4 h-4 text-green-600" />
-    if (direction === 'down') return <ArrowDown className="w-4 h-4 text-red-600" />
-    return <Minus className="w-4 h-4 text-gray-400" />
+  // 과거 이력 로드
+  const loadActivationHistories = async (storeId: string) => {
+    setIsLoadingHistories(true)
+    try {
+      const token = await getToken()
+      if (!token) return
+      
+      const response = await fetch(`${api.baseUrl}/api/v1/naver/activation/history/${storeId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      
+      if (response.ok) {
+        const result = await response.json()
+        setActivationHistories(result.histories || [])
+      }
+    } catch (error) {
+      console.error('이력 조회 에러:', error)
+    } finally {
+      setIsLoadingHistories(false)
+    }
   }
 
-  const getTrendColor = (direction: string) => {
-    if (direction === 'up') return 'green'
-    if (direction === 'down') return 'red'
-    return 'gray'
+  // AI 업체소개글 생성
+  const handleGenerateDescription = async () => {
+    if (!regionKeyword || !businessTypeKeyword || !storeFeatures) {
+      toast({
+        title: '필수 정보 누락',
+        description: '지역, 업종, 매장 특색은 필수로 입력해야 합니다.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    setIsGenerating(true)
+    try {
+      const token = await getToken()
+      if (!token) throw new Error('인증 토큰 없음')
+      
+      const landmarks = landmarkKeywords.split(',').map(k => k.trim()).filter(k => k)
+      const products = productKeywords.split(',').map(k => k.trim()).filter(k => k)
+      
+      const response = await fetch(`${api.baseUrl}/api/v1/naver/activation/generate-description`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          region: regionKeyword,
+          landmarks,
+          business_type: businessTypeKeyword,
+          products,
+          features: storeFeatures
+        })
+      })
+      
+      if (!response.ok) throw new Error('생성 실패')
+      
+      const result = await response.json()
+      setGeneratedText(result.generated_text || '')
+      setGeneratedTextCharCount(result.generated_text?.length || 0)
+      
+      toast({
+        title: '생성 완료',
+        description: 'AI가 업체소개글을 생성했습니다!',
+      })
+    } catch (error) {
+      console.error('생성 에러:', error)
+      toast({
+        title: '오류',
+        description: '업체소개글 생성에 실패했습니다.',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsGenerating(false)
+    }
   }
 
+  // AI 찾아오는길 생성
+  const handleGenerateDirections = async () => {
+    if (!directionsRegionKeyword || !directionsDescription) {
+      toast({
+        title: '필수 정보 누락',
+        description: '지역과 설명은 필수로 입력해야 합니다.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    setIsGenerating(true)
+    try {
+      const token = await getToken()
+      if (!token) throw new Error('인증 토큰 없음')
+      
+      const landmarks = directionsLandmarkKeywords.split(',').map(k => k.trim()).filter(k => k)
+      
+      const response = await fetch(`${api.baseUrl}/api/v1/naver/activation/generate-directions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          region: directionsRegionKeyword,
+          landmarks,
+          description: directionsDescription
+        })
+      })
+      
+      if (!response.ok) throw new Error('생성 실패')
+      
+      const result = await response.json()
+      setGeneratedDirectionsText(result.generated_text || '')
+      setGeneratedDirectionsCharCount(result.generated_text?.length || 0)
+      
+      toast({
+        title: '생성 완료',
+        description: 'AI가 찾아오는길을 생성했습니다!',
+      })
+    } catch (error) {
+      console.error('생성 에러:', error)
+      toast({
+        title: '오류',
+        description: '찾아오는길 생성에 실패했습니다.',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
+  // 텍스트 복사
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text)
+    toast({
+      title: '복사 완료',
+      description: '클립보드에 복사되었습니다.',
+    })
+  }
+
+  // ===== 렌더링 함수들 =====
+
+  // 요약 카드 렌더링
   const renderSummaryCards = () => {
     if (!activationData?.summary_cards) return null
 
+    // 카드 타입별 이모지 매핑
+    const getCardEmoji = (type: string) => {
+      switch (type) {
+        case 'visitor_review': return '👥'
+        case 'blog_review': return '📝'
+        case 'pending_reply': return '💬'
+        case 'promotion': return '🎁'
+        case 'announcement': return '📢'
+        case 'place_plus': return '⭐'
+        default: return ''
+      }
+    }
+
     return (
-      <SimpleGrid cols={{ base: 1, sm: 2, md: 3, lg: 5 }} spacing="md" mb="xl">
-        {activationData.summary_cards.map((card) => (
-          <Card key={card.type} shadow="sm" padding="lg" radius="md" withBorder>
-            <Stack gap="xs">
-              <Text size="sm" c="dimmed" fw={500}>{card.title}</Text>
-              
-              {card.type === 'visitor_review' || card.type === 'blog_review' ? (
-                <>
-                  <Group gap="xs" align="center">
-                    <Text size="xl" fw={700}>{card.value.toFixed(2)}</Text>
-                    <Text size="xl">
-                      {((card.vs_7d_pct || 0) + (card.vs_30d_pct || 0)) / 2 > 0 ? '👏' : 
-                       ((card.vs_7d_pct || 0) + (card.vs_30d_pct || 0)) / 2 < 0 ? '😢' : ''}
-                    </Text>
-                  </Group>
-                  <Text size="xs" c="dimmed">지난 3일 일평균</Text>
-                  
-                  <Divider />
-                  
-                  <Stack gap={4}>
-                    <Group justify="space-between">
-                      <Text size="xs" c="dimmed">vs 지난 7일</Text>
-                      <Badge 
-                        color={(card.vs_7d_pct || 0) > 0 ? 'red' : (card.vs_7d_pct || 0) < 0 ? 'blue' : 'gray'} 
-                        variant="light" 
-                        size="xs"
-                        leftSection={(card.vs_7d_pct || 0) > 0 ? <ArrowUp size={12} /> : (card.vs_7d_pct || 0) < 0 ? <ArrowDown size={12} /> : <Minus size={12} />}
-                      >
-                        {Math.abs(card.vs_7d_pct || 0).toFixed(1)}%
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        {activationData.summary_cards.map((card) => {
+          const isReviewCard = card.type === 'visitor_review' || card.type === 'blog_review'
+          const avgChange = ((card.vs_7d_pct || 0) + (card.vs_30d_pct || 0)) / 2
+          const emoji = getCardEmoji(card.type)
+          
+          return (
+            <Card key={card.type} className="border-neutral-200 shadow-sm hover:shadow-md transition-shadow">
+              <CardContent className="p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold text-neutral-600">{card.title}</p>
+                  {emoji && <span className="text-lg">{emoji}</span>}
+                </div>
+                
+                {isReviewCard ? (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <p className="text-xl md:text-2xl font-bold text-neutral-900">
+                        {card.value.toFixed(2)}
+                      </p>
+                      <span className="text-base">
+                        {avgChange > 0 ? '📈' : avgChange < 0 ? '📉' : '➖'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-neutral-500">지난 3일 일평균</p>
+                    
+                    <div className="border-t border-neutral-200 pt-2 space-y-1.5">
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="text-[10px] text-neutral-500 whitespace-nowrap">vs 7일</span>
+                        <Badge 
+                          variant={(card.vs_7d_pct || 0) > 0 ? 'destructive' : (card.vs_7d_pct || 0) < 0 ? 'default' : 'secondary'}
+                          className="text-[10px] px-1 py-0 h-4 whitespace-nowrap"
+                        >
+                          {(card.vs_7d_pct || 0) > 0 ? '↑' : (card.vs_7d_pct || 0) < 0 ? '↓' : '−'}
+                          {Math.abs(card.vs_7d_pct || 0).toFixed(1)}%
+                        </Badge>
+                      </div>
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="text-[10px] text-neutral-500 whitespace-nowrap">vs 30일</span>
+                        <Badge 
+                          variant={(card.vs_30d_pct || 0) > 0 ? 'destructive' : (card.vs_30d_pct || 0) < 0 ? 'default' : 'secondary'}
+                          className="text-[10px] px-1 py-0 h-4 whitespace-nowrap"
+                        >
+                          {(card.vs_30d_pct || 0) > 0 ? '↑' : (card.vs_30d_pct || 0) < 0 ? '↓' : '−'}
+                          {Math.abs(card.vs_30d_pct || 0).toFixed(1)}%
+                        </Badge>
+                      </div>
+                    </div>
+                  </>
+                ) : card.type === 'pending_reply' && card.reply_rate !== undefined ? (
+                  // 답글 대기 카드 특별 처리
+                  <>
+                    <p className="text-2xl md:text-3xl font-bold text-orange-600">
+                      {Math.round(card.value)}
+                    </p>
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-neutral-500">답글률</span>
+                        <span className="font-bold text-primary-600">{card.reply_rate.toFixed(1)}%</span>
+                      </div>
+                      {card.total !== undefined && (
+                        <p className="text-xs text-neutral-500">
+                          전체 {card.total}개 리뷰 중
+                        </p>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-2xl md:text-3xl font-bold text-neutral-900">
+                      {Math.round(card.value)}
+                    </p>
+                    {card.has_active !== undefined && (
+                      <Badge variant={card.has_active ? 'default' : 'secondary'} className="text-xs">
+                        {card.has_active ? '활성' : '비활성'}
                       </Badge>
-                    </Group>
-                    <Group justify="space-between">
-                      <Text size="xs" c="dimmed">vs 지난 30일</Text>
-                      <Badge 
-                        color={(card.vs_30d_pct || 0) > 0 ? 'red' : (card.vs_30d_pct || 0) < 0 ? 'blue' : 'gray'} 
-                        variant="light" 
-                        size="xs"
-                        leftSection={(card.vs_30d_pct || 0) > 0 ? <ArrowUp size={12} /> : (card.vs_30d_pct || 0) < 0 ? <ArrowDown size={12} /> : <Minus size={12} />}
-                      >
-                        {Math.abs(card.vs_30d_pct || 0).toFixed(1)}%
-                      </Badge>
-                    </Group>
-                  </Stack>
-                </>
-              ) : null}
-              
-              {card.type === 'pending_reply' ? (
-                <Tooltip label="최근 300개 리뷰만 분석한 수치입니다" position="top" withArrow>
-                  <Box>
-                    {card.value === 0 ? (
-                      <>
-                        <Text size="xl" fw={700}>없음 👏</Text>
-                        <Text size="xs" c="dimmed">답글 대기</Text>
-                        <Progress value={100} size="sm" color="green" mt="xs" />
-                        <Text size="xs" c="green" mt={4}>답글률: 100%</Text>
-                      </>
-                    ) : (
-                      <>
-                        <Group gap="xs" align="center">
-                          <Text size="xl" fw={700}>{card.value}개</Text>
-                          <Text size="xl">
-                            {(card.reply_rate || 0) >= 90 ? '👏' : 
-                             (card.reply_rate || 0) >= 70 ? '💪' : '😢'}
-                          </Text>
-                        </Group>
-                        <Text size="xs" c="dimmed">답글 대기</Text>
-                        <Progress value={card.reply_rate || 0} size="sm" color="blue" mt="xs" />
-                        <Text size="xs" c="dimmed" mt={4}>답글률: {card.reply_rate?.toFixed(1)}%</Text>
-                      </>
                     )}
-                  </Box>
-                </Tooltip>
-              ) : null}
-              
-              {card.type === 'coupon' ? (
-                <>
-                  <Group gap="xs" align="center">
-                    <Text size="xl" fw={700}>{card.value}개</Text>
-                    <Text size="xl">{card.value >= 1 ? '👏' : '😢'}</Text>
-                  </Group>
-                  <Badge color={card.has_active ? 'green' : 'gray'} variant="light" size="sm">
-                    {card.has_active ? '활성' : '비활성'}
-                  </Badge>
-                </>
-              ) : null}
-              
-              {card.type === 'announcement' ? (
-                <>
-                  {card.value === 0 ? (
-                    <>
-                      <Group gap="xs" align="center">
-                        <Text size="xl" fw={700}>0개</Text>
-                        <Text size="xl">😢</Text>
-                      </Group>
-                      <Text size="xs" c="dimmed">최근 7일동안 공지사항 없습니다</Text>
-                    </>
-                  ) : (
-                    <>
-                      <Group gap="xs" align="center">
-                        <Text size="xl" fw={700}>{card.value}개</Text>
-                        <Text size="xl">👏</Text>
-                      </Group>
-                      <Text size="xs" c="dimmed">최근 7일 내</Text>
-                      <Badge 
-                        color="green" 
-                        variant="light" 
-                        size="sm"
-                      >
-                        {card.days_since_last !== undefined && card.days_since_last !== null && card.days_since_last <= 7
-                          ? `${card.days_since_last}일 전` 
-                          : '최근 업데이트'}
-                      </Badge>
-                    </>
-                  )}
-                </>
-              ) : null}
-            </Stack>
-          </Card>
-        ))}
-      </SimpleGrid>
+                    {card.days_since_last !== undefined && card.days_since_last > 0 && (
+                      <p className="text-xs text-neutral-500">
+                        {card.days_since_last <= 3 
+                          ? '최근 활동 있음' 
+                          : card.days_since_last >= 999 
+                          ? '지난 3일 동안 없음'
+                          : `${card.days_since_last}일 전 업데이트`}
+                      </p>
+                    )}
+                    {card.days_since_last !== undefined && card.days_since_last === 0 && (
+                      <p className="text-xs text-green-600 font-medium">
+                        최근 활동 있음
+                      </p>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          )
+        })}
+      </div>
     )
   }
 
+  // 리뷰 추이 렌더링
   const renderReviewTrends = () => {
-    if (!activationData || !activationData.visitor_review_trends || !activationData.blog_review_trends) return null
+    if (!activationData?.visitor_review_trends || !activationData?.blog_review_trends) return null
 
-    const hasVisitorTrendData = activationData.visitor_review_trends.last_3days_avg > 0
-    const hasBlogTrendData = activationData.blog_review_trends.last_3days_avg > 0
+    const trends = [
+      { title: '방문자 리뷰 추이', data: activationData.visitor_review_trends, icon: MessageSquare, color: 'blue' },
+      { title: '블로그 리뷰 추이', data: activationData.blog_review_trends, icon: FileText, color: 'green' }
+    ]
 
     return (
-      <Grid gutter="md">
-        <Grid.Col span={{ base: 12, md: 6 }}>
-          <Card shadow="sm" padding="lg" radius="md" withBorder>
-            <Stack gap="md">
-              <Group justify="space-between">
-                <Text fw={600} size="lg">방문자 리뷰 추이</Text>
-                <ThemeIcon variant="light" size="lg" color="blue">
-                  <MessageSquare className="w-5 h-5" />
-                </ThemeIcon>
-              </Group>
-              
-              <Divider />
-              
-              <SimpleGrid cols={2} spacing="xs">
-                <Box>
-                  <Text size="xs" c="dimmed">지난 3일 일평균</Text>
-                  <Text fw={700} size="lg">{(activationData.visitor_review_trends?.last_3days_avg || 0).toFixed(2)}</Text>
-                </Box>
-                <Box>
-                  <Text size="xs" c="dimmed">지난 7일 일평균</Text>
-                  <Text fw={600}>{(activationData.visitor_review_trends?.last_7days_avg || 0).toFixed(2)}</Text>
-                </Box>
-                <Box>
-                  <Text size="xs" c="dimmed">지난 30일 일평균</Text>
-                  <Text fw={600}>{(activationData.visitor_review_trends?.last_30days_avg || 0).toFixed(2)}</Text>
-                </Box>
-                <Box>
-                  <Text size="xs" c="dimmed">지난 60일 일평균</Text>
-                  <Text fw={600}>{(activationData.visitor_review_trends?.last_60days_avg || 0).toFixed(2)}</Text>
-                </Box>
-              </SimpleGrid>
-              
-              <Divider />
-              
-              <Box>
-                <Text size="sm" fw={600} mb="xs">지난 3일 일평균 비교</Text>
-                <Stack gap="xs">
-                  <Group justify="space-between">
-                    <Text size="xs" c="dimmed">vs 지난 7일 일평균</Text>
-                    <Group gap={4}>
-                      <Text size="sm" fw={600}>
-                        {Math.abs((activationData.visitor_review_trends?.last_3days_avg || 0) - (activationData.visitor_review_trends?.last_7days_avg || 0)).toFixed(2)}개
-                      </Text>
-                      <Text 
-                        size="sm" 
-                        fw={600}
-                        c={
-                          (activationData.visitor_review_trends?.comparisons?.vs_last_7days?.change || 0) > 0 ? 'red' :
-                          (activationData.visitor_review_trends?.comparisons?.vs_last_7days?.change || 0) < 0 ? 'blue' : 'dimmed'
-                        }
-                      >
-                        ({Math.abs(activationData.visitor_review_trends?.comparisons?.vs_last_7days?.change || 0).toFixed(1)}%)
-                      </Text>
-                      <Text size="sm" fw={600}>
-                        {(activationData.visitor_review_trends?.comparisons?.vs_last_7days?.direction === 'up') ? '👍 높습니다' :
-                         (activationData.visitor_review_trends?.comparisons?.vs_last_7days?.direction === 'down') ? '👎 낮습니다' :
-                         '➡️ 동일합니다'}
-                      </Text>
-                    </Group>
-                  </Group>
-                  <Group justify="space-between">
-                    <Text size="xs" c="dimmed">vs 지난 30일 일평균</Text>
-                    <Group gap={4}>
-                      <Text size="sm" fw={600}>
-                        {Math.abs((activationData.visitor_review_trends?.last_3days_avg || 0) - (activationData.visitor_review_trends?.last_30days_avg || 0)).toFixed(2)}개
-                      </Text>
-                      <Text 
-                        size="sm" 
-                        fw={600}
-                        c={
-                          (activationData.visitor_review_trends?.comparisons?.vs_last_30days?.change || 0) > 0 ? 'red' :
-                          (activationData.visitor_review_trends?.comparisons?.vs_last_30days?.change || 0) < 0 ? 'blue' : 'dimmed'
-                        }
-                      >
-                        ({Math.abs(activationData.visitor_review_trends?.comparisons?.vs_last_30days?.change || 0).toFixed(1)}%)
-                      </Text>
-                      <Text size="sm" fw={600}>
-                        {(activationData.visitor_review_trends?.comparisons?.vs_last_30days?.direction === 'up') ? '👍 높습니다' :
-                         (activationData.visitor_review_trends?.comparisons?.vs_last_30days?.direction === 'down') ? '👎 낮습니다' :
-                         '➡️ 동일합니다'}
-                      </Text>
-                    </Group>
-                  </Group>
-                  <Group justify="space-between">
-                    <Text size="xs" c="dimmed">vs 지난 60일 일평균</Text>
-                    <Group gap={4}>
-                      <Text size="sm" fw={600}>
-                        {Math.abs((activationData.visitor_review_trends?.last_3days_avg || 0) - (activationData.visitor_review_trends?.last_60days_avg || 0)).toFixed(2)}개
-                      </Text>
-                      <Text 
-                        size="sm" 
-                        fw={600}
-                        c={
-                          (activationData.visitor_review_trends?.comparisons?.vs_last_60days?.change || 0) > 0 ? 'red' :
-                          (activationData.visitor_review_trends?.comparisons?.vs_last_60days?.change || 0) < 0 ? 'blue' : 'dimmed'
-                        }
-                      >
-                        ({Math.abs(activationData.visitor_review_trends?.comparisons?.vs_last_60days?.change || 0).toFixed(1)}%)
-                      </Text>
-                      <Text size="sm" fw={600}>
-                        {(activationData.visitor_review_trends?.comparisons?.vs_last_60days?.direction === 'up') ? '👍 높습니다' :
-                         (activationData.visitor_review_trends?.comparisons?.vs_last_60days?.direction === 'down') ? '👎 낮습니다' :
-                         '➡️ 동일합니다'}
-                      </Text>
-                    </Group>
-                  </Group>
-                </Stack>
-              </Box>
-            </Stack>
-          </Card>
-        </Grid.Col>
-        
-        <Grid.Col span={{ base: 12, md: 6 }}>
-          <Card shadow="sm" padding="lg" radius="md" withBorder>
-            <Stack gap="md">
-              <Group justify="space-between">
-                <Text fw={600} size="lg">블로그 리뷰 추이</Text>
-                <ThemeIcon variant="light" size="lg" color="violet">
-                  <FileText className="w-5 h-5" />
-                </ThemeIcon>
-              </Group>
-              
-              <Divider />
-              
-              <SimpleGrid cols={2} spacing="xs">
-                <Box>
-                  <Text size="xs" c="dimmed">지난 3일 일평균</Text>
-                  <Text fw={700} size="lg">{(activationData.blog_review_trends?.last_3days_avg || 0).toFixed(2)}</Text>
-                </Box>
-                <Box>
-                  <Text size="xs" c="dimmed">지난 7일 일평균</Text>
-                  <Text fw={600}>{(activationData.blog_review_trends?.last_7days_avg || 0).toFixed(2)}</Text>
-                </Box>
-                <Box>
-                  <Text size="xs" c="dimmed">지난 30일 일평균</Text>
-                  <Text fw={600}>{(activationData.blog_review_trends?.last_30days_avg || 0).toFixed(2)}</Text>
-                </Box>
-                <Box>
-                  <Text size="xs" c="dimmed">지난 60일 일평균</Text>
-                  <Text fw={600}>{(activationData.blog_review_trends?.last_60days_avg || 0).toFixed(2)}</Text>
-                </Box>
-              </SimpleGrid>
-              
-              <Divider />
-              
-              <Box>
-                <Text size="sm" fw={600} mb="xs">지난 3일 일평균 비교</Text>
-                <Stack gap="xs">
-                  <Group justify="space-between">
-                    <Text size="xs" c="dimmed">vs 지난 7일 일평균</Text>
-                    <Group gap={4}>
-                      <Text size="sm" fw={600}>
-                        {Math.abs((activationData.blog_review_trends?.last_3days_avg || 0) - (activationData.blog_review_trends?.last_7days_avg || 0)).toFixed(2)}개
-                      </Text>
-                      <Text 
-                        size="sm" 
-                        fw={600}
-                        c={
-                          (activationData.blog_review_trends?.comparisons?.vs_last_7days?.change || 0) > 0 ? 'red' :
-                          (activationData.blog_review_trends?.comparisons?.vs_last_7days?.change || 0) < 0 ? 'blue' : 'dimmed'
-                        }
-                      >
-                        ({Math.abs(activationData.blog_review_trends?.comparisons?.vs_last_7days?.change || 0).toFixed(1)}%)
-                      </Text>
-                      <Text size="sm" fw={600}>
-                        {(activationData.blog_review_trends?.comparisons?.vs_last_7days?.direction === 'up') ? '👍 높습니다' :
-                         (activationData.blog_review_trends?.comparisons?.vs_last_7days?.direction === 'down') ? '👎 낮습니다' :
-                         '➡️ 동일합니다'}
-                      </Text>
-                    </Group>
-                  </Group>
-                  <Group justify="space-between">
-                    <Text size="xs" c="dimmed">vs 지난 30일 일평균</Text>
-                    <Group gap={4}>
-                      <Text size="sm" fw={600}>
-                        {Math.abs((activationData.blog_review_trends?.last_3days_avg || 0) - (activationData.blog_review_trends?.last_30days_avg || 0)).toFixed(2)}개
-                      </Text>
-                      <Text 
-                        size="sm" 
-                        fw={600}
-                        c={
-                          (activationData.blog_review_trends?.comparisons?.vs_last_30days?.change || 0) > 0 ? 'red' :
-                          (activationData.blog_review_trends?.comparisons?.vs_last_30days?.change || 0) < 0 ? 'blue' : 'dimmed'
-                        }
-                      >
-                        ({Math.abs(activationData.blog_review_trends?.comparisons?.vs_last_30days?.change || 0).toFixed(1)}%)
-                      </Text>
-                      <Text size="sm" fw={600}>
-                        {(activationData.blog_review_trends?.comparisons?.vs_last_30days?.direction === 'up') ? '👍 높습니다' :
-                         (activationData.blog_review_trends?.comparisons?.vs_last_30days?.direction === 'down') ? '👎 낮습니다' :
-                         '➡️ 동일합니다'}
-                      </Text>
-                    </Group>
-                  </Group>
-                  <Group justify="space-between">
-                    <Text size="xs" c="dimmed">vs 지난 60일 일평균</Text>
-                    <Group gap={4}>
-                      <Text size="sm" fw={600}>
-                        {Math.abs((activationData.blog_review_trends?.last_3days_avg || 0) - (activationData.blog_review_trends?.last_60days_avg || 0)).toFixed(2)}개
-                      </Text>
-                      <Text 
-                        size="sm" 
-                        fw={600}
-                        c={
-                          (activationData.blog_review_trends?.comparisons?.vs_last_60days?.change || 0) > 0 ? 'red' :
-                          (activationData.blog_review_trends?.comparisons?.vs_last_60days?.change || 0) < 0 ? 'blue' : 'dimmed'
-                        }
-                      >
-                        ({Math.abs(activationData.blog_review_trends?.comparisons?.vs_last_60days?.change || 0).toFixed(1)}%)
-                      </Text>
-                      <Text size="sm" fw={600}>
-                        {(activationData.blog_review_trends?.comparisons?.vs_last_60days?.direction === 'up') ? '👍 높습니다' :
-                         (activationData.blog_review_trends?.comparisons?.vs_last_60days?.direction === 'down') ? '👎 낮습니다' :
-                         '➡️ 동일합니다'}
-                      </Text>
-                    </Group>
-                  </Group>
-                </Stack>
-              </Box>
-            </Stack>
-          </Card>
-        </Grid.Col>
-      </Grid>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+        {trends.map((trend) => {
+          const Icon = trend.icon
+          const hasData = trend.data.last_3days_avg > 0
+          
+          return (
+            <Card key={trend.title} className="border-neutral-200 shadow-sm">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base md:text-lg font-bold text-neutral-900">
+                    {trend.title}
+                  </CardTitle>
+                  <div className={`p-2 rounded-lg bg-${trend.color}-50`}>
+                    <Icon className={`w-5 h-5 text-${trend.color}-600`} />
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-xs text-neutral-600">지난 3일 일평균</p>
+                    <p className="text-xl md:text-2xl font-bold text-neutral-900">
+                      {trend.data.last_3days_avg.toFixed(2)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-neutral-600">지난 7일 일평균</p>
+                    <p className="text-lg md:text-xl font-semibold text-neutral-700">
+                      {trend.data.last_7days_avg.toFixed(2)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-neutral-600">지난 30일 일평균</p>
+                    <p className="text-lg md:text-xl font-semibold text-neutral-700">
+                      {trend.data.last_30days_avg.toFixed(2)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-neutral-600">지난 60일 일평균</p>
+                    <p className="text-lg md:text-xl font-semibold text-neutral-700">
+                      {trend.data.last_60days_avg.toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+
+                {hasData && (
+                  <div className="mt-4 pt-3 border-t border-neutral-200 space-y-2">
+                    <p className="text-xs font-semibold text-neutral-700">변화 추이</p>
+                    {Object.entries(trend.data.comparisons).map(([key, comp]: [string, any]) => (
+                      <div key={key} className="flex items-center justify-between">
+                        <span className="text-xs text-neutral-600">
+                          {key === 'vs_last_7days' ? 'vs 지난 7일' :
+                           key === 'vs_last_30days' ? 'vs 지난 30일' : 'vs 지난 60일'}
+                        </span>
+                        <Badge 
+                          variant={comp.direction === 'up' ? 'destructive' : comp.direction === 'down' ? 'default' : 'secondary'}
+                          className="text-xs"
+                        >
+                          {comp.direction === 'up' ? <TrendingUp className="w-3 h-3 mr-0.5" /> :
+                           comp.direction === 'down' ? <TrendingDown className="w-3 h-3 mr-0.5" /> :
+                           <Minus className="w-3 h-3 mr-0.5" />}
+                          {Math.abs(comp.change).toFixed(1)}%
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )
+        })}
+      </div>
     )
   }
 
+  // 답글 대기 렌더링
   const renderPendingReply = () => {
-    if (!activationData || !activationData.pending_reply_info) return null
+    if (!activationData?.pending_reply_info) return null
 
     const { pending_reply_info, naver_api_limited } = activationData
 
     return (
-      <Card shadow="sm" padding="lg" radius="md" withBorder>
-        <Stack gap="md">
-          <Group justify="space-between">
-            <Text fw={600} size="lg">답글 대기 현황</Text>
-            <ThemeIcon variant="light" size="lg" color="orange">
-              <MessageSquare className="w-5 h-5" />
-            </ThemeIcon>
-          </Group>
-          
-          <Divider />
-          
+      <Card className="border-neutral-200 shadow-sm">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base md:text-lg font-bold text-neutral-900">
+              답글 대기 현황
+            </CardTitle>
+            <div className="p-2 rounded-lg bg-orange-50">
+              <MessageSquare className="w-5 h-5 text-orange-600" />
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-0">
           {naver_api_limited ? (
-            <Alert icon={<AlertCircle className="w-4 h-4" />} color="yellow" variant="light">
-              <Text size="sm" fw={600}>네이버 API 제한</Text>
-              <Text size="xs" c="dimmed" mt="xs">
+            <Alert className="border-yellow-200 bg-yellow-50">
+              <AlertCircle className="h-4 w-4 text-yellow-600" />
+              <AlertTitle className="text-sm font-semibold text-yellow-900">
+                네이버 API 제한
+              </AlertTitle>
+              <AlertDescription className="text-xs text-yellow-700 mt-1">
                 현재 네이버 API 제한으로 리뷰 정보를 가져올 수 없습니다. "AI 리뷰답글" 메뉴에서 직접 확인해주세요.
-              </Text>
+              </AlertDescription>
               <Button
-                size="xs"
-                variant="light"
-                mt="xs"
-                component="a"
-                href="/dashboard/naver/reviews/ai-reply"
+                size="sm"
+                variant="outline"
+                className="mt-2 border-yellow-300 text-yellow-700 hover:bg-yellow-100"
+                onClick={() => window.location.href = '/dashboard/naver/reviews/ai-reply'}
               >
                 AI 리뷰답글 바로가기
               </Button>
             </Alert>
           ) : (
             <>
-              {(pending_reply_info?.pending_count || 0) === 0 ? (
-                <Alert icon={<CheckCircle className="w-4 h-4" />} color="green" variant="light">
-                  <Text size="sm" fw={600}>답글 대기중 리뷰: 없음 👏</Text>
-                  <Text size="xs" c="dimmed" mt="xs">
-                    모든 리뷰에 답글을 완료했습니다! 훌륭합니다!
-                  </Text>
+              {pending_reply_info.pending_count === 0 ? (
+                <Alert className="border-green-200 bg-green-50">
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                  <AlertTitle className="text-sm font-semibold text-green-900">
+                    답글 대기 없음
+                  </AlertTitle>
+                  <AlertDescription className="text-xs text-green-700 mt-1">
+                    모든 리뷰에 답글이 달려 있습니다! 👏
+                  </AlertDescription>
                 </Alert>
               ) : (
-                <Alert icon={<AlertCircle className="w-4 h-4" />} color="orange" variant="light">
-                  <Text size="sm" fw={600}>답글 대기중 리뷰 수: {pending_reply_info?.pending_count || 0}개</Text>
-                  <Text size="xs" c="dimmed" mt="xs">
-                    최근 300개 리뷰 중 {pending_reply_info?.pending_count || 0}개의 리뷰에 답글이 필요합니다
-                  </Text>
-                </Alert>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-3 rounded-lg bg-neutral-50 border border-neutral-200">
+                      <p className="text-xs text-neutral-600 mb-1">전체 리뷰</p>
+                      <p className="text-2xl font-bold text-neutral-900">
+                        {pending_reply_info.total_reviews}
+                      </p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-orange-50 border border-orange-200">
+                      <p className="text-xs text-orange-600 mb-1">답글 대기</p>
+                      <p className="text-2xl font-bold text-orange-600">
+                        {pending_reply_info.pending_count}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="pt-3 border-t border-neutral-200">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-semibold text-neutral-700">답글률</span>
+                      <span className="text-sm font-bold text-primary-600">
+                        {pending_reply_info.reply_rate.toFixed(1)}%
+                      </span>
+                    </div>
+                    <div className="w-full bg-neutral-200 rounded-full h-2">
+                      <div 
+                        className="bg-primary-500 h-2 rounded-full transition-all"
+                        style={{ width: `${pending_reply_info.reply_rate}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {(() => {
+                    if (!pending_reply_info.oldest_pending_date) return null
+                    
+                    try {
+                      const date = new Date(pending_reply_info.oldest_pending_date)
+                      // 유효한 날짜인지 확인
+                      if (isNaN(date.getTime())) return null
+                      
+                      return (
+                        <Alert className="border-red-200 bg-red-50">
+                          <AlertCircle className="h-4 w-4 text-red-600" />
+                          <AlertDescription className="text-xs text-red-700">
+                            가장 오래된 대기 리뷰: {date.toLocaleDateString('ko-KR')}
+                          </AlertDescription>
+                        </Alert>
+                      )
+                    } catch (error) {
+                      console.error('날짜 파싱 에러:', pending_reply_info.oldest_pending_date, error)
+                      return null
+                    }
+                  })()}
+
+                  <Button 
+                    className="w-full"
+                    onClick={() => window.location.href = '/dashboard/naver/reviews/ai-reply'}
+                  >
+                    <MessageCircle className="w-4 h-4 mr-2" />
+                    AI 리뷰답글 바로가기
+                  </Button>
+                </div>
               )}
-          
-          <Group grow>
-            <Box>
-              <Text size="xs" c="dimmed">답글 완료</Text>
-              <Text fw={600} size="lg">{pending_reply_info?.replied_count || 0}개</Text>
-            </Box>
-            <Box>
-              <Text size="xs" c="dimmed">답글률</Text>
-              <Text fw={600} size="lg" c="blue">{(pending_reply_info?.reply_rate || 0).toFixed(1)}%</Text>
-            </Box>
-          </Group>
-          
-          <Progress value={pending_reply_info?.reply_rate || 0} size="lg" color="blue" />
-          
-          {pending_reply_info?.oldest_pending_date && (
-            <Text size="xs" c="dimmed">
-              가장 오래된 답글 대기 리뷰: {new Date(pending_reply_info.oldest_pending_date).toLocaleDateString('ko-KR')}
-            </Text>
-          )}
-          
-          <Button
-            fullWidth
-            color="blue"
-            leftSection={<MessageSquare className="w-4 h-4" />}
-            component="a"
-            href="/dashboard/naver/reviews/ai-reply"
-          >
-            AI 답글생성으로 빠르게 업데이트하기
-          </Button>
             </>
           )}
-        </Stack>
+        </CardContent>
       </Card>
     )
   }
 
-  const renderOtherInfo = () => {
+  // 플레이스 정보 렌더링
+  const renderPlaceInfo = () => {
     if (!activationData) return null
 
     return (
-      <Stack gap="md">
+      <div className="space-y-4">
         {/* 프로모션/쿠폰 */}
-        <Card shadow="sm" padding="lg" radius="md" withBorder>
-          <Stack gap="md">
-            <Group justify="space-between">
-              <Text fw={600}>프로모션/쿠폰</Text>
-              <Badge color={activationData.has_promotion ? 'green' : 'gray'} variant="light">
+        <Card className="border-neutral-200 shadow-sm">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base font-bold text-neutral-900">
+                프로모션/쿠폰
+              </CardTitle>
+              <Badge variant={activationData.has_promotion ? 'default' : 'secondary'}>
                 {activationData.has_promotion ? `${activationData.promotion_count}개 활성` : '비활성'}
               </Badge>
-            </Group>
-            
-            {activationData.has_promotion && activationData.promotion_items && activationData.promotion_items.length > 0 ? (
-              <Stack gap="xs">
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0">
+            {activationData.has_promotion && activationData.promotion_items?.length > 0 ? (
+              <div className="space-y-2">
                 {activationData.promotion_items.map((item, index) => (
-                  <Paper key={index} p="sm" withBorder>
-                    <Text size="sm" fw={600}>{item.title}</Text>
-                    {item.description && <Text size="xs" c="dimmed" mt={4}>{item.description}</Text>}
+                  <div key={index} className="p-3 rounded-lg border border-neutral-200 bg-neutral-50">
+                    <p className="text-sm font-semibold text-neutral-900">{item.title}</p>
+                    {item.description && (
+                      <p className="text-xs text-neutral-600 mt-1">{item.description}</p>
+                    )}
                     {item.discount && (
-                      <Badge color="red" variant="light" size="sm" mt={4}>
+                      <Badge variant="destructive" className="mt-2 text-xs">
                         {item.discount}
                       </Badge>
                     )}
-                  </Paper>
+                  </div>
                 ))}
-              </Stack>
+              </div>
             ) : (
-              <Alert icon={<AlertCircle className="w-4 h-4" />} color="yellow" variant="light">
-                <Text size="sm">쿠폰을 등록하여 고객 유입을 늘려보세요!</Text>
-                <Button
-                  size="xs"
-                  variant="light"
-                  mt="xs"
-                  rightSection={<ExternalLink className="w-3 h-3" />}
-                  component="a"
-                  href="https://blog.naver.com/businessinsight/223000000000"
-                  target="_blank"
-                >
-                  쿠폰 등록 가이드
-                </Button>
+              <Alert className="border-yellow-200 bg-yellow-50">
+                <Gift className="h-4 w-4 text-yellow-600" />
+                <AlertDescription className="text-xs text-yellow-700">
+                  쿠폰을 등록하여 고객 유입을 늘려보세요!
+                </AlertDescription>
               </Alert>
             )}
-          </Stack>
+          </CardContent>
         </Card>
 
         {/* 공지사항 */}
-        <Card shadow="sm" padding="lg" radius="md" withBorder>
-          <Stack gap="md">
-            <Group justify="space-between">
-              <Text fw={600}>공지사항</Text>
-              <Badge 
-                color={activationData.days_since_last_announcement && activationData.days_since_last_announcement <= 7 ? 'green' : 'orange'} 
-                variant="light"
-              >
-                {activationData.has_announcement ? `${activationData.announcement_count}개` : '없음'}
+        <Card className="border-neutral-200 shadow-sm">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base font-bold text-neutral-900">
+                공지사항
+              </CardTitle>
+              <Badge variant={activationData.has_announcement ? 'default' : 'secondary'}>
+                {activationData.has_announcement ? `${activationData.announcement_count}개 활성` : '비활성'}
               </Badge>
-            </Group>
-            
-            {activationData.has_announcement && activationData.announcement_items && activationData.announcement_items.length > 0 ? (
-              <Stack gap="xs">
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0">
+            {activationData.has_announcement && activationData.announcement_items?.length > 0 ? (
+              <div className="space-y-2">
                 {activationData.announcement_items.map((item, index) => (
-                  <Paper key={index} p="sm" withBorder>
-                    <Group justify="space-between" mb={4}>
-                      <Text size="sm" fw={600}>{item.title}</Text>
-                      <Badge color="green" variant="light" size="sm">
-                        {item.days_ago}일 전
-                      </Badge>
-                    </Group>
-                    {item.content && (
-                      <Text size="xs" c="dimmed" style={{ whiteSpace: 'pre-wrap' }}>
-                        {item.content}
-                      </Text>
-                    )}
-                  </Paper>
+                  <div key={index} className="p-3 rounded-lg border border-neutral-200 bg-neutral-50">
+                    <p className="text-sm font-semibold text-neutral-900">{item.title}</p>
+                    <p className="text-xs text-neutral-600 mt-1">{item.content}</p>
+                    <p className="text-xs text-neutral-500 mt-1">{item.relative}</p>
+                  </div>
                 ))}
-              </Stack>
+              </div>
             ) : (
-              <Alert icon={<AlertCircle className="w-4 h-4" />} color="yellow" variant="light">
-                <Text size="sm">지난 7일간 공지사항이 없습니다. 새로운 소식을 공유해보세요!</Text>
-                <Button
-                  size="xs"
-                  variant="light"
-                  mt="xs"
-                  rightSection={<ExternalLink className="w-3 h-3" />}
-                  component="a"
-                  href="https://blog.naver.com/businessinsight/223000000001"
-                  target="_blank"
-                >
-                  공지사항 등록 가이드
-                </Button>
+              <Alert className="border-yellow-200 bg-yellow-50">
+                <Megaphone className="h-4 w-4 text-yellow-600" />
+                <AlertDescription className="text-xs text-yellow-700">
+                  공지사항을 등록하여 고객에게 정보를 전달하세요!
+                </AlertDescription>
               </Alert>
             )}
-          </Stack>
+          </CardContent>
         </Card>
 
         {/* 업체소개글 */}
-        <Card shadow="sm" padding="lg" radius="md" withBorder>
-          <Stack gap="md">
-            <Text fw={600}>업체소개글</Text>
+        <Card className="border-neutral-200 shadow-sm">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base font-bold text-neutral-900">
+                업체소개글
+              </CardTitle>
+              <Badge variant={activationData.description ? 'default' : 'secondary'}>
+                {activationData.description ? '등록됨' : '미등록'}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0 space-y-3">
             {activationData.description ? (
-              <Paper p="sm" withBorder bg="gray.0">
-                <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>{activationData.description}</Text>
-              </Paper>
+              <div className="p-3 rounded-lg border border-neutral-200 bg-neutral-50">
+                <p className="text-sm text-neutral-700 whitespace-pre-wrap">
+                  {activationData.description}
+                </p>
+              </div>
             ) : (
-              <Text size="sm" c="dimmed">등록된 업체소개글이 없습니다.</Text>
+              <Alert className="border-blue-200 bg-blue-50">
+                <Sparkles className="h-4 w-4 text-blue-600" />
+                <AlertDescription className="text-xs text-blue-700">
+                  AI로 SEO 최적화된 업체소개글을 생성해보세요!
+                </AlertDescription>
+              </Alert>
             )}
-            <Button
-              variant="light"
-              color="blue"
+            <Button 
+              variant="outline" 
+              className="w-full"
               onClick={() => setShowDescriptionModal(true)}
             >
-              AI로 완벽한 업체소개글 생성하기
+              <Sparkles className="w-4 h-4 mr-2" />
+              AI로 업체소개글 생성하기
             </Button>
-          </Stack>
+          </CardContent>
         </Card>
 
         {/* 찾아오는길 */}
-        <Card shadow="sm" padding="lg" radius="md" withBorder>
-          <Stack gap="md">
-            <Text fw={600}>찾아오는길</Text>
+        <Card className="border-neutral-200 shadow-sm">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base font-bold text-neutral-900">
+                찾아오는길
+              </CardTitle>
+              <Badge variant={activationData.directions ? 'default' : 'secondary'}>
+                {activationData.directions ? '등록됨' : '미등록'}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0 space-y-3">
             {activationData.directions ? (
-              <Paper p="sm" withBorder bg="gray.0">
-                <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>{activationData.directions}</Text>
-              </Paper>
+              <div className="p-3 rounded-lg border border-neutral-200 bg-neutral-50">
+                <p className="text-sm text-neutral-700 whitespace-pre-wrap">
+                  {activationData.directions}
+                </p>
+              </div>
             ) : (
-              <Text size="sm" c="dimmed">등록된 찾아오는길 정보가 없습니다.</Text>
+              <Alert className="border-blue-200 bg-blue-50">
+                <MapPin className="h-4 w-4 text-blue-600" />
+                <AlertDescription className="text-xs text-blue-700">
+                  AI로 고객이 쉽게 이해할 수 있는 찾아오는길을 생성해보세요!
+                </AlertDescription>
+              </Alert>
             )}
-            <Button
-              variant="light"
-              color="blue"
+            <Button 
+              variant="outline" 
+              className="w-full"
               onClick={() => setShowDirectionsModal(true)}
             >
-              AI로 완벽한 찾아오는길 생성
+              <MapPin className="w-4 h-4 mr-2" />
+              AI로 찾아오는길 생성하기
             </Button>
-          </Stack>
+          </CardContent>
         </Card>
 
-        {/* SNS 및 웹사이트 */}
-        <Card shadow="sm" padding="lg" radius="md" withBorder>
-          <Stack gap="md">
-            <Text fw={600}>SNS 및 웹사이트</Text>
-            <SimpleGrid cols={2} spacing="md">
-              <Paper p="sm" withBorder>
-                <Group justify="space-between">
-                  <Group gap="xs" style={{ flex: 1 }}>
-                    <ThemeIcon variant="light" size="sm" color="blue">
-                      <Globe className="w-3 h-3" />
-                    </ThemeIcon>
-                    <Box style={{ flex: 1 }}>
-                      <Text size="xs" c="dimmed">홈페이지</Text>
-                      <Text size="sm" lineClamp={1}>{activationData.homepage || '미등록'}</Text>
-                    </Box>
-                  </Group>
-                  {activationData.homepage ? (
-                    <Badge color="green" variant="light" leftSection={<CheckCircle className="w-3 h-3" />}>
-                      등록
-                    </Badge>
-                  ) : (
-                    <Badge color="gray" variant="light">
-                      미등록
-                    </Badge>
-                  )}
-                </Group>
-              </Paper>
-              <Paper p="sm" withBorder>
-                <Group justify="space-between">
-                  <Group gap="xs" style={{ flex: 1 }}>
-                    <ThemeIcon variant="light" size="sm" color="pink">
-                      <Instagram className="w-3 h-3" />
-                    </ThemeIcon>
-                    <Box style={{ flex: 1 }}>
-                      <Text size="xs" c="dimmed">인스타그램</Text>
-                      <Text size="sm" lineClamp={1}>{activationData.instagram || '미등록'}</Text>
-                    </Box>
-                  </Group>
-                  {activationData.instagram ? (
-                    <Badge color="green" variant="light" leftSection={<CheckCircle className="w-3 h-3" />}>
-                      등록
-                    </Badge>
-                  ) : (
-                    <Badge color="gray" variant="light">
-                      미등록
-                    </Badge>
-                  )}
-                </Group>
-              </Paper>
-              <Paper p="sm" withBorder>
-                <Group justify="space-between">
-                  <Group gap="xs" style={{ flex: 1 }}>
-                    <ThemeIcon variant="light" size="sm" color="indigo">
-                      <Facebook className="w-3 h-3" />
-                    </ThemeIcon>
-                    <Box style={{ flex: 1 }}>
-                      <Text size="xs" c="dimmed">페이스북</Text>
-                      <Text size="sm" lineClamp={1}>{activationData.facebook || '미등록'}</Text>
-                    </Box>
-                  </Group>
-                  {activationData.facebook ? (
-                    <Badge color="green" variant="light" leftSection={<CheckCircle className="w-3 h-3" />}>
-                      등록
-                    </Badge>
-                  ) : (
-                    <Badge color="gray" variant="light">
-                      미등록
-                    </Badge>
-                  )}
-                </Group>
-              </Paper>
-              <Paper p="sm" withBorder>
-                <Group justify="space-between">
-                  <Group gap="xs" style={{ flex: 1 }}>
-                    <ThemeIcon variant="light" size="sm" color="green">
-                      <BookOpen className="w-3 h-3" />
-                    </ThemeIcon>
-                    <Box style={{ flex: 1 }}>
-                      <Text size="xs" c="dimmed">블로그</Text>
-                      <Text size="sm" lineClamp={1}>{activationData.blog || '미등록'}</Text>
-                    </Box>
-                  </Group>
-                  {activationData.blog ? (
-                    <Badge color="green" variant="light" leftSection={<CheckCircle className="w-3 h-3" />}>
-                      등록
-                    </Badge>
-                  ) : (
-                    <Badge color="gray" variant="light">
-                      미등록
-                    </Badge>
-                  )}
-                </Group>
-              </Paper>
-            </SimpleGrid>
-            
-            {!activationData.instagram && (
-              <Alert icon={<AlertCircle className="w-4 h-4" />} color="blue" variant="light">
-                <Text size="sm">인스타그램 공식계정이 있다면, 업체정보에 반드시 추가해주세요!</Text>
-              </Alert>
-            )}
-            
-            {!activationData.blog && (
-              <Alert icon={<AlertCircle className="w-4 h-4" />} color="blue" variant="light">
-                <Text size="sm">현재 운영중인 네이버블로그를 반드시 추가해주세요!</Text>
-              </Alert>
-            )}
-          </Stack>
+        {/* SNS & 웹사이트 */}
+        <Card className="border-neutral-200 shadow-sm">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base font-bold text-neutral-900">
+                SNS & 웹사이트
+              </CardTitle>
+              <Badge variant={
+                activationData.homepage || activationData.instagram || activationData.facebook || activationData.blog 
+                  ? 'default' 
+                  : 'secondary'
+              }>
+                {[activationData.homepage, activationData.instagram, activationData.facebook, activationData.blog].filter(Boolean).length}개 등록
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {/* 홈페이지 */}
+              {activationData.homepage ? (
+                <a
+                  href={activationData.homepage}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 p-3 rounded-lg border border-green-200 bg-green-50 hover:border-green-300 transition-colors"
+                >
+                  <Globe className="w-4 h-4 text-green-600" />
+                  <span className="text-sm font-medium text-green-900">홈페이지</span>
+                  <Badge variant="default" className="ml-auto bg-green-500 text-white text-xs">등록됨</Badge>
+                  <ExternalLink className="w-3 h-3 text-green-600" />
+                </a>
+              ) : (
+                <div className="flex items-center gap-2 p-3 rounded-lg border border-neutral-200 bg-neutral-50">
+                  <Globe className="w-4 h-4 text-neutral-400" />
+                  <span className="text-sm font-medium text-neutral-500">홈페이지</span>
+                  <Badge variant="secondary" className="ml-auto text-xs">미등록</Badge>
+                </div>
+              )}
+              
+              {/* 인스타그램 */}
+              {activationData.instagram ? (
+                <a
+                  href={activationData.instagram}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 p-3 rounded-lg border border-green-200 bg-green-50 hover:border-green-300 transition-colors"
+                >
+                  <Instagram className="w-4 h-4 text-green-600" />
+                  <span className="text-sm font-medium text-green-900">인스타그램</span>
+                  <Badge variant="default" className="ml-auto bg-green-500 text-white text-xs">등록됨</Badge>
+                  <ExternalLink className="w-3 h-3 text-green-600" />
+                </a>
+              ) : (
+                <div className="flex items-center gap-2 p-3 rounded-lg border border-neutral-200 bg-neutral-50">
+                  <Instagram className="w-4 h-4 text-neutral-400" />
+                  <span className="text-sm font-medium text-neutral-500">인스타그램</span>
+                  <Badge variant="secondary" className="ml-auto text-xs">미등록</Badge>
+                </div>
+              )}
+              
+              {/* 페이스북 */}
+              {activationData.facebook ? (
+                <a
+                  href={activationData.facebook}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 p-3 rounded-lg border border-green-200 bg-green-50 hover:border-green-300 transition-colors"
+                >
+                  <Facebook className="w-4 h-4 text-green-600" />
+                  <span className="text-sm font-medium text-green-900">페이스북</span>
+                  <Badge variant="default" className="ml-auto bg-green-500 text-white text-xs">등록됨</Badge>
+                  <ExternalLink className="w-3 h-3 text-green-600" />
+                </a>
+              ) : (
+                <div className="flex items-center gap-2 p-3 rounded-lg border border-neutral-200 bg-neutral-50">
+                  <Facebook className="w-4 h-4 text-neutral-400" />
+                  <span className="text-sm font-medium text-neutral-500">페이스북</span>
+                  <Badge variant="secondary" className="ml-auto text-xs">미등록</Badge>
+                </div>
+              )}
+              
+              {/* 블로그 */}
+              {activationData.blog ? (
+                <a
+                  href={activationData.blog}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 p-3 rounded-lg border border-green-200 bg-green-50 hover:border-green-300 transition-colors"
+                >
+                  <BookOpen className="w-4 h-4 text-green-600" />
+                  <span className="text-sm font-medium text-green-900">블로그</span>
+                  <Badge variant="default" className="ml-auto bg-green-500 text-white text-xs">등록됨</Badge>
+                  <ExternalLink className="w-3 h-3 text-green-600" />
+                </a>
+              ) : (
+                <div className="flex items-center gap-2 p-3 rounded-lg border border-neutral-200 bg-neutral-50">
+                  <BookOpen className="w-4 h-4 text-neutral-400" />
+                  <span className="text-sm font-medium text-neutral-500">블로그</span>
+                  <Badge variant="secondary" className="ml-auto text-xs">미등록</Badge>
+                </div>
+              )}
+            </div>
+          </CardContent>
         </Card>
 
         {/* 네이버 서비스 */}
-        <Card shadow="sm" padding="lg" radius="md" withBorder>
-          <Stack gap="md">
-            <Text fw={600}>네이버 서비스</Text>
-            <SimpleGrid cols={2} spacing="md">
-              <Paper p="sm" withBorder>
-                <Group justify="space-between">
-                  <Group gap="xs">
-                    <ThemeIcon variant="light" size="sm" color="yellow">
-                      <Award className="w-3 h-3" />
-                    </ThemeIcon>
-                    <Text size="sm">플레이스 플러스</Text>
-                  </Group>
-                  {activationData.is_place_plus ? (
-                    <Badge color="green" variant="light" leftSection={<CheckCircle className="w-3 h-3" />}>
-                      사용중
+        <Card className="border-neutral-200 shadow-sm">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base font-bold text-neutral-900">
+                네이버 서비스
+              </CardTitle>
+              <Badge variant={
+                [
+                  activationData.has_smart_call,
+                  activationData.has_naver_pay,
+                  activationData.has_naver_booking,
+                  activationData.has_naver_talk,
+                  activationData.has_naver_order,
+                  activationData.is_place_plus
+                ].filter(Boolean).length > 0 ? 'default' : 'secondary'
+              }>
+                {[
+                  activationData.has_smart_call,
+                  activationData.has_naver_pay,
+                  activationData.has_naver_booking,
+                  activationData.has_naver_talk,
+                  activationData.has_naver_order,
+                  activationData.is_place_plus
+                ].filter(Boolean).length}개 활성
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {[
+                { label: '스마트콜', active: activationData.has_smart_call, icon: Phone },
+                { label: '네이버페이', active: activationData.has_naver_pay, icon: CreditCard },
+                { label: '예약', active: activationData.has_naver_booking, icon: Calendar },
+                { label: '톡톡', active: activationData.has_naver_talk, icon: MessageCircle },
+                { label: '주문', active: activationData.has_naver_order, icon: Store },
+                { label: '플레이스+', active: activationData.is_place_plus, icon: Award }
+              ].map((service) => {
+                const Icon = service.icon
+                return (
+                  <div
+                    key={service.label}
+                    className={`flex flex-col items-center gap-2 p-3 rounded-lg border ${
+                      service.active 
+                        ? 'border-green-200 bg-green-50' 
+                        : 'border-neutral-200 bg-neutral-50'
+                    }`}
+                  >
+                    <Icon className={`w-5 h-5 ${service.active ? 'text-green-600' : 'text-neutral-400'}`} />
+                    <span className={`text-xs font-medium text-center ${
+                      service.active ? 'text-green-900' : 'text-neutral-500'
+                    }`}>
+                      {service.label}
+                    </span>
+                    <Badge 
+                      variant={service.active ? 'default' : 'secondary'}
+                      className={`text-xs ${service.active ? 'bg-green-500 text-white' : ''}`}
+                    >
+                      {service.active ? '활성' : '비활성'}
                     </Badge>
-                  ) : (
-                    <Badge color="gray" variant="light">
-                      미사용
-                    </Badge>
-                  )}
-                </Group>
-              </Paper>
-              <Paper p="sm" withBorder>
-                <Group justify="space-between">
-                  <Group gap="xs">
-                    <ThemeIcon variant="light" size="sm" color="blue">
-                      <Phone className="w-3 h-3" />
-                    </ThemeIcon>
-                    <Text size="sm">스마트콜</Text>
-                  </Group>
-                  {activationData.has_smart_call ? (
-                    <Badge color="green" variant="light" leftSection={<CheckCircle className="w-3 h-3" />}>
-                      사용중
-                    </Badge>
-                  ) : (
-                    <Badge color="gray" variant="light">
-                      미사용
-                    </Badge>
-                  )}
-                </Group>
-              </Paper>
-              <Paper p="sm" withBorder>
-                <Group justify="space-between">
-                  <Group gap="xs">
-                    <ThemeIcon variant="light" size="sm" color="green">
-                      <CreditCard className="w-3 h-3" />
-                    </ThemeIcon>
-                    <Text size="sm">네이버페이</Text>
-                  </Group>
-                  {activationData.has_naver_pay ? (
-                    <Badge color="green" variant="light" leftSection={<CheckCircle className="w-3 h-3" />}>
-                      사용중
-                    </Badge>
-                  ) : (
-                    <Badge color="gray" variant="light">
-                      미사용
-                    </Badge>
-                  )}
-                </Group>
-              </Paper>
-              <Paper p="sm" withBorder>
-                <Group justify="space-between">
-                  <Group gap="xs">
-                    <ThemeIcon variant="light" size="sm" color="teal">
-                      <Calendar className="w-3 h-3" />
-                    </ThemeIcon>
-                    <Text size="sm">네이버예약</Text>
-                  </Group>
-                  {activationData.has_naver_booking ? (
-                    <Badge color="green" variant="light" leftSection={<CheckCircle className="w-3 h-3" />}>
-                      사용중
-                    </Badge>
-                  ) : (
-                    <Badge color="gray" variant="light">
-                      미사용
-                    </Badge>
-                  )}
-                </Group>
-              </Paper>
-              <Paper p="sm" withBorder>
-                <Group justify="space-between">
-                  <Group gap="xs">
-                    <ThemeIcon variant="light" size="sm" color="violet">
-                      <MessageCircle className="w-3 h-3" />
-                    </ThemeIcon>
-                    <Text size="sm">네이버톡톡</Text>
-                  </Group>
-                  {activationData.has_naver_talk ? (
-                    <Badge color="green" variant="light" leftSection={<CheckCircle className="w-3 h-3" />}>
-                      사용중
-                    </Badge>
-                  ) : (
-                    <Badge color="gray" variant="light">
-                      미사용
-                    </Badge>
-                  )}
-                </Group>
-              </Paper>
-              <Paper p="sm" withBorder>
-                <Group justify="space-between">
-                  <Group gap="xs">
-                    <ThemeIcon variant="light" size="sm" color="orange">
-                      <CreditCard className="w-3 h-3" />
-                    </ThemeIcon>
-                    <Text size="sm">네이버주문</Text>
-                  </Group>
-                  {activationData.has_naver_order ? (
-                    <Badge color="green" variant="light" leftSection={<CheckCircle className="w-3 h-3" />}>
-                      사용중
-                    </Badge>
-                  ) : (
-                    <Badge color="gray" variant="light">
-                      미사용
-                    </Badge>
-                  )}
-                </Group>
-              </Paper>
-            </SimpleGrid>
-            
-            {(!activationData.has_smart_call || !activationData.has_naver_pay || 
-              !activationData.has_naver_booking || !activationData.has_naver_talk || !activationData.has_naver_order) && (
-              <Alert icon={<AlertCircle className="w-4 h-4" />} color="yellow" variant="light">
-                <Text size="sm" mb="xs">미사용 중인 네이버 서비스가 있습니다.</Text>
-                <Group gap="xs">
-                  {!activationData.has_smart_call && (
-                    <Button size="xs" variant="light" component="a" href="https://smartplace.naver.com" target="_blank">
-                      스마트콜 설정
-                    </Button>
-                  )}
-                  {!activationData.has_naver_pay && (
-                    <Button size="xs" variant="light" component="a" href="https://pay.naver.com" target="_blank">
-                      네이버페이 설정
-                    </Button>
-                  )}
-                  {!activationData.has_naver_booking && (
-                    <Button size="xs" variant="light" component="a" href="https://booking.naver.com" target="_blank">
-                      네이버예약 설정
-                    </Button>
-                  )}
-                  {!activationData.has_naver_talk && (
-                    <Button size="xs" variant="light" component="a" href="https://talk.naver.com" target="_blank">
-                      네이버톡톡 설정
-                    </Button>
-                  )}
-                  {!activationData.has_naver_order && (
-                    <Button size="xs" variant="light" component="a" href="https://order.store.naver.com" target="_blank">
-                      네이버주문 설정
-                    </Button>
-                  )}
-                </Group>
-              </Alert>
-            )}
-          </Stack>
+                  </div>
+                )
+              })}
+            </div>
+          </CardContent>
         </Card>
-      </Stack>
+      </div>
     )
   }
 
+  // ===== 메인 렌더링 =====
+
+  // 로딩 중
   if (isLoadingStores) {
     return (
-      <Container size="xl" py="xl">
-        <Center style={{ minHeight: '60vh' }}>
-          <Stack align="center" gap="md">
-            <Loader size="lg" />
-            <Text c="dimmed">매장 정보를 불러오는 중...</Text>
-          </Stack>
-        </Center>
-      </Container>
+      <div className="w-full max-w-4xl mx-auto p-4 md:p-6 lg:p-8">
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-center space-y-4">
+            <Loader2 className="h-12 w-12 animate-spin text-primary-500 mx-auto" />
+            <p className="text-neutral-600">매장 정보를 불러오는 중...</p>
+          </div>
+        </div>
+      </div>
     )
   }
 
+  // 매장 선택 화면
   if (!selectedStore) {
     return (
-      <Container size="xl" py="xl">
-        <Stack gap="xl">
+      <div className="w-full max-w-4xl mx-auto p-4 md:p-6 lg:p-8">
+        <div className="space-y-6">
+          {/* 헤더 */}
           <div>
-            <Title order={2} mb="xs">플레이스 활성화</Title>
-            <Text c="dimmed">매장의 플레이스 활성화 현황을 확인하고 개선하세요</Text>
+            <h1 className="text-2xl md:text-3xl font-bold text-neutral-900 mb-2">
+              플레이스 활성화
+            </h1>
+            <p className="text-sm md:text-base text-neutral-600">
+              매장의 플레이스 활성화 현황을 확인하고 개선하세요
+            </p>
           </div>
 
+          {/* 매장 목록 */}
           {stores.length === 0 ? (
-            <Alert icon={<AlertCircle className="w-4 h-4" />} color="yellow">
-              등록된 네이버 플레이스 매장이 없습니다. 먼저 매장을 등록해주세요.
+            <Alert className="border-yellow-200 bg-yellow-50">
+              <AlertCircle className="h-4 w-4 text-yellow-600" />
+              <AlertDescription className="text-sm text-yellow-700">
+                등록된 네이버 플레이스 매장이 없습니다. 먼저 매장을 등록해주세요.
+              </AlertDescription>
             </Alert>
           ) : (
-            <Grid gutter="xl">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {stores.map((store) => (
-                <Grid.Col key={store.id} span={{ base: 12, sm: 6, md: 4, lg: 3 }}>
-                  <Card
-                    shadow="sm"
-                    padding="md"
-                    radius="md"
-                    withBorder
-                    style={{ 
-                      height: '100%', 
-                      transition: 'transform 0.2s, box-shadow 0.2s'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = 'translateY(-4px)'
-                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)'
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'translateY(0)'
-                      e.currentTarget.style.boxShadow = ''
-                    }}
-                  >
-                    {store.thumbnail ? (
-                      <Card.Section>
-                        <div style={{ position: 'relative', width: '100%', paddingTop: '66.67%' }}>
-                          <img
+                <Card
+                  key={store.id}
+                  className="border-neutral-200 hover:border-primary-300 hover:shadow-lg transition-all cursor-pointer group"
+                  onClick={() => {
+                    setSelectedStore(store)
+                    loadActivationData(store.id)
+                  }}
+                >
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex items-start gap-3">
+                      {store.thumbnail ? (
+                        <div className="relative w-12 h-12 flex-shrink-0">
+                          <Image
                             src={store.thumbnail}
                             alt={store.name}
-                            style={{
-                              position: 'absolute',
-                              top: 0,
-                              left: 0,
-                              width: '100%',
-                              height: '100%',
-                              objectFit: 'cover'
-                            }}
+                            fill
+                            className="rounded-lg object-cover"
                           />
                         </div>
-                      </Card.Section>
-                    ) : (
-                      <Card.Section>
-                        <div style={{
-                          backgroundColor: '#f8f9fa',
-                          paddingTop: '66.67%',
-                          position: 'relative'
-                        }}>
-                          <Center style={{
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            width: '100%',
-                            height: '100%'
-                          }}>
-                            <Store size={48} color="#635bff" />
-                          </Center>
+                      ) : (
+                        <div className="w-12 h-12 flex-shrink-0 rounded-lg bg-neutral-100 flex items-center justify-center">
+                          <Store className="w-6 h-6 text-neutral-400" />
                         </div>
-                      </Card.Section>
-                    )}
-
-                    <Stack gap="xs" mt="md" style={{ textAlign: 'center' }}>
-                      <Text fw={600} size="md" lineClamp={1}>{store.name}</Text>
-                      <Text size="xs" c="dimmed" lineClamp={1}>{store.category}</Text>
-                      <Text size="xs" c="dimmed" lineClamp={2}>{store.address}</Text>
-                    </Stack>
-
-                    <Stack gap="xs" mt="md">
-                      <Button
-                        fullWidth
-                        color="#635bff"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleStoreSelect(store)
-                        }}
-                      >
-                        활성화 현황 보기
-                      </Button>
-
-                      {storeHistoryCounts[store.id] > 0 && (
-                        <Button
-                          fullWidth
-                          variant="light"
-                          color="blue"
-                          size="xs"
-                          onClick={async (e) => {
-                            e.stopPropagation()
-                            setSelectedStore(store)
-                            setIsLoadingHistories(true)
-                            try {
-                              const token = getToken()
-                              if (!token) return
-                              
-                              const response = await fetch(api.naver.activationHistory(store.id), {
-                                headers: { 'Authorization': `Bearer ${token}` }
-                              })
-                              
-                              if (response.ok) {
-                                const data = await response.json()
-                                setActivationHistories(data.histories || [])
-                              }
-                            } catch (error) {
-                              console.error('[이력 조회 실패]', error)
-                            } finally {
-                              setIsLoadingHistories(false)
-                            }
-                          }}
-                        >
-                          📜 과거 이력 보기 ({storeHistoryCounts[store.id]}개)
-                        </Button>
                       )}
-                    </Stack>
-                  </Card>
-                </Grid.Col>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-sm font-bold text-neutral-900 line-clamp-2 break-words">
+                          {store.name}
+                        </h3>
+                        <p className="text-xs text-neutral-500 mt-1">
+                          {store.category}
+                        </p>
+                      </div>
+                    </div>
+                    <p className="text-xs text-neutral-600 line-clamp-1">
+                      {store.address}
+                    </p>
+                    <Button
+                      size="sm"
+                      className="w-full group-hover:bg-primary-600"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setSelectedStore(store)
+                        loadActivationData(store.id)
+                      }}
+                    >
+                      활성화 분석
+                    </Button>
+                  </CardContent>
+                </Card>
               ))}
-            </Grid>
+            </div>
           )}
-        </Stack>
-      </Container>
+        </div>
+      </div>
     )
   }
 
-  // 이력만 보는 경우 (activationData 없이 selectedStore만 있는 경우)
-  if (selectedStore && !activationData && !isLoading) {
-    return (
-      <Container size="xl" py="xl">
-        <Stack gap="xl">
-          {/* 헤더 */}
-          <Group justify="space-between">
-            <Group gap="md">
-              {selectedStore.thumbnail && (
-                <img 
-                  src={selectedStore.thumbnail} 
-                  alt={selectedStore.name}
-                  style={{ width: 48, height: 48, borderRadius: 8, objectFit: 'cover' }}
-                />
-              )}
-              <div>
-                <Title order={2}>{selectedStore.name}</Title>
-                <Text size="sm" c="dimmed">과거 활성화 이력</Text>
-              </div>
-            </Group>
-            <Button variant="light" onClick={() => {
-              setSelectedStore(null)
-              setActivationHistories([])
-            }}>
-              매장 목록으로
-            </Button>
-          </Group>
-
-          {/* 과거 활성화 이력 */}
-          {isLoadingHistories ? (
-            <Center style={{ minHeight: '40vh' }}>
-              <Stack align="center" gap="md">
-                <Loader size="lg" />
-                <Text c="dimmed">이력을 불러오는 중...</Text>
-              </Stack>
-            </Center>
-          ) : activationHistories.length > 0 ? (
-            <Paper shadow="xs" p="md" radius="md" withBorder>
-              <Title order={4} mb="md">📜 과거 활성화 이력 ({activationHistories.length}개)</Title>
-              <Stack gap="xs">
-                {activationHistories.map((history: any) => (
-                  <Paper
-                    key={history.id}
-                    p="sm"
-                    radius="md"
-                    withBorder
-                    style={{ cursor: 'pointer', transition: 'background-color 0.2s' }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = '#f8f9fa'
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = 'white'
-                    }}
-                    onClick={() => {
-                      if (expandedHistoryId === history.id) {
-                        setExpandedHistoryId(null)
-                      } else {
-                        setExpandedHistoryId(history.id)
-                      }
-                    }}
-                  >
-                    <Group justify="space-between">
-                      <Group gap="xs">
-                        <Badge color="blue" variant="light">
-                          {new Date(history.created_at).toLocaleDateString('ko-KR')}
-                        </Badge>
-                        <Text size="sm" fw={500}>
-                          {new Date(history.created_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
-                        </Text>
-                      </Group>
-                      <ActionIcon variant="subtle" size="sm">
-                        {expandedHistoryId === history.id ? '▲' : '▼'}
-                      </ActionIcon>
-                    </Group>
-
-                    {expandedHistoryId === history.id && history.summary_cards && (
-                      <Stack gap="xs" mt="md" pt="md" style={{ borderTop: '1px solid #e9ecef' }}>
-                        {history.summary_cards.map((card: any) => (
-                          <Paper key={card.type} p="xs" radius="md" withBorder bg="gray.0">
-                            <Group justify="space-between">
-                              <Text size="sm" fw={500}>{card.title}</Text>
-                              <Group gap={4} wrap="nowrap">
-                                <Text size="sm" fw={700}>
-                                  {card.type === 'visitor_review' || card.type === 'blog_review'
-                                    ? (card.value % 1 === 0 ? Math.round(card.value) : card.value.toFixed(1))
-                                    : Math.round(card.value)
-                                  }
-                                </Text>
-                                <Text size="xs" c="dimmed">개</Text>
-                              </Group>
-                            </Group>
-                          </Paper>
-                        ))}
-                      </Stack>
-                    )}
-                  </Paper>
-                ))}
-              </Stack>
-            </Paper>
-          ) : (
-            <Alert icon={<AlertCircle className="w-4 h-4" />} color="blue">
-              아직 활성화 이력이 없습니다. 먼저 활성화 현황을 확인해보세요!
-            </Alert>
-          )}
-        </Stack>
-      </Container>
-    )
-  }
-
+  // 분석 중
   if (isLoading) {
     return (
-      <Container size="xl" py="xl">
-        <Center style={{ minHeight: '60vh' }}>
-          <Stack align="center" gap="md">
-            <Loader size="lg" />
-            <Text c="dimmed">플레이스 활성화 정보를 분석하는 중...</Text>
-          </Stack>
-        </Center>
-      </Container>
+      <div className="w-full max-w-4xl mx-auto p-4 md:p-6 lg:p-8">
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-center space-y-4">
+            <Loader2 className="h-12 w-12 animate-spin text-primary-500 mx-auto" />
+            <p className="text-neutral-600">플레이스 활성화 정보를 분석하는 중...</p>
+          </div>
+        </div>
+      </div>
     )
   }
 
+  // 메인 화면
   return (
-    <Container size="xl" py="xl">
-      <Stack gap="xl">
+    <div className="w-full max-w-4xl mx-auto p-4 md:p-6 lg:p-8">
+      <div className="space-y-6">
         {/* 헤더 */}
-        <Group justify="space-between">
-          <Group>
-            {activationData?.thumbnail && (
-              <img 
-                src={activationData.thumbnail} 
-                alt={activationData.store_name}
-                style={{ width: 48, height: 48, borderRadius: 8, objectFit: 'cover' }}
-              />
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-3">
+            {activationData?.thumbnail ? (
+              <div className="relative w-12 h-12 flex-shrink-0">
+                <Image
+                  src={activationData.thumbnail}
+                  alt={activationData.store_name}
+                  fill
+                  className="rounded-lg object-cover"
+                />
+              </div>
+            ) : (
+              <div className="w-12 h-12 flex-shrink-0 rounded-lg bg-neutral-100 flex items-center justify-center">
+                <Store className="w-6 h-6 text-neutral-400" />
+              </div>
             )}
             <div>
-              <Title order={2}>{activationData?.store_name}</Title>
-              <Text size="sm" c="dimmed">플레이스 ID: {activationData?.place_id}</Text>
+              <h1 className="text-xl md:text-2xl font-bold text-neutral-900">
+                {activationData?.store_name || selectedStore.name}
+              </h1>
+              <p className="text-xs md:text-sm text-neutral-500">
+                플레이스 ID: {activationData?.place_id || selectedStore.place_id}
+              </p>
             </div>
-          </Group>
-          <Button variant="light" onClick={() => setSelectedStore(null)}>
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setSelectedStore(null)
+              setActivationData(null)
+              setActivationHistories([])
+            }}
+          >
             다른 매장 선택
           </Button>
-        </Group>
+        </div>
 
         {/* 활성화 요약 */}
         <div>
-          <Title order={3} mb="md">활성화 요약</Title>
+          <h2 className="text-lg md:text-xl font-bold text-neutral-900 mb-4">
+            활성화 요약
+          </h2>
           {renderSummaryCards()}
         </div>
 
-        {/* 과거 활성화 이력 */}
+        {/* 과거 이력 */}
         {activationHistories.length > 0 && (
-          <Paper shadow="xs" p="md" radius="md" withBorder>
-            <Title order={4} mb="md">📜 과거 활성화 이력</Title>
-            <Stack gap="xs">
-              {activationHistories.map((history: any) => (
-                <Paper
-                  key={history.id}
-                  p="sm"
-                  radius="md"
-                  withBorder
-                  style={{ cursor: 'pointer', transition: 'background-color 0.2s' }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#f8f9fa'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = 'white'
-                  }}
-                  onClick={() => {
-                    if (expandedHistoryId === history.id) {
-                      setExpandedHistoryId(null)
-                    } else {
-                      setExpandedHistoryId(history.id)
-                    }
-                  }}
-                >
-                  <Group justify="space-between">
-                    <Group gap="xs">
-                      <Badge color="blue" variant="light">
-                        {new Date(history.created_at).toLocaleDateString('ko-KR')}
-                      </Badge>
-                      <Text size="sm" fw={500}>
-                        {new Date(history.created_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
-                      </Text>
-                    </Group>
-                    <ActionIcon variant="subtle" size="sm">
-                      {expandedHistoryId === history.id ? '▲' : '▼'}
-                    </ActionIcon>
-                  </Group>
+          <Card className="border-neutral-200 shadow-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base md:text-lg font-bold text-neutral-900">
+                📜 과거 활성화 이력
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="space-y-2">
+                {activationHistories.map((history) => {
+                  const isExpanded = expandedHistoryId === history.id
+                  
+                  return (
+                    <div
+                      key={history.id}
+                      className="p-3 rounded-lg border border-neutral-200 hover:bg-neutral-50 transition-colors cursor-pointer"
+                      onClick={() => setExpandedHistoryId(isExpanded ? null : history.id)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-xs">
+                            {new Date(history.created_at).toLocaleDateString('ko-KR')}
+                          </Badge>
+                          <span className="text-sm font-medium text-neutral-700">
+                            {new Date(history.created_at).toLocaleTimeString('ko-KR', { 
+                              hour: '2-digit', 
+                              minute: '2-digit' 
+                            })}
+                          </span>
+                        </div>
+                        {isExpanded ? (
+                          <ChevronUp className="w-4 h-4 text-neutral-400" />
+                        ) : (
+                          <ChevronDown className="w-4 h-4 text-neutral-400" />
+                        )}
+                      </div>
 
-                  {expandedHistoryId === history.id && history.summary_cards && (
-                    <Stack gap="xs" mt="md" pt="md" style={{ borderTop: '1px solid #e9ecef' }}>
-                      {history.summary_cards.map((card: any) => (
-                        <Paper key={card.type} p="xs" radius="md" withBorder bg="gray.0">
-                          <Group justify="space-between">
-                            <Text size="sm" fw={500}>{card.title}</Text>
-                            <Group gap={4} wrap="nowrap">
-                              <Text size="sm" fw={700}>
+                      {isExpanded && history.summary_cards && (
+                        <div className="mt-3 pt-3 border-t border-neutral-200 space-y-2">
+                          {history.summary_cards.map((card: any) => (
+                            <div
+                              key={card.type}
+                              className="flex items-center justify-between p-2 rounded bg-neutral-50"
+                            >
+                              <span className="text-sm font-medium text-neutral-700">
+                                {card.title}
+                              </span>
+                              <span className="text-sm font-bold text-neutral-900">
                                 {card.type === 'visitor_review' || card.type === 'blog_review'
-                                  ? (card.value % 1 === 0 ? Math.round(card.value) : card.value.toFixed(1))
-                                  : Math.round(card.value)
-                                }
-                              </Text>
-                              <Text size="xs" c="dimmed">개</Text>
-                            </Group>
-                          </Group>
-                        </Paper>
-                      ))}
-                    </Stack>
-                  )}
-                </Paper>
-              ))}
-            </Stack>
-          </Paper>
+                                  ? card.value.toFixed(1)
+                                  : Math.round(card.value)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </CardContent>
+          </Card>
         )}
 
-        {/* 리뷰 추이 현황 */}
+        {/* 리뷰 추이 */}
         <div>
-          <Title order={3} mb="md">리뷰 추이 현황</Title>
+          <h2 className="text-lg md:text-xl font-bold text-neutral-900 mb-4">
+            리뷰 추이 현황
+          </h2>
           {renderReviewTrends()}
         </div>
 
         {/* 답글 대기 */}
         <div>
-          <Title order={3} mb="md">답글 대기</Title>
+          <h2 className="text-lg md:text-xl font-bold text-neutral-900 mb-4">
+            답글 대기
+          </h2>
           {renderPendingReply()}
         </div>
 
-        {/* 기타 정보 */}
+        {/* 플레이스 정보 */}
         <div>
-          <Title order={3} mb="md">플레이스 정보</Title>
-          {renderOtherInfo()}
+          <h2 className="text-lg md:text-xl font-bold text-neutral-900 mb-4">
+            플레이스 정보
+          </h2>
+          {renderPlaceInfo()}
         </div>
-      </Stack>
+      </div>
 
-      {/* 업체소개글 생성 모달 */}
-      <Modal
-        opened={showDescriptionModal}
-        onClose={() => {
-          setShowDescriptionModal(false)
-          setRegionKeyword('')
-          setLandmarkKeywords('')
-          setBusinessTypeKeyword('')
-          setProductKeywords('')
-          setStoreFeatures('')
-          setGeneratedText('')
-        }}
-        title="AI로 완벽한 업체소개글 생성하기"
-        size="xl"
-      >
-        <Stack gap="md">
-          <Alert color="blue" variant="light">
-            <Text size="sm">
+      {/* AI 업체소개글 생성 모달 */}
+      <Dialog open={showDescriptionModal} onOpenChange={setShowDescriptionModal}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">
+              <Sparkles className="w-5 h-5 inline mr-2" />
+              AI로 완벽한 업체소개글 생성하기
+            </DialogTitle>
+            <DialogDescription>
               SEO 최적화된 업체소개글을 생성합니다. 모든 필드를 입력하면 더 정확한 결과를 얻을 수 있습니다.
-            </Text>
-          </Alert>
+            </DialogDescription>
+          </DialogHeader>
           
-          <TextInput
-            label="1. 지역 키워드"
-            placeholder="예: 합정, 종로, 성수 등"
-            description="가장 메인 지역 1개만 입력"
-            value={regionKeyword}
-            onChange={(e) => setRegionKeyword(e.target.value)}
-            required
-          />
-          
-          <TextInput
-            label="2. 랜드마크 키워드"
-            placeholder="예: 합정역, 홍대입구역, 성수역 등"
-            description="역, 상권, 건물, 관광지 등 (최대 2개, 쉼표로 구분)"
-            value={landmarkKeywords}
-            onChange={(e) => setLandmarkKeywords(e.target.value)}
-          />
-          
-          <TextInput
-            label="3. 업종 키워드"
-            placeholder="예: 카페, 식당, 사진관, 헤어샵 등"
-            description="업종 1개만 입력"
-            value={businessTypeKeyword}
-            onChange={(e) => setBusinessTypeKeyword(e.target.value)}
-            required
-          />
-          
-          <TextInput
-            label="4. 상품/서비스 키워드"
-            placeholder="예: 칼국수, 보쌈, 커피, 콜드브루 등"
-            description="최대 3개 (쉼표로 구분)"
-            value={productKeywords}
-            onChange={(e) => setProductKeywords(e.target.value)}
-          />
-          
-          <Textarea
-            label="5. 매장 특색 및 강점, 우리 매장을 꼭 방문해야 하는 이유"
-            placeholder="예: 저희 매장은 처음 방문하시는 분들도 부담 없이 이용할 수 있도록 공간 동선과 서비스 흐름을 단순하고 편안하게 구성했습니다..."
-            description="매장의 특별한 점, 강점, 차별화 포인트를 자유롭게 입력해주세요"
-            value={storeFeatures}
-            onChange={(e) => setStoreFeatures(e.target.value)}
-            minRows={5}
-            required
-          />
-          
-          <Button
-            onClick={async () => {
-              setIsGenerating(true)
-              try {
-                const token = getToken()
-                
-                // 랜드마크와 상품 키워드를 배열로 변환
-                const landmarks = landmarkKeywords.split(',').map(k => k.trim()).filter(k => k)
-                const products = productKeywords.split(',').map(k => k.trim()).filter(k => k)
-                
-                const response = await fetch(api.naver.generateDescription(), {
-                  method: 'POST',
-                  headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                  },
-                  body: JSON.stringify({
-                    store_id: selectedStore?.id,
-                    region_keyword: regionKeyword,
-                    landmark_keywords: landmarks,
-                    business_type_keyword: businessTypeKeyword,
-                    product_keywords: products,
-                    store_features: storeFeatures
-                  })
-                })
-                
-                if (!response.ok) throw new Error('생성 실패')
-                
-                const data = await response.json()
-                setGeneratedText(data.generated_text)
-                setGeneratedTextCharCount(data.generated_text.length)
-                
-                toast({
-                  title: "✅ 생성 완료",
-                  description: "업체소개글이 성공적으로 생성되었습니다!",
-                })
-              } catch (error) {
-                toast({
-                  variant: "destructive",
-                  title: "❌ 오류",
-                  description: "업체소개글 생성에 실패했습니다.",
-                })
-              } finally {
-                setIsGenerating(false)
-              }
-            }}
-            loading={isGenerating}
-            disabled={!regionKeyword.trim() || !businessTypeKeyword.trim() || !storeFeatures.trim()}
-            fullWidth
-            size="lg"
-          >
-            AI로 업체소개글 생성하기
-          </Button>
-          
-          {generatedText && (
-            <Paper p="md" withBorder bg="gray.0">
-              <Stack gap="md">
-                <Group justify="space-between" align="flex-start">
-                  <Text size="sm" fw={600}>생성된 업체소개글:</Text>
-                  <Group gap="xs">
-                    <Badge color="blue" variant="light">
-                      {generatedText.length}자
-                    </Badge>
-                    <Button
-                      variant="subtle"
-                      size="xs"
-                      leftSection={<Copy className="w-3 h-3" />}
-                      onClick={() => {
-                        navigator.clipboard.writeText(generatedText)
-                        toast({
-                          title: "✅ 복사 완료",
-                          description: "클립보드에 복사되었습니다!",
-                        })
-                      }}
-                    >
-                      복사
-                    </Button>
-                  </Group>
-                </Group>
-                <Divider />
-                <Paper p="sm" withBorder bg="white">
-                  <Text size="sm" style={{ whiteSpace: 'pre-wrap', lineHeight: 1.8 }}>
-                    {generatedText}
-                  </Text>
-                </Paper>
-                <Button
-                  fullWidth
-                  size="md"
-                  leftSection={<Copy className="w-4 h-4" />}
-                  onClick={() => {
-                    navigator.clipboard.writeText(generatedText)
-                    toast({
-                      title: "✅ 복사 완료",
-                      description: "클립보드에 복사되었습니다!",
-                    })
-                  }}
-                >
-                  클립보드에 복사하기
-                </Button>
-              </Stack>
-            </Paper>
-          )}
-        </Stack>
-      </Modal>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="region">1. 지역 키워드 *</Label>
+              <Input
+                id="region"
+                placeholder="예: 합정, 종로, 성수 등"
+                value={regionKeyword}
+                onChange={(e) => setRegionKeyword(e.target.value)}
+              />
+              <p className="text-xs text-neutral-500 mt-1">가장 메인 지역 1개만 입력</p>
+            </div>
 
-      {/* 찾아오는길 생성 모달 */}
-      <Modal
-        opened={showDirectionsModal}
-        onClose={() => {
-          setShowDirectionsModal(false)
-          setDirectionsPrompt('')
-          setDirectionsRegionKeyword('')
-          setDirectionsLandmarkKeywords('')
-          setDirectionsDescription('')
-          setGeneratedDirectionsText('')
-          setGeneratedDirectionsCharCount(0)
-        }}
-        title="AI로 완벽한 찾아오는길 생성"
-        size="lg"
-      >
-        <Stack gap="md">
-          <TextInput
-            label="1. 지역 키워드 (필수)"
-            placeholder="예: 합정, 종로, 성수"
-            description="매장의 가장 메인 지역 키워드 1개를 입력해주세요."
-            value={directionsRegionKeyword}
-            onChange={(event) => setDirectionsRegionKeyword(event.currentTarget.value)}
-            required
-          />
-          <TextInput
-            label="2. 랜드마크 키워드 (선택)"
-            placeholder="예: 합정역, 홍대입구역, 메세나폴리스 (쉼표로 구분)"
-            description="매장 주변의 주요 랜드마크 키워드를 입력해주세요."
-            value={directionsLandmarkKeywords}
-            onChange={(event) => setDirectionsLandmarkKeywords(event.currentTarget.value)}
-          />
-          <Textarea
-            label="3. 찾아오는 길 설명 (필수)"
-            placeholder="예: 합정역 7번 출구에서 직진 200m, GS25 편의점 옆 건물 2층입니다. 주차는 건물 지하 1층에 가능하며, 방문 시 건물 입구에서 연락주시면 안내해드립니다."
-            description="매장까지 오는 길을 자유롭게 상세하게 설명해주세요."
-            value={directionsDescription}
-            onChange={(event) => setDirectionsDescription(event.currentTarget.value)}
-            minRows={5}
-            required
-          />
-          <Button
-            onClick={async () => {
-              setIsGenerating(true)
-              setGeneratedDirectionsText('')
-              setGeneratedDirectionsCharCount(0)
-              try {
-                const token = getToken()
-                const response = await fetch(api.naver.generateDirections(), {
-                  method: 'POST',
-                  headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                  },
-                  body: JSON.stringify({
-                    store_id: selectedStore?.id,
-                    region_keyword: directionsRegionKeyword,
-                    landmark_keywords: directionsLandmarkKeywords.split(',').map(k => k.trim()).filter(Boolean),
-                    directions_description: directionsDescription,
-                  })
-                })
-                
-                if (!response.ok) throw new Error('생성 실패')
-                
-                const data = await response.json()
-                setGeneratedDirectionsText(data.generated_text)
-                setGeneratedDirectionsCharCount(data.generated_text.length)
-              } catch (error) {
-                console.error("Error generating directions:", error)
-                toast({
-                  variant: "destructive",
-                  title: "❌ 오류",
-                  description: "찾아오는길 생성에 실패했습니다.",
-                })
-              } finally {
-                setIsGenerating(false)
-              }
-            }}
-            loading={isGenerating}
-            disabled={!directionsRegionKeyword.trim() || !directionsDescription.trim()}
-          >
-            생성하기
-          </Button>
+            <div>
+              <Label htmlFor="landmarks">2. 랜드마크 키워드</Label>
+              <Input
+                id="landmarks"
+                placeholder="예: 합정역, 홍대입구역, 성수역 등"
+                value={landmarkKeywords}
+                onChange={(e) => setLandmarkKeywords(e.target.value)}
+              />
+              <p className="text-xs text-neutral-500 mt-1">역, 상권, 건물, 관광지 등 (최대 2개, 쉼표로 구분)</p>
+            </div>
+
+            <div>
+              <Label htmlFor="business">3. 업종 키워드 *</Label>
+              <Input
+                id="business"
+                placeholder="예: 카페, 식당, 사진관, 헤어샵 등"
+                value={businessTypeKeyword}
+                onChange={(e) => setBusinessTypeKeyword(e.target.value)}
+              />
+              <p className="text-xs text-neutral-500 mt-1">업종 1개만 입력</p>
+            </div>
+
+            <div>
+              <Label htmlFor="products">4. 상품/서비스 키워드</Label>
+              <Input
+                id="products"
+                placeholder="예: 칼국수, 보쌈, 커피, 콜드브루 등"
+                value={productKeywords}
+                onChange={(e) => setProductKeywords(e.target.value)}
+              />
+              <p className="text-xs text-neutral-500 mt-1">최대 3개 (쉼표로 구분)</p>
+            </div>
+
+            <div>
+              <Label htmlFor="features">5. 매장 특색 및 강점 *</Label>
+              <Textarea
+                id="features"
+                placeholder="예: 저희 매장은 처음 방문하시는 분들도 부담 없이 이용할 수 있도록..."
+                value={storeFeatures}
+                onChange={(e) => setStoreFeatures(e.target.value)}
+                rows={5}
+              />
+              <p className="text-xs text-neutral-500 mt-1">
+                매장의 특별한 점, 강점, 차별화 포인트를 자유롭게 입력해주세요
+              </p>
+            </div>
+
+            <Button
+              onClick={handleGenerateDescription}
+              disabled={isGenerating || !regionKeyword || !businessTypeKeyword || !storeFeatures}
+              className="w-full"
+            >
+              {isGenerating ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  생성 중...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  업체소개글 생성하기
+                </>
+              )}
+            </Button>
+
+            {generatedText && (
+              <div className="mt-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label>생성된 업체소개글</Label>
+                  <Badge variant="outline">{generatedTextCharCount}자</Badge>
+                </div>
+                <Textarea
+                  value={generatedText}
+                  onChange={(e) => {
+                    setGeneratedText(e.target.value)
+                    setGeneratedTextCharCount(e.target.value.length)
+                  }}
+                  rows={10}
+                  className="font-mono text-sm"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => copyToClipboard(generatedText)}
+                >
+                  <Copy className="w-4 h-4 mr-2" />
+                  복사하기
+                </Button>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* AI 찾아오는길 생성 모달 */}
+      <Dialog open={showDirectionsModal} onOpenChange={setShowDirectionsModal}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">
+              <MapPin className="w-5 h-5 inline mr-2" />
+              AI로 찾아오는길 생성하기
+            </DialogTitle>
+            <DialogDescription>
+              고객이 쉽게 이해할 수 있는 찾아오는길을 생성합니다.
+            </DialogDescription>
+          </DialogHeader>
           
-          {generatedDirectionsText && (
-            <Paper p="md" withBorder>
-              <Group justify="space-between" align="center" mb="xs">
-                <Text size="sm" fw={600}>생성된 찾아오는길: ({generatedDirectionsCharCount}자)</Text>
-                <ActionIcon variant="subtle" color="gray" onClick={() => copyToClipboard(generatedDirectionsText)}>
-                  <Copy size={16} />
-                </ActionIcon>
-              </Group>
-              <Text size="sm" style={{ whiteSpace: 'pre-wrap', lineHeight: 1.8 }}>{generatedDirectionsText}</Text>
-              <Button
-                fullWidth
-                mt="md"
-                leftSection={<Copy size={16} />}
-                onClick={() => copyToClipboard(generatedDirectionsText)}
-              >
-                클립보드에 복사하기
-              </Button>
-            </Paper>
-          )}
-        </Stack>
-      </Modal>
-    </Container>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="dir-region">1. 지역 키워드 *</Label>
+              <Input
+                id="dir-region"
+                placeholder="예: 합정, 종로, 성수 등"
+                value={directionsRegionKeyword}
+                onChange={(e) => setDirectionsRegionKeyword(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="dir-landmarks">2. 랜드마크 키워드</Label>
+              <Input
+                id="dir-landmarks"
+                placeholder="예: 합정역, 홍대입구역 등"
+                value={directionsLandmarkKeywords}
+                onChange={(e) => setDirectionsLandmarkKeywords(e.target.value)}
+              />
+              <p className="text-xs text-neutral-500 mt-1">역, 주요 건물 등 (쉼표로 구분)</p>
+            </div>
+
+            <div>
+              <Label htmlFor="dir-desc">3. 길 안내 설명 *</Label>
+              <Textarea
+                id="dir-desc"
+                placeholder="예: 합정역 3번 출구에서 직진하여 첫 번째 골목 우측..."
+                value={directionsDescription}
+                onChange={(e) => setDirectionsDescription(e.target.value)}
+                rows={5}
+              />
+            </div>
+
+            <Button
+              onClick={handleGenerateDirections}
+              disabled={isGenerating || !directionsRegionKeyword || !directionsDescription}
+              className="w-full"
+            >
+              {isGenerating ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  생성 중...
+                </>
+              ) : (
+                <>
+                  <MapPin className="w-4 h-4 mr-2" />
+                  찾아오는길 생성하기
+                </>
+              )}
+            </Button>
+
+            {generatedDirectionsText && (
+              <div className="mt-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label>생성된 찾아오는길</Label>
+                  <Badge variant="outline">{generatedDirectionsCharCount}자</Badge>
+                </div>
+                <Textarea
+                  value={generatedDirectionsText}
+                  onChange={(e) => {
+                    setGeneratedDirectionsText(e.target.value)
+                    setGeneratedDirectionsCharCount(e.target.value.length)
+                  }}
+                  rows={8}
+                  className="font-mono text-sm"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => copyToClipboard(generatedDirectionsText)}
+                >
+                  <Copy className="w-4 h-4 mr-2" />
+                  복사하기
+                </Button>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
   )
 }
