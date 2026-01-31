@@ -624,6 +624,7 @@ export default function ReviewManagementPage() {
         console.error("⏰ SSE 타임아웃: 5분 초과")
         eventSource.close()
         setAnalyzing(false)
+        setExtractingSummary(false)
         toast({
           title: "분석 시간 초과",
           description: "분석 시간이 너무 오래 걸립니다. 다시 시도해주세요.",
@@ -697,8 +698,7 @@ export default function ReviewManagementPage() {
               const savedDate = data.saved_date || dateRange.end_date
               const totalAnalyzed = data.total_analyzed
               
-              // AI 요약 추출 시작
-              setAnalyzing(false) // 분석은 완료
+              // AI 요약 추출 시작 (analyzing은 true로 유지, extractingSummary도 true로 설정)
               setExtractingSummary(true) // AI 요약 추출 중
               
               // React가 UI를 업데이트할 시간을 주고 데이터 로드 시작
@@ -741,10 +741,12 @@ export default function ReviewManagementPage() {
                   })
                   
                   setExtractingSummary(false) // AI 요약 추출 완료
+                  setAnalyzing(false) // 전체 분석 프로세스 완료
                   setTimeout(() => setAnalysisProgress(0), 1000)
                 } catch (error) {
                   console.error("❌ 완료 처리 중 오류:", error)
                   setExtractingSummary(false)
+                  setAnalyzing(false)
                 }
               }, 100) // 100ms 딜레이로 UI 업데이트 시간 확보
               break
@@ -754,6 +756,7 @@ export default function ReviewManagementPage() {
               clearTimeout(sseTimeout)
               eventSource.close()
               setAnalyzing(false)
+              setExtractingSummary(false)
               toast({
                 title: "분석 실패",
                 description: data.message || "리뷰 분석 중 오류가 발생했습니다.",
@@ -772,6 +775,7 @@ export default function ReviewManagementPage() {
         clearTimeout(sseTimeout)
         eventSource.close()
         setAnalyzing(false)
+        setExtractingSummary(false)
         toast({
           title: "분석 중 연결 오류 발생",
           description: "서버 연결이 끊어졌습니다. 다시 시도해주세요.",
@@ -783,6 +787,7 @@ export default function ReviewManagementPage() {
       console.error("리뷰 분석 실패:", error)
       setExtracting(false)
       setAnalyzing(false)
+      setExtractingSummary(false)
       toast({
         title: "리뷰 분석 실패",
         description: error instanceof Error ? error.message : "오류가 발생했습니다.",
@@ -1143,7 +1148,7 @@ export default function ReviewManagementPage() {
       )}
       
       {/* 리뷰 분석 중 로딩 + Progress Bar - Compact */}
-      {analyzing && !extracting && (
+      {analyzing && !extracting && !extractingSummary && (
         <Card className="border-blue-200 bg-blue-50 shadow-sm">
           <CardContent className="pt-4 pb-4">
             <div className="space-y-3">
