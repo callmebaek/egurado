@@ -389,17 +389,19 @@ export default function TargetKeywordsPage() {
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
-      {/* 헤더 */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight text-olive-900 flex items-center gap-2">
-          <Target className="h-8 w-8 text-olive-600" />
+    <div className="w-full max-w-4xl mx-auto p-4 md:p-6 lg:p-8">
+      {/* 헤더 - TurboTax Style */}
+      <div className="mb-6 md:mb-8">
+        <h1 className="text-xl md:text-2xl font-bold text-neutral-900 mb-1.5 leading-tight flex items-center gap-2">
+          <Target className="w-5 h-5 md:w-6 md:h-6 text-primary-500" />
           타겟 키워드 추출 및 진단
         </h1>
-        <p className="text-muted-foreground mt-2">
+        <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
           매장에 집중해야 할 키워드를 검색량 기반으로 추천하고, SEO 최적화 상태를 분석합니다.
         </p>
       </div>
+
+      <div className="space-y-6 md:space-y-8">
 
       {/* 안내 메시지 */}
       <Alert>
@@ -988,6 +990,7 @@ export default function TargetKeywordsPage() {
           </Alert>
         </div>
       )}
+      </div>
     </div>
   )
 }

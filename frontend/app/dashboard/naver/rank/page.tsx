@@ -578,7 +578,7 @@ export default function NaverRankPage() {
 
   if (storesLoading) {
     return (
-      <div className="w-full max-w-6xl mx-auto p-4 md:p-6 lg:p-8">
+      <div className="w-full max-w-4xl mx-auto p-4 md:p-6 lg:p-8">
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="flex flex-col items-center gap-4">
             <Loader2 className="h-10 w-10 md:h-12 md:w-12 animate-spin text-primary-500" />
@@ -596,25 +596,24 @@ export default function NaverRankPage() {
   const selectedStore = stores.find(s => s.id === selectedStoreId)
 
   return (
-    <div className="w-full max-w-6xl mx-auto p-4 md:p-6 lg:p-8">
+    <div className="w-full max-w-4xl mx-auto p-4 md:p-6 lg:p-8">
+      {/* 헤더 - TurboTax Style */}
+      <div className="mb-6 md:mb-8">
+        <h1 className="text-xl md:text-2xl font-bold text-neutral-900 mb-1.5 leading-tight">
+          플레이스 순위 조회
+        </h1>
+        <p className="text-sm md:text-base text-neutral-600 leading-relaxed mb-2">
+          키워드별 네이버 플레이스 검색 순위를 실시간으로 확인하세요
+        </p>
+        <Badge 
+          variant="secondary"
+          className="bg-primary-100 text-primary-700 border-primary-200 px-2.5 py-1 text-xs font-medium inline-flex"
+        >
+          최대 300위까지 조회
+        </Badge>
+      </div>
+
       <div className="space-y-6 md:space-y-8">
-        {/* 헤더 - TurboTax Style */}
-        <div className="space-y-3">
-          <div>
-            <h1 className="text-xl md:text-2xl font-bold text-neutral-900 mb-1.5 leading-tight">
-              플레이스 순위 조회
-            </h1>
-            <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
-              키워드별 네이버 플레이스 검색 순위를 실시간으로 확인하세요
-            </p>
-          </div>
-          <Badge 
-            variant="secondary"
-            className="bg-primary-100 text-primary-700 border-primary-200 px-2.5 py-1 text-xs font-medium inline-flex"
-          >
-            최대 300위까지 조회
-          </Badge>
-        </div>
 
         {/* 조회 폼 - TurboTax Style */}
         <Card className="rounded-card border-neutral-300 shadow-card">

@@ -399,16 +399,18 @@ export default function NaverKeywordsPage() {
   }
 
   return (
-    <div className="space-y-4 md:space-y-6">
-      {/* 헤더 */}
-      <div>
-        <h1 className="text-xl md:text-2xl font-bold text-neutral-900 mb-1 md:mb-2">
+    <div className="w-full max-w-4xl mx-auto p-4 md:p-6 lg:p-8">
+      {/* 헤더 - TurboTax Style */}
+      <div className="mb-6 md:mb-8">
+        <h1 className="text-xl md:text-2xl font-bold text-neutral-900 mb-1.5 leading-tight">
           키워드 검색량 분석
         </h1>
-        <p className="text-sm md:text-base text-neutral-600">
+        <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
           네이버 검색도구 API를 활용하여 키워드의 월간 검색량과 경쟁도를 분석하세요.
         </p>
       </div>
+
+      <div className="space-y-6 md:space-y-8">
 
       {/* 검색 영역 */}
       <Card className="p-4 md:p-6">
@@ -691,12 +693,13 @@ export default function NaverKeywordsPage() {
         )}
       </Card>
 
-      {/* 키워드 조합기 모달 */}
-      <KeywordCombinator
-        isOpen={isCombinatorOpen}
-        onClose={() => setIsCombinatorOpen(false)}
-        onApplyCombinations={handleApplyCombinations}
-      />
+        {/* 키워드 조합기 모달 */}
+        <KeywordCombinator
+          isOpen={isCombinatorOpen}
+          onClose={() => setIsCombinatorOpen(false)}
+          onApplyCombinations={handleApplyCombinations}
+        />
+      </div>
     </div>
   )
 }

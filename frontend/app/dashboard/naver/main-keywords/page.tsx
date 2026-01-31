@@ -238,17 +238,19 @@ export default function MainKeywordsAnalysisPage() {
   }
   
   return (
-    <div className="space-y-6">
-      {/* 헤더 */}
-      <div>
-        <h1 className="text-3xl font-bold text-olive-900 flex items-center gap-3">
-          <Star className="w-8 h-8 text-primary" />
+    <div className="w-full max-w-4xl mx-auto p-4 md:p-6 lg:p-8">
+      {/* 헤더 - TurboTax Style */}
+      <div className="mb-6 md:mb-8">
+        <h1 className="text-xl md:text-2xl font-bold text-neutral-900 mb-1.5 leading-tight flex items-center gap-2">
+          <Star className="w-5 h-5 md:w-6 md:h-6 text-primary-500" />
           대표키워드 분석
         </h1>
-        <p className="text-muted-foreground mt-2">
+        <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
           검색 키워드를 입력하면 상위 15개 매장의 대표 키워드를 분석합니다.
         </p>
       </div>
+
+      <div className="space-y-6 md:space-y-8">
       
       {/* 검색 입력 */}
       <Card className="p-6">
@@ -439,6 +441,7 @@ export default function MainKeywordsAnalysisPage() {
           </div>
         </Card>
       )}
+      </div>
     </div>
   )
 }
