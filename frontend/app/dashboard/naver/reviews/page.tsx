@@ -698,62 +698,60 @@ export default function ReviewManagementPage() {
               const savedDate = data.saved_date || dateRange.end_date
               const totalAnalyzed = data.total_analyzed
               
-              // AI 요약 추출 메시지를 즉시 표시
-              setTimeout(() => {
+              // 100% 후 0.5초 대기 후 AI 요약 추출 메시지 표시
+              setTimeout(async () => {
                 console.log("✨ AI 요약 추출 시작 - extractingSummary를 true로 설정")
                 setExtractingSummary(true) // AI 요약 추출 중
                 
-                // 1초 후에 데이터 로드 시작
-                setTimeout(async () => {
+                // 즉시 데이터 로드 시작 (메시지는 로드 완료될 때까지 계속 표시)
+                try {
+                  // 통계 및 리뷰 목록 새로고침 (백엔드가 저장한 날짜로 조회)
+                  console.log("📊 통계 로딩 시작 (AI 요약 포함)")
+                  console.log("   - 사용할 날짜:", savedDate)
+                  console.log("   - API URL:", api.reviews.stats(selectedStoreId, savedDate))
+                  await loadStats(savedDate)
+                  console.log("✅ 통계 로딩 완료 (AI 요약 포함)")
+                  
+                  // DB에서 분석된 리뷰 목록 다시 로드 (날짜별로 필터링됨)
+                  console.log("📝 리뷰 목록 다시 로드 중 (날짜:", savedDate, ")")
                   try {
-                    // 통계 및 리뷰 목록 새로고침 (백엔드가 저장한 날짜로 조회)
-                    console.log("📊 통계 로딩 시작 (AI 요약 포함)")
-                    console.log("   - 사용할 날짜:", savedDate)
-                    console.log("   - API URL:", api.reviews.stats(selectedStoreId, savedDate))
-                    await loadStats(savedDate)
-                    console.log("✅ 통계 로딩 완료 (AI 요약 포함)")
-                    
-                    // DB에서 분석된 리뷰 목록 다시 로드 (날짜별로 필터링됨)
-                    console.log("📝 리뷰 목록 다시 로드 중 (날짜:", savedDate, ")")
-                    try {
-                      const token = await getToken()
-                      const reviewsApiUrl = `https://api.whiplace.com/api/v1/reviews/list/${selectedStoreId}?date=${savedDate}`
-                      console.log("📝 리뷰 API URL:", reviewsApiUrl)
-                      const reviewsResponse = await fetch(reviewsApiUrl, {
-                        headers: {
-                          'Authorization': `Bearer ${token}`,
-                          'Content-Type': 'application/json'
-                        }
-                      })
-                      if (reviewsResponse.ok) {
-                        const reviewsData = await reviewsResponse.json()
-                        console.log("📝 리뷰 로드 성공:", reviewsData.length, "개")
-                        setReviews(reviewsData)
-                        setFilteredReviews(reviewsData)
-                      } else {
-                        console.error("❌ 리뷰 로드 실패:", reviewsResponse.status)
+                    const token = await getToken()
+                    const reviewsApiUrl = `https://api.whiplace.com/api/v1/reviews/list/${selectedStoreId}?date=${savedDate}`
+                    console.log("📝 리뷰 API URL:", reviewsApiUrl)
+                    const reviewsResponse = await fetch(reviewsApiUrl, {
+                      headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
                       }
-                    } catch (error) {
-                      console.error("❌ 리뷰 로드 에러:", error)
-                    }
-                    
-                    console.log("✅ AI 요약 추출 완료 - extractingSummary를 false로 설정")
-                    
-                    toast({
-                      title: "리뷰 분석 완료",
-                      description: `${totalAnalyzed}개의 리뷰를 분석했습니다.`,
                     })
-                    
-                    setExtractingSummary(false) // AI 요약 추출 완료
-                    setAnalyzing(false) // 전체 분석 프로세스 완료
-                    setTimeout(() => setAnalysisProgress(0), 1000)
+                    if (reviewsResponse.ok) {
+                      const reviewsData = await reviewsResponse.json()
+                      console.log("📝 리뷰 로드 성공:", reviewsData.length, "개")
+                      setReviews(reviewsData)
+                      setFilteredReviews(reviewsData)
+                    } else {
+                      console.error("❌ 리뷰 로드 실패:", reviewsResponse.status)
+                    }
                   } catch (error) {
-                    console.error("❌ 완료 처리 중 오류:", error)
-                    setExtractingSummary(false)
-                    setAnalyzing(false)
+                    console.error("❌ 리뷰 로드 에러:", error)
                   }
-                }, 1000) // 1초 동안 "AI 요약 추출 중" 메시지 표시
-              }, 100) // 100ms 딜레이로 100% UI 업데이트 시간 확보
+                  
+                  console.log("✅ AI 요약 추출 완료 - extractingSummary를 false로 설정")
+                  
+                  toast({
+                    title: "리뷰 분석 완료",
+                    description: `${totalAnalyzed}개의 리뷰를 분석했습니다.`,
+                  })
+                  
+                  setExtractingSummary(false) // AI 요약 추출 완료
+                  setAnalyzing(false) // 전체 분석 프로세스 완료
+                  setTimeout(() => setAnalysisProgress(0), 1000)
+                } catch (error) {
+                  console.error("❌ 완료 처리 중 오류:", error)
+                  setExtractingSummary(false)
+                  setAnalyzing(false)
+                }
+              }, 500) // 100% 후 0.5초 대기
               break
               
             case 'error':
