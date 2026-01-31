@@ -49,23 +49,23 @@ const ReviewItem = memo(({
   getSentimentIcon,
   getSentimentLabel
 }: ReviewItemProps) => {
-  const truncatedContent = review.content.length > 20 
-    ? review.content.substring(0, 20) + "..." 
+  const truncatedContent = review.content.length > 100 
+    ? review.content.substring(0, 100) + "..." 
     : review.content
 
   return (
-    <Card className="p-3">
+    <Card className="p-3 md:p-4 border-gray-200 shadow-sm hover:shadow-md transition-shadow">
       {/* 리뷰 헤더 - Compact */}
-      <div className="flex items-center justify-between mb-1">
-        <div className="flex items-center gap-2">
-          <div className="font-medium text-sm">{review.author_name}</div>
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="font-medium text-sm text-gray-900">{review.author_name}</div>
+          <div className="flex items-center gap-1 text-xs text-gray-500">
             <Clock className="w-3 h-3" />
             {new Date(review.review_date).toLocaleDateString("ko-KR")}
           </div>
         </div>
         
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {review.images && review.images.length > 0 && (
             <div className="flex items-center gap-1 text-xs text-blue-600">
               <ImageIcon className="w-3 h-3" />
@@ -79,7 +79,7 @@ const ReviewItem = memo(({
             </div>
           )}
           {/* 감성 */}
-          <Badge className={`${getSentimentColor(review.sentiment)} text-xs py-0 px-2`}>
+          <Badge className={`${getSentimentColor(review.sentiment)} text-xs py-0.5 px-2`}>
             {getSentimentIcon(review.sentiment)}
             <span className="ml-1">{getSentimentLabel(review.sentiment)}</span>
           </Badge>
@@ -87,7 +87,7 @@ const ReviewItem = memo(({
       </div>
       
       {/* 리뷰 내용 미리보기 - Compact */}
-      <p className="text-sm leading-snug mb-1">
+      <p className="text-sm leading-relaxed mb-2 text-gray-800">
         {isExpanded ? review.content : truncatedContent}
       </p>
       
@@ -96,7 +96,7 @@ const ReviewItem = memo(({
         variant="ghost"
         size="sm"
         onClick={() => onToggle(review.id)}
-        className="w-full mt-1 text-xs h-7"
+        className="w-full mt-1 text-xs h-7 text-gray-600 hover:text-gray-900 hover:bg-gray-100"
       >
         {isExpanded ? (
           <>
@@ -113,20 +113,20 @@ const ReviewItem = memo(({
       
       {/* 펼쳤을 때만 표시되는 상세 정보 */}
       {isExpanded && (
-        <div className="mt-3 pt-3 border-t">
+        <div className="mt-3 pt-3 border-t border-gray-200">
           {/* 이미지 */}
           {review.images && review.images.length > 0 && (
-            <div className="flex gap-2 mb-3">
+            <div className="flex gap-2 mb-3 overflow-x-auto pb-1">
               {review.images.slice(0, 4).map((img: string, idx: number) => (
                 <img 
                   key={idx}
                   src={img} 
                   alt={`리뷰 이미지 ${idx + 1}`}
-                  className="w-16 h-16 object-cover rounded"
+                  className="w-16 h-16 md:w-20 md:h-20 object-cover rounded-lg flex-shrink-0"
                 />
               ))}
               {review.images.length > 4 && (
-                <div className="w-16 h-16 bg-gray-100 rounded flex items-center justify-center text-xs text-gray-600">
+                <div className="w-16 h-16 md:w-20 md:h-20 bg-gray-100 rounded-lg flex items-center justify-center text-xs text-gray-600 flex-shrink-0">
                   +{review.images.length - 4}
                 </div>
               )}
@@ -134,7 +134,7 @@ const ReviewItem = memo(({
           )}
           
           {/* 상세 메타 정보 */}
-          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+          <div className="flex items-center gap-3 flex-wrap text-xs text-gray-600">
             {/* 별점 */}
             {review.rating && (
               <div className="flex items-center gap-1">
@@ -889,81 +889,130 @@ export default function ReviewManagementPage() {
   }, [])
   
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="space-y-4 md:space-y-6 p-4 md:p-6">
       {/* 헤더 */}
-      <div className="flex items-center justify-between">
       <div>
-          <h1 className="text-3xl font-bold">리뷰 분석</h1>
-          <p className="text-muted-foreground mt-1">
-            방문자 리뷰와 블로그 리뷰를 AI로 분석하여 긍정/부정 감성과 핵심 키워드를 파악합니다.
-          </p>
-          <p className="text-muted-foreground text-sm">
-            리뷰 추이와 고객 반응을 실시간으로 모니터링하고 개선점을 도출할 수 있습니다.
+        <h1 className="text-xl md:text-2xl font-bold text-gray-900 mb-2">리뷰 분석</h1>
+        <p className="text-sm text-gray-600 leading-relaxed mb-1">
+          방문자 리뷰와 블로그 리뷰를 AI로 분석하여 긍정/부정 감성과 핵심 키워드를 파악합니다.
+        </p>
+        <p className="text-xs md:text-sm text-gray-500 leading-relaxed">
+          리뷰 추이와 고객 반응을 실시간으로 모니터링하고 개선점을 도출할 수 있습니다.
         </p>
       </div>
-
-        <div className="flex items-center gap-3">
-          {/* 기간 선택 */}
-          <select
-            className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-            value={datePeriod}
-            onChange={(e) => setDatePeriod(e.target.value)}
-            disabled={analyzing}
-          >
-            <option value="today">오늘</option>
-            <option value="yesterday">어제</option>
-            <option value="last7days">지난 7일</option>
-            <option value="last30days">지난 30일</option>
-          </select>
-          
-          <Button onClick={handleAnalyze} disabled={!selectedStoreId || analyzing}>
-            {analyzing ? (
-              <>
-                <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                분석 중...
-              </>
-            ) : (
-              <>
-                <Sparkles className="mr-2 h-4 w-4" />
-                리뷰 분석
-              </>
-            )}
-          </Button>
-        </div>
-      </div>
       
-      {/* 매장 선택 */}
-      <Card>
-        <CardHeader>
-          <CardTitle>매장 선택</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <select
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-            value={selectedStoreId}
-            onChange={(e) => setSelectedStoreId(e.target.value)}
-          >
-            <option value="">매장을 선택하세요</option>
-            {stores.map((store) => (
-              <option key={store.id} value={store.id}>
-                {store.name}
-              </option>
-            ))}
-          </select>
-        </CardContent>
-      </Card>
+      {/* 매장 선택 + 기간 선택 (PC에서 한 행) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        {/* 매장 선택 */}
+        <Card className="border-gray-200 shadow-sm lg:col-span-4">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-semibold text-gray-900">매장 선택</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <select
+              className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+              value={selectedStoreId}
+              onChange={(e) => setSelectedStoreId(e.target.value)}
+            >
+              <option value="">매장을 선택하세요</option>
+              {stores.map((store) => (
+                <option key={store.id} value={store.id}>
+                  {store.name}
+                </option>
+              ))}
+            </select>
+          </CardContent>
+        </Card>
+
+        {/* 기간 선택 + 분석 버튼 */}
+        <Card className="border-gray-200 shadow-sm lg:col-span-8">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-semibold text-gray-900">분석 기간 선택</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col lg:flex-row gap-3 lg:items-center">
+              {/* 기간 선택 버튼 그룹 */}
+              <div className="flex-1 grid grid-cols-2 lg:grid-cols-4 gap-2">
+                <button
+                  onClick={() => setDatePeriod("today")}
+                  disabled={analyzing}
+                  className={`h-10 px-3 rounded-lg font-medium text-sm transition-all ${
+                    datePeriod === "today"
+                      ? "bg-blue-500 text-white shadow-md border-2 border-blue-500"
+                      : "bg-white border-2 border-gray-200 text-gray-700 hover:border-blue-300 hover:bg-blue-50"
+                  } disabled:opacity-50 disabled:cursor-not-allowed`}
+                >
+                  오늘
+                </button>
+                <button
+                  onClick={() => setDatePeriod("yesterday")}
+                  disabled={analyzing}
+                  className={`h-10 px-3 rounded-lg font-medium text-sm transition-all ${
+                    datePeriod === "yesterday"
+                      ? "bg-blue-500 text-white shadow-md border-2 border-blue-500"
+                      : "bg-white border-2 border-gray-200 text-gray-700 hover:border-blue-300 hover:bg-blue-50"
+                  } disabled:opacity-50 disabled:cursor-not-allowed`}
+                >
+                  어제
+                </button>
+                <button
+                  onClick={() => setDatePeriod("last7days")}
+                  disabled={analyzing}
+                  className={`h-10 px-3 rounded-lg font-medium text-sm transition-all ${
+                    datePeriod === "last7days"
+                      ? "bg-blue-500 text-white shadow-md border-2 border-blue-500"
+                      : "bg-white border-2 border-gray-200 text-gray-700 hover:border-blue-300 hover:bg-blue-50"
+                  } disabled:opacity-50 disabled:cursor-not-allowed`}
+                >
+                  지난 7일
+                </button>
+                <button
+                  onClick={() => setDatePeriod("last30days")}
+                  disabled={analyzing}
+                  className={`h-10 px-3 rounded-lg font-medium text-sm transition-all ${
+                    datePeriod === "last30days"
+                      ? "bg-blue-500 text-white shadow-md border-2 border-blue-500"
+                      : "bg-white border-2 border-gray-200 text-gray-700 hover:border-blue-300 hover:bg-blue-50"
+                  } disabled:opacity-50 disabled:cursor-not-allowed`}
+                >
+                  지난 30일
+                </button>
+              </div>
+
+              {/* 리뷰 분석 버튼 */}
+              <Button 
+                onClick={handleAnalyze} 
+                disabled={!selectedStoreId || analyzing}
+                className="h-10 px-5 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all lg:min-w-[140px]"
+              >
+                {analyzing ? (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                    분석 중
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    리뷰 분석
+                  </>
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
       
       {/* 매장 정보 (선택 시 표시) */}
       {loadingPlaceInfo && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <RefreshCw className="w-5 h-5 animate-spin" />
+        <Card className="border-gray-200 shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base font-semibold text-gray-900">
+              <RefreshCw className="w-4 h-4 animate-spin text-primary-500" />
               매장 정보 로딩 중...
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-sm text-muted-foreground">
+            <div className="text-sm text-gray-600">
               네이버 플레이스에서 매장 정보를 가져오고 있습니다.
             </div>
           </CardContent>
@@ -971,37 +1020,91 @@ export default function ReviewManagementPage() {
       )}
       
       {!loadingPlaceInfo && placeInfo && (
-        <Card className="bg-gradient-to-r from-gray-50 to-blue-50">
-          <CardContent className="pt-4 pb-4">
-            <div className="flex items-center justify-between">
-              {/* 매장명 + 평점 */}
-              <div className="flex items-center gap-3">
-                <Store className="w-5 h-5 text-gray-600" />
-                <div>
-                  <h3 className="text-base font-bold text-gray-900">{placeInfo.name}</h3>
-                  {placeInfo.rating !== null && (
-                    <div className="flex items-center gap-1 mt-0.5">
-                      <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                      <span className="text-sm font-semibold text-gray-700">{placeInfo.rating.toFixed(1)}</span>
+        <Card className="bg-white border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+          <CardContent className="p-4 md:p-6">
+            <div className="flex flex-col md:flex-row gap-4">
+              {/* 왼쪽: 썸네일 */}
+              <div className="flex-shrink-0">
+                <div className="w-20 h-20 md:w-24 md:h-24 rounded-xl overflow-hidden bg-gray-100 border border-gray-200 flex items-center justify-center">
+                  {(() => {
+                    // 백엔드가 반환하는 image_url 또는 thumbnail 필드 사용
+                    const imgUrl = (placeInfo as any).image_url || (placeInfo as any).thumbnail || ''
+                    
+                    return imgUrl ? (
+                      <img 
+                        src={imgUrl} 
+                        alt={placeInfo.name}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none'
+                          const parent = e.currentTarget.parentElement
+                          if (parent) {
+                            parent.innerHTML = `<svg class="w-8 h-8 md:w-10 md:h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>`
+                          }
+                        }}
+                      />
+                    ) : (
+                      <Store className="w-8 h-8 md:w-10 md:h-10 text-gray-400" />
+                    )
+                  })()}
+                </div>
+              </div>
+
+              {/* 중앙: 매장 정보 */}
+              <div className="flex-1 min-w-0">
+                {/* 매장명 + 평점 */}
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-lg md:text-xl font-bold text-gray-900 mb-2 truncate">{placeInfo.name}</h3>
+                    {placeInfo.rating !== null && (
+                      <div className="flex items-center gap-1 mb-2">
+                        <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                        <span className="text-sm font-semibold text-gray-900">{placeInfo.rating.toFixed(1)}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* 기본 정보 */}
+                <div className="space-y-2 mb-3">
+                  {(placeInfo as any).category && (
+                    <div className="flex items-center gap-2 text-xs md:text-sm text-gray-600">
+                      <div className="w-1.5 h-1.5 rounded-full bg-primary-500"></div>
+                      <span className="font-medium">업종:</span>
+                      <span className="text-gray-800">{(placeInfo as any).category}</span>
+                    </div>
+                  )}
+                  {(placeInfo as any).address && (
+                    <div className="flex items-start gap-2 text-xs md:text-sm text-gray-600">
+                      <div className="w-1.5 h-1.5 rounded-full bg-primary-500 mt-1.5"></div>
+                      <span className="font-medium">주소:</span>
+                      <span className="text-gray-800 flex-1 line-clamp-1">{(placeInfo as any).address}</span>
+                    </div>
+                  )}
+                  {placeInfo.description && (
+                    <div className="flex items-start gap-2 text-xs md:text-sm text-gray-600">
+                      <div className="w-1.5 h-1.5 rounded-full bg-primary-500 mt-1.5"></div>
+                      <span className="font-medium">설명:</span>
+                      <span className="text-gray-800 flex-1 line-clamp-2">{placeInfo.description}</span>
                     </div>
                   )}
                 </div>
-              </div>
-              
-              {/* 리뷰 수 - Compact & 가독성 개선 */}
-              <div className="flex items-center gap-6">
-                <div className="flex items-center gap-2 bg-blue-50 px-3 py-2 rounded-lg">
-                  <MessageSquare className="w-5 h-5 text-blue-600" />
-                  <div>
-                    <div className="text-xs font-medium text-blue-700">방문자</div>
-                    <div className="text-base font-bold text-blue-900">{placeInfo.visitor_review_count.toLocaleString()}</div>
+
+                {/* 리뷰 수 - TurboTax 스타일 */}
+                <div className="flex items-center gap-2 md:gap-3 flex-wrap">
+                  <div className="flex items-center gap-2 bg-primary-500 px-3 py-1.5 rounded-lg">
+                    <MessageSquare className="w-4 h-4 text-white" />
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-medium text-white/95">방문자</span>
+                      <span className="text-sm font-semibold text-white">{placeInfo.visitor_review_count.toLocaleString()}</span>
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-center gap-2 bg-green-50 px-3 py-2 rounded-lg">
-                  <FileText className="w-5 h-5 text-green-600" />
-                  <div>
-                    <div className="text-xs font-medium text-green-700">블로그</div>
-                    <div className="text-base font-bold text-green-900">{placeInfo.blog_review_count.toLocaleString()}</div>
+                  <div className="flex items-center gap-2 bg-gray-700 px-3 py-1.5 rounded-lg">
+                    <FileText className="w-4 h-4 text-white" />
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-medium text-white/95">블로그</span>
+                      <span className="text-sm font-semibold text-white">{placeInfo.blog_review_count.toLocaleString()}</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1012,13 +1115,13 @@ export default function ReviewManagementPage() {
       
       {/* 리뷰 추출 중 로딩 UI - Compact */}
       {extracting && (
-        <Card className="border-green-200 bg-green-50">
+        <Card className="border-green-200 bg-green-50 shadow-sm">
           <CardContent className="pt-4 pb-4">
-            <div className="flex items-center gap-4">
-              <RefreshCw className="w-8 h-8 text-green-500 animate-spin flex-shrink-0" />
+            <div className="flex items-center gap-3 md:gap-4">
+              <RefreshCw className="w-6 h-6 md:w-8 md:h-8 text-green-500 animate-spin flex-shrink-0" />
               <div className="flex-1">
-                <h3 className="text-base font-semibold text-green-900 mb-1">리뷰 추출 중...</h3>
-                <p className="text-sm text-green-700">선택한 기간의 리뷰를 정확히 추출하고 있습니다.</p>
+                <h3 className="text-sm md:text-base font-semibold text-green-900 mb-1">리뷰 추출 중...</h3>
+                <p className="text-xs md:text-sm text-green-700">선택한 기간의 리뷰를 정확히 추출하고 있습니다.</p>
               </div>
             </div>
           </CardContent>
@@ -1027,18 +1130,18 @@ export default function ReviewManagementPage() {
       
       {/* 리뷰 분석 중 로딩 + Progress Bar - Compact */}
       {analyzing && !extracting && (
-        <Card className="border-blue-200 bg-blue-50">
+        <Card className="border-blue-200 bg-blue-50 shadow-sm">
           <CardContent className="pt-4 pb-4">
             <div className="space-y-3">
               {/* 상단: 진행 상황 */}
               <div className="flex items-center gap-3">
-                <RefreshCw className="w-8 h-8 text-blue-500 animate-spin flex-shrink-0" />
+                <RefreshCw className="w-6 h-6 md:w-8 md:h-8 text-blue-500 animate-spin flex-shrink-0" />
                 <div className="flex-1">
-                  <h3 className="text-base font-semibold text-blue-900">리뷰 분석 중...</h3>
-                  <p className="text-sm text-blue-700">
+                  <h3 className="text-sm md:text-base font-semibold text-blue-900">리뷰 분석 중...</h3>
+                  <p className="text-xs md:text-sm text-blue-700">
                     전체 {reviews.length}개 중 {analyzedCount}개 분석 완료 ({Math.round(analysisProgress)}%)
                   </p>
-      </div>
+                </div>
               </div>
               
               {/* Progress Bar */}
@@ -1055,24 +1158,29 @@ export default function ReviewManagementPage() {
       
       {/* 실시간 리뷰온도별 현황 - 분석 중이거나 완료 후에도 표시 */}
       {(analyzing || (reviews.length > 0 && (currentStats.positive > 0 || currentStats.neutral > 0 || currentStats.negative > 0))) && (
-        <Card className="border-gray-200 bg-gradient-to-br from-blue-50 to-purple-50">
-          <CardContent className="pt-5 pb-5">
-            {/* 헤더 */}
-            <div className="flex items-center justify-between mb-4">
-              <h4 className="text-base font-bold text-gray-900">
-                {analyzing ? "🔄 실시간 분석 현황" : "✅ 분석 결과"}
-              </h4>
-            </div>
+        <div className="space-y-3">
+          {/* 상단: 전체 리뷰 수 히어로 카드 */}
+          <Card className="border-gray-200 bg-gradient-to-br from-blue-50 to-purple-50 shadow-sm">
+            <CardContent className="pt-4 md:pt-5 pb-4 md:pb-5">
+              {/* 헤더 */}
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-sm md:text-base font-bold text-gray-900">
+                  {analyzing ? "🔄 실시간 분석 현황" : "✅ 분석 결과"}
+                </h4>
+              </div>
             
-            {/* 전체 리뷰 수 + 일별 리뷰 추이 그래프 */}
-            <div className="mb-4 p-4 bg-white rounded-xl shadow-sm border-2 border-blue-200">
+            {/* 전체 리뷰 수 - 히어로 카드 (TurboTax 스타일) */}
+            <div className="mb-4 p-6 md:p-8 bg-white rounded-xl shadow-md border border-gray-200">
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-6">
                 {/* 왼쪽: 전체 리뷰 수 */}
-                <div className="flex items-center gap-3">
-                  <MessageSquare className="w-6 h-6 text-blue-600" />
+                <div className="flex items-center gap-4">
+                  <div className="flex-shrink-0 w-14 h-14 md:w-16 md:h-16 bg-primary-500 rounded-xl flex items-center justify-center">
+                    <MessageSquare className="w-7 h-7 md:w-8 md:h-8 text-white" />
+                  </div>
                   <div>
-                    <div className="text-sm text-gray-600 mb-1">기간내 전체 리뷰</div>
-                    <div className="text-4xl font-bold text-blue-600">{reviews.length}</div>
+                    <div className="text-sm md:text-base text-gray-600 mb-1 font-medium">기간내 전체 리뷰</div>
+                    <div className="text-5xl md:text-6xl font-bold text-gray-900 tracking-tight">{reviews.length}</div>
+                    <div className="text-xs md:text-sm text-gray-500 mt-1">총 리뷰 분석 완료</div>
                   </div>
                 </div>
                 
@@ -1099,7 +1207,7 @@ export default function ReviewManagementPage() {
                   
                   return (
                     <div className="flex-1 min-w-0 max-w-full sm:max-w-lg">
-                      <div className="text-xs text-gray-500 mb-2 text-right">일별 리뷰 추이</div>
+                      <div className="text-xs md:text-sm text-gray-600 mb-2 text-right font-medium">일별 리뷰 추이</div>
                       <div className="relative w-full h-32 pb-6">
                         <svg 
                           className="w-full h-full" 
@@ -1213,141 +1321,236 @@ export default function ReviewManagementPage() {
               </div>
             </div>
             
-            {/* 통계 카드들 */}
-            <div className="grid grid-cols-5 gap-3">
+            {/* 통계 카드들 - TurboTax 스타일 */}
+            <div className="grid grid-cols-3 md:grid-cols-5 gap-2 md:gap-3">
               {/* 긍정 리뷰 */}
-              <div className="relative text-center p-4 bg-white rounded-xl shadow-sm border border-green-200 hover:shadow-md transition-shadow">
+              <div className="bg-white rounded-lg p-2 md:p-3 shadow-sm hover:shadow-md transition-all border border-gray-200">
                 {analyzing && (
-                  <div className="absolute top-2 right-2">
-                    <RefreshCw className="w-3 h-3 text-green-500 animate-spin" />
+                  <div className="absolute top-1.5 right-1.5">
+                    <RefreshCw className="w-2.5 h-2.5 text-primary-500 animate-spin" />
                   </div>
                 )}
-                <div className="text-3xl font-bold text-green-600">{currentStats.positive}</div>
-                <div className="text-xs font-medium text-gray-600 mt-2">긍정</div>
-                <div className="text-xs text-gray-400 mt-1">
-                  {reviews.length > 0 ? Math.round((currentStats.positive / reviews.length) * 100) : 0}%
+                <div className="flex flex-col items-center text-center">
+                  <div className="w-6 h-6 md:w-8 md:h-8 bg-success rounded-lg flex items-center justify-center mb-1">
+                    <ThumbsUp className="w-3 h-3 md:w-4 md:h-4 text-white" />
+                  </div>
+                  <div className="text-xl md:text-2xl font-bold text-gray-900">{currentStats.positive}</div>
+                  <div className="text-[10px] md:text-xs font-medium text-gray-600 mt-0.5">긍정</div>
+                  <div className="text-[9px] md:text-[10px] text-gray-500">
+                    {reviews.length > 0 ? Math.round((currentStats.positive / reviews.length) * 100) : 0}%
+                  </div>
                 </div>
               </div>
               
               {/* 중립 리뷰 */}
-              <div className="relative text-center p-4 bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+              <div className="bg-white rounded-lg p-2 md:p-3 shadow-sm hover:shadow-md transition-all border border-gray-200">
                 {analyzing && (
-                  <div className="absolute top-2 right-2">
-                    <RefreshCw className="w-3 h-3 text-gray-500 animate-spin" />
+                  <div className="absolute top-1.5 right-1.5">
+                    <RefreshCw className="w-2.5 h-2.5 text-primary-500 animate-spin" />
                   </div>
                 )}
-                <div className="text-3xl font-bold text-gray-600">{currentStats.neutral}</div>
-                <div className="text-xs font-medium text-gray-600 mt-2">중립</div>
-                <div className="text-xs text-gray-400 mt-1">
-                  {reviews.length > 0 ? Math.round((currentStats.neutral / reviews.length) * 100) : 0}%
+                <div className="flex flex-col items-center text-center">
+                  <div className="w-6 h-6 md:w-8 md:h-8 bg-gray-400 rounded-lg flex items-center justify-center mb-1">
+                    <Minus className="w-3 h-3 md:w-4 md:h-4 text-white" />
+                  </div>
+                  <div className="text-xl md:text-2xl font-bold text-gray-900">{currentStats.neutral}</div>
+                  <div className="text-[10px] md:text-xs font-medium text-gray-600 mt-0.5">중립</div>
+                  <div className="text-[9px] md:text-[10px] text-gray-500">
+                    {reviews.length > 0 ? Math.round((currentStats.neutral / reviews.length) * 100) : 0}%
+                  </div>
                 </div>
               </div>
               
               {/* 부정 리뷰 */}
-              <div className="relative text-center p-4 bg-white rounded-xl shadow-sm border border-red-200 hover:shadow-md transition-shadow">
+              <div className="bg-white rounded-lg p-2 md:p-3 shadow-sm hover:shadow-md transition-all border border-gray-200">
                 {analyzing && (
-                  <div className="absolute top-2 right-2">
-                    <RefreshCw className="w-3 h-3 text-red-500 animate-spin" />
+                  <div className="absolute top-1.5 right-1.5">
+                    <RefreshCw className="w-2.5 h-2.5 text-primary-500 animate-spin" />
                   </div>
                 )}
-                <div className="text-3xl font-bold text-red-600">{currentStats.negative}</div>
-                <div className="text-xs font-medium text-gray-600 mt-2">부정</div>
-                <div className="text-xs text-gray-400 mt-1">
-                  {reviews.length > 0 ? Math.round((currentStats.negative / reviews.length) * 100) : 0}%
+                <div className="flex flex-col items-center text-center">
+                  <div className="w-6 h-6 md:w-8 md:h-8 bg-error rounded-lg flex items-center justify-center mb-1">
+                    <ThumbsDown className="w-3 h-3 md:w-4 md:h-4 text-white" />
+                  </div>
+                  <div className="text-xl md:text-2xl font-bold text-gray-900">{currentStats.negative}</div>
+                  <div className="text-[10px] md:text-xs font-medium text-gray-600 mt-0.5">부정</div>
+                  <div className="text-[9px] md:text-[10px] text-gray-500">
+                    {reviews.length > 0 ? Math.round((currentStats.negative / reviews.length) * 100) : 0}%
+                  </div>
                 </div>
               </div>
               
               {/* 사진 리뷰 */}
-              <div className="relative text-center p-4 bg-white rounded-xl shadow-sm border border-blue-200 hover:shadow-md transition-shadow">
+              <div className="bg-white rounded-lg p-2 md:p-3 shadow-sm hover:shadow-md transition-all border border-gray-200">
                 {analyzing && (
-                  <div className="absolute top-2 right-2">
-                    <RefreshCw className="w-3 h-3 text-blue-500 animate-spin" />
+                  <div className="absolute top-1.5 right-1.5">
+                    <RefreshCw className="w-2.5 h-2.5 text-primary-500 animate-spin" />
                   </div>
                 )}
-                <div className="flex items-center justify-center gap-1 mb-1">
-                  <ImageIcon className="w-4 h-4 text-blue-600" />
-                  <div className="text-xl font-bold text-blue-600">
+                <div className="flex flex-col items-center text-center">
+                  <div className="w-6 h-6 md:w-8 md:h-8 bg-primary-500 rounded-lg flex items-center justify-center mb-1">
+                    <ImageIcon className="w-3 h-3 md:w-4 md:h-4 text-white" />
+                  </div>
+                  <div className="text-xl md:text-2xl font-bold text-gray-900">
                     {reviews.filter(r => r.images && r.images.length > 0).length}
                   </div>
-                  <span className="text-sm text-gray-400">/</span>
-                  <div className="text-sm text-gray-500">{reviews.length}</div>
-                </div>
-                <div className="text-xs font-medium text-gray-600 mt-1">사진리뷰</div>
-                <div className="text-xs text-gray-400 mt-1">
-                  {reviews.length > 0 
-                    ? Math.round((reviews.filter(r => r.images && r.images.length > 0).length / reviews.length) * 100) 
-                    : 0}%
+                  <div className="text-[10px] md:text-xs font-medium text-gray-600 mt-0.5">사진리뷰</div>
+                  <div className="text-[9px] md:text-[10px] text-gray-500">
+                    {reviews.length > 0 
+                      ? Math.round((reviews.filter(r => r.images && r.images.length > 0).length / reviews.length) * 100) 
+                      : 0}%
+                  </div>
                 </div>
               </div>
               
               {/* 평균 온도 */}
-              <div className="relative text-center p-4 bg-white rounded-xl shadow-sm border border-orange-200 hover:shadow-md transition-shadow">
+              <div className="bg-white rounded-lg p-2 md:p-3 shadow-sm hover:shadow-md transition-all border border-gray-200">
                 {analyzing && (
-                  <div className="absolute top-2 right-2">
-                    <RefreshCw className="w-3 h-3 text-orange-500 animate-spin" />
+                  <div className="absolute top-1.5 right-1.5">
+                    <RefreshCw className="w-2.5 h-2.5 text-primary-500 animate-spin" />
                   </div>
                 )}
-                <div className="text-3xl font-bold text-orange-600">
-                  {reviews.length > 0 
-                    ? Math.round(reviews.reduce((sum, r) => sum + (r.temperature_score || 0), 0) / reviews.length) 
-                    : 0}°
+                <div className="flex flex-col items-center text-center">
+                  <div className="w-6 h-6 md:w-8 md:h-8 bg-warning rounded-lg flex items-center justify-center mb-1">
+                    <TrendingUp className="w-3 h-3 md:w-4 md:h-4 text-white" />
+                  </div>
+                  <div className="text-xl md:text-2xl font-bold text-gray-900">
+                    {reviews.length > 0 
+                      ? Math.round(reviews.reduce((sum, r) => sum + (r.temperature_score || 0), 0) / reviews.length) 
+                      : 0}°
+                  </div>
+                  <div className="text-[10px] md:text-xs font-medium text-gray-600 mt-0.5">온도</div>
+                  <div className="text-[9px] md:text-[10px] text-gray-500">평균</div>
                 </div>
-                <div className="text-xs font-medium text-gray-600 mt-2">평균온도</div>
-                <div className="text-xs text-gray-400 mt-1">리뷰온도</div>
               </div>
             </div>
-          </CardContent>
-        </Card>
-      )}
-      
-      {/* 통계 요약 */}
-      {stats && (
-        <div className="space-y-4">
-          {/* 조회 정보 */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Clock className="w-5 h-5" />
-                조회 정보
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4" />
-                  <span>조회 일자: {stats.date}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4" />
-                  <span>조회 시간: {new Date(stats.checked_at).toLocaleString("ko-KR")}</span>
+
+            {/* 조회 정보 - 컴팩트 버전 */}
+            {stats && (
+              <div className="mt-3 p-3 bg-white rounded-xl border border-gray-200 shadow-sm">
+                <div className="flex flex-col md:flex-row md:items-center gap-2 text-xs text-gray-600">
+                  <div className="flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-gray-500" />
+                    <span className="font-medium">조회 일자:</span>
+                    <span>{stats.date}</span>
+                  </div>
+                  <span className="hidden md:inline text-gray-300">|</span>
+                  <div className="flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-gray-500" />
+                    <span className="font-medium">조회 시간:</span>
+                    <span>{new Date(stats.checked_at).toLocaleString("ko-KR")}</span>
+                  </div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-          
-          {/* AI 요약 */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-purple-600" />
+            )}
+          </CardContent>
+        </Card>
+        </div>
+      )}
+      
+      {/* AI 요약 */}
+      {stats && (
+          <Card className="border-gray-200 bg-white shadow-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base font-semibold text-gray-900">
+                <Sparkles className="w-4 h-4 md:w-5 md:h-5 text-primary-500" />
                 AI 요약
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm leading-relaxed">{stats.summary}</p>
+              <div className="space-y-3">
+                {(() => {
+                  // AI 요약을 섹션으로 분리 (개선된 파싱 로직)
+                  const text = stats.summary.trim()
+                  const sections: { title: string; content: string }[] = []
+                  
+                  // "### 1️⃣ 제목" 또는 "1. 제목" 형식을 모두 처리
+                  // 먼저 ### 패턴 시도
+                  const hashPattern = /###\s*[0-9️⃣①②③④⑤]+\s*([^\n]+)/g
+                  let match
+                  
+                  while ((match = hashPattern.exec(text)) !== null) {
+                    const title = match[1].trim()
+                    // 다음 섹션 시작 위치까지의 내용 추출
+                    const currentIndex = match.index + match[0].length
+                    const nextMatch = hashPattern.exec(text)
+                    const endIndex = nextMatch ? nextMatch.index : text.length
+                    hashPattern.lastIndex = nextMatch ? nextMatch.index : text.length
+                    
+                    const content = text.substring(currentIndex, endIndex).trim()
+                    sections.push({ title, content })
+                  }
+                  
+                  // ### 패턴이 안 되면 숫자. 패턴 시도
+                  if (sections.length === 0) {
+                    const numberPattern = /(\d+)\.\s*([^\n]+?)(?:\n([^\d][^\n]*?))?(?=\n\d+\.|$)/g
+                    while ((match = numberPattern.exec(text)) !== null) {
+                      const title = match[2].trim()
+                      const content = match[3] ? match[3].trim() : ''
+                      sections.push({ title, content })
+                    }
+                  }
+                  
+                  // 섹션이 제대로 파싱되었으면 분리해서 표시
+                  if (sections.length >= 2) {
+                    return sections.map((section, idx) => (
+                      <div 
+                        key={idx} 
+                        className="group relative"
+                      >
+                        {/* 메인 카드 - TurboTax 스타일 */}
+                        <div className="relative flex items-start gap-4 p-4 md:p-5 bg-gray-50 rounded-lg border border-gray-200 hover:border-primary-300 hover:bg-gray-100 transition-all">
+                          {/* 번호 아이콘 - TurboTax 스타일 */}
+                          <div className="flex-shrink-0">
+                            <div className="w-10 h-10 md:w-12 md:h-12 rounded-lg bg-primary-500 flex items-center justify-center">
+                              <span className="text-white text-base md:text-lg font-bold">{idx + 1}</span>
+                            </div>
+                          </div>
+                          
+                          {/* 섹션 내용 */}
+                          <div className="flex-1 min-w-0">
+                            {/* 제목 - 크고 bold */}
+                            <h4 className="text-lg md:text-xl font-bold text-gray-900 mb-2 leading-snug">
+                              {section.title}
+                            </h4>
+                            
+                            {/* 구분선 - TurboTax 스타일 */}
+                            {section.content && (
+                              <div className="w-12 h-0.5 bg-primary-500 rounded-full mb-3"></div>
+                            )}
+                            
+                            {/* 내용 */}
+                            {section.content && (
+                              <p className="text-sm md:text-base leading-relaxed text-gray-700">
+                                {section.content}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  } else {
+                    // 파싱 실패 시 기존대로 표시
+                    return (
+                      <p className="text-sm md:text-base leading-relaxed text-gray-800 whitespace-pre-wrap">
+                        {stats.summary}
+                      </p>
+                    )
+                  }
+                })()}
+              </div>
             </CardContent>
           </Card>
-        </div>
       )}
       
       {/* 리뷰 없음 메시지 - 분석 시도 후에만 표시 */}
       {hasAttemptedAnalysis && !analyzing && !extracting && reviews.length === 0 && (
-        <Card className="border-gray-200">
+        <Card className="border-gray-200 shadow-sm">
           <CardContent className="pt-8 pb-8">
             <div className="text-center">
-              <MessageSquare className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-              <h3 className="text-base font-semibold text-gray-900 mb-2">등록된 리뷰가 없습니다</h3>
-              <p className="text-sm text-muted-foreground">
+              <MessageSquare className="w-10 h-10 md:w-12 md:h-12 text-gray-400 mx-auto mb-3" />
+              <h3 className="text-sm md:text-base font-semibold text-gray-900 mb-2">등록된 리뷰가 없습니다</h3>
+              <p className="text-xs md:text-sm text-gray-600">
                 선택한 기간 동안 등록된 리뷰가 없습니다.
               </p>
             </div>
@@ -1357,20 +1560,20 @@ export default function ReviewManagementPage() {
       
       {/* 리뷰 목록 */}
       {reviews.length > 0 && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>
+        <Card className="border-gray-200 shadow-sm">
+          <CardHeader className="pb-3">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+              <CardTitle className="text-base font-semibold text-gray-900">
                 리뷰 목록 ({filteredReviews.length}개)
                 {sentimentFilter !== "all" && <span className="text-sm text-gray-500 ml-2">/ 전체 {reviews.length}개</span>}
               </CardTitle>
               
               {/* 필터 */}
               <div className="flex items-center gap-2">
-                <Filter className="w-4 h-4 text-muted-foreground" />
+                <Filter className="w-4 h-4 text-gray-500" />
                 
                 <select
-                  className="flex h-10 w-[130px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                  className="h-9 md:h-10 w-full md:w-[130px] rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
                   value={sentimentFilter}
                   onChange={(e) => setSentimentFilter(e.target.value)}
                 >
@@ -1383,7 +1586,7 @@ export default function ReviewManagementPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
+            <div className="space-y-2 md:space-y-3">
               {filteredReviews.map((review) => (
                 <ReviewItem
                   key={review.naver_review_id || review.id}
@@ -1398,7 +1601,7 @@ export default function ReviewManagementPage() {
               ))}
               
               {filteredReviews.length === 0 && (
-                <div className="text-center py-8 text-muted-foreground">
+                <div className="text-center py-8 text-gray-600 text-sm">
                   필터에 맞는 리뷰가 없습니다.
                 </div>
               )}

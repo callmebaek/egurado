@@ -797,6 +797,7 @@ class NaverReviewService:
                     category
                     address
                     roadAddress
+                    imageUrl
                 }
             }
         }
@@ -920,7 +921,9 @@ class NaverReviewService:
                     "blog_review_count": parse_int(place.get("blogCafeReviewCount")),
                     "visitorReviewScore": parse_float(place.get("visitorReviewScore")),
                     "rating": parse_float(place.get("visitorReviewScore")),  # 호환성
-                    "description": ""
+                    "description": "",
+                    "image_url": place.get("imageUrl", ""),
+                    "thumbnail": place.get("imageUrl", ""),  # 호환성
                 }
                 
                 logger.info(f"매장 정보 조회 성공: {result}")

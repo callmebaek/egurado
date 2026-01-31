@@ -593,72 +593,75 @@ export default function NaverAIReplyPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6 p-4 md:p-6">
       {/* 헤더 */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-primary mb-2">
-            AI 리뷰답글
-          </h1>
-          <p className="text-muted-foreground">
-            AI가 리뷰 내용을 분석하여 감성에 맞는 전문적인 답글을 자동으로 생성합니다.
-          </p>
-          <p className="text-muted-foreground text-sm">
-            매장 톤앤매너를 설정하면 브랜드 이미지에 맞는 일관된 답글을 작성할 수 있습니다.
-          </p>
+      <div className="space-y-4">
+        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
+          <div className="flex-1">
+            <h1 className="text-xl md:text-2xl font-bold text-gray-900 mb-2">
+              AI 리뷰답글
+            </h1>
+            <p className="text-sm text-gray-600 leading-relaxed mb-1">
+              AI가 리뷰 내용을 분석하여 감성에 맞는 전문적인 답글을 자동으로 생성합니다.
+            </p>
+            <p className="text-xs md:text-sm text-gray-500 leading-relaxed">
+              매장 톤앤매너를 설정하면 브랜드 이미지에 맞는 일관된 답글을 작성할 수 있습니다.
+            </p>
+          </div>
+          
+          {/* AI 설정 버튼 */}
+          <Button
+            variant="outline"
+            onClick={() => router.push('/dashboard/naver/ai-settings')}
+            className="flex items-center gap-2 h-10 px-4 border-gray-300 hover:bg-gray-50 text-gray-700 font-medium rounded-lg shadow-sm transition-all w-full md:w-auto"
+          >
+            <Settings className="h-4 w-4" />
+            AI 설정
+          </Button>
         </div>
-        
-        {/* AI 설정 버튼 */}
-        <Button
-          variant="outline"
-          onClick={() => router.push('/dashboard/naver/ai-settings')}
-          className="flex items-center gap-2"
-        >
-          <Settings className="h-4 w-4" />
-          AI 설정
-        </Button>
       </div>
 
       {/* 성공/오류 메시지 */}
       {successMessage && (
-        <div className="bg-green-50 border-2 border-green-500 rounded-lg p-5 flex items-start gap-3 shadow-lg animate-in fade-in slide-in-from-top-5 duration-300">
+        <div className="bg-green-50 border-2 border-green-500 rounded-lg p-4 md:p-5 flex items-start gap-3 shadow-sm animate-in fade-in slide-in-from-top-5 duration-300">
           <div className="flex-shrink-0 bg-green-100 rounded-full p-1">
-            <Check className="h-6 w-6 text-green-600" />
+            <Check className="h-5 w-5 md:h-6 md:w-6 text-green-600" />
           </div>
           <div className="flex-1">
-            <p className="text-green-900 font-semibold text-base mb-1">답글 게시 완료!</p>
-            <p className="text-green-700 text-sm">{successMessage}</p>
+            <p className="text-green-900 font-semibold text-sm md:text-base mb-1">답글 게시 완료!</p>
+            <p className="text-green-700 text-xs md:text-sm">{successMessage}</p>
           </div>
         </div>
       )}
 
       {error && (
-        <div className="bg-red-50 border-2 border-red-500 rounded-lg p-5 flex items-start gap-3 shadow-lg animate-in fade-in slide-in-from-top-5 duration-300">
+        <div className="bg-red-50 border-2 border-red-500 rounded-lg p-4 md:p-5 flex items-start gap-3 shadow-sm animate-in fade-in slide-in-from-top-5 duration-300">
           <div className="flex-shrink-0 bg-red-100 rounded-full p-1">
-            <AlertCircle className="h-6 w-6 text-red-600" />
+            <AlertCircle className="h-5 w-5 md:h-6 md:w-6 text-red-600" />
           </div>
           <div className="flex-1">
-            <p className="text-red-900 font-semibold text-base mb-1">오류 발생</p>
-            <p className="text-red-700 text-sm">{error}</p>
+            <p className="text-red-900 font-semibold text-sm md:text-base mb-1">오류 발생</p>
+            <p className="text-red-700 text-xs md:text-sm">{error}</p>
           </div>
         </div>
       )}
 
       {/* 세션 경고 */}
       {sessionStatus && !sessionStatus.is_valid && selectedStoreId && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-start gap-3">
-          <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5" />
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-start gap-3 shadow-sm">
+          <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5 flex-shrink-0" />
           <div className="flex-1">
-            <p className="font-medium text-yellow-900 mb-1">
+            <p className="font-medium text-yellow-900 mb-1 text-sm md:text-base">
               네이버 로그인이 필요합니다
             </p>
-            <p className="text-sm text-yellow-800 mb-3">
+            <p className="text-xs md:text-sm text-yellow-800 mb-3">
               답글 게시 기능을 사용하려면 네이버 스마트플레이스에 로그인해야 합니다.
             </p>
             <Button
               variant="outline"
               size="sm"
               onClick={() => router.push('/dashboard/naver/session')}
+              className="h-9 px-3 border-yellow-300 hover:bg-yellow-100 text-yellow-900 text-sm"
             >
               로그인하러 가기
             </Button>
@@ -667,13 +670,13 @@ export default function NaverAIReplyPage() {
       )}
 
       {/* 설정 영역 */}
-      <Card className="p-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <Card className="p-4 md:p-6 border-gray-200 shadow-sm">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
           {/* 매장 선택 */}
           <div>
-            <label className="block text-sm font-medium mb-2">매장 선택</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">매장 선택</label>
             <Select value={selectedStoreId} onValueChange={setSelectedStoreId}>
-              <SelectTrigger>
+              <SelectTrigger className="h-10 border-gray-300">
                 <SelectValue placeholder="매장을 선택하세요" />
               </SelectTrigger>
               <SelectContent>
@@ -688,9 +691,9 @@ export default function NaverAIReplyPage() {
 
           {/* 리뷰 개수 선택 */}
           <div>
-            <label className="block text-sm font-medium mb-2">리뷰 개수</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">리뷰 개수</label>
             <Select value={reviewLimit} onValueChange={setReviewLimit}>
-              <SelectTrigger>
+              <SelectTrigger className="h-10 border-gray-300">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -708,7 +711,7 @@ export default function NaverAIReplyPage() {
             <Button 
               onClick={loadReviews} 
               disabled={!selectedStoreId || isLoadingReviews}
-              className="w-full"
+              className="w-full h-10 bg-primary-500 hover:bg-primary-600 text-white font-medium rounded-lg shadow-sm transition-all"
             >
               {isLoadingReviews ? (
                 <>
@@ -725,22 +728,22 @@ export default function NaverAIReplyPage() {
 
       {/* 리뷰 목록 */}
       {reviews.length > 0 && (
-        <div className="space-y-4">
+        <div className="space-y-3 md:space-y-4">
           {/* 제목 */}
-          <h2 className="text-lg font-semibold">리뷰 목록</h2>
+          <h2 className="text-base md:text-lg font-semibold text-gray-900">리뷰 목록</h2>
 
           {/* 메시지 및 필터 */}
-          <Card className="p-4">
-            <div className="flex items-center justify-between flex-wrap gap-4">
+          <Card className="p-4 border-gray-200 shadow-sm">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-4">
               {/* 안내 메시지 */}
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <MessageSquare className="h-4 w-4 text-primary" />
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <MessageSquare className="h-4 w-4 text-primary-500" />
                 <span className="font-medium">리뷰답글은 재방문을 유도합니다!</span>
               </div>
 
               {/* 필터 */}
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium">필터:</span>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-sm font-medium text-gray-700">필터:</span>
                 <Button
                   variant={replyFilter === "all" ? "default" : "outline"}
                   size="sm"
@@ -748,6 +751,7 @@ export default function NaverAIReplyPage() {
                     setReplyFilter("all")
                     setJustPostedReviewIds(new Set()) // 필터 변경 시 일시적 표시 해제
                   }}
+                  className={replyFilter === "all" ? "h-8 px-3 bg-primary-500 hover:bg-primary-600 text-white" : "h-8 px-3 border-gray-300 hover:bg-gray-100 text-gray-700"}
                 >
                   전체 ({totalReviews})
                 </Button>
@@ -758,6 +762,7 @@ export default function NaverAIReplyPage() {
                     setReplyFilter("replied")
                     setJustPostedReviewIds(new Set()) // 필터 변경 시 일시적 표시 해제
                   }}
+                  className={replyFilter === "replied" ? "h-8 px-3 bg-primary-500 hover:bg-primary-600 text-white" : "h-8 px-3 border-gray-300 hover:bg-gray-100 text-gray-700"}
                 >
                   답글완료 ({repliedCount})
                 </Button>
@@ -768,6 +773,7 @@ export default function NaverAIReplyPage() {
                     setReplyFilter("pending")
                     setJustPostedReviewIds(new Set()) // 필터 변경 시 일시적 표시 해제
                   }}
+                  className={replyFilter === "pending" ? "h-8 px-3 bg-primary-500 hover:bg-primary-600 text-white" : "h-8 px-3 border-gray-300 hover:bg-gray-100 text-gray-700"}
                 >
                   답글대기 ({pendingCount})
                 </Button>
@@ -777,8 +783,8 @@ export default function NaverAIReplyPage() {
 
           {/* 필터링된 리뷰 목록 */}
           {filteredReviews.length === 0 ? (
-            <Card className="p-8 text-center">
-              <p className="text-muted-foreground">
+            <Card className="p-8 text-center border-gray-200 shadow-sm">
+              <p className="text-gray-600 text-sm">
                 {replyFilter === "replied" && "답글 완료된 리뷰가 없습니다."}
                 {replyFilter === "pending" && "답글 대기 중인 리뷰가 없습니다."}
                 {replyFilter === "all" && "리뷰가 없습니다."}
@@ -786,30 +792,30 @@ export default function NaverAIReplyPage() {
             </Card>
           ) : (
             filteredReviews.map((review) => (
-            <Card key={review.naver_review_id} className="p-6">
+            <Card key={review.naver_review_id} className="p-4 md:p-6 border-gray-200 shadow-sm hover:shadow-md transition-shadow">
               {/* 리뷰 헤더 */}
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-semibold">{review.author}</span>
+              <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-2 mb-4">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    <span className="font-semibold text-gray-900">{review.author}</span>
                     {review.rating && (
-                      <span className="text-yellow-500">
+                      <span className="text-yellow-500 text-sm">
                         {"★".repeat(Math.floor(review.rating))}
                       </span>
                     )}
                   </div>
-                  <span className="text-sm text-muted-foreground">
+                  <span className="text-xs md:text-sm text-gray-500">
                     {review.date}
                   </span>
                 </div>
                 
                 {/* 답글 상태 배지 */}
                 {hasValidReply(review) ? (
-                  <Badge variant="secondary" className="bg-green-100 text-green-800">
+                  <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-200 h-fit">
                     답글 완료
                   </Badge>
                 ) : (
-                  <Badge variant="secondary" className="bg-orange-100 text-orange-800">
+                  <Badge variant="secondary" className="bg-orange-100 text-orange-800 border-orange-200 h-fit">
                     답글 대기
                   </Badge>
                 )}
@@ -817,18 +823,18 @@ export default function NaverAIReplyPage() {
 
               {/* 리뷰 내용 */}
               <div className="mb-4">
-                <p className="text-gray-700 whitespace-pre-wrap">
+                <p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">
                   {review.content || "(내용 없음)"}
                 </p>
               </div>
 
               {/* 기존 답글 표시 */}
               {hasValidReply(review) && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                  <p className="text-sm font-medium text-blue-900 mb-2">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 md:p-4 mb-4">
+                  <p className="text-xs md:text-sm font-medium text-blue-900 mb-2">
                     💬 사장님 답글
                   </p>
-                  <p className="text-blue-800">{review.reply_text}</p>
+                  <p className="text-sm text-blue-800 leading-relaxed">{review.reply_text}</p>
                 </div>
               )}
 
@@ -841,11 +847,11 @@ export default function NaverAIReplyPage() {
                     onChange={(e) => updateReplyText(review.naver_review_id, e.target.value)}
                     placeholder="답글을 입력하거나 AI 답글 생성 버튼을 눌러주세요"
                     rows={4}
-                    className="resize-none"
+                    className="resize-none border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
                   />
                   
                   {/* 버튼 영역 */}
-                  <div className="flex gap-2">
+                  <div className="flex flex-col sm:flex-row gap-2">
                     {/* AI 답글 생성 버튼 */}
                     <Button
                       onClick={() => generateReply(review)}
@@ -854,7 +860,7 @@ export default function NaverAIReplyPage() {
                         postingReplyIds.size > 0  // 어떤 리뷰라도 게시 중이면 모두 비활성화
                       }
                       variant="outline"
-                      className="flex-1"
+                      className="flex-1 h-10 border-gray-300 hover:bg-gray-50 text-gray-700 font-medium"
                     >
                       {generatingReplyIds.has(review.naver_review_id) ? (
                         <>
@@ -882,22 +888,24 @@ export default function NaverAIReplyPage() {
                         !generatedReplies[review.naver_review_id] ||
                         generatedReplies[review.naver_review_id].trim().length === 0
                       }
-                      className="flex-1"
+                      className="flex-1 h-10 bg-primary-500 hover:bg-primary-600 text-white font-medium"
                     >
                       {postingReplyIds.has(review.naver_review_id) ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          {postingProgress[review.naver_review_id] ? (
-                            <>
-                              {postingProgress[review.naver_review_id].positionInQueue === 0 ? (
-                                <>처리 중 (남은 시간: {postingProgress[review.naver_review_id].remainingTime}초)</>
-                              ) : (
-                                <>대기 중 (앞에 {postingProgress[review.naver_review_id].positionInQueue}개, 예상 {postingProgress[review.naver_review_id].estimatedTime}초)</>
-                              )}
-                            </>
-                          ) : (
-                            <>게시 중...</>
-                          )}
+                          <span className="text-xs sm:text-sm">
+                            {postingProgress[review.naver_review_id] ? (
+                              <>
+                                {postingProgress[review.naver_review_id].positionInQueue === 0 ? (
+                                  <>처리 중 ({postingProgress[review.naver_review_id].remainingTime}초)</>
+                                ) : (
+                                  <>대기 중 ({postingProgress[review.naver_review_id].positionInQueue}개)</>
+                                )}
+                              </>
+                            ) : (
+                              <>게시 중...</>
+                            )}
+                          </span>
                         </>
                       ) : (
                         <>
@@ -917,8 +925,8 @@ export default function NaverAIReplyPage() {
 
       {/* 빈 상태 */}
       {!isLoadingReviews && reviews.length === 0 && selectedStoreId && (
-        <Card className="p-8 text-center">
-          <p className="text-muted-foreground">
+        <Card className="p-8 text-center border-gray-200 shadow-sm">
+          <p className="text-gray-600 text-sm">
             리뷰를 불러오려면 "리뷰 불러오기" 버튼을 클릭하세요
           </p>
         </Card>
