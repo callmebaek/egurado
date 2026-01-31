@@ -1,38 +1,15 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { Store, Loader2, CheckCircle2, AlertCircle, X, ExternalLink, TrendingUp, TrendingDown, Calendar, FileText } from "lucide-react"
+import { Store, CheckCircle2, AlertCircle, X, ExternalLink, FileText, Calendar, Loader2 } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { useAuth } from "@/lib/auth-context"
 import { api } from "@/lib/config"
 import { useSearchParams } from "next/navigation"
-import {
-  Paper,
-  Card,
-  Badge,
-  Progress,
-  RingProgress,
-  Table,
-  Timeline,
-  Modal,
-  Grid,
-  Group,
-  Stack,
-  Title,
-  Text,
-  Button,
-  TextInput,
-  Container,
-  Divider,
-  ThemeIcon,
-  Accordion,
-  ActionIcon,
-  Box,
-  Center,
-  Loader,
-  Avatar,
-} from '@mantine/core'
-import '@mantine/core/styles.css'
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 
 interface RegisteredStore {
   id: string
@@ -72,22 +49,17 @@ interface PlaceDetails {
   // 영업 정보
   business_hours?: any
   closed_days?: string[]
-  is_open?: boolean
-  holiday_business_hours?: any
-  
-  // 메뉴
-  menu_list?: Array<{
+  menus?: Array<{
     name: string
-    price: string
-    image?: string
+    price?: number
+    description?: string
   }>
   
   // 편의시설
   parking?: string
   booking_available?: boolean
-  takeout?: boolean
-  delivery?: boolean
-  wifi?: boolean
+  conveniences?: string[]
+  payment_methods?: string[]
   pet_friendly?: boolean
   group_seating?: boolean
   
@@ -97,105 +69,77 @@ interface PlaceDetails {
   // SNS 및 웹사이트
   homepage_url?: string
   homepage?: string
-  instagram?: string
-  facebook?: string
   blog?: string
-  tv_program?: string
+  instagram?: string
   
   // 기타
   description?: string
   ai_briefing?: string
-  tags?: string[]
-  bookmark_count?: number
-  is_claimed?: boolean
-  is_ad?: boolean
-  announcements?: any[]
+  directions?: string
+  micro_reviews?: string[]
   promotions?: {
     total: number
-    coupons?: any[]
+    coupons?: Array<{ title: string }>
   }
-  payment_methods?: string[]
-  conveniences?: string[]
-  micro_reviews?: string[]
-  menus?: any[]
+  announcements?: Array<{ title: string; relativeCreated: string }>
+  tv_program?: string
+  
+  is_place_plus?: boolean
+  has_naverpay_in_search?: boolean
   [key: string]: any  // 추가 속성 허용
 }
 
-interface DiagnosisEvaluation {
-  score: number
-  max_score: number
-  status: "PASS" | "WARN" | "FAIL"
-  grade: string
-  category_name: string
-  is_bonus?: boolean
-  evidence: any
-  recommendations: Array<{
-    action: string
-    method: string
-    copy_example?: string
-    estimated_gain: number
-    priority: string
-  }>
-}
-
 interface DiagnosisResult {
+  diagnosis_date: string
   total_score: number
-  base_score: number
-  bonus_score: number
   max_score: number
+  bonus_score: number
   grade: string
   evaluations: {
-    [key: string]: DiagnosisEvaluation
+    [key: string]: {
+      category_name: string
+      score: number
+      max_score: number
+      grade: string
+      is_bonus: boolean
+      recommendations?: Array<{
+        action: string
+        method: string
+        copy_example?: string
+        note?: string
+        estimated_gain: number
+      }>
+    }
   }
   priority_actions: Array<{
-    category: string
-    status: string
     action: string
     method: string
-    estimated_gain: number
-    priority: string
     copy_example?: string
     note?: string
+    estimated_gain: number
+    category: string
+    priority: number
   }>
-  diagnosis_date: string
-  place_name: string
-  place_id: string
 }
 
 interface DiagnosisHistoryItem {
   id: string
-  place_id: string
-  store_name: string
   diagnosed_at: string
   total_score: number
   max_score: number
   grade: string
 }
 
-interface DiagnosisHistoryDetail {
-  id: string
-  user_id: string
-  store_id: string
-  place_id: string
-  store_name: string
-  diagnosed_at: string
-  total_score: number
-  max_score: number
-  grade: string
-  diagnosis_result: DiagnosisResult
-  place_details: PlaceDetails
-  created_at: string
-}
-
-export default function AuditPage() {
-  const { toast } = useToast()
+export default function NaverAuditPage() {
   const { user, getToken } = useAuth()
+  const { toast } = useToast()
   const searchParams = useSearchParams()
+  
   const [stores, setStores] = useState<RegisteredStore[]>([])
-  const [isLoadingStores, setIsLoadingStores] = useState(false)
   const [selectedStore, setSelectedStore] = useState<RegisteredStore | null>(null)
-  const [showConfirmModal, setShowConfirmModal] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [showConfirmModal, setShowConfirmModal] = useState(false)
   const [placeDetails, setPlaceDetails] = useState<PlaceDetails | null>(null)
   const [diagnosisResult, setDiagnosisResult] = useState<DiagnosisResult | null>(null)
   
@@ -203,7 +147,6 @@ export default function AuditPage() {
   const [showHistoryModal, setShowHistoryModal] = useState(false)
   const [diagnosisHistory, setDiagnosisHistory] = useState<DiagnosisHistoryItem[]>([])
   const [isLoadingHistory, setIsLoadingHistory] = useState(false)
-  const [selectedHistoryDetail, setSelectedHistoryDetail] = useState<DiagnosisHistoryDetail | null>(null)
   const [isLoadingHistoryDetail, setIsLoadingHistoryDetail] = useState(false)
 
   // 종합 요약 섹션 ref
@@ -213,10 +156,7 @@ export default function AuditPage() {
   useEffect(() => {
     const historyId = searchParams.get('historyId')
     if (historyId && user) {
-      setIsAnalyzing(true)
-      handleViewHistoryDetail(historyId).finally(() => {
-        setIsAnalyzing(false)
-      })
+      handleViewHistoryDetail(historyId)
     }
   }, [searchParams, user])
 
@@ -228,15 +168,15 @@ export default function AuditPage() {
   }, [user])
 
   const fetchStores = async () => {
-    const token = getToken()
-    if (!user || !token) return
-
-    setIsLoadingStores(true)
     try {
+      setIsLoading(true)
+      const token = getToken()
+      if (!token) return
+
       const response = await fetch(api.stores.list(), {
         headers: {
-          'Authorization': `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       })
 
       if (!response.ok) {
@@ -255,7 +195,7 @@ export default function AuditPage() {
         description: "등록된 매장 목록을 불러오는데 실패했습니다.",
       })
     } finally {
-      setIsLoadingStores(false)
+      setIsLoading(false)
     }
   }
 
@@ -264,23 +204,22 @@ export default function AuditPage() {
     setShowConfirmModal(true)
   }
 
-  const handleStartAudit = async () => {
+  const handleStartDiagnosis = async () => {
     if (!selectedStore) return
 
-    setShowConfirmModal(false)
-    setIsAnalyzing(true)
-    setPlaceDetails(null)
-
     try {
+      setShowConfirmModal(false)
+      setIsAnalyzing(true)
       console.log("🔍 플레이스 진단 시작:", selectedStore.place_id, selectedStore.name)
       const url = api.naver.analyzePlaceDetails(selectedStore.place_id, selectedStore.name, selectedStore.id)
       console.log("📡 API URL:", url)
       
       const token = getToken()
-      const headers: Record<string, string> = {}
-      
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      }
       if (token) {
-        headers['Authorization'] = `Bearer ${token}`
+        headers.Authorization = `Bearer ${token}`
       }
       
       const response = await fetch(url, { headers })
@@ -308,8 +247,8 @@ export default function AuditPage() {
       // 진단 완료 후 종합 요약 섹션으로 스크롤
       setTimeout(() => {
         summaryRef.current?.scrollIntoView({ 
-          behavior: 'smooth', 
-          block: 'start' 
+          behavior: 'smooth',
+          block: 'start'
         })
       }, 100)
     } catch (error) {
@@ -325,18 +264,11 @@ export default function AuditPage() {
     }
   }
 
-  const handleCloseResults = () => {
-    setSelectedStore(null)
-    setPlaceDetails(null)
-    setDiagnosisResult(null)
-  }
-
   // 진단 히스토리 조회
   const handleViewHistory = async (store: RegisteredStore) => {
     setSelectedStore(store)
     setShowHistoryModal(true)
     setIsLoadingHistory(true)
-    setDiagnosisHistory([])
     
     try {
       const token = getToken()
@@ -344,12 +276,10 @@ export default function AuditPage() {
         throw new Error("로그인이 필요합니다.")
       }
       
-      const url = api.naver.diagnosisHistory(store.id)
-      
-      const response = await fetch(url, {
+      const response = await fetch(api.naver.diagnosisHistory(store.id), {
         headers: {
-          'Authorization': `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       })
       
       if (!response.ok) {
@@ -358,9 +288,8 @@ export default function AuditPage() {
       
       const data = await response.json()
       setDiagnosisHistory(data.history || [])
-      
     } catch (error) {
-      console.error("Error loading history:", error)
+      console.error("Error fetching diagnosis history:", error)
       toast({
         variant: "destructive",
         title: "❌ 히스토리 조회 실패",
@@ -374,6 +303,7 @@ export default function AuditPage() {
   // 특정 히스토리 상세 보기
   const handleViewHistoryDetail = async (historyId: string) => {
     setIsLoadingHistoryDetail(true)
+    setShowHistoryModal(false)
     
     try {
       const token = getToken()
@@ -381,12 +311,10 @@ export default function AuditPage() {
         throw new Error("로그인이 필요합니다.")
       }
       
-      const url = api.naver.diagnosisHistoryDetail(historyId)
-      
-      const response = await fetch(url, {
+      const response = await fetch(api.naver.diagnosisHistoryDetail(historyId), {
         headers: {
-          'Authorization': `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       })
       
       if (!response.ok) {
@@ -403,18 +331,16 @@ export default function AuditPage() {
       // selectedStore도 히스토리 데이터에서 재구성하여 설정
       const storeFromHistory: RegisteredStore = {
         id: historyDetail.store_id,
-        place_id: historyDetail.place_id,
-        name: historyDetail.store_name,
-        category: historyDetail.place_details?.category || '',
-        address: historyDetail.place_details?.address || '',
-        road_address: historyDetail.place_details?.road_address,
-        thumbnail: historyDetail.place_details?.image_url,
-        platform: 'naver',
-        status: 'active',
-        created_at: historyDetail.created_at || new Date().toISOString()
+        place_id: historyDetail.place_details.place_id,
+        name: historyDetail.place_details.name,
+        category: historyDetail.place_details.category,
+        address: historyDetail.place_details.address,
+        road_address: historyDetail.place_details.road_address,
+        platform: "naver",
+        status: "active",
+        created_at: historyDetail.diagnosed_at,
       }
       setSelectedStore(storeFromHistory)
-      setShowHistoryModal(false)
       
       toast({
         title: "📜 과거 진단 결과",
@@ -424,13 +350,12 @@ export default function AuditPage() {
       // 히스토리 조회 후에도 종합 요약 섹션으로 스크롤
       setTimeout(() => {
         summaryRef.current?.scrollIntoView({ 
-          behavior: 'smooth', 
-          block: 'start' 
+          behavior: 'smooth',
+          block: 'start'
         })
       }, 100)
-      
     } catch (error) {
-      console.error("Error loading history detail:", error)
+      console.error("Error fetching diagnosis history detail:", error)
       toast({
         variant: "destructive",
         title: "❌ 상세 조회 실패",
@@ -441,1110 +366,1122 @@ export default function AuditPage() {
     }
   }
 
-  const handleCloseHistoryModal = () => {
-    setShowHistoryModal(false)
-    setDiagnosisHistory([])
-    setSelectedHistoryDetail(null)
-  }
-
-  // Helper functions
+  // 등급별 색상
   const getGradeColor = (grade: string) => {
     switch (grade) {
-      case 'S': return '#9b59b6' // 보라
-      case 'A': return '#3498db' // 파랑
-      case 'B': return '#2ecc71' // 녹색
-      case 'C': return '#f39c12' // 주황
-      default: return '#e74c3c' // 빨강
+      case 'S': return 'bg-purple-500 hover:bg-purple-600'
+      case 'A': return 'bg-blue-500 hover:bg-blue-600'
+      case 'B': return 'bg-green-500 hover:bg-green-600'
+      case 'C': return 'bg-yellow-500 hover:bg-yellow-600'
+      case 'D': return 'bg-orange-500 hover:bg-orange-600'
+      case 'F': return 'bg-red-500 hover:bg-red-600'
+      default: return 'bg-neutral-500 hover:bg-neutral-600'
     }
   }
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'critical': return 'red'
-      case 'high': return 'orange'
-      case 'medium': return 'yellow'
-      default: return 'blue'
+  const getGradeTextColor = (grade: string) => {
+    switch (grade) {
+      case 'S': return 'text-purple-600'
+      case 'A': return 'text-blue-600'
+      case 'B': return 'text-green-600'
+      case 'C': return 'text-yellow-600'
+      case 'D': return 'text-orange-600'
+      case 'F': return 'text-red-600'
+      default: return 'text-neutral-600'
     }
+  }
+
+  const getPriorityColor = (priority: number) => {
+    if (priority <= 3) return 'bg-red-500 hover:bg-red-600 text-white'
+    if (priority <= 6) return 'bg-orange-500 hover:bg-orange-600 text-white'
+    return 'bg-blue-500 hover:bg-blue-600 text-white'
   }
 
   // 진단 결과 셀 렌더링 (등급 + 개선사항)
   const renderDiagnosisCell = (evaluationKey: string) => {
     if (!diagnosisResult) {
-      return <Badge color="gray" size="sm">진단 전</Badge>
+      return <Badge variant="outline" className="text-xs">진단 전</Badge>
     }
 
     const evaluation = diagnosisResult.evaluations[evaluationKey]
     if (!evaluation) {
-      return <Badge color="gray" size="sm">평가항목 아님</Badge>
+      return <Badge variant="outline" className="text-xs">평가항목 아님</Badge>
     }
 
     return (
-      <Stack gap="xs">
-        <Badge color={getGradeColor(evaluation.grade)} size="lg">
+      <div className="space-y-2">
+        <Badge className={`${getGradeColor(evaluation.grade)} text-white text-xs md:text-sm`}>
           {evaluation.grade}등급
         </Badge>
         {evaluation.recommendations && evaluation.recommendations.length > 0 && (
-          <Paper p="xs" style={{ backgroundColor: '#fff9f0', border: '1px dashed #ffa94d' }}>
-            <Text size="xs" fw={700} c="orange" mb="xs">📌 개선사항</Text>
-            {evaluation.recommendations.slice(0, 2).map((rec: any, idx: number) => (
-              <div key={idx} style={{ marginBottom: idx < evaluation.recommendations.slice(0, 2).length - 1 ? '8px' : '0' }}>
-                <Text size="xs" fw={600} mb="2px">{rec.action}</Text>
-                <Text size="xs" c="dimmed" style={{ whiteSpace: 'pre-line' }}>
-                  {rec.method}
-                </Text>
-              </div>
-            ))}
-          </Paper>
+          <Card className="bg-orange-50 border-orange-200 border-dashed">
+            <CardContent className="p-2 md:p-3">
+              <p className="text-xs font-semibold text-orange-600 mb-1.5">📌 개선사항</p>
+              {evaluation.recommendations?.slice(0, 2).map((rec: any, idx: number) => (
+                <div key={idx} className={idx < (evaluation.recommendations?.slice(0, 2).length ?? 0) - 1 ? 'mb-2' : ''}>
+                  <p className="text-xs font-semibold text-neutral-900 mb-0.5">{rec.action}</p>
+                  <p className="text-xs text-neutral-600 whitespace-pre-line">
+                    {rec.method}
+                  </p>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
         )}
-      </Stack>
+      </div>
     )
   }
 
   // 진단 결과가 있으면 결과 화면 표시
   if (placeDetails && selectedStore) {
     return (
-      <Container size="xl" px="md" py="xl" style={{ backgroundColor: '#f8f9fa', minHeight: '100vh' }}>
-        {/* Report Header */}
-        <Paper shadow="sm" p="xl" mb="xl" style={{ borderLeft: '6px solid #635bff' }}>
-          <Group justify="space-between" align="flex-start">
-            <div>
-              <Group gap="sm" mb="xs">
-                <FileText size={32} color="#635bff" />
-                <Title order={1} style={{ color: '#212529' }}>플레이스 진단 리포트</Title>
-              </Group>
-              <Text size="lg" c="dimmed">
-                {selectedStore.name} - 네이버 플레이스 종합 진단
-              </Text>
-              {diagnosisResult && (
-                <Group gap="xs" mt="md">
-                  <Calendar size={16} />
-                  <Text size="sm" c="dimmed">
-                    진단일: {new Date(diagnosisResult.diagnosis_date).toLocaleDateString('ko-KR', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric'
-                    })}
-                  </Text>
-                </Group>
-              )}
-            </div>
-            <Button
-              variant="outline"
-              color="gray"
-              leftSection={<X size={16} />}
-              onClick={handleCloseResults}
-            >
-              닫기
-            </Button>
-          </Group>
-        </Paper>
+      <div className="w-full max-w-4xl mx-auto p-4 md:p-6 lg:p-8">
+        {/* 헤더 */}
+        <div className="mb-6 md:mb-8 flex items-start justify-between gap-4">
+          <div className="flex-1">
+            <h1 className="text-xl md:text-2xl font-bold text-neutral-900 mb-1.5 leading-tight">
+              플레이스 진단 리포트
+            </h1>
+            <p className="text-sm md:text-base text-neutral-600 leading-relaxed mb-2">
+              {selectedStore.name} - 네이버 플레이스 종합 진단
+            </p>
+            {diagnosisResult && (
+              <div className="flex items-center gap-2 text-xs md:text-sm text-neutral-500">
+                <Calendar className="w-3 h-3 md:w-4 md:h-4" />
+                <span>
+                  진단일: {new Date(diagnosisResult.diagnosis_date).toLocaleDateString('ko-KR', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                  })}
+                </span>
+              </div>
+            )}
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="font-semibold h-9 md:h-10 border-neutral-300 hover:border-primary-400"
+            onClick={() => {
+              setSelectedStore(null)
+              setPlaceDetails(null)
+              setDiagnosisResult(null)
+            }}
+          >
+            <X className="w-4 h-4 mr-2" />
+            닫기
+          </Button>
+        </div>
 
         {/* 종합 요약 */}
         {diagnosisResult && (
-          <Paper ref={summaryRef} shadow="md" p="xl" mb="xl" style={{ border: '2px solid #635bff' }}>
-            <Title order={2} mb="xl" style={{ color: '#212529' }}>
-              📊 종합 요약
-            </Title>
-            
-            <Grid>
-              <Grid.Col span={{ base: 12, md: 6 }}>
-                <Stack gap="md">
-                  <Paper p="lg" style={{ backgroundColor: '#f8f9fa' }}>
-                    <Text size="sm" fw={600} c="dimmed" mb="xs">종합 점수</Text>
-                    <Text size="48px" fw={900} style={{ color: getGradeColor(diagnosisResult.grade) }}>
-                      {diagnosisResult.total_score.toFixed(1)}
-                      <Text component="span" size="xl" c="dimmed"> / {diagnosisResult.max_score}</Text>
-                    </Text>
-                    {diagnosisResult.bonus_score > 0 && (
-                      <Badge color="green" size="lg" mt="sm">
-                        보너스 +{diagnosisResult.bonus_score}점
-                      </Badge>
-                    )}
-                  </Paper>
+          <Card ref={summaryRef} className="mb-6 md:mb-8 rounded-card border-2 border-primary-500 shadow-card">
+            <CardHeader className="pb-3 px-4 md:px-6 pt-4 md:pt-6">
+              <CardTitle className="text-base md:text-lg font-bold text-neutral-900">
+                📊 종합 요약
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 md:p-6 pt-0">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+                {/* 좌측: 점수 및 정보 */}
+                <div className="space-y-3 md:space-y-4">
+                  {/* 종합 점수 */}
+                  <Card className="rounded-lg bg-neutral-50 border-neutral-200">
+                    <CardContent className="p-4 md:p-6">
+                      <p className="text-xs md:text-sm font-semibold text-neutral-600 mb-2">종합 점수</p>
+                      <div className="flex items-baseline gap-2">
+                        <span className={`text-4xl md:text-5xl lg:text-6xl font-black ${getGradeTextColor(diagnosisResult.grade)}`}>
+                          {diagnosisResult.total_score.toFixed(1)}
+                        </span>
+                        <span className="text-lg md:text-xl text-neutral-500">
+                          / {diagnosisResult.max_score}
+                        </span>
+                      </div>
+                      {diagnosisResult.bonus_score > 0 && (
+                        <Badge className="mt-2 md:mt-3 bg-green-500 hover:bg-green-600 text-white">
+                          보너스 +{diagnosisResult.bonus_score}점
+                        </Badge>
+                      )}
+                    </CardContent>
+                  </Card>
                   
-                  <Paper p="lg" style={{ backgroundColor: '#f8f9fa' }}>
-                    <Text size="sm" fw={600} c="dimmed" mb="xs">플레이스 정보</Text>
-                    <Stack gap="xs">
-                      <Group gap="xs">
-                        <Text size="sm" fw={600}>매장명:</Text>
-                        <Text size="sm">{placeDetails.name}</Text>
-                      </Group>
-                      <Group gap="xs">
-                        <Text size="sm" fw={600}>카테고리:</Text>
-                        <Text size="sm">{placeDetails.category}</Text>
-                      </Group>
-                      <Group gap="xs">
-                        <Text size="sm" fw={600}>주소:</Text>
-                        <Text size="sm">{placeDetails.address}</Text>
-                      </Group>
-                      <Button
-                        variant="light"
-                        size="xs"
-                        color="blue"
-                        leftSection={<ExternalLink size={14} />}
-                        onClick={() => window.open(`https://m.place.naver.com/place/${placeDetails.place_id}`, '_blank')}
-                        mt="xs"
-                      >
-                        네이버에서 보기
-                      </Button>
-                    </Stack>
-                  </Paper>
-                </Stack>
-              </Grid.Col>
-              
-              <Grid.Col span={{ base: 12, md: 6 }}>
-                <Center style={{ height: '100%' }}>
-                  <div style={{ textAlign: 'center' }}>
-                    <RingProgress
-                      size={250}
-                      thickness={24}
-                      sections={[
-                        {
-                          value: (diagnosisResult.total_score / diagnosisResult.max_score) * 100,
-                          color: getGradeColor(diagnosisResult.grade)
-                        }
-                      ]}
-                      label={
-                        <Center>
-                          <div>
-                            <Text size="80px" fw={900} ta="center" style={{ color: getGradeColor(diagnosisResult.grade) }}>
-                              {diagnosisResult.grade}
-                            </Text>
-                            <Text size="sm" ta="center" c="dimmed" fw={600}>등급</Text>
+                  {/* 플레이스 정보 */}
+                  <Card className="bg-neutral-50 border-neutral-200">
+                    <CardContent className="p-4 md:p-6">
+                      <p className="text-xs md:text-sm font-semibold text-neutral-600 mb-3">플레이스 정보</p>
+                      <div className="space-y-2">
+                        <div className="flex gap-2 text-xs md:text-sm">
+                          <span className="font-semibold text-neutral-700 min-w-[60px] md:min-w-[70px]">매장명:</span>
+                          <span className="text-neutral-900">{placeDetails.name}</span>
+                        </div>
+                        <div className="flex gap-2 text-xs md:text-sm">
+                          <span className="font-semibold text-neutral-700 min-w-[60px] md:min-w-[70px]">카테고리:</span>
+                          <span className="text-neutral-900">{placeDetails.category}</span>
+                        </div>
+                        <div className="flex gap-2 text-xs md:text-sm">
+                          <span className="font-semibold text-neutral-700 min-w-[60px] md:min-w-[70px]">주소:</span>
+                          <span className="text-neutral-900 break-words">{placeDetails.address}</span>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full mt-2 text-xs md:text-sm font-semibold border-neutral-300 hover:border-primary-400"
+                          onClick={() => window.open(`https://pcmap.place.naver.com/place/${placeDetails.place_id}`, '_blank')}
+                        >
+                          <ExternalLink className="w-3 h-3 md:w-4 md:h-4 mr-1.5" />
+                          네이버에서 보기
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+                
+                {/* 우측: 등급 원형 표시 */}
+                <div className="flex items-center justify-center">
+                  <div className="text-center">
+                    {/* 등급 원형 */}
+                    <div className="relative w-48 h-48 md:w-64 md:h-64 mx-auto mb-4 md:mb-6">
+                      <svg className="w-full h-full transform -rotate-90">
+                        {/* 배경 원 */}
+                        <circle
+                          cx="50%"
+                          cy="50%"
+                          r="40%"
+                          fill="none"
+                          stroke="#e5e7eb"
+                          strokeWidth="8"
+                        />
+                        {/* 진행 원 */}
+                        <circle
+                          cx="50%"
+                          cy="50%"
+                          r="40%"
+                          fill="none"
+                          stroke={getGradeTextColor(diagnosisResult.grade).replace('text-', '')}
+                          strokeWidth="8"
+                          strokeDasharray={`${(diagnosisResult.total_score / diagnosisResult.max_score) * 251.2} 251.2`}
+                          strokeLinecap="round"
+                          className="transition-all duration-1000"
+                        />
+                      </svg>
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div>
+                          <div className={`text-5xl md:text-6xl lg:text-7xl font-black ${getGradeTextColor(diagnosisResult.grade)}`}>
+                            {diagnosisResult.grade}
                           </div>
-                        </Center>
-                      }
-                    />
-                    <Text size="lg" fw={600} mt="md" c="dimmed">
+                          <div className="text-xs md:text-sm text-neutral-600 font-semibold mt-1">등급</div>
+                        </div>
+                      </div>
+                    </div>
+                    <p className="text-sm md:text-base lg:text-lg font-semibold text-neutral-600">
                       상위 {diagnosisResult.grade === 'S' ? '5%' : 
-                             diagnosisResult.grade === 'A' ? '20%' :
-                             diagnosisResult.grade === 'B' ? '40%' :
-                             diagnosisResult.grade === 'C' ? '60%' : '80%'} 수준
-                    </Text>
+                            diagnosisResult.grade === 'A' ? '20%' :
+                            diagnosisResult.grade === 'B' ? '40%' :
+                            diagnosisResult.grade === 'C' ? '60%' : '80%'} 수준
+                    </p>
                   </div>
-                </Center>
-              </Grid.Col>
-            </Grid>
-          </Paper>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         )}
 
         {/* 항목별 상세 분석 */}
         {diagnosisResult && (
-          <Paper shadow="sm" p="xl" mb="xl">
-            <Title order={2} mb="xl" style={{ color: '#212529' }}>
-              📈 항목별 상세 분석
-            </Title>
-            
-            <Grid>
-              {Object.entries(diagnosisResult.evaluations).map(([key, evaluation]) => {
-                const percentage = (evaluation.score / evaluation.max_score) * 100
-                
-                return (
-                  <Grid.Col key={key} span={{ base: 12, sm: 6, md: 4 }}>
-                    <Card shadow="sm" padding="lg" radius="md" withBorder style={{ height: '100%' }}>
-                      <Group justify="space-between" mb="md">
-                        <Text fw={600} size="sm">{evaluation.category_name}</Text>
-                        {evaluation.is_bonus && (
-                          <Badge color="green" size="sm">보너스</Badge>
-                        )}
-                      </Group>
-                      
-                      <Text size="36px" fw={900} mb="xs" style={{ color: getGradeColor(evaluation.grade) }}>
-                        {evaluation.grade}
-                      </Text>
-                      
-                      <Progress
-                        value={percentage}
-                        color={getGradeColor(evaluation.grade)}
-                        size="lg"
-                        radius="xl"
-                        mb="xs"
-                      />
-                      
-                      <Text size="xs" c="dimmed">
-                        {evaluation.score.toFixed(1)} / {evaluation.max_score} 점
-                      </Text>
+          <Card className="mb-4 md:mb-6 shadow-md">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg md:text-xl font-bold text-neutral-900">
+                📈 항목별 상세 분석
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 md:p-6 pt-0">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+                {Object.entries(diagnosisResult.evaluations).map(([key, evaluation]: [string, any]) => {
+                  // 보너스 항목은 마지막에 따로 표시
+                  if (evaluation.is_bonus) return null
+                  
+                  return (
+                    <Card key={key} className="border-neutral-200 hover:shadow-lg transition-shadow">
+                      <CardContent className="p-3 md:p-4">
+                        <div className="flex items-start justify-between mb-2">
+                          <p className="text-xs md:text-sm font-semibold text-neutral-700 flex-1 break-words">
+                            {evaluation.category_name}
+                          </p>
+                          {evaluation.is_bonus && (
+                            <Badge className="ml-1 text-[10px] md:text-xs bg-green-500 hover:bg-green-600 text-white flex-shrink-0">
+                              보너스
+                            </Badge>
+                          )}
+                        </div>
+                        
+                        <Badge className={`${getGradeColor(evaluation.grade)} text-white mb-2 text-xs md:text-sm`}>
+                          {evaluation.grade}등급
+                        </Badge>
+                        
+                        {/* Progress Bar */}
+                        <div className="w-full bg-neutral-200 rounded-full h-2 md:h-2.5 mb-2">
+                          <div 
+                            className={`${getGradeColor(evaluation.grade)} h-2 md:h-2.5 rounded-full transition-all`}
+                            style={{ width: `${(evaluation.score / evaluation.max_score) * 100}%` }}
+                          />
+                        </div>
+                        
+                        <p className="text-[10px] md:text-xs text-neutral-600">
+                          {evaluation.score.toFixed(1)} / {evaluation.max_score} 점
+                        </p>
+                      </CardContent>
                     </Card>
-                  </Grid.Col>
-                )
-              })}
-            </Grid>
-          </Paper>
+                  )
+                })}
+              </div>
+            </CardContent>
+          </Card>
         )}
 
         {/* 우선순위 개선 권장사항 */}
         {diagnosisResult && diagnosisResult.priority_actions.length > 0 && (
-          <Paper shadow="sm" p="xl" mb="xl">
-            <Title order={2} mb="xl" style={{ color: '#212529' }}>
-              🎯 우선순위 개선 권장사항
-            </Title>
-            
-            <Timeline active={diagnosisResult.priority_actions.length} bulletSize={24} lineWidth={2}>
-              {diagnosisResult.priority_actions.slice(0, 5).map((action, idx) => (
-                <Timeline.Item
-                  key={idx}
-                  bullet={<Text size="xs" fw={700}>{idx + 1}</Text>}
-                  title={
-                    <Group gap="xs">
-                      <Badge color={getPriorityColor(action.priority)} size="sm">
-                        {action.priority.toUpperCase()}
-                      </Badge>
-                      <Badge color="green" size="sm">+{action.estimated_gain}점</Badge>
-                    </Group>
-                  }
-                >
-                  <Paper p="md" mt="xs" style={{ backgroundColor: '#f8f9fa' }}>
-                    <Text fw={600} size="sm" mb="xs">{action.action}</Text>
-                    <Text size="xs" c="dimmed" mb="xs">
-                      💡 방법: {action.method}
-                    </Text>
-                    {action.copy_example && (
-                      <Paper p="xs" mt="xs" style={{ backgroundColor: 'white', border: '1px dashed #dee2e6' }}>
-                        <Text size="xs" c="dimmed" fs="italic">
-                          ✏️ 예시: {action.copy_example}
-                        </Text>
-                      </Paper>
-                    )}
-                    {action.note && (
-                      <Text size="xs" c="dimmed" mt="xs">
-                        📌 {action.note}
-                      </Text>
-                    )}
-                  </Paper>
-                </Timeline.Item>
-              ))}
-            </Timeline>
-          </Paper>
+          <Card className="mb-4 md:mb-6 shadow-md">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg md:text-xl font-bold text-neutral-900">
+                🎯 우선순위 개선 권장사항
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 md:p-6 pt-0">
+              <div className="space-y-3 md:space-y-4">
+                {diagnosisResult.priority_actions.slice(0, 5).map((action, idx) => (
+                  <Card key={idx} className="border-neutral-200 bg-neutral-50">
+                    <CardContent className="p-3 md:p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Badge className={`text-xs md:text-sm ${getPriorityColor(action.priority)}`}>
+                              우선순위 {action.priority}
+                            </Badge>
+                            <Badge className="text-[10px] md:text-xs bg-green-500 hover:bg-green-600 text-white">
+                              +{action.estimated_gain}점
+                            </Badge>
+                          </div>
+                          <p className="font-semibold text-sm md:text-base text-neutral-900 mb-2">
+                            {action.action}
+                          </p>
+                          <p className="text-xs md:text-sm text-neutral-600 mb-2">
+                            💡 방법: {action.method}
+                          </p>
+                          {action.copy_example && (
+                            <Card className="border border-dashed border-neutral-300 bg-white mt-2">
+                              <CardContent className="p-2 md:p-3">
+                                <p className="text-xs text-neutral-600 italic">
+                                  ✏️ 예시: {action.copy_example}
+                                </p>
+                              </CardContent>
+                            </Card>
+                          )}
+                          {action.note && (
+                            <p className="text-xs text-neutral-600 mt-2">
+                              📌 {action.note}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         )}
 
-        {/* 상세 정보 및 진단 */}
-        <Paper shadow="sm" p="xl" mb="xl">
-          <Title order={2} mb="xl" style={{ color: '#212529' }}>
-            📋 상세 정보 및 진단
-          </Title>
-          
-          <Stack gap="md">
-            {/* 1. 기본 정보 */}
-            <Paper shadow="xs" p="lg" radius="md" style={{ border: '1px solid #e0e0e0' }}>
-              <Group mb="md">
-                <ThemeIcon size="lg" radius="md" color="blue" variant="light">
-                  <Store size={20} />
-                </ThemeIcon>
-                <div>
-                  <Text fw={700} size="lg">1. 기본 정보</Text>
-                  <Text size="xs" c="dimmed">플레이스 기본 정보 및 식별자</Text>
-                </div>
-              </Group>
-              <Table withTableBorder withColumnBorders highlightOnHover>
-                <Table.Tbody>
-                  <Table.Tr>
-                    <Table.Td style={{ width: '180px', backgroundColor: '#f8f9fa', fontWeight: 600 }}>매장명</Table.Td>
-                    <Table.Td>{placeDetails.name}</Table.Td>
-                    <Table.Td style={{ width: '100px', textAlign: 'center' }}>
-                      <Badge color="gray" size="sm">기본정보</Badge>
-                    </Table.Td>
-                  </Table.Tr>
-                  <Table.Tr>
-                    <Table.Td style={{ backgroundColor: '#f8f9fa', fontWeight: 600 }}>카테고리</Table.Td>
-                    <Table.Td>{placeDetails.category}</Table.Td>
-                    <Table.Td style={{ textAlign: 'center' }}>
-                      <Badge color="gray" size="sm">기본정보</Badge>
-                    </Table.Td>
-                  </Table.Tr>
-                  <Table.Tr>
-                    <Table.Td style={{ backgroundColor: '#f8f9fa', fontWeight: 600 }}>주소</Table.Td>
-                    <Table.Td>{placeDetails.address}</Table.Td>
-                    <Table.Td style={{ textAlign: 'center' }}>
-                      <Badge color="gray" size="sm">기본정보</Badge>
-                    </Table.Td>
-                  </Table.Tr>
-                  <Table.Tr>
-                    <Table.Td style={{ backgroundColor: '#f8f9fa', fontWeight: 600 }}>도로명주소</Table.Td>
-                    <Table.Td>{placeDetails.road_address || '-'}</Table.Td>
-                    <Table.Td style={{ textAlign: 'center' }}>
-                      <Badge color="gray" size="sm">기본정보</Badge>
-                    </Table.Td>
-                  </Table.Tr>
-                  <Table.Tr>
-                    <Table.Td style={{ backgroundColor: '#f8f9fa', fontWeight: 600 }}>전화번호</Table.Td>
-                    <Table.Td>{placeDetails.phone_number || '-'}</Table.Td>
-                    <Table.Td style={{ textAlign: 'center' }}>
-                      <Badge color="gray" size="sm">기본정보</Badge>
-                    </Table.Td>
-                  </Table.Tr>
-                  <Table.Tr>
-                    <Table.Td style={{ backgroundColor: '#f8f9fa', fontWeight: 600 }}>플레이스 ID</Table.Td>
-                    <Table.Td>{placeDetails.place_id}</Table.Td>
-                    <Table.Td style={{ textAlign: 'center' }}>
-                      <Badge color="gray" size="sm">기본정보</Badge>
-                    </Table.Td>
-                  </Table.Tr>
-                </Table.Tbody>
-              </Table>
-            </Paper>
+        {/* 상세 정보 및 진단 (17개 섹션) */}
+        <Card className="mb-4 md:mb-6 shadow-md">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg md:text-xl font-bold text-neutral-900">
+              📋 상세 정보 및 진단
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 md:p-6 pt-0">
+            <div className="space-y-4 md:space-y-6">
+              {/* 1. 기본 정보 */}
+              <Card className="border-neutral-200">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-2 md:gap-3">
+                    <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                      <Store className="w-4 h-4 md:w-5 md:h-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-sm md:text-base font-bold text-neutral-900">1. 기본 정보</CardTitle>
+                      <p className="text-xs text-neutral-600">플레이스 기본 정보 및 식별자</p>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-3 md:p-4 pt-0">
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 p-2 md:p-3 bg-neutral-50 rounded-lg border border-neutral-200">
+                      <div className="font-semibold text-xs md:text-sm text-neutral-700">매장명</div>
+                      <div className="md:col-span-2 text-xs md:text-sm text-neutral-900">{placeDetails.name}</div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 p-2 md:p-3 bg-neutral-50 rounded-lg border border-neutral-200">
+                      <div className="font-semibold text-xs md:text-sm text-neutral-700">카테고리</div>
+                      <div className="md:col-span-2 text-xs md:text-sm text-neutral-900">{placeDetails.category}</div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 p-2 md:p-3 bg-neutral-50 rounded-lg border border-neutral-200">
+                      <div className="font-semibold text-xs md:text-sm text-neutral-700">주소</div>
+                      <div className="md:col-span-2 text-xs md:text-sm text-neutral-900 break-words">{placeDetails.address}</div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 p-2 md:p-3 bg-neutral-50 rounded-lg border border-neutral-200">
+                      <div className="font-semibold text-xs md:text-sm text-neutral-700">도로명주소</div>
+                      <div className="md:col-span-2 text-xs md:text-sm text-neutral-900 break-words">{placeDetails.road_address || '-'}</div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 p-2 md:p-3 bg-neutral-50 rounded-lg border border-neutral-200">
+                      <div className="font-semibold text-xs md:text-sm text-neutral-700">전화번호</div>
+                      <div className="md:col-span-2 text-xs md:text-sm text-neutral-900">{placeDetails.phone_number || '-'}</div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 p-2 md:p-3 bg-neutral-50 rounded-lg border border-neutral-200">
+                      <div className="font-semibold text-xs md:text-sm text-neutral-700">플레이스 ID</div>
+                      <div className="md:col-span-2 text-xs md:text-sm text-neutral-900">{placeDetails.place_id}</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-            {/* 2. 평점 및 리뷰 */}
-            <Paper shadow="xs" p="lg" radius="md" style={{ border: '1px solid #e0e0e0' }}>
-              <Group mb="md">
-                <ThemeIcon size="lg" radius="md" color="green" variant="light">
-                  <CheckCircle2 size={20} />
-                </ThemeIcon>
-                <div>
-                  <Text fw={700} size="lg">2. 평점 및 리뷰</Text>
-                  <Text size="xs" c="dimmed">방문자 평점 및 리뷰 통계</Text>
-                </div>
-              </Group>
-              <Table withTableBorder withColumnBorders highlightOnHover>
-                <Table.Tbody>
-                  <Table.Tr>
-                    <Table.Td style={{ width: '180px', backgroundColor: '#f8f9fa', fontWeight: 600 }}>방문자 평점</Table.Td>
-                    <Table.Td>
-                      {placeDetails.visitor_review_score ? (
-                        <Group gap="xs">
-                          <Text size="xl" fw={700} c="green">{placeDetails.visitor_review_score}</Text>
-                          <Text size="sm" c="dimmed">/ 5.0</Text>
-                        </Group>
-                      ) : '-'}
-                    </Table.Td>
-                    <Table.Td style={{ width: '100px', textAlign: 'center' }}>
-                      <Badge color="gray" size="sm">기본정보</Badge>
-                    </Table.Td>
-                  </Table.Tr>
-                  <Table.Tr>
-                    <Table.Td style={{ backgroundColor: '#f8f9fa', fontWeight: 600 }}>방문자 리뷰 수</Table.Td>
-                    <Table.Td>
-                      <Text fw={600}>{(placeDetails.visitor_review_count || 0).toLocaleString()}개</Text>
-                    </Table.Td>
-                    <Table.Td style={{ width: '320px' }}>
-                      {renderDiagnosisCell('visitor_reviews')}
-                    </Table.Td>
-                  </Table.Tr>
-                  <Table.Tr>
-                    <Table.Td style={{ backgroundColor: '#f8f9fa', fontWeight: 600 }}>블로그 리뷰 수</Table.Td>
-                    <Table.Td>
-                      <Text fw={600}>{(placeDetails.blog_review_count || 0).toLocaleString()}개</Text>
-                    </Table.Td>
-                    <Table.Td style={{ width: '320px' }}>
-                      {renderDiagnosisCell('blog_reviews')}
-                    </Table.Td>
-                  </Table.Tr>
-                </Table.Tbody>
-              </Table>
-            </Paper>
+              {/* 2. 평점 및 리뷰 */}
+              <Card className="border-neutral-200">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-2 md:gap-3">
+                    <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-yellow-100 flex items-center justify-center flex-shrink-0">
+                      <span className="text-base md:text-lg">⭐</span>
+                    </div>
+                    <div>
+                      <CardTitle className="text-sm md:text-base font-bold text-neutral-900">2. 평점 및 리뷰</CardTitle>
+                      <p className="text-xs text-neutral-600">방문자 평점 및 리뷰 통계</p>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-3 md:p-4 pt-0">
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-2 md:gap-3 p-2 md:p-3 bg-neutral-50 rounded-lg border border-neutral-200">
+                      <div className="md:col-span-3 font-semibold text-xs md:text-sm text-neutral-700">방문자 평점</div>
+                      <div className="md:col-span-9 text-xs md:text-sm text-neutral-900">
+                        {placeDetails.visitor_review_score ? (
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg md:text-xl font-bold text-green-600">{placeDetails.visitor_review_score}</span>
+                            <span className="text-neutral-500">/ 5.0</span>
+                          </div>
+                        ) : '-'}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-2 md:gap-3">
+                      <div className="lg:col-span-7 grid grid-cols-1 md:grid-cols-12 gap-2 md:gap-3 p-2 md:p-3 bg-neutral-50 rounded-lg border border-neutral-200">
+                        <div className="md:col-span-5 font-semibold text-xs md:text-sm text-neutral-700">방문자 리뷰 수</div>
+                        <div className="md:col-span-7">
+                          <p className="text-xs md:text-sm font-semibold text-neutral-900 mb-1">
+                            {(placeDetails.visitor_review_count || 0).toLocaleString()}개
+                          </p>
+                        </div>
+                      </div>
+                      <div className="lg:col-span-5">
+                        {renderDiagnosisCell('visitor_reviews')}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-2 md:gap-3">
+                      <div className="lg:col-span-7 grid grid-cols-1 md:grid-cols-12 gap-2 md:gap-3 p-2 md:p-3 bg-neutral-50 rounded-lg border border-neutral-200">
+                        <div className="md:col-span-5 font-semibold text-xs md:text-sm text-neutral-700">블로그 리뷰 수</div>
+                        <div className="md:col-span-7">
+                          <p className="text-xs md:text-sm font-semibold text-neutral-900 mb-1">
+                            {(placeDetails.blog_review_count || 0).toLocaleString()}개
+                          </p>
+                        </div>
+                      </div>
+                      <div className="lg:col-span-5">
+                        {renderDiagnosisCell('blog_reviews')}
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-            {/* 3. 이미지 */}
-            <Paper shadow="xs" p="lg" radius="md" style={{ border: '1px solid #e0e0e0' }}>
-              <Group mb="md">
-                <ThemeIcon size="lg" radius="md" color="purple" variant="light">
-                  <FileText size={20} />
-                </ThemeIcon>
-                <div>
-                  <Text fw={700} size="lg">3. 이미지</Text>
-                  <Text size="xs" c="dimmed">대표 이미지 및 전체 이미지 수</Text>
-                </div>
-              </Group>
-              <Table withTableBorder withColumnBorders highlightOnHover>
-                <Table.Tbody>
-                  <Table.Tr>
-                    <Table.Td style={{ width: '180px', backgroundColor: '#f8f9fa', fontWeight: 600 }}>대표 이미지</Table.Td>
-                    <Table.Td>
-                      {placeDetails.image_url ? (
-                        <Badge color="green">✓ 있음</Badge>
-                      ) : (
-                        <Badge color="gray">없음</Badge>
-                      )}
-                    </Table.Td>
-                    <Table.Td style={{ width: '320px' }} rowSpan={2}>
+              {/* 3. 이미지 */}
+              <Card className="border-neutral-200">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-2 md:gap-3">
+                    <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
+                      <span className="text-base md:text-lg">🖼️</span>
+                    </div>
+                    <div>
+                      <CardTitle className="text-sm md:text-base font-bold text-neutral-900">3. 이미지</CardTitle>
+                      <p className="text-xs text-neutral-600">대표 이미지 및 전체 이미지 수</p>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-3 md:p-4 pt-0">
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-2 md:gap-3">
+                    <div className="lg:col-span-7">
+                      <div className="grid grid-cols-1 md:grid-cols-12 gap-2 md:gap-3 p-2 md:p-3 bg-neutral-50 rounded-lg border border-neutral-200 mb-2">
+                        <div className="md:col-span-5 font-semibold text-xs md:text-sm text-neutral-700">대표 이미지</div>
+                        <div className="md:col-span-7">
+                          {placeDetails.image_url ? (
+                            <Badge className="bg-green-500 hover:bg-green-600 text-white text-xs">✓ 있음</Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-xs">없음</Badge>
+                          )}
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-12 gap-2 md:gap-3 p-2 md:p-3 bg-neutral-50 rounded-lg border border-neutral-200">
+                        <div className="md:col-span-5 font-semibold text-xs md:text-sm text-neutral-700">전체 이미지 수</div>
+                        <div className="md:col-span-7">
+                          <p className="text-xs md:text-sm font-semibold text-neutral-900">{placeDetails.image_count || 0}개</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="lg:col-span-5">
                       {renderDiagnosisCell('images')}
-                    </Table.Td>
-                  </Table.Tr>
-                  <Table.Tr>
-                    <Table.Td style={{ backgroundColor: '#f8f9fa', fontWeight: 600 }}>전체 이미지 수</Table.Td>
-                    <Table.Td>
-                      <Text fw={600}>{placeDetails.image_count || 0}개</Text>
-                    </Table.Td>
-                  </Table.Tr>
-                </Table.Tbody>
-              </Table>
-            </Paper>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-            {/* 4. 메뉴 */}
-            <Paper shadow="xs" p="lg" radius="md" style={{ border: '1px solid #e0e0e0' }}>
-              <Group mb="md">
-                <ThemeIcon size="lg" radius="md" color="orange" variant="light">
-                  <FileText size={20} />
-                </ThemeIcon>
-                <div>
-                  <Text fw={700} size="lg">4. 메뉴</Text>
-                  <Text size="xs" c="dimmed">등록된 메뉴 및 가격 정보</Text>
-                </div>
-              </Group>
-              <Table withTableBorder withColumnBorders highlightOnHover>
-                <Table.Tbody>
-                  <Table.Tr>
-                    <Table.Td style={{ width: '180px', backgroundColor: '#f8f9fa', fontWeight: 600 }}>등록된 메뉴</Table.Td>
-                    <Table.Td>
+              {/* 4. 메뉴 */}
+              <Card className="border-neutral-200">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-2 md:gap-3">
+                    <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
+                      <span className="text-base md:text-lg">🍽️</span>
+                    </div>
+                    <div>
+                      <CardTitle className="text-sm md:text-base font-bold text-neutral-900">4. 메뉴</CardTitle>
+                      <p className="text-xs text-neutral-600">등록된 메뉴 및 가격 정보</p>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-3 md:p-4 pt-0">
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-2 md:gap-3">
+                    <div className="lg:col-span-7 p-2 md:p-3 bg-neutral-50 rounded-lg border border-neutral-200">
                       {placeDetails.menus && placeDetails.menus.length > 0 ? (
                         <div>
-                          <Badge color="blue" size="lg" mb="md">총 {placeDetails.menus.length}개</Badge>
-                          <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                          <Badge className="bg-blue-500 hover:bg-blue-600 text-white text-xs md:text-sm mb-3">
+                            총 {placeDetails.menus.length}개
+                          </Badge>
+                          <div className="max-h-[300px] overflow-y-auto space-y-2">
                             {placeDetails.menus.map((menu: any, idx: number) => (
-                              <Paper key={idx} p="sm" mb="xs" style={{ backgroundColor: '#f8f9fa', border: '1px solid #e0e0e0' }}>
-                                <Text size="sm" fw={700}>{menu.name}</Text>
-                                {menu.price && <Text size="sm" c="blue" fw={600}>{Number(menu.price).toLocaleString()}원</Text>}
-                                {menu.description && (
-                                  <Text size="xs" c="dimmed" mt="xs">{menu.description}</Text>
-                                )}
-                              </Paper>
+                              <Card key={idx} className="bg-white border-neutral-200">
+                                <CardContent className="p-2 md:p-3">
+                                  <p className="text-xs md:text-sm font-bold text-neutral-900">{menu.name}</p>
+                                  {menu.price && <p className="text-xs md:text-sm text-blue-600 font-semibold">{Number(menu.price).toLocaleString()}원</p>}
+                                  {menu.description && (
+                                    <p className="text-xs text-neutral-600 mt-1">{menu.description}</p>
+                                  )}
+                                </CardContent>
+                              </Card>
                             ))}
                           </div>
                         </div>
                       ) : (
-                        <Badge color="gray">등록된 메뉴 없음</Badge>
+                        <Badge variant="outline" className="text-xs">등록된 메뉴 없음</Badge>
                       )}
-                    </Table.Td>
-                    <Table.Td style={{ width: '320px' }}>
+                    </div>
+                    <div className="lg:col-span-5">
                       {renderDiagnosisCell('menus')}
-                    </Table.Td>
-                  </Table.Tr>
-                </Table.Tbody>
-              </Table>
-            </Paper>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-            {/* 5. 편의시설 */}
-            <Paper shadow="xs" p="lg" radius="md" style={{ border: '1px solid #e0e0e0' }}>
-              <Group mb="md">
-                <ThemeIcon size="lg" radius="md" color="pink" variant="light">
-                  <Store size={20} />
-                </ThemeIcon>
-                <div>
-                  <Text fw={700} size="lg">5. 편의시설</Text>
-                  <Text size="xs" c="dimmed">제공 가능한 편의시설 정보</Text>
-                </div>
-              </Group>
-              <Table withTableBorder withColumnBorders highlightOnHover>
-                <Table.Tbody>
-                  <Table.Tr>
-                    <Table.Td style={{ width: '180px', backgroundColor: '#f8f9fa', fontWeight: 600 }}>편의시설 목록</Table.Td>
-                    <Table.Td>
-                      {(placeDetails as any).conveniences && (placeDetails as any).conveniences.length > 0 ? (
-                        <Group gap="xs">
-                          {(placeDetails as any).conveniences.map((item: string, idx: number) => (
-                            <Badge key={idx} size="md" variant="light" color="pink">{item}</Badge>
-                          ))}
-                        </Group>
-                      ) : (
-                        <Badge color="gray">정보 없음</Badge>
-                      )}
-                    </Table.Td>
-                    <Table.Td style={{ width: '320px' }}>
-                      {renderDiagnosisCell('conveniences')}
-                    </Table.Td>
-                  </Table.Tr>
-                </Table.Tbody>
-              </Table>
-            </Paper>
-
-            {/* 6. 결제 수단 */}
-            <Paper shadow="xs" p="lg" radius="md" style={{ border: '1px solid #e0e0e0' }}>
-              <Group mb="md">
-                <ThemeIcon size="lg" radius="md" color="violet" variant="light">
-                  <Store size={20} />
-                </ThemeIcon>
-                <div>
-                  <Text fw={700} size="lg">6. 결제 수단</Text>
-                  <Text size="xs" c="dimmed">지원 가능한 결제 방식</Text>
-                </div>
-              </Group>
-              <Table withTableBorder withColumnBorders highlightOnHover>
-                <Table.Tbody>
-                  <Table.Tr>
-                    <Table.Td style={{ width: '180px', backgroundColor: '#f8f9fa', fontWeight: 600 }}>지원 결제 방식</Table.Td>
-                    <Table.Td>
-                      {(placeDetails as any).payment_methods && (placeDetails as any).payment_methods.length > 0 ? (
-                        <Group gap="xs">
-                          {(placeDetails as any).payment_methods.map((method: string, idx: number) => (
-                            <Badge key={idx} size="md" variant="light" color="violet">{method}</Badge>
-                          ))}
-                        </Group>
-                      ) : (
-                        <Badge color="gray">정보 없음</Badge>
-                      )}
-                    </Table.Td>
-                    <Table.Td style={{ width: '100px', textAlign: 'center' }}>
-                      <Badge color="gray" size="sm">기본정보</Badge>
-                    </Table.Td>
-                  </Table.Tr>
-                </Table.Tbody>
-              </Table>
-            </Paper>
-
-            {/* 7. 마이크로 리뷰 */}
-            <Paper shadow="xs" p="lg" radius="md" style={{ border: '1px solid #e0e0e0' }}>
-              <Group mb="md">
-                <ThemeIcon size="lg" radius="md" color="teal" variant="light">
-                  <FileText size={20} />
-                </ThemeIcon>
-                <div>
-                  <Text fw={700} size="lg">7. 마이크로 리뷰 (한줄평)</Text>
-                  <Text size="xs" c="dimmed">대표 한줄평</Text>
-                </div>
-              </Group>
-              <Table withTableBorder withColumnBorders highlightOnHover>
-                <Table.Tbody>
-                  <Table.Tr>
-                    <Table.Td style={{ width: '180px', backgroundColor: '#f8f9fa', fontWeight: 600 }}>대표 한줄평</Table.Td>
-                    <Table.Td>
-                      {(placeDetails as any).micro_reviews && (placeDetails as any).micro_reviews.length > 0 ? (
-                        <Text fs="italic" c="teal" fw={500}>"{(placeDetails as any).micro_reviews[0]}"</Text>
-                      ) : (
-                        <Badge color="gray">정보 없음</Badge>
-                      )}
-                    </Table.Td>
-                    <Table.Td style={{ width: '100px', textAlign: 'center' }}>
-                      <Badge color="gray" size="sm">기본정보</Badge>
-                    </Table.Td>
-                  </Table.Tr>
-                </Table.Tbody>
-              </Table>
-            </Paper>
-
-            {/* 8. 프로모션/쿠폰 */}
-            <Paper shadow="xs" p="lg" radius="md" style={{ border: '1px solid #e0e0e0' }}>
-              <Group mb="md">
-                <ThemeIcon size="lg" radius="md" color="red" variant="light">
-                  <Store size={20} />
-                </ThemeIcon>
-                <div>
-                  <Text fw={700} size="lg">8. 프로모션/쿠폰</Text>
-                  <Text size="xs" c="dimmed">사용 가능한 쿠폰 및 프로모션</Text>
-                </div>
-              </Group>
-              <Table withTableBorder withColumnBorders highlightOnHover>
-                <Table.Tbody>
-                  <Table.Tr>
-                    <Table.Td style={{ width: '180px', backgroundColor: '#f8f9fa', fontWeight: 600 }}>사용 가능한 쿠폰</Table.Td>
-                    <Table.Td>
-                      {(placeDetails as any).promotions && (placeDetails as any).promotions.total > 0 ? (
-                        <div>
-                          <Badge color="red" size="lg" mb="sm">{(placeDetails as any).promotions.total}개</Badge>
-                          {(placeDetails as any).promotions.coupons?.slice(0, 3).map((coupon: any, idx: number) => (
-                            <Text key={idx} size="sm" mb="xs">• {coupon.title}</Text>
+              {/* 5. 편의시설 */}
+              <Card className="border-neutral-200">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-2 md:gap-3">
+                    <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                      <span className="text-base md:text-lg">🏢</span>
+                    </div>
+                    <div>
+                      <CardTitle className="text-sm md:text-base font-bold text-neutral-900">5. 편의시설</CardTitle>
+                      <p className="text-xs text-neutral-600">제공 가능한 편의시설 정보</p>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-3 md:p-4 pt-0">
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-2 md:gap-3">
+                    <div className="lg:col-span-7 p-2 md:p-3 bg-neutral-50 rounded-lg border border-neutral-200">
+                      {placeDetails.conveniences && placeDetails.conveniences.length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5 md:gap-2">
+                          {placeDetails.conveniences.map((conv: string, idx: number) => (
+                            <Badge key={idx} className="bg-green-500 hover:bg-green-600 text-white text-xs">
+                              {conv}
+                            </Badge>
                           ))}
                         </div>
                       ) : (
-                        <Badge color="gray">없음</Badge>
+                        <Badge variant="outline" className="text-xs">정보 없음</Badge>
                       )}
-                    </Table.Td>
-                    <Table.Td style={{ width: '320px' }}>
-                      {renderDiagnosisCell('coupons')}
-                    </Table.Td>
-                  </Table.Tr>
-                </Table.Tbody>
-              </Table>
-            </Paper>
+                    </div>
+                    <div className="lg:col-span-5">
+                      {renderDiagnosisCell('conveniences')}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-            {/* 9. 공지사항 */}
-            <Paper shadow="xs" p="lg" radius="md" style={{ border: '1px solid #e0e0e0' }}>
-              <Group mb="md">
-                <ThemeIcon size="lg" radius="md" color="yellow" variant="light">
-                  <AlertCircle size={20} />
-                </ThemeIcon>
-                <div>
-                  <Text fw={700} size="lg">9. 공지사항</Text>
-                  <Text size="xs" c="dimmed">매장 공지사항 및 안내</Text>
-                </div>
-              </Group>
-              <Table withTableBorder withColumnBorders highlightOnHover>
-                <Table.Tbody>
-                  <Table.Tr>
-                    <Table.Td style={{ width: '180px', backgroundColor: '#f8f9fa', fontWeight: 600 }}>최신 공지</Table.Td>
-                    <Table.Td>
-                      {placeDetails.announcements && placeDetails.announcements.length > 0 ? (
-                        <Stack gap="xs">
-                          {placeDetails.announcements.slice(0, 3).map((notice: any, idx: number) => (
-                            <Text key={idx} size="sm">• {notice.title} <Text component="span" size="xs" c="dimmed">({notice.relativeCreated})</Text></Text>
+              {/* 6. 결제 수단 */}
+              <Card className="border-neutral-200">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-2 md:gap-3">
+                    <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0">
+                      <span className="text-base md:text-lg">💳</span>
+                    </div>
+                    <div>
+                      <CardTitle className="text-sm md:text-base font-bold text-neutral-900">6. 결제 수단</CardTitle>
+                      <p className="text-xs text-neutral-600">지원 가능한 결제 방식</p>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-3 md:p-4 pt-0">
+                  <div className="p-2 md:p-3 bg-neutral-50 rounded-lg border border-neutral-200">
+                    {placeDetails.payment_methods && placeDetails.payment_methods.length > 0 ? (
+                      <div className="flex flex-wrap gap-1.5 md:gap-2">
+                        {placeDetails.payment_methods.map((payment: string, idx: number) => (
+                          <Badge key={idx} className="bg-indigo-500 hover:bg-indigo-600 text-white text-xs">
+                            {payment}
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      <Badge variant="outline" className="text-xs">정보 없음</Badge>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* 7. 마이크로 리뷰 */}
+              <Card className="border-neutral-200">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-2 md:gap-3">
+                    <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-teal-100 flex items-center justify-center flex-shrink-0">
+                      <span className="text-base md:text-lg">💬</span>
+                    </div>
+                    <div>
+                      <CardTitle className="text-sm md:text-base font-bold text-neutral-900">7. 마이크로 리뷰 (한줄평)</CardTitle>
+                      <p className="text-xs text-neutral-600">대표 한줄평</p>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-3 md:p-4 pt-0">
+                  <div className="p-2 md:p-3 bg-neutral-50 rounded-lg border border-neutral-200">
+                    {placeDetails.micro_reviews && placeDetails.micro_reviews.length > 0 ? (
+                      <p className="text-xs md:text-sm italic text-teal-700 font-medium">
+                        "{placeDetails.micro_reviews[0]}"
+                      </p>
+                    ) : (
+                      <Badge variant="outline" className="text-xs">정보 없음</Badge>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* 8. 프로모션/쿠폰 */}
+              <Card className="border-neutral-200">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-2 md:gap-3">
+                    <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                      <span className="text-base md:text-lg">🎫</span>
+                    </div>
+                    <div>
+                      <CardTitle className="text-sm md:text-base font-bold text-neutral-900">8. 프로모션/쿠폰</CardTitle>
+                      <p className="text-xs text-neutral-600">사용 가능한 쿠폰 및 프로모션</p>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-3 md:p-4 pt-0">
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-2 md:gap-3">
+                    <div className="lg:col-span-7 p-2 md:p-3 bg-neutral-50 rounded-lg border border-neutral-200">
+                      {placeDetails.promotions && placeDetails.promotions.total > 0 ? (
+                        <div>
+                          <Badge className="bg-red-500 hover:bg-red-600 text-white text-xs md:text-sm mb-2">
+                            {placeDetails.promotions.total}개
+                          </Badge>
+                          {placeDetails.promotions.coupons?.slice(0, 3).map((coupon: any, idx: number) => (
+                            <p key={idx} className="text-xs md:text-sm text-neutral-900 mb-1">• {coupon.title}</p>
                           ))}
-                        </Stack>
+                        </div>
                       ) : (
-                        <Badge color="gray">없음</Badge>
+                        <Badge variant="outline" className="text-xs">없음</Badge>
                       )}
-                    </Table.Td>
-                    <Table.Td style={{ width: '320px' }}>
+                    </div>
+                    <div className="lg:col-span-5">
+                      {renderDiagnosisCell('promotions')}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* 9. 공지사항 */}
+              <Card className="border-neutral-200">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-2 md:gap-3">
+                    <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-pink-100 flex items-center justify-center flex-shrink-0">
+                      <span className="text-base md:text-lg">📢</span>
+                    </div>
+                    <div>
+                      <CardTitle className="text-sm md:text-base font-bold text-neutral-900">9. 공지사항</CardTitle>
+                      <p className="text-xs text-neutral-600">매장 공지사항 및 안내</p>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-3 md:p-4 pt-0">
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-2 md:gap-3">
+                    <div className="lg:col-span-7 p-2 md:p-3 bg-neutral-50 rounded-lg border border-neutral-200">
+                      {placeDetails.announcements && placeDetails.announcements.length > 0 ? (
+                        <div className="space-y-1.5">
+                          {placeDetails.announcements.slice(0, 3).map((notice: any, idx: number) => (
+                            <p key={idx} className="text-xs md:text-sm text-neutral-900">
+                              • {notice.title} <span className="text-neutral-500">({notice.relativeCreated})</span>
+                            </p>
+                          ))}
+                        </div>
+                      ) : (
+                        <Badge variant="outline" className="text-xs">없음</Badge>
+                      )}
+                    </div>
+                    <div className="lg:col-span-5">
                       {renderDiagnosisCell('announcements')}
-                    </Table.Td>
-                  </Table.Tr>
-                </Table.Tbody>
-              </Table>
-            </Paper>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-            {/* 10. 업체 소개글 */}
-            <Paper shadow="xs" p="lg" radius="md" style={{ border: '1px solid #e0e0e0' }}>
-              <Group mb="md">
-                <ThemeIcon size="lg" radius="md" color="indigo" variant="light">
-                  <FileText size={20} />
-                </ThemeIcon>
-                <div>
-                  <Text fw={700} size="lg">10. 업체 소개글</Text>
-                  <Text size="xs" c="dimmed">업체가 직접 작성한 상세 설명</Text>
-                </div>
-              </Group>
-              <Table withTableBorder withColumnBorders highlightOnHover>
-                <Table.Tbody>
-                  <Table.Tr>
-                    <Table.Td style={{ width: '180px', backgroundColor: '#f8f9fa', fontWeight: 600 }}>상세 설명</Table.Td>
-                    <Table.Td>
+              {/* 10. 업체 소개글 */}
+              <Card className="border-neutral-200">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-2 md:gap-3">
+                    <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-cyan-100 flex items-center justify-center flex-shrink-0">
+                      <span className="text-base md:text-lg">📝</span>
+                    </div>
+                    <div>
+                      <CardTitle className="text-sm md:text-base font-bold text-neutral-900">10. 업체 소개글</CardTitle>
+                      <p className="text-xs text-neutral-600">업체가 직접 작성한 상세 설명</p>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-3 md:p-4 pt-0">
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-2 md:gap-3">
+                    <div className="lg:col-span-7 p-2 md:p-3 bg-neutral-50 rounded-lg border border-neutral-200">
                       {placeDetails.description ? (
-                        <Paper p="md" style={{ backgroundColor: '#f8f9fa', maxHeight: '300px', overflowY: 'auto', whiteSpace: 'pre-line' }}>
-                          <Text size="sm">{placeDetails.description}</Text>
-                        </Paper>
+                        <Card className="bg-white border-neutral-200 max-h-[300px] overflow-y-auto">
+                          <CardContent className="p-2 md:p-3">
+                            <p className="text-xs md:text-sm text-neutral-900 whitespace-pre-line">{placeDetails.description}</p>
+                          </CardContent>
+                        </Card>
                       ) : (
-                        <Badge color="gray">업체가 등록하지 않음</Badge>
+                        <Badge variant="outline" className="text-xs">업체가 등록하지 않음</Badge>
                       )}
-                    </Table.Td>
-                    <Table.Td style={{ width: '320px' }}>
-                      {renderDiagnosisCell('description_seo')}
-                    </Table.Td>
-                  </Table.Tr>
-                </Table.Tbody>
-              </Table>
-            </Paper>
+                    </div>
+                    <div className="lg:col-span-5">
+                      {renderDiagnosisCell('description')}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-            {/* 11. AI 브리핑 */}
-            <Paper shadow="xs" p="lg" radius="md" style={{ border: '1px solid #e0e0e0' }}>
-              <Group mb="md">
-                <ThemeIcon size="lg" radius="md" color="grape" variant="light">
-                  <FileText size={20} />
-                </ThemeIcon>
-                <div>
-                  <Text fw={700} size="lg">11. AI 브리핑</Text>
-                  <Text size="xs" c="dimmed">AI가 생성한 요약 정보</Text>
-                </div>
-              </Group>
-              <Table withTableBorder withColumnBorders highlightOnHover>
-                <Table.Tbody>
-                  <Table.Tr>
-                    <Table.Td style={{ width: '180px', backgroundColor: '#f8f9fa', fontWeight: 600 }}>AI 요약 정보</Table.Td>
-                    <Table.Td>
-                      {placeDetails.ai_briefing ? (
-                        <Paper p="md" style={{ backgroundColor: '#f8f5ff', maxHeight: '200px', overflowY: 'auto', whiteSpace: 'pre-line', border: '1px solid #e0e0e0' }}>
-                          <Text size="sm">{placeDetails.ai_briefing}</Text>
-                        </Paper>
-                      ) : (
-                        <Badge color="gray">정보 없음</Badge>
-                      )}
-                    </Table.Td>
-                    <Table.Td style={{ width: '100px', textAlign: 'center' }}>
-                      <Badge color="gray" size="sm">기본정보</Badge>
-                    </Table.Td>
-                  </Table.Tr>
-                </Table.Tbody>
-              </Table>
-            </Paper>
+              {/* 11. AI 브리핑 */}
+              <Card className="border-neutral-200">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-2 md:gap-3">
+                    <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
+                      <span className="text-base md:text-lg">🤖</span>
+                    </div>
+                    <div>
+                      <CardTitle className="text-sm md:text-base font-bold text-neutral-900">11. AI 브리핑</CardTitle>
+                      <p className="text-xs text-neutral-600">AI가 생성한 요약 정보</p>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-3 md:p-4 pt-0">
+                  <div className="p-2 md:p-3 bg-neutral-50 rounded-lg border border-neutral-200">
+                    {placeDetails.ai_briefing ? (
+                      <Card className="bg-purple-50 border-purple-200 max-h-[200px] overflow-y-auto">
+                        <CardContent className="p-2 md:p-3">
+                          <p className="text-xs md:text-sm text-neutral-900 whitespace-pre-line">{placeDetails.ai_briefing}</p>
+                        </CardContent>
+                      </Card>
+                    ) : (
+                      <Badge variant="outline" className="text-xs">정보 없음</Badge>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
 
-            {/* 12. 찾아오는 길 */}
-            <Paper shadow="xs" p="lg" radius="md" style={{ border: '1px solid #e0e0e0' }}>
-              <Group mb="md">
-                <ThemeIcon size="lg" radius="md" color="cyan" variant="light">
-                  <FileText size={20} />
-                </ThemeIcon>
-                <div>
-                  <Text fw={700} size="lg">12. 찾아오는 길</Text>
-                  <Text size="xs" c="dimmed">매장까지의 상세 안내</Text>
-                </div>
-              </Group>
-              <Table withTableBorder withColumnBorders highlightOnHover>
-                <Table.Tbody>
-                  <Table.Tr>
-                    <Table.Td style={{ width: '180px', backgroundColor: '#f8f9fa', fontWeight: 600 }}>상세 안내</Table.Td>
-                    <Table.Td>
+              {/* 12. 찾아오는 길 */}
+              <Card className="border-neutral-200">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-2 md:gap-3">
+                    <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                      <span className="text-base md:text-lg">🗺️</span>
+                    </div>
+                    <div>
+                      <CardTitle className="text-sm md:text-base font-bold text-neutral-900">12. 찾아오는 길</CardTitle>
+                      <p className="text-xs text-neutral-600">매장까지의 상세 안내</p>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-3 md:p-4 pt-0">
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-2 md:gap-3">
+                    <div className="lg:col-span-7 p-2 md:p-3 bg-neutral-50 rounded-lg border border-neutral-200">
                       {placeDetails.directions ? (
-                        <Paper p="md" style={{ backgroundColor: '#f8f9fa', maxHeight: '300px', overflowY: 'auto', whiteSpace: 'pre-line' }}>
-                          <Text size="sm">{placeDetails.directions}</Text>
-                        </Paper>
+                        <Card className="bg-white border-neutral-200 max-h-[300px] overflow-y-auto">
+                          <CardContent className="p-2 md:p-3">
+                            <p className="text-xs md:text-sm text-neutral-900 whitespace-pre-line">{placeDetails.directions}</p>
+                          </CardContent>
+                        </Card>
                       ) : (
-                        <Badge color="gray">정보 없음</Badge>
+                        <Badge variant="outline" className="text-xs">정보 없음</Badge>
                       )}
-                    </Table.Td>
-                    <Table.Td style={{ width: '320px' }}>
-                      {renderDiagnosisCell('directions_seo')}
-                    </Table.Td>
-                  </Table.Tr>
-                </Table.Tbody>
-              </Table>
-            </Paper>
+                    </div>
+                    <div className="lg:col-span-5">
+                      {renderDiagnosisCell('directions')}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-            {/* 13. SNS 및 웹사이트 */}
-            <Paper shadow="xs" p="lg" radius="md" style={{ border: '1px solid #e0e0e0' }}>
-              <Group mb="md">
-                <ThemeIcon size="lg" radius="md" color="blue" variant="light">
-                  <ExternalLink size={20} />
-                </ThemeIcon>
-                <div>
-                  <Text fw={700} size="lg">13. SNS 및 웹사이트</Text>
-                  <Text size="xs" c="dimmed">온라인 채널 정보</Text>
-                </div>
-              </Group>
-              <Table withTableBorder withColumnBorders highlightOnHover>
-                <Table.Tbody>
-                  <Table.Tr>
-                    <Table.Td style={{ width: '180px', backgroundColor: '#f8f9fa', fontWeight: 600 }}>홈페이지</Table.Td>
-                    <Table.Td>
-                      {placeDetails.homepage || placeDetails.homepage_url ? (
-                        <a href={placeDetails.homepage || placeDetails.homepage_url} target="_blank" rel="noopener noreferrer" style={{ color: '#228be6', textDecoration: 'none' }}>
-                          <Text size="sm">{placeDetails.homepage || placeDetails.homepage_url}</Text>
-                        </a>
-                      ) : (
-                        <Badge color="gray">등록되지 않음</Badge>
-                      )}
-                    </Table.Td>
-                    <Table.Td style={{ width: '320px' }} rowSpan={3}>
-                      {renderDiagnosisCell('sns_web')}
-                    </Table.Td>
-                  </Table.Tr>
-                  <Table.Tr>
-                    <Table.Td style={{ backgroundColor: '#f8f9fa', fontWeight: 600 }}>블로그</Table.Td>
-                    <Table.Td>
-                      {placeDetails.blog ? (
-                        <a href={placeDetails.blog} target="_blank" rel="noopener noreferrer" style={{ color: '#228be6', textDecoration: 'none' }}>
-                          <Text size="sm">{placeDetails.blog}</Text>
-                        </a>
-                      ) : (
-                        <Badge color="gray">등록되지 않음</Badge>
-                      )}
-                    </Table.Td>
-                  </Table.Tr>
-                  <Table.Tr>
-                    <Table.Td style={{ backgroundColor: '#f8f9fa', fontWeight: 600 }}>인스타그램</Table.Td>
-                    <Table.Td>
-                      {placeDetails.instagram ? (
-                        <a href={placeDetails.instagram} target="_blank" rel="noopener noreferrer" style={{ color: '#228be6', textDecoration: 'none' }}>
-                          <Text size="sm">{placeDetails.instagram}</Text>
-                        </a>
-                      ) : (
-                        <Badge color="gray">등록되지 않음</Badge>
-                      )}
-                    </Table.Td>
-                  </Table.Tr>
-                </Table.Tbody>
-              </Table>
-            </Paper>
+              {/* 13. SNS 및 웹사이트 */}
+              <Card className="border-neutral-200">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-2 md:gap-3">
+                    <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-pink-100 flex items-center justify-center flex-shrink-0">
+                      <span className="text-base md:text-lg">🌐</span>
+                    </div>
+                    <div>
+                      <CardTitle className="text-sm md:text-base font-bold text-neutral-900">13. SNS 및 웹사이트</CardTitle>
+                      <p className="text-xs text-neutral-600">온라인 채널 정보</p>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-3 md:p-4 pt-0">
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-2 md:gap-3">
+                    <div className="lg:col-span-7 space-y-2">
+                      <div className="grid grid-cols-1 md:grid-cols-12 gap-2 md:gap-3 p-2 md:p-3 bg-neutral-50 rounded-lg border border-neutral-200">
+                        <div className="md:col-span-3 font-semibold text-xs md:text-sm text-neutral-700">홈페이지</div>
+                        <div className="md:col-span-9">
+                          {placeDetails.homepage || placeDetails.homepage_url ? (
+                            <a 
+                              href={placeDetails.homepage || placeDetails.homepage_url} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-xs md:text-sm text-blue-600 hover:underline break-all"
+                            >
+                              {placeDetails.homepage || placeDetails.homepage_url}
+                            </a>
+                          ) : (
+                            <Badge variant="outline" className="text-xs">등록되지 않음</Badge>
+                          )}
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-12 gap-2 md:gap-3 p-2 md:p-3 bg-neutral-50 rounded-lg border border-neutral-200">
+                        <div className="md:col-span-3 font-semibold text-xs md:text-sm text-neutral-700">블로그</div>
+                        <div className="md:col-span-9">
+                          {placeDetails.blog ? (
+                            <a 
+                              href={placeDetails.blog} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-xs md:text-sm text-blue-600 hover:underline break-all"
+                            >
+                              {placeDetails.blog}
+                            </a>
+                          ) : (
+                            <Badge variant="outline" className="text-xs">등록되지 않음</Badge>
+                          )}
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-12 gap-2 md:gap-3 p-2 md:p-3 bg-neutral-50 rounded-lg border border-neutral-200">
+                        <div className="md:col-span-3 font-semibold text-xs md:text-sm text-neutral-700">인스타그램</div>
+                        <div className="md:col-span-9">
+                          {placeDetails.instagram ? (
+                            <a 
+                              href={placeDetails.instagram} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-xs md:text-sm text-blue-600 hover:underline break-all"
+                            >
+                              {placeDetails.instagram}
+                            </a>
+                          ) : (
+                            <Badge variant="outline" className="text-xs">등록되지 않음</Badge>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="lg:col-span-5">
+                      {renderDiagnosisCell('sns_website')}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-            {/* 14. TV 방송 정보 */}
-            <Paper shadow="xs" p="lg" radius="md" style={{ border: '1px solid #e0e0e0' }}>
-              <Group mb="md">
-                <ThemeIcon size="lg" radius="md" color="pink" variant="light">
-                  <FileText size={20} />
-                </ThemeIcon>
-                <div>
-                  <Text fw={700} size="lg">14. TV 방송 정보</Text>
-                  <Text size="xs" c="dimmed">TV 방송 출연 내역</Text>
-                </div>
-              </Group>
-              <Table withTableBorder withColumnBorders highlightOnHover>
-                <Table.Tbody>
-                  <Table.Tr>
-                    <Table.Td style={{ width: '180px', backgroundColor: '#f8f9fa', fontWeight: 600 }}>최근 방송</Table.Td>
-                    <Table.Td>
+              {/* 14. TV 방송 정보 */}
+              <Card className="border-neutral-200">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-2 md:gap-3">
+                    <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                      <span className="text-base md:text-lg">📺</span>
+                    </div>
+                    <div>
+                      <CardTitle className="text-sm md:text-base font-bold text-neutral-900">14. TV 방송 정보</CardTitle>
+                      <p className="text-xs text-neutral-600">TV 방송 출연 내역</p>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-3 md:p-4 pt-0">
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-2 md:gap-3">
+                    <div className="lg:col-span-7 p-2 md:p-3 bg-neutral-50 rounded-lg border border-neutral-200">
                       {placeDetails.tv_program ? (
-                        <Text fw={600}>{placeDetails.tv_program}</Text>
+                        <p className="text-xs md:text-sm font-semibold text-neutral-900">{placeDetails.tv_program}</p>
                       ) : (
-                        <Badge color="gray">정보 없음</Badge>
+                        <Badge variant="outline" className="text-xs">정보 없음</Badge>
                       )}
-                    </Table.Td>
-                    <Table.Td style={{ width: '320px' }}>
+                    </div>
+                    <div className="lg:col-span-5">
                       {renderDiagnosisCell('tv_program')}
-                    </Table.Td>
-                  </Table.Tr>
-                </Table.Tbody>
-              </Table>
-            </Paper>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-            {/* 15. 플레이스 플러스 */}
-            <Paper shadow="xs" p="lg" radius="md" style={{ border: '1px solid #e0e0e0' }}>
-              <Group mb="md">
-                <ThemeIcon size="lg" radius="md" color="orange" variant="light">
-                  <Store size={20} />
-                </ThemeIcon>
-                <div>
-                  <Text fw={700} size="lg">15. 플레이스 플러스</Text>
-                  <Text size="xs" c="dimmed">플레이스 플러스 구독 여부</Text>
-                </div>
-              </Group>
-              <Table withTableBorder withColumnBorders highlightOnHover>
-                <Table.Tbody>
-                  <Table.Tr>
-                    <Table.Td style={{ width: '180px', backgroundColor: '#f8f9fa', fontWeight: 600 }}>사용 여부</Table.Td>
-                    <Table.Td>
+              {/* 15. 플레이스 플러스 */}
+              <Card className="border-neutral-200">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-2 md:gap-3">
+                    <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-yellow-100 flex items-center justify-center flex-shrink-0">
+                      <span className="text-base md:text-lg">⭐</span>
+                    </div>
+                    <div>
+                      <CardTitle className="text-sm md:text-base font-bold text-neutral-900">15. 플레이스 플러스</CardTitle>
+                      <p className="text-xs text-neutral-600">플레이스 플러스 구독 여부</p>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-3 md:p-4 pt-0">
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-2 md:gap-3">
+                    <div className="lg:col-span-7 p-2 md:p-3 bg-neutral-50 rounded-lg border border-neutral-200">
                       {placeDetails.is_place_plus ? (
-                        <Badge color="green" size="lg">✓ 사용 중</Badge>
+                        <Badge className="bg-green-500 hover:bg-green-600 text-white text-xs md:text-sm">✓ 사용 중</Badge>
                       ) : (
-                        <Badge color="gray" size="lg">미사용</Badge>
+                        <Badge variant="outline" className="text-xs md:text-sm">미사용</Badge>
                       )}
-                    </Table.Td>
-                    <Table.Td style={{ width: '320px' }}>
+                    </div>
+                    <div className="lg:col-span-5">
                       {renderDiagnosisCell('place_plus')}
-                    </Table.Td>
-                  </Table.Tr>
-                </Table.Tbody>
-              </Table>
-            </Paper>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-            {/* 16. 네이버페이 */}
-            <Paper shadow="xs" p="lg" radius="md" style={{ border: '1px solid #e0e0e0' }}>
-              <Group mb="md">
-                <ThemeIcon size="lg" radius="md" color="green" variant="light">
-                  <CheckCircle2 size={20} />
-                </ThemeIcon>
-                <div>
-                  <Text fw={700} size="lg">16. 네이버페이</Text>
-                  <Text size="xs" c="dimmed">네이버페이 결제 지원 여부</Text>
-                </div>
-              </Group>
-              <Table withTableBorder withColumnBorders highlightOnHover>
-                <Table.Tbody>
-                  <Table.Tr>
-                    <Table.Td style={{ width: '180px', backgroundColor: '#f8f9fa', fontWeight: 600 }}>사용 여부 (검색 결과)</Table.Td>
-                    <Table.Td>
-                      {(placeDetails as any).has_naverpay_in_search ? (
-                        <Badge color="green" size="lg">✓ 사용 중</Badge>
+              {/* 16. 네이버페이 */}
+              <Card className="border-neutral-200">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-2 md:gap-3">
+                    <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                      <span className="text-base md:text-lg">💰</span>
+                    </div>
+                    <div>
+                      <CardTitle className="text-sm md:text-base font-bold text-neutral-900">16. 네이버페이</CardTitle>
+                      <p className="text-xs text-neutral-600">네이버페이 결제 지원 여부</p>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-3 md:p-4 pt-0">
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-2 md:gap-3">
+                    <div className="lg:col-span-7 p-2 md:p-3 bg-neutral-50 rounded-lg border border-neutral-200">
+                      {placeDetails.has_naverpay_in_search ? (
+                        <Badge className="bg-green-500 hover:bg-green-600 text-white text-xs md:text-sm">✓ 사용 중</Badge>
                       ) : (
-                        <Badge color="red" size="lg">미사용</Badge>
+                        <Badge className="bg-red-500 hover:bg-red-600 text-white text-xs md:text-sm">미사용</Badge>
                       )}
-                    </Table.Td>
-                    <Table.Td style={{ width: '320px' }}>
+                    </div>
+                    <div className="lg:col-span-5">
                       {renderDiagnosisCell('naverpay')}
-                    </Table.Td>
-                  </Table.Tr>
-                </Table.Tbody>
-              </Table>
-            </Paper>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-            {/* 17. 스마트콜 */}
-            <Paper shadow="xs" p="lg" radius="md" style={{ border: '1px solid #e0e0e0' }}>
-              <Group mb="md">
-                <ThemeIcon size="lg" radius="md" color="indigo" variant="light">
-                  <FileText size={20} />
-                </ThemeIcon>
-                <div>
-                  <Text fw={700} size="lg">17. 스마트콜</Text>
-                  <Text size="xs" c="dimmed">네이버 스마트콜 사용 여부</Text>
-                </div>
-              </Group>
-              <Table withTableBorder withColumnBorders highlightOnHover>
-                <Table.Tbody>
-                  <Table.Tr>
-                    <Table.Td style={{ width: '180px', backgroundColor: '#f8f9fa', fontWeight: 600 }}>사용 여부</Table.Td>
-                    <Table.Td>
+              {/* 17. 스마트콜 */}
+              <Card className="border-neutral-200">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-2 md:gap-3">
+                    <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                      <span className="text-base md:text-lg">📞</span>
+                    </div>
+                    <div>
+                      <CardTitle className="text-sm md:text-base font-bold text-neutral-900">17. 스마트콜</CardTitle>
+                      <p className="text-xs text-neutral-600">네이버 스마트콜 사용 여부</p>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-3 md:p-4 pt-0">
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-2 md:gap-3">
+                    <div className="lg:col-span-7 p-2 md:p-3 bg-neutral-50 rounded-lg border border-neutral-200">
                       {placeDetails.phone_number?.startsWith('0507') ? (
-                        <Badge color="green" size="lg">✓ 사용 중 ({placeDetails.phone_number})</Badge>
+                        <Badge className="bg-green-500 hover:bg-green-600 text-white text-xs md:text-sm">
+                          ✓ 사용 중 ({placeDetails.phone_number})
+                        </Badge>
                       ) : (
-                        <Badge color="gray" size="lg">미사용 {placeDetails.phone_number ? `(${placeDetails.phone_number})` : ''}</Badge>
+                        <Badge variant="outline" className="text-xs md:text-sm">
+                          미사용 {placeDetails.phone_number ? `(${placeDetails.phone_number})` : ''}
+                        </Badge>
                       )}
-                    </Table.Td>
-                    <Table.Td style={{ width: '320px' }}>
+                    </div>
+                    <div className="lg:col-span-5">
                       {renderDiagnosisCell('smart_call')}
-                    </Table.Td>
-                  </Table.Tr>
-                </Table.Tbody>
-              </Table>
-            </Paper>
-          </Stack>
-        </Paper>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Footer */}
-        <Paper p="md" style={{ backgroundColor: '#f8f9fa', textAlign: 'center' }}>
-          <Text size="xs" c="dimmed">
-            © {new Date().getFullYear()} Egurado Place Diagnosis Report • Generated on {new Date().toLocaleString('ko-KR')}
-          </Text>
-        </Paper>
-      </Container>
+        <Card className="bg-neutral-100 border-neutral-200 text-center">
+          <CardContent className="p-3 md:p-4">
+            <p className="text-xs text-neutral-600">
+              © {new Date().getFullYear()} Egurado Place Diagnosis Report • Generated on {new Date().toLocaleString('ko-KR')}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
     )
   }
 
   // 매장 선택 화면
   return (
-    <Container size="xl" px="md" py="xl" style={{ backgroundColor: '#f8f9fa', minHeight: '100vh' }}>
-      {/* Header */}
-      <Paper shadow="sm" p="xl" mb="xl" style={{ borderLeft: '6px solid #635bff' }}>
-        <Group gap="sm" mb="xs">
-          <FileText size={32} color="#635bff" />
-          <Title order={1} style={{ color: '#212529' }}>플레이스 진단</Title>
-        </Group>
-        <Text size="lg" c="dimmed">
+    <div className="w-full max-w-4xl mx-auto p-4 md:p-6 lg:p-8">
+      {/* 헤더 - TurboTax Style */}
+      <div className="mb-6 md:mb-8">
+        <h1 className="text-xl md:text-2xl font-bold text-neutral-900 mb-1.5 leading-tight">
+          플레이스 진단
+        </h1>
+        <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
           진단할 매장을 선택하세요
-        </Text>
-      </Paper>
+        </p>
+      </div>
 
-      {/* Loading State */}
-      {isLoadingStores && (
-        <Paper shadow="sm" p="xl">
-          <Center>
-            <Stack align="center" gap="md">
-              <Loader size="lg" color="#635bff" />
-              <Text c="dimmed">등록된 매장을 불러오는 중...</Text>
-            </Stack>
-          </Center>
-        </Paper>
-      )}
-
-      {/* Analyzing State */}
-      {isAnalyzing && (
-        <Paper shadow="sm" p="xl">
-          <Center>
-            <Stack align="center" gap="md">
-              <Loader size="xl" color="#635bff" />
-              <div style={{ textAlign: 'center' }}>
-                <Text size="lg" fw={600} mb="xs">플레이스 진단 중...</Text>
-                <Text c="dimmed">
-                  {selectedStore?.name} 매장의 정보를 가져오고 있습니다.
-                </Text>
-              </div>
-            </Stack>
-          </Center>
-        </Paper>
-      )}
-
-      {/* No Stores */}
-      {!isLoadingStores && !isAnalyzing && stores.length === 0 && (
-        <Paper shadow="sm" p="xl" style={{ backgroundColor: '#e3f2fd', border: '1px solid #90caf9' }}>
-          <Center>
-            <Stack align="center" gap="md">
-              <Store size={64} color="#2196f3" />
-              <Text c="dimmed" mb="md">
-                등록된 네이버 플레이스 매장이 없습니다.
-              </Text>
-              <Button
-                size="lg"
-                color="#635bff"
-                onClick={() => window.location.href = '/dashboard/connect-store'}
-              >
-                매장 등록하러 가기
-              </Button>
-            </Stack>
-          </Center>
-        </Paper>
-      )}
-
-      {/* Store Cards Grid */}
-      {!isLoadingStores && !isAnalyzing && stores.length > 0 && (
-        <Grid>
+      {/* 매장 목록 */}
+      {isLoading ? (
+        <Card className="shadow-card">
+          <CardContent className="p-12">
+            <div className="flex items-center justify-center gap-3">
+              <Loader2 className="h-5 w-5 animate-spin text-primary-500" />
+              <p className="text-sm text-neutral-600">등록된 매장을 불러오는 중...</p>
+            </div>
+          </CardContent>
+        </Card>
+      ) : isAnalyzing ? (
+        <Card className="shadow-card">
+          <CardContent className="p-12 flex flex-col items-center justify-center">
+            <Loader2 className="w-12 h-12 md:w-16 md:h-16 text-primary-500 animate-spin mb-4" />
+            <div className="text-center">
+              <p className="text-base md:text-lg font-semibold text-neutral-900 mb-2">플레이스 진단 중...</p>
+              <p className="text-sm md:text-base text-neutral-600">
+                {selectedStore?.name} 매장의 정보를 가져오고 있습니다.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      ) : stores.length === 0 ? (
+        <Card className="shadow-card">
+          <CardContent className="p-12 flex flex-col items-center justify-center">
+            <Store className="w-12 h-12 md:w-16 md:h-16 text-blue-500 mb-4" />
+            <p className="text-sm md:text-base text-neutral-600 mb-4 text-center">
+              등록된 네이버 플레이스 매장이 없습니다.
+            </p>
+            <Button
+              className="font-semibold"
+              onClick={() => window.location.href = '/dashboard/connect-store'}
+            >
+              매장 등록하러 가기
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
           {stores.map((store) => (
-            <Grid.Col key={store.id} span={{ base: 12, sm: 6, md: 4 }}>
-              <Card
-                shadow="sm"
-                padding="lg"
-                radius="md"
-                withBorder
-                style={{ height: '100%', cursor: 'pointer', transition: 'transform 0.2s, box-shadow 0.2s' }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-4px)'
-                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)'
-                  e.currentTarget.style.boxShadow = ''
-                }}
-              >
-                {/* Thumbnail */}
-                {store.thumbnail ? (
-                  <Card.Section>
-                    <div style={{ position: 'relative', width: '100%', paddingTop: '100%' }}>
-                      <img
-                        src={store.thumbnail}
-                        alt={store.name}
-                        style={{
-                          position: 'absolute',
-                          top: 0,
-                          left: 0,
-                          width: '100%',
-                          height: '100%',
-                          objectFit: 'cover'
-                        }}
-                      />
+            <Card key={store.id} className="rounded-card border-neutral-300 shadow-card hover:shadow-lg transition-all">
+              <CardContent className="p-4 md:p-6">
+                <div className="flex items-start gap-3 mb-4">
+                  {store.thumbnail ? (
+                    <img src={store.thumbnail} alt={store.name} className="w-12 h-12 md:w-16 md:h-16 rounded-lg object-cover flex-shrink-0" />
+                  ) : (
+                    <div className="w-12 h-12 md:w-16 md:h-16 rounded-lg bg-neutral-200 flex items-center justify-center flex-shrink-0">
+                      <Store className="w-6 h-6 md:w-8 md:h-8 text-neutral-500" />
                     </div>
-                  </Card.Section>
-                ) : (
-                  <Card.Section>
-                    <div style={{
-                      backgroundColor: '#f8f9fa',
-                      paddingTop: '100%',
-                      position: 'relative'
-                    }}>
-                      <Center style={{
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        width: '100%',
-                        height: '100%'
-                      }}>
-                        <Store size={64} color="#635bff" />
-                      </Center>
-                    </div>
-                  </Card.Section>
-                )}
-
-                {/* Store Info */}
-                <Stack gap="xs" mt="md" style={{ textAlign: 'center' }}>
-                  <Text fw={600} size="lg" lineClamp={1}>{store.name}</Text>
-                  <Text size="sm" c="dimmed" lineClamp={1}>{store.category}</Text>
-                  <Text size="xs" c="dimmed" lineClamp={2}>{store.address}</Text>
-                </Stack>
-
-                {/* Buttons */}
-                <Stack gap="xs" mt="md">
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-bold text-sm md:text-base text-neutral-900 mb-1 line-clamp-2 break-words">
+                      {store.name}
+                    </h3>
+                    <p className="text-xs md:text-sm text-neutral-600 line-clamp-1">{store.category}</p>
+                    <p className="text-xs text-neutral-500 line-clamp-1 mt-0.5">{store.address}</p>
+                  </div>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-2">
                   <Button
-                    fullWidth
-                    color="#635bff"
+                    className="flex-1 font-semibold"
                     onClick={() => handleStoreSelect(store)}
                   >
                     진단 시작하기
                   </Button>
                   <Button
-                    fullWidth
-                    variant="light"
-                    color="gray"
+                    variant="outline"
+                    className="flex-1 font-semibold border-neutral-300 hover:border-primary-400"
                     onClick={() => handleViewHistory(store)}
                   >
                     📜 과거 진단 보기
                   </Button>
-                </Stack>
-              </Card>
-            </Grid.Col>
+                </div>
+              </CardContent>
+            </Card>
           ))}
-        </Grid>
+        </div>
       )}
 
-      {/* Confirm Modal */}
-      <Modal
-        opened={showConfirmModal}
-        onClose={() => {
-          setShowConfirmModal(false)
-          setSelectedStore(null)
-        }}
-        title={<Text fw={700} size="lg">플레이스 진단</Text>}
-        centered
-      >
-        <Stack gap="md">
-          <Text>
-            <Text component="span" fw={600}>{selectedStore?.name}</Text> 매장의
-            플레이스 진단을 시작하시겠습니까?
-          </Text>
+      {/* Confirm Modal - 최적화된 디자인 */}
+      <Dialog open={showConfirmModal} onOpenChange={setShowConfirmModal}>
+        <DialogContent className="w-[calc(100%-32px)] sm:w-[calc(100%-64px)] max-w-xl mx-auto p-5 md:p-6">
+          <DialogHeader className="mb-4 md:mb-5">
+            <DialogTitle className="text-lg md:text-xl font-bold text-neutral-900">플레이스 진단</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 md:space-y-5">
+            {/* 질문 - 별도 박스 */}
+            <Card className="bg-neutral-50 border-neutral-200">
+              <CardContent className="p-4 md:p-5">
+                <p className="text-sm md:text-base text-neutral-900 leading-relaxed">
+                  <span className="font-bold text-primary-600">{selectedStore?.name}</span> 매장의
+                  플레이스 진단을 시작하시겠습니까?
+                </p>
+              </CardContent>
+            </Card>
 
-          <Paper p="md" style={{ backgroundColor: '#e3f2fd', border: '1px solid #90caf9' }}>
-            <Group gap="xs" align="flex-start">
-              <AlertCircle size={20} color="#2196f3" />
-              <div>
-                <Text size="sm" fw={600} mb="xs">진단 내용</Text>
-                <Text size="sm">네이버 플레이스에 등록된 모든 정보를 가져와서 분석합니다.</Text>
-              </div>
-            </Group>
-          </Paper>
+            {/* 진단 내용 설명 */}
+            <Card className="bg-blue-50 border-blue-200">
+              <CardContent className="p-4 md:p-5">
+                <div className="flex gap-3">
+                  <AlertCircle className="w-5 h-5 md:w-6 md:h-6 text-blue-500 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm md:text-base font-semibold text-neutral-900 mb-2">📊 진단 내용</p>
+                    <p className="text-xs md:text-sm text-neutral-700 leading-relaxed">
+                      네이버 플레이스에 등록된 <span className="font-semibold">모든 정보</span>를 가져와서 
+                      <span className="font-semibold"> 17개 항목</span>에 대해 종합 분석을 진행합니다.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
-          <Group justify="flex-end" gap="xs">
+          <div className="flex flex-col md:flex-row gap-3 mt-5 md:mt-6">
             <Button
               variant="outline"
-              color="gray"
+              className="flex-1 font-semibold h-11 md:h-12 text-sm md:text-base border-neutral-300 hover:border-neutral-400"
               onClick={() => {
                 setShowConfirmModal(false)
                 setSelectedStore(null)
@@ -1553,82 +1490,77 @@ export default function AuditPage() {
               취소하기
             </Button>
             <Button
-              color="#635bff"
-              leftSection={<CheckCircle2 size={16} />}
-              onClick={handleStartAudit}
+              className="flex-1 font-semibold h-11 md:h-12 text-sm md:text-base"
+              onClick={handleStartDiagnosis}
             >
+              <CheckCircle2 className="w-4 h-4 md:w-5 md:h-5 mr-2" />
               바로 시작하기
             </Button>
-          </Group>
-        </Stack>
-      </Modal>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* History Modal */}
-      <Modal
-        opened={showHistoryModal}
-        onClose={handleCloseHistoryModal}
-        title={
-          <div>
-            <Text fw={700} size="lg">과거 진단 기록</Text>
-            <Text size="sm" c="dimmed">{selectedStore?.name} - 최근 30개까지 저장됩니다</Text>
-          </div>
-        }
-        size="xl"
-        centered
-      >
-        {isLoadingHistory && (
-          <Center py="xl">
-            <Loader size="lg" color="#635bff" />
-          </Center>
-        )}
+      <Dialog open={showHistoryModal} onOpenChange={setShowHistoryModal}>
+        <DialogContent className="w-[calc(100%-32px)] sm:w-[calc(100%-64px)] max-w-2xl max-h-[80vh] overflow-y-auto mx-auto p-5 md:p-6">
+          <DialogHeader className="mb-4 md:mb-5">
+            <DialogTitle className="text-lg md:text-xl font-bold text-neutral-900">과거 진단 기록</DialogTitle>
+            <p className="text-xs md:text-sm text-neutral-600 mt-1">{selectedStore?.name} - 최근 30개까지 저장됩니다</p>
+          </DialogHeader>
 
-        {!isLoadingHistory && diagnosisHistory.length === 0 && (
-          <Center py="xl">
-            <Text c="dimmed">아직 진단 기록이 없습니다.</Text>
-          </Center>
-        )}
+          {isLoadingHistory && (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 text-primary-500 animate-spin" />
+            </div>
+          )}
 
-        {!isLoadingHistory && diagnosisHistory.length > 0 && (
-          <Stack gap="sm">
-            {diagnosisHistory.map((history) => (
-              <Card
-                key={history.id}
-                shadow="sm"
-                padding="md"
-                radius="md"
-                withBorder
-                style={{ cursor: 'pointer' }}
-                onClick={() => handleViewHistoryDetail(history.id)}
-              >
-                <Group justify="space-between">
-                  <div>
-                    <Group gap="xs" mb="xs">
-                      <Text fw={600}>
-                        {new Date(history.diagnosed_at).toLocaleDateString('ko-KR', {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                      </Text>
-                      <Badge color={getGradeColor(history.grade)}>
-                        {history.grade}등급
-                      </Badge>
-                    </Group>
-                    <Text size="sm" c="dimmed">
-                      점수: {history.total_score}점 / {history.max_score}점
-                    </Text>
-                  </div>
-                  <Button variant="light" size="sm">
-                    자세히 보기 →
-                  </Button>
-                </Group>
-              </Card>
-            ))}
-          </Stack>
-        )}
-      </Modal>
-    </Container>
+          {!isLoadingHistory && diagnosisHistory.length === 0 && (
+            <div className="flex items-center justify-center py-12">
+              <p className="text-sm md:text-base text-neutral-600">아직 진단 기록이 없습니다.</p>
+            </div>
+          )}
+
+          {!isLoadingHistory && diagnosisHistory.length > 0 && (
+            <div className="space-y-3">
+              {diagnosisHistory.map((history) => (
+                <Card
+                  key={history.id}
+                  className="border-neutral-200 hover:shadow-lg transition-all cursor-pointer"
+                  onClick={() => handleViewHistoryDetail(history.id)}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2 mb-2">
+                          <p className="font-semibold text-sm md:text-base text-neutral-900">
+                            {new Date(history.diagnosed_at).toLocaleDateString('ko-KR', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric',
+                            })} {new Date(history.diagnosed_at).toLocaleTimeString('ko-KR', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </p>
+                          <Badge className={`${getGradeColor(history.grade)} text-white text-xs`}>
+                            {history.grade}등급
+                          </Badge>
+                        </div>
+                        <p className="text-xs md:text-sm text-neutral-600">
+                          점수: {history.total_score}점 / {history.max_score}점
+                        </p>
+                      </div>
+                      <Button variant="outline" size="sm" className="w-full sm:w-auto text-xs md:text-sm">
+                        자세히 보기 →
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
   )
 }
