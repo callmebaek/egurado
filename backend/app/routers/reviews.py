@@ -1076,15 +1076,28 @@ async def get_place_info(store_id: str):
         if not place_info.get("name"):
             place_info["name"] = store.get("name", "")
         
-        # 썸네일이 없으면 stores 테이블의 thumbnail_url 사용 (fallback)
+        # 썸네일 디버깅
+        print(f"[DEBUG] 썸네일 체크:", flush=True)
+        print(f"  - place_info.get('image_url'): {place_info.get('image_url')}", flush=True)
+        print(f"  - place_info.get('thumbnail'): {place_info.get('thumbnail')}", flush=True)
+        print(f"  - store.get('thumbnail'): {store.get('thumbnail')}", flush=True)
+        print(f"  - store keys: {list(store.keys())}", flush=True)
+        
+        # 썸네일이 없으면 stores 테이블의 thumbnail 사용 (fallback)
         if not place_info.get("image_url") and not place_info.get("thumbnail"):
-            fallback_thumbnail = store.get("thumbnail_url") or store.get("thumbnail")
+            fallback_thumbnail = store.get("thumbnail")
+            print(f"[DEBUG] Fallback 조건 충족! fallback_thumbnail: {fallback_thumbnail}", flush=True)
             if fallback_thumbnail:
                 place_info["image_url"] = fallback_thumbnail
                 place_info["thumbnail"] = fallback_thumbnail
-                print(f"[DEBUG] Supabase thumbnail_url 사용: {fallback_thumbnail}", flush=True)
-                logger.info(f"📸 Supabase thumbnail_url fallback 적용: {fallback_thumbnail}")
+                print(f"[DEBUG] ✅ Supabase thumbnail 적용 완료!", flush=True)
+                logger.info(f"📸 Supabase thumbnail fallback 적용: {fallback_thumbnail}")
+            else:
+                print(f"[DEBUG] ❌ Supabase에도 thumbnail 없음!", flush=True)
+        else:
+            print(f"[DEBUG] ℹ️ 네이버 API에서 썸네일 받음 (fallback 불필요)", flush=True)
         
+        print(f"[DEBUG] 최종 place_info: {place_info}", flush=True)
         logger.info(f"매장 정보 조회 완료: {place_info}")
         return {
             "status": "success",
