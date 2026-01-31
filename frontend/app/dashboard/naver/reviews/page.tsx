@@ -542,6 +542,7 @@ export default function ReviewManagementPage() {
     setTotalReviewsCount(0)
     
     setExtracting(true) // 추출 중 상태
+    setExtractingSummary(false) // AI 요약 추출 상태 초기화
     setAnalysisProgress(0)
     
     try {
@@ -652,6 +653,12 @@ export default function ReviewManagementPage() {
               setAnalysisProgress(progress)
               setAnalyzedCount(data.current)
               console.log(`⏳ 진행: ${data.current}/${data.total} (${progress}%)`)
+              
+              // 100% 도달 시 즉시 AI 요약 추출 메시지 표시
+              if (progress === 100) {
+                console.log("✨ 100% 도달! AI 요약 추출 메시지 표시")
+                setExtractingSummary(true)
+              }
               break
               
             case 'review_analyzed':
@@ -692,18 +699,12 @@ export default function ReviewManagementPage() {
               clearTimeout(sseTimeout) // 타임아웃 클리어
               eventSource.close()
               
-              setAnalysisProgress(100)
-              
               // savedDate를 먼저 추출 (closure 문제 방지)
               const savedDate = data.saved_date || dateRange.end_date
               const totalAnalyzed = data.total_analyzed
               
-              // 100% 후 0.5초 대기 후 AI 요약 추출 메시지 표시
-              setTimeout(async () => {
-                console.log("✨ AI 요약 추출 시작 - extractingSummary를 true로 설정")
-                setExtractingSummary(true) // AI 요약 추출 중
-                
-                // 즉시 데이터 로드 시작 (메시지는 로드 완료될 때까지 계속 표시)
+              // complete 이벤트에서 즉시 데이터 로드 시작 (extractingSummary는 이미 progress에서 true로 설정됨)
+              ;(async () => {
                 try {
                   // 통계 및 리뷰 목록 새로고침 (백엔드가 저장한 날짜로 조회)
                   console.log("📊 통계 로딩 시작 (AI 요약 포함)")
@@ -751,7 +752,7 @@ export default function ReviewManagementPage() {
                   setExtractingSummary(false)
                   setAnalyzing(false)
                 }
-              }, 500) // 100% 후 0.5초 대기
+              })()
               break
               
             case 'error':
