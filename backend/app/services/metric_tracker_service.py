@@ -409,8 +409,8 @@ class MetricTrackerService:
                             f"[Metrics Collect] ✅ 재시도 성공: rank={rank_result.get('rank')}"
                         )
             
-            # 지표 데이터 구성
-            today = date.today()
+            # 지표 데이터 구성 (KST 시간대 사용)
+            today = datetime.now(KST).date()
             metric_data = {
                 'tracker_id': tracker_id,
                 'keyword_id': tracker['keyword_id'],
@@ -419,7 +419,7 @@ class MetricTrackerService:
                 'rank': rank_result.get('rank'),
                 'visitor_review_count': rank_result.get('visitor_review_count', 0),
                 'blog_review_count': rank_result.get('blog_review_count', 0),
-                'collected_at': datetime.now().isoformat()
+                'collected_at': datetime.now(KST).isoformat()
             }
             
             # 전일 데이터 조회 (순위 변동 계산)
