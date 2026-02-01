@@ -825,6 +825,13 @@ class NaverReviewService:
         try:
             logger.info(f"매장 정보 조회 시작: place_id={place_id}, store_name='{store_name}', x={coord_x}, y={coord_y}")
             
+            # #region agent log
+            import httpx as _httpx
+            try:
+                await _httpx.AsyncClient().post('http://127.0.0.1:7242/ingest/5225ed4a-ae1a-48e3-babe-f4c35d5f29b0',json={'location':'naver_review_service.py:826','message':'C1: get_place_info 시작','data':{'place_id':place_id,'store_name':store_name,'x':x,'y':y,'coord_x':coord_x,'coord_y':coord_y,'search_query':search_query},'timestamp':__import__('datetime').datetime.now().timestamp()*1000,'sessionId':'debug-session','hypothesisId':'B,C,D'},timeout=1.0)
+            except: pass
+            # #endregion
+            
             # 매장명이 없으면 리뷰에서 가져오기 시도
             if not store_name or store_name.strip() == "":
                 logger.warning(f"[WARN] 매장명 없음. 리뷰에서 매장명 추출 시도")
@@ -862,6 +869,12 @@ class NaverReviewService:
                 
                 items = data.get("data", {}).get("places", {}).get("items", [])
                 
+                # #region agent log
+                try:
+                    await _httpx.AsyncClient().post('http://127.0.0.1:7242/ingest/5225ed4a-ae1a-48e3-babe-f4c35d5f29b0',json={'location':'naver_review_service.py:863','message':'C2: GraphQL 검색 결과','data':{'search_query':search_query,'items_count':len(items),'items_ids':[str(item.get('id')) for item in items],'items_names':[item.get('name') for item in items],'target_place_id':place_id},'timestamp':__import__('datetime').datetime.now().timestamp()*1000,'sessionId':'debug-session','hypothesisId':'B,E'},timeout=1.0)
+                except: pass
+                # #endregion
+                
                 logger.info(f"검색 결과 수: {len(items)}")
                 if items:
                     for idx, item in enumerate(items):
@@ -869,6 +882,13 @@ class NaverReviewService:
                 
                 if not items:
                     logger.warning(f"검색 결과 없음: query={search_query}, place_id={place_id}")
+                    
+                    # #region agent log
+                    try:
+                        await _httpx.AsyncClient().post('http://127.0.0.1:7242/ingest/5225ed4a-ae1a-48e3-babe-f4c35d5f29b0',json={'location':'naver_review_service.py:870','message':'C3: 검색 결과 없음','data':{'search_query':search_query,'place_id':place_id,'coord_x':coord_x,'coord_y':coord_y},'timestamp':__import__('datetime').datetime.now().timestamp()*1000,'sessionId':'debug-session','hypothesisId':'B,E'},timeout=1.0)
+                    except: pass
+                    # #endregion
+                    
                     return None
                 
                 # place_id가 정확히 일치하는 항목 찾기
@@ -925,6 +945,12 @@ class NaverReviewService:
                     "image_url": place.get("imageUrl", ""),
                     "thumbnail": place.get("imageUrl", ""),  # 호환성
                 }
+                
+                # #region agent log
+                try:
+                    await _httpx.AsyncClient().post('http://127.0.0.1:7242/ingest/5225ed4a-ae1a-48e3-babe-f4c35d5f29b0',json={'location':'naver_review_service.py:929','message':'C4: get_place_info 성공','data':{'result_place_id':result['place_id'],'result_name':result['name'],'visitor_review_count':result['visitor_review_count'],'blog_review_count':result['blog_review_count'],'requested_place_id':place_id,'id_match':result['place_id']==str(place_id)},'timestamp':__import__('datetime').datetime.now().timestamp()*1000,'sessionId':'debug-session','hypothesisId':'B,D,E'},timeout=1.0)
+                except: pass
+                # #endregion
                 
                 logger.info(f"매장 정보 조회 성공: {result}")
                 return result
