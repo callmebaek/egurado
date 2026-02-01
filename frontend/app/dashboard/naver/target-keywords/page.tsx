@@ -759,12 +759,12 @@ export default function TargetKeywordsPage() {
           <CardTitle className="text-base md:text-lg font-bold text-neutral-900">분석 설정</CardTitle>
           <CardDescription className="text-xs md:text-sm text-neutral-600">매장과 키워드 정보를 입력하세요</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-5">
           {/* 매장 선택 */}
           <div className="space-y-2">
-            <Label htmlFor="store-select">매장 선택 *</Label>
+            <Label htmlFor="store-select" className="text-sm font-semibold">매장 선택 *</Label>
             <Select value={selectedStore} onValueChange={setSelectedStore}>
-              <SelectTrigger id="store-select">
+              <SelectTrigger id="store-select" className="h-12 text-base">
                 <SelectValue placeholder="분석할 매장을 선택하세요" />
               </SelectTrigger>
               <SelectContent>
@@ -782,10 +782,10 @@ export default function TargetKeywordsPage() {
 
           {/* 지역명 입력 */}
           <div className="space-y-2">
-            <Label>지역명 (구, 동, 역세권 등)</Label>
+            <Label className="text-sm font-semibold">지역명 (구, 동, 역세권 등)</Label>
             <div className="flex gap-2">
               <Input
-                placeholder="예: 종로, 성수, 강남 등"
+                placeholder="예: 종로, 성수, 강남"
                 value={tempRegion}
                 onChange={(e) => setTempRegion(e.target.value)}
                 onKeyPress={(e) => {
@@ -793,35 +793,38 @@ export default function TargetKeywordsPage() {
                     addKeyword(tempRegion, setRegions, setTempRegion)
                   }
                 }}
+                className="h-12 text-base"
               />
               <Button
                 type="button"
                 variant="outline"
-                size="icon"
+                className="h-12 w-12 flex-shrink-0"
                 onClick={() => addKeyword(tempRegion, setRegions, setTempRegion)}
               >
-                <Plus className="h-4 w-4" />
+                <Plus className="h-5 w-5" />
               </Button>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {regions.map((region, index) => (
-                <Badge key={index} variant="secondary" className="gap-1">
-                  {region}
-                  <X
-                    className="h-3 w-3 cursor-pointer"
-                    onClick={() => removeKeyword(index, setRegions)}
-                  />
-                </Badge>
-              ))}
-            </div>
+            {regions.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {regions.map((region, index) => (
+                  <Badge key={index} variant="secondary" className="gap-1 text-sm py-1 px-2">
+                    {region}
+                    <X
+                      className="h-3.5 w-3.5 cursor-pointer"
+                      onClick={() => removeKeyword(index, setRegions)}
+                    />
+                  </Badge>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* 랜드마크 입력 */}
           <div className="space-y-2">
-            <Label>랜드마크 (역, 건물, 명소 등)</Label>
+            <Label className="text-sm font-semibold">랜드마크 (역, 건물, 명소 등)</Label>
             <div className="flex gap-2">
               <Input
-                placeholder="예: 성수역, 종로타워, 보신각 등"
+                placeholder="예: 성수역, 종로타워"
                 value={tempLandmark}
                 onChange={(e) => setTempLandmark(e.target.value)}
                 onKeyPress={(e) => {
@@ -829,35 +832,38 @@ export default function TargetKeywordsPage() {
                     addKeyword(tempLandmark, setLandmarks, setTempLandmark)
                   }
                 }}
+                className="h-12 text-base"
               />
               <Button
                 type="button"
                 variant="outline"
-                size="icon"
+                className="h-12 w-12 flex-shrink-0"
                 onClick={() => addKeyword(tempLandmark, setLandmarks, setTempLandmark)}
               >
-                <Plus className="h-4 w-4" />
+                <Plus className="h-5 w-5" />
               </Button>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {landmarks.map((landmark, index) => (
-                <Badge key={index} variant="secondary" className="gap-1">
-                  {landmark}
-                  <X
-                    className="h-3 w-3 cursor-pointer"
-                    onClick={() => removeKeyword(index, setLandmarks)}
-                  />
-                </Badge>
-              ))}
-            </div>
+            {landmarks.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {landmarks.map((landmark, index) => (
+                  <Badge key={index} variant="secondary" className="gap-1 text-sm py-1 px-2">
+                    {landmark}
+                    <X
+                      className="h-3.5 w-3.5 cursor-pointer"
+                      onClick={() => removeKeyword(index, setLandmarks)}
+                    />
+                  </Badge>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* 메뉴/상품명 입력 */}
           <div className="space-y-2">
-            <Label>메뉴 또는 상품명</Label>
+            <Label className="text-sm font-semibold">메뉴 또는 상품명</Label>
             <div className="flex gap-2">
               <Input
-                placeholder="예: 보쌈, 칼국수, 커피, 헤어컷 등"
+                placeholder="예: 보쌈, 칼국수, 커피"
                 value={tempMenu}
                 onChange={(e) => setTempMenu(e.target.value)}
                 onKeyPress={(e) => {
@@ -865,35 +871,38 @@ export default function TargetKeywordsPage() {
                     addKeyword(tempMenu, setMenus, setTempMenu)
                   }
                 }}
+                className="h-12 text-base"
               />
               <Button
                 type="button"
                 variant="outline"
-                size="icon"
+                className="h-12 w-12 flex-shrink-0"
                 onClick={() => addKeyword(tempMenu, setMenus, setTempMenu)}
               >
-                <Plus className="h-4 w-4" />
+                <Plus className="h-5 w-5" />
               </Button>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {menus.map((menu, index) => (
-                <Badge key={index} variant="secondary" className="gap-1">
-                  {menu}
-                  <X
-                    className="h-3 w-3 cursor-pointer"
-                    onClick={() => removeKeyword(index, setMenus)}
-                  />
-                </Badge>
-              ))}
-            </div>
+            {menus.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {menus.map((menu, index) => (
+                  <Badge key={index} variant="secondary" className="gap-1 text-sm py-1 px-2">
+                    {menu}
+                    <X
+                      className="h-3.5 w-3.5 cursor-pointer"
+                      onClick={() => removeKeyword(index, setMenus)}
+                    />
+                  </Badge>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* 업종 입력 */}
           <div className="space-y-2">
-            <Label>업종</Label>
+            <Label className="text-sm font-semibold">업종</Label>
             <div className="flex gap-2">
               <Input
-                placeholder="예: 맛집, 카페, 헤어샵, 사진관 등"
+                placeholder="예: 맛집, 카페, 헤어샵"
                 value={tempIndustry}
                 onChange={(e) => setTempIndustry(e.target.value)}
                 onKeyPress={(e) => {
@@ -901,35 +910,38 @@ export default function TargetKeywordsPage() {
                     addKeyword(tempIndustry, setIndustries, setTempIndustry)
                   }
                 }}
+                className="h-12 text-base"
               />
               <Button
                 type="button"
                 variant="outline"
-                size="icon"
+                className="h-12 w-12 flex-shrink-0"
                 onClick={() => addKeyword(tempIndustry, setIndustries, setTempIndustry)}
               >
-                <Plus className="h-4 w-4" />
+                <Plus className="h-5 w-5" />
               </Button>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {industries.map((industry, index) => (
-                <Badge key={index} variant="secondary" className="gap-1">
-                  {industry}
-                  <X
-                    className="h-3 w-3 cursor-pointer"
-                    onClick={() => removeKeyword(index, setIndustries)}
-                  />
-                </Badge>
-              ))}
-            </div>
+            {industries.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {industries.map((industry, index) => (
+                  <Badge key={index} variant="secondary" className="gap-1 text-sm py-1 px-2">
+                    {industry}
+                    <X
+                      className="h-3.5 w-3.5 cursor-pointer"
+                      onClick={() => removeKeyword(index, setIndustries)}
+                    />
+                  </Badge>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* 기타 키워드 입력 */}
           <div className="space-y-2">
-            <Label>기타 (판매형태, 특징 등)</Label>
+            <Label className="text-sm font-semibold">기타 (판매형태, 특징 등)</Label>
             <div className="flex gap-2">
               <Input
-                placeholder="예: 단체주문, 회식, 데이트 등"
+                placeholder="예: 단체주문, 회식, 데이트"
                 value={tempOther}
                 onChange={(e) => setTempOther(e.target.value)}
                 onKeyPress={(e) => {
@@ -937,53 +949,56 @@ export default function TargetKeywordsPage() {
                     addKeyword(tempOther, setOthers, setTempOther)
                   }
                 }}
+                className="h-12 text-base"
               />
               <Button
                 type="button"
                 variant="outline"
-                size="icon"
+                className="h-12 w-12 flex-shrink-0"
                 onClick={() => addKeyword(tempOther, setOthers, setTempOther)}
               >
-                <Plus className="h-4 w-4" />
+                <Plus className="h-5 w-5" />
               </Button>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {others.map((other, index) => (
-                <Badge key={index} variant="secondary" className="gap-1">
-                  {other}
-                  <X
-                    className="h-3 w-3 cursor-pointer"
-                    onClick={() => removeKeyword(index, setOthers)}
-                  />
-                </Badge>
-              ))}
-            </div>
+            {others.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {others.map((other, index) => (
+                  <Badge key={index} variant="secondary" className="gap-1 text-sm py-1 px-2">
+                    {other}
+                    <X
+                      className="h-3.5 w-3.5 cursor-pointer"
+                      onClick={() => removeKeyword(index, setOthers)}
+                    />
+                  </Badge>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* 분석 버튼 */}
-          <div className="space-y-2">
+          <div className="space-y-3 pt-2">
             <Button
               onClick={handleAnalyze}
               disabled={isAnalyzing || !selectedStore}
-              className="w-full font-semibold h-11 md:h-12"
+              className="w-full font-semibold h-12 md:h-13 text-base"
               size="lg"
             >
               {isAnalyzing ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 md:h-5 md:w-5 animate-spin" />
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                   분석 중...
                 </>
               ) : (
                 <>
-                  <Search className="mr-2 h-4 w-4 md:h-5 md:w-5" />
+                  <Search className="mr-2 h-5 w-5" />
                   타겟 키워드 분석 시작
                 </>
               )}
             </Button>
             {isAnalyzing && (
-              <div className="text-center">
-                <p className="text-sm text-neutral-600">
-                  잠시만 기다려주세요! ⏱️ <span className="font-semibold text-primary-600">{getEstimatedTime()}</span> 걸립니다
+              <div className="text-center bg-primary-50 rounded-lg p-3">
+                <p className="text-sm text-neutral-700">
+                  ⏱️ 잠시만 기다려주세요! 예상 소요시간: <span className="font-bold text-primary-600">{getEstimatedTime()}</span>
                 </p>
               </div>
             )}

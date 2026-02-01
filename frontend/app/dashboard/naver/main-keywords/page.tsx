@@ -253,11 +253,11 @@ export default function MainKeywordsAnalysisPage() {
       <div className="space-y-6 md:space-y-8">
       
       {/* 검색 입력 */}
-      <Card className="p-6">
-        <div className="flex gap-3">
+      <Card className="p-4 md:p-6">
+        <div className="flex flex-col sm:flex-row gap-3">
           <div className="flex-1">
             <Input
-              placeholder="분석할 검색 키워드를 입력하세요 (예: 혜화맛집, 성수카페)"
+              placeholder="예: 혜화맛집, 성수카페"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => {
@@ -265,24 +265,23 @@ export default function MainKeywordsAnalysisPage() {
                   handleAnalyze()
                 }
               }}
-              className="text-base"
+              className="h-12 text-base"
               disabled={loading}
             />
           </div>
           <Button
             onClick={handleAnalyze}
             disabled={loading || !searchQuery.trim()}
-            size="lg"
-            className="px-8"
+            className="h-12 px-6 md:px-8 font-semibold text-base w-full sm:w-auto"
           >
             {loading ? (
               <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
                 분석 중...
               </>
             ) : (
               <>
-                <Search className="w-4 h-4 mr-2" />
+                <Search className="w-5 h-5 mr-2" />
                 분석하기
               </>
             )}
