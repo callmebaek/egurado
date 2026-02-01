@@ -139,7 +139,6 @@ export default function NaverAuditPage() {
   const [selectedStore, setSelectedStore] = useState<RegisteredStore | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
-  const [showConfirmModal, setShowConfirmModal] = useState(false)
   const [placeDetails, setPlaceDetails] = useState<PlaceDetails | null>(null)
   const [diagnosisResult, setDiagnosisResult] = useState<DiagnosisResult | null>(null)
   
@@ -199,19 +198,14 @@ export default function NaverAuditPage() {
     }
   }
 
-  const handleStoreSelect = (store: RegisteredStore) => {
+  // 매장 선택 시 바로 진단 시작 (모달 없이)
+  const handleStoreSelect = async (store: RegisteredStore) => {
     setSelectedStore(store)
-    setShowConfirmModal(true)
-  }
-
-  const handleStartDiagnosis = async () => {
-    if (!selectedStore) return
-
+    
     try {
-      setShowConfirmModal(false)
       setIsAnalyzing(true)
-      console.log("🔍 플레이스 진단 시작:", selectedStore.place_id, selectedStore.name)
-      const url = api.naver.analyzePlaceDetails(selectedStore.place_id, selectedStore.name, selectedStore.id)
+      console.log("🔍 플레이스 진단 시작:", store.place_id, store.name)
+      const url = api.naver.analyzePlaceDetails(store.place_id, store.name, store.id)
       console.log("📡 API URL:", url)
       
       const token = getToken()
@@ -241,7 +235,7 @@ export default function NaverAuditPage() {
 
       toast({
         title: "✅ 진단 완료",
-        description: `${selectedStore.name} 매장의 진단이 완료되었습니다.`,
+        description: `${store.name} 매장의 진단이 완료되었습니다.`,
       })
 
       // 진단 완료 후 종합 요약 섹션으로 스크롤
@@ -1367,7 +1361,7 @@ export default function NaverAuditPage() {
       {/* 매장 목록 */}
       {isLoading ? (
         <Card className="shadow-card">
-          <CardContent className="p-12">
+          <CardContent className="p-8 md:p-12">
             <div className="flex items-center justify-center gap-3">
               <Loader2 className="h-5 w-5 animate-spin text-primary-500" />
               <p className="text-sm text-neutral-600">등록된 매장을 불러오는 중...</p>
@@ -1376,7 +1370,7 @@ export default function NaverAuditPage() {
         </Card>
       ) : isAnalyzing ? (
         <Card className="shadow-card">
-          <CardContent className="p-12 flex flex-col items-center justify-center">
+          <CardContent className="p-8 md:p-12 flex flex-col items-center justify-center">
             <Loader2 className="w-12 h-12 md:w-16 md:h-16 text-primary-500 animate-spin mb-4" />
             <div className="text-center">
               <p className="text-base md:text-lg font-semibold text-neutral-900 mb-2">플레이스 진단 중...</p>
@@ -1388,13 +1382,13 @@ export default function NaverAuditPage() {
         </Card>
       ) : stores.length === 0 ? (
         <Card className="shadow-card">
-          <CardContent className="p-12 flex flex-col items-center justify-center">
+          <CardContent className="p-8 md:p-12 flex flex-col items-center justify-center">
             <Store className="w-12 h-12 md:w-16 md:h-16 text-blue-500 mb-4" />
             <p className="text-sm md:text-base text-neutral-600 mb-4 text-center">
               등록된 네이버 플레이스 매장이 없습니다.
             </p>
             <Button
-              className="font-semibold"
+              className="font-semibold w-full sm:w-auto"
               onClick={() => window.location.href = '/dashboard/connect-store'}
             >
               매장 등록하러 가기
@@ -1402,37 +1396,50 @@ export default function NaverAuditPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
           {stores.map((store) => (
             <Card key={store.id} className="rounded-card border-neutral-300 shadow-card hover:shadow-lg transition-all">
-              <CardContent className="p-4 md:p-6">
+              <CardContent className="p-4">
                 <div className="flex items-start gap-3 mb-4">
                   {store.thumbnail ? (
-                    <img src={store.thumbnail} alt={store.name} className="w-12 h-12 md:w-16 md:h-16 rounded-lg object-cover flex-shrink-0" />
+                    <img 
+                      src={store.thumbnail} 
+                      alt={store.name} 
+                      className="w-16 h-16 rounded-lg object-cover flex-shrink-0" 
+                    />
                   ) : (
-                    <div className="w-12 h-12 md:w-16 md:h-16 rounded-lg bg-neutral-200 flex items-center justify-center flex-shrink-0">
-                      <Store className="w-6 h-6 md:w-8 md:h-8 text-neutral-500" />
+                    <div className="w-16 h-16 rounded-lg bg-neutral-200 flex items-center justify-center flex-shrink-0">
+                      <Store className="w-8 h-8 text-neutral-500" />
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-sm md:text-base text-neutral-900 mb-1 line-clamp-2 break-words">
+                    <h3 className="font-bold text-base text-neutral-900 mb-1.5 line-clamp-2 break-words leading-snug">
                       {store.name}
                     </h3>
-                    <p className="text-xs md:text-sm text-neutral-600 line-clamp-1">{store.category}</p>
-                    <p className="text-xs text-neutral-500 line-clamp-1 mt-0.5">{store.address}</p>
+                    <p className="text-sm text-neutral-600 line-clamp-1 mb-0.5">{store.category}</p>
+                    <p className="text-xs text-neutral-500 line-clamp-2 break-words">{store.address}</p>
                   </div>
                 </div>
-                <div className="flex flex-col sm:flex-row gap-2">
+                <div className="flex flex-col gap-2">
                   <Button
-                    className="flex-1 font-semibold h-12 md:h-11"
+                    className="w-full font-semibold h-11 text-sm"
                     onClick={() => handleStoreSelect(store)}
+                    disabled={isAnalyzing}
                   >
-                    진단 시작하기
+                    {isAnalyzing && selectedStore?.id === store.id ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        진단 중...
+                      </>
+                    ) : (
+                      "진단 시작하기"
+                    )}
                   </Button>
                   <Button
                     variant="outline"
-                    className="flex-1 font-semibold h-12 md:h-11 border-neutral-300 hover:border-primary-400"
+                    className="w-full font-semibold h-11 text-sm border-neutral-300 hover:border-primary-400"
                     onClick={() => handleViewHistory(store)}
+                    disabled={isAnalyzing}
                   >
                     📜 과거 진단 보기
                   </Button>
@@ -1443,125 +1450,71 @@ export default function NaverAuditPage() {
         </div>
       )}
 
-      {/* Confirm Modal - 최적화된 디자인 */}
-      <Dialog open={showConfirmModal} onOpenChange={setShowConfirmModal}>
-        <DialogContent className="w-[calc(100%-32px)] sm:w-[calc(100%-64px)] max-w-xl mx-auto p-5 md:p-6">
-          <DialogHeader className="mb-4 md:mb-5">
-            <DialogTitle className="text-lg md:text-xl font-bold text-neutral-900">플레이스 진단</DialogTitle>
-            <DialogDescription className="sr-only">
-              네이버 플레이스 매장의 종합 진단을 시작합니다
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4 md:space-y-5">
-            {/* 질문 - 별도 박스 */}
-            <Card className="bg-neutral-50 border-neutral-200">
-              <CardContent className="p-4 md:p-5">
-                <p className="text-sm md:text-base text-neutral-900 leading-relaxed">
-                  <span className="font-bold text-primary-600">{selectedStore?.name}</span> 매장의
-                  플레이스 진단을 시작하시겠습니까?
-                </p>
-              </CardContent>
-            </Card>
-
-            {/* 진단 내용 설명 */}
-            <Card className="bg-blue-50 border-blue-200">
-              <CardContent className="p-4 md:p-5">
-                <div className="flex gap-3">
-                  <AlertCircle className="w-5 h-5 md:w-6 md:h-6 text-blue-500 flex-shrink-0 mt-0.5" />
-                  <div className="flex-1">
-                    <p className="text-sm md:text-base font-semibold text-neutral-900 mb-2">📊 진단 내용</p>
-                    <p className="text-xs md:text-sm text-neutral-700 leading-relaxed">
-                      네이버 플레이스에 등록된 <span className="font-semibold">모든 정보</span>를 가져와서 
-                      <span className="font-semibold"> 17개 항목</span>에 대해 종합 분석을 진행합니다.
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="flex flex-col md:flex-row gap-3 mt-5 md:mt-6">
-            <Button
-              variant="outline"
-              className="flex-1 font-semibold h-11 md:h-12 text-sm md:text-base border-neutral-300 hover:border-neutral-400"
-              onClick={() => {
-                setShowConfirmModal(false)
-                setSelectedStore(null)
-              }}
-            >
-              취소하기
-            </Button>
-            <Button
-              className="flex-1 font-semibold h-11 md:h-12 text-sm md:text-base"
-              onClick={handleStartDiagnosis}
-            >
-              <CheckCircle2 className="w-4 h-4 md:w-5 md:h-5 mr-2" />
-              바로 시작하기
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
       {/* History Modal */}
       <Dialog open={showHistoryModal} onOpenChange={setShowHistoryModal}>
-        <DialogContent className="w-[calc(100%-32px)] sm:w-[calc(100%-64px)] max-w-2xl max-h-[80vh] overflow-y-auto mx-auto p-5 md:p-6">
-          <DialogHeader className="mb-4 md:mb-5">
-            <DialogTitle className="text-lg md:text-xl font-bold text-neutral-900">과거 진단 기록</DialogTitle>
-            <p className="text-xs md:text-sm text-neutral-600 mt-1">{selectedStore?.name} - 최근 30개까지 저장됩니다</p>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>과거 진단 기록</DialogTitle>
+            <DialogDescription>
+              {selectedStore?.name} - 최근 30개까지 저장됩니다
+            </DialogDescription>
           </DialogHeader>
 
-          {isLoadingHistory && (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 text-primary-500 animate-spin" />
-            </div>
-          )}
+          <div className="px-6 pb-6 space-y-3">
+            {isLoadingHistory && (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-8 h-8 text-primary-500 animate-spin" />
+              </div>
+            )}
 
-          {!isLoadingHistory && diagnosisHistory.length === 0 && (
-            <div className="flex items-center justify-center py-12">
-              <p className="text-sm md:text-base text-neutral-600">아직 진단 기록이 없습니다.</p>
-            </div>
-          )}
+            {!isLoadingHistory && diagnosisHistory.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-12 space-y-3">
+                <FileText className="w-12 h-12 text-neutral-300" />
+                <p className="text-sm text-neutral-600">아직 진단 기록이 없습니다.</p>
+              </div>
+            )}
 
-          {!isLoadingHistory && diagnosisHistory.length > 0 && (
-            <div className="space-y-3">
-              {diagnosisHistory.map((history) => (
-                <Card
-                  key={history.id}
-                  className="border-neutral-200 hover:shadow-lg transition-all cursor-pointer"
-                  onClick={() => handleViewHistoryDetail(history.id)}
-                >
-                  <CardContent className="p-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div>
-                        <div className="flex flex-wrap items-center gap-2 mb-2">
-                          <p className="font-semibold text-sm md:text-base text-neutral-900">
-                            {new Date(history.diagnosed_at).toLocaleDateString('ko-KR', {
-                              year: 'numeric',
-                              month: 'long',
-                              day: 'numeric',
-                            })} {new Date(history.diagnosed_at).toLocaleTimeString('ko-KR', {
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
-                          </p>
-                          <Badge className={`${getGradeColor(history.grade)} text-white text-xs`}>
-                            {history.grade}등급
-                          </Badge>
-                        </div>
-                        <p className="text-xs md:text-sm text-neutral-600">
-                          점수: {history.total_score}점 / {history.max_score}점
+            {!isLoadingHistory && diagnosisHistory.length > 0 && diagnosisHistory.map((history) => (
+              <Card
+                key={history.id}
+                className="border border-neutral-200 hover:border-primary-400 hover:shadow-md transition-all cursor-pointer"
+                onClick={() => handleViewHistoryDetail(history.id)}
+              >
+                <CardContent className="p-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 mb-2">
+                        <Calendar className="w-4 h-4 text-neutral-500 flex-shrink-0" />
+                        <p className="font-semibold text-sm text-neutral-900">
+                          {new Date(history.diagnosed_at).toLocaleDateString('ko-KR', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                          })} {new Date(history.diagnosed_at).toLocaleTimeString('ko-KR', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
                         </p>
+                        <Badge className={`${getGradeColor(history.grade)} text-white text-xs font-bold flex-shrink-0`}>
+                          {history.grade}등급
+                        </Badge>
                       </div>
-                      <Button variant="outline" size="sm" className="w-full sm:w-auto text-xs md:text-sm">
-                        자세히 보기 →
-                      </Button>
+                      <p className="text-xs text-neutral-600 ml-6">
+                        점수: <span className="font-semibold text-neutral-900">{history.total_score}점</span> / {history.max_score}점
+                      </p>
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full sm:w-auto text-xs font-semibold h-9 flex-shrink-0"
+                    >
+                      자세히 보기 →
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </DialogContent>
       </Dialog>
     </div>

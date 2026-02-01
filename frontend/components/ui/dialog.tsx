@@ -41,12 +41,14 @@ const DialogContent = React.forwardRef<
       ref={ref}
       className={cn(
         // TurboTax Modal Container - 모바일 퍼스트
-        "fixed left-[50%] top-[50%] z-[1001] grid w-full translate-x-[-50%] translate-y-[-50%]",
+        "fixed inset-0 z-[1001] flex flex-col",
         "bg-white rounded-modal shadow-modal",
-        // 모바일: 거의 전체 화면
-        "max-w-[calc(100vw-32px)] max-h-[calc(100vh-32px)] mx-4",
+        // 중앙 정렬
+        "m-auto",
+        // 모바일: 거의 전체 화면 (16px 마진)
+        "w-[calc(100vw-32px)] max-h-[calc(100vh-32px)]",
         // 태블릿+: 고정 너비
-        "md:max-w-[600px] md:mx-auto",
+        "md:w-[600px]",
         // 스크롤
         "overflow-y-auto",
         // 애니메이션
