@@ -334,6 +334,42 @@ export default function CompetitorsPage() {
       return
     }
     
+    // 🆕 크레딧 사전 체크 (데이터 수집 전)
+    try {
+      const token = await getToken()
+      if (!token) {
+        toast({
+          title: "인증 오류",
+          description: "로그인이 필요합니다.",
+          variant: "destructive",
+        })
+        return
+      }
+      
+      const creditsResponse = await fetch(`${api.baseUrl}/api/v1/credits/me`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      
+      if (creditsResponse.ok) {
+        const creditsData = await creditsResponse.json()
+        const currentCredits = creditsData.total_remaining || 0
+        
+        if (currentCredits < 30) {
+          toast({
+            title: "크레딧 부족",
+            description: `크레딧이 부족합니다. (필요: 30 크레딧, 보유: ${currentCredits} 크레딧)`,
+            variant: "destructive",
+          })
+          return
+        }
+      }
+    } catch (error) {
+      console.error('크레딧 체크 오류:', error)
+      // 크레딧 체크 실패 시에도 계속 진행 (기존 동작 유지)
+    }
+    
     setLoadingAnalysis(true)
     setAnalysisProgress({ current: 0, total: stores.length + 1 })
     
