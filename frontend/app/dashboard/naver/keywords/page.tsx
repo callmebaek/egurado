@@ -122,6 +122,34 @@ export default function NaverKeywordsPage() {
         return
       }
       
+      // 🆕 크레딧 사전 체크 (검색 전)
+      const requiredCredits = keywordsToSearch.length * 10
+      try {
+        const creditsResponse = await fetch(`${api.baseUrl}/api/v1/credits/me`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
+        
+        if (creditsResponse.ok) {
+          const creditsData = await creditsResponse.json()
+          const currentCredits = creditsData.total_remaining || 0
+          
+          if (currentCredits < requiredCredits) {
+            toast({
+              title: "크레딧 부족",
+              description: `크레딧이 부족합니다. (필요: ${requiredCredits} 크레딧, 보유: ${currentCredits} 크레딧)`,
+              variant: "destructive",
+            })
+            setIsSearching(false)
+            return
+          }
+        }
+      } catch (error) {
+        console.error('크레딧 체크 오류:', error)
+        // 크레딧 체크 실패 시에도 계속 진행 (기존 동작 유지)
+      }
+      
       // 🆕 키워드를 5개씩 분할 (API 제한)
       const chunkSize = 5
       const chunks: string[][] = []
@@ -156,6 +184,18 @@ export default function NaverKeywordsPage() {
           )
 
           if (!response.ok) {
+            // 402 에러 (크레딧 부족)를 명시적으로 처리
+            if (response.status === 402) {
+              const errorData = await response.json().catch(() => ({}))
+              toast({
+                title: "크레딧 부족",
+                description: errorData.detail || "크레딧이 부족합니다.",
+                variant: "destructive",
+              })
+              setIsSearching(false)
+              return // 전체 검색 중단
+            }
+            
             console.warn(`[키워드 검색] ${i + 1}/${chunks.length} 그룹 실패`)
             failCount++
             continue
