@@ -117,12 +117,17 @@ class ReviewItemResponse(BaseModel):
 # ============================================
 
 @router.post("/extract", response_model=ExtractReviewsResponse)
-async def extract_reviews(request: ExtractReviewsRequest):
+async def extract_reviews(
+    request: ExtractReviewsRequest,
+    current_user: dict = Depends(get_current_user)
+):
     """
     리뷰 추출 (분석 없이)
     
     빠르게 리뷰만 추출하여 반환합니다.
     이후 analyze-stream으로 실시간 분석을 진행합니다.
+    
+    크레딧 체크: 이후 분석에 필요한 10 크레딧을 미리 체크합니다.
     """
     print("=" * 80, flush=True)
     print("EXTRACT_REVIEWS FUNCTION CALLED!", flush=True)
@@ -193,6 +198,22 @@ async def extract_reviews(request: ExtractReviewsRequest):
                 review_date=parsed["review_date"],
                 images=parsed["images"]
             ))
+        
+        # 4. 크레딧 사전 체크 (리뷰가 있는 경우에만)
+        if len(parsed_reviews) > 0 and settings.CREDIT_SYSTEM_ENABLED:
+            from app.services.credit_service import credit_service
+            user_id = current_user.get("id")
+            credit_check = await credit_service.check_sufficient_credits(
+                user_id=user_id,
+                feature="review_analysis",
+                required_credits=10
+            )
+            if not credit_check.sufficient:
+                logger.warning(f"[리뷰 분석] 크레딧 부족: user_id={user_id}, required=10, available={credit_check.current_credits}")
+                raise HTTPException(
+                    status_code=402,
+                    detail=f"크레딧이 부족합니다. (필요: 10 크레딧, 보유: {credit_check.current_credits} 크레딧)"
+                )
         
         return ExtractReviewsResponse(
             status="success",

@@ -547,11 +547,17 @@ export default function ReviewManagementPage() {
     setAnalysisProgress(0)
     
     try {
+      // 토큰 가져오기 (인증 필요)
+      const token = await getToken()
+      
       // 1단계: 리뷰 추출 (빠름)
       console.log("📥 1단계: 리뷰 추출 중...")
       const extractResponse = await fetch(api.reviews.extract(), {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
         body: JSON.stringify({
           store_id: selectedStoreId,
           start_date: dateRange.start_date,
@@ -560,7 +566,14 @@ export default function ReviewManagementPage() {
       })
       
       if (!extractResponse.ok) {
-        throw new Error("리뷰 추출 실패")
+        const errorData = await extractResponse.json().catch(() => ({}))
+        
+        // 402 에러 (크레딧 부족)를 명시적으로 처리
+        if (extractResponse.status === 402) {
+          throw new Error(errorData.detail || "크레딧이 부족합니다. 크레딧을 충전하거나 플랜을 업그레이드해주세요.")
+        }
+        
+        throw new Error(errorData.detail || errorData.message || "리뷰 추출 실패")
       }
       
       const extractData = await extractResponse.json()
@@ -612,8 +625,7 @@ export default function ReviewManagementPage() {
       // 2단계: 스트리밍 분석 (실시간 SSE)
       console.log("🔄 2단계: 실시간 분석 시작...")
       
-      // 토큰 가져오기 (SSE는 커스텀 헤더를 지원하지 않으므로 URL에 추가)
-      const token = await getToken()
+      // SSE URL 생성 (토큰은 이미 위에서 가져옴)
       const baseUrl = api.reviews.analyzeStream(selectedStoreId, dateRange.start_date, dateRange.end_date)
       const urlWithToken = `${baseUrl}&token=${encodeURIComponent(token)}`
       
