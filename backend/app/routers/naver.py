@@ -1267,6 +1267,17 @@ async def get_place_details(
     try:
         logger.info(f"[플레이스 진단] 요청: place_id={place_id}, mode={mode}, store_name={store_name}, store_id={store_id}, authenticated={current_user is not None}")
         
+        # 크레딧 사전 체크 (인증된 사용자만)
+        if current_user and settings.CREDIT_SYSTEM_ENABLED:
+            user_id = current_user.get("id")
+            credit_check = await credit_service.check_credits(user_id, "place_diagnosis", 10)
+            if not credit_check.sufficient:
+                logger.warning(f"[플레이스 진단] 크레딧 부족: user_id={user_id}, required=10, available={credit_check.monthly_remaining}")
+                raise HTTPException(
+                    status_code=402,
+                    detail=f"크레딧이 부족합니다. (필요: 10 크레딧, 보유: {credit_check.monthly_remaining} 크레딧)"
+                )
+        
         # 완전 진단 서비스 사용
         from app.services.naver_complete_diagnosis_service import complete_diagnosis_service
         
