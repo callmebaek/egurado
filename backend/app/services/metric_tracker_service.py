@@ -416,16 +416,28 @@ class MetricTrackerService:
             except: pass
             # #endregion
             
+            # #region agent log
+            try:
+                await httpx.AsyncClient().post('http://127.0.0.1:7242/ingest/5225ed4a-ae1a-48e3-babe-f4c35d5f29b0',json={'location':'metric_tracker_service.py:398','message':'A3: check_rank 결과','data':{'tracker_id':tracker_id,'rank':rank_result.get('rank'),'visitor_review_count':rank_result.get('visitor_review_count'),'blog_review_count':rank_result.get('blog_review_count'),'found':rank_result.get('found'),'total_results':rank_result.get('total_results')},'timestamp':__import__('datetime').datetime.now().timestamp()*1000,'sessionId':'debug-session','hypothesisId':'A,B,D'},timeout=1.0)
+            except: pass
+            # #endregion
+            
             # 지표 데이터 구성
             today = date.today()
+            
+            visitor_count = rank_result.get('visitor_review_count', 0)
+            blog_count = rank_result.get('blog_review_count', 0)
+            
+            logger.info(f"[Metrics Collect] 📊 rank_result에서 추출: visitor={visitor_count}, blog={blog_count}, rank={rank_result.get('rank')}")
+            
             metric_data = {
                 'tracker_id': tracker_id,
                 'keyword_id': tracker['keyword_id'],
                 'store_id': tracker['store_id'],
                 'collection_date': today.isoformat(),
                 'rank': rank_result.get('rank'),
-                'visitor_review_count': rank_result.get('visitor_review_count', 0),
-                'blog_review_count': rank_result.get('blog_review_count', 0),
+                'visitor_review_count': visitor_count,
+                'blog_review_count': blog_count,
                 'collected_at': datetime.now().isoformat()
             }
             

@@ -163,6 +163,8 @@ class NaverRankNewAPIService:
                     except: pass
                     # #endregion
                     
+                    logger.info(f"[신API Rank] 🔍 place_info 체크: place_info={place_info}, type={type(place_info)}, bool={bool(place_info)}")
+                    
                     if place_info:
                         target_store_data = {
                             "place_id": target_place_id,
@@ -188,6 +190,7 @@ class NaverRankNewAPIService:
                         "save_count": 0
                     }
                     logger.warning(f"[신API Rank] 매장 정보 조회 실패 → 리뷰수 0으로 설정")
+                    logger.warning(f"[신API Rank] ⚠️ Exception 타입: {type(e).__name__}, 메시지: {str(e)}")
             
             # 4. 결과 구성
             result = {
