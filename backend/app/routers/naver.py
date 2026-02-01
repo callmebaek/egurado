@@ -935,9 +935,9 @@ async def check_place_rank_unofficial(
         
         supabase = get_supabase_client()
         
-        # 매장 정보 조회 (위치 정보 포함)
+        # 매장 정보 조회
         store_result = supabase.table("stores").select(
-            "id, place_id, store_name, platform, user_id, x, y"
+            "id, place_id, store_name, platform, user_id"
         ).eq("id", str(request.store_id)).single().execute()
         
         if not store_result.data:
@@ -955,15 +955,19 @@ async def check_place_rank_unofficial(
         store_data = store_result.data
         place_id = store_data["place_id"]
         store_name = store_data["store_name"]
-        coord_x = store_data.get("x")
-        coord_y = store_data.get("y")
+        
+        # TODO: stores 테이블에 x, y 컬럼 추가 후 실제 좌표 사용
+        # 현재는 기본 좌표(강남) 사용
+        coord_x = None
+        coord_y = None
         
         logger.info(
             f"[Unofficial API Rank] Store: {store_name} (ID: {place_id}), "
-            f"Keyword: {request.keyword}, Location: ({coord_x}, {coord_y})"
+            f"Keyword: {request.keyword}"
         )
         
-        # 순위 체크 (비공식 API) - 최대 300개까지 확인, 매장 위치 기준
+        # 순위 체크 (비공식 API) - 최대 300개까지 확인
+        # coord_x, coord_y가 None이면 기본 좌표(강남) 사용
         rank_result = await rank_service_api_unofficial.check_rank(
             keyword=request.keyword,
             target_place_id=place_id,
