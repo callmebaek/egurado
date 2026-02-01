@@ -365,43 +365,49 @@ class MetricTrackerService:
                 coord_y=store.get('y')
             )
             
-            # 🆕 순위를 못 찾은 경우 재시도 로직
+            # 🆕 순위를 못 찾은 경우 재시도 로직 (스마트 재시도)
             if rank_result.get('rank') is None:
+                found = rank_result.get('found', False)
+                total_results = rank_result.get('total_results', 0)
+                
                 logger.warning(
                     f"[Metrics Collect] ⚠️ 순위를 찾지 못함 (1차 시도): "
                     f"tracker={tracker_id}, keyword={keyword}, store={store['store_name']}, "
-                    f"place_id={store['place_id']}, found={rank_result.get('found')}, "
-                    f"total_results={rank_result.get('total_results')}"
+                    f"place_id={store['place_id']}, found={found}, "
+                    f"total_results={total_results}"
                 )
                 
-                # 5초 대기 후 재시도
-                logger.info(f"[Metrics Collect] 🔄 5초 후 재시도...")
-                await asyncio.sleep(5)
-                
-                rank_result = await rank_service_api_unofficial.check_rank(
-                    keyword=keyword,
-                    target_place_id=store['place_id'],
-                    store_name=store['store_name']
-                )
-                
-                if rank_result.get('rank') is None:
-                    logger.error(
-                        f"[Metrics Collect] ❌ 순위를 찾지 못함 (2차 시도 실패): "
-                        f"tracker={tracker_id}, keyword={keyword}, store={store['store_name']}, "
-                        f"place_id={store['place_id']}, found={rank_result.get('found')}, "
-                        f"total_results={rank_result.get('total_results')} "
-                        f"→ rank=NULL로 저장됩니다"
+                # 스마트 재시도: found=False이고 total_results>0이면 300위 밖 확정
+                if not found and total_results > 0:
+                    logger.info(
+                        f"[Metrics Collect] ✅ 300위 밖 확정 (재시도 생략): "
+                        f"total_results={total_results}, 리뷰 수는 정상 수집됨"
                     )
                 else:
-                    logger.info(
-                        f"[Metrics Collect] ✅ 재시도 성공: rank={rank_result.get('rank')}"
+                    # 일시적 오류 가능성 - 재시도
+                    logger.info(f"[Metrics Collect] 🔄 5초 후 재시도... (일시적 오류 가능성)")
+                    await asyncio.sleep(5)
+                    
+                    rank_result = await rank_service_api_unofficial.check_rank(
+                        keyword=keyword,
+                        target_place_id=store['place_id'],
+                        store_name=store['store_name'],
+                        coord_x=store.get('x'),
+                        coord_y=store.get('y')
                     )
-            
-            # #region agent log
-            try:
-                await httpx.AsyncClient().post('http://127.0.0.1:7242/ingest/5225ed4a-ae1a-48e3-babe-f4c35d5f29b0',json={'location':'metric_tracker_service.py:398','message':'A3: check_rank 결과','data':{'tracker_id':tracker_id,'rank':rank_result.get('rank'),'visitor_review_count':rank_result.get('visitor_review_count'),'blog_review_count':rank_result.get('blog_review_count'),'found':rank_result.get('found'),'total_results':rank_result.get('total_results')},'timestamp':__import__('datetime').datetime.now().timestamp()*1000,'sessionId':'debug-session','hypothesisId':'A,B,D'},timeout=1.0)
-            except: pass
-            # #endregion
+                    
+                    if rank_result.get('rank') is None:
+                        logger.error(
+                            f"[Metrics Collect] ❌ 순위를 찾지 못함 (2차 시도 실패): "
+                            f"tracker={tracker_id}, keyword={keyword}, store={store['store_name']}, "
+                            f"place_id={store['place_id']}, found={rank_result.get('found')}, "
+                            f"total_results={rank_result.get('total_results')} "
+                            f"→ rank=NULL로 저장됩니다"
+                        )
+                    else:
+                        logger.info(
+                            f"[Metrics Collect] ✅ 재시도 성공: rank={rank_result.get('rank')}"
+                        )
             
             # 지표 데이터 구성
             today = date.today()

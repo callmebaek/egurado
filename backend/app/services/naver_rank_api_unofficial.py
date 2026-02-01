@@ -77,11 +77,11 @@ class NaverRankNewAPIService:
                 'save_count': int (저장 수)
             }
         """
-        logger.info(f"[신API Rank] 순위 체크 시작: keyword={keyword}, place_id={target_place_id}, store_name={store_name}")
+        logger.info(f"[신API Rank] 순위 체크 시작: keyword={keyword}, place_id={target_place_id}, store_name={store_name}, x={coord_x}, y={coord_y}")
         
         try:
-            # 1. GraphQL로 검색 결과 가져오기
-            search_results, total_count = await self._search_places(keyword, max_results)
+            # 1. GraphQL로 검색 결과 가져오기 (매장 위치 기준 검색)
+            search_results, total_count = await self._search_places(keyword, max_results, coord_x, coord_y)
             
             if not search_results:
                 logger.warning(f"[신API Rank] 검색 결과 없음")
@@ -197,13 +197,25 @@ class NaverRankNewAPIService:
             logger.info("[신API Rank] 크롤링 방식으로 폴백...")
             return await self._fallback_to_crawling(keyword, target_place_id, max_results)
     
-    async def _search_places(self, keyword: str, max_results: int) -> tuple[List[Dict], int]:
+    async def _search_places(self, keyword: str, max_results: int, coord_x: str = None, coord_y: str = None) -> tuple[List[Dict], int]:
         """GraphQL로 매장 검색 (페이지네이션 지원)
+        
+        Args:
+            keyword: 검색 키워드
+            max_results: 최대 검색 개수
+            coord_x: 검색 기준 경도 (없으면 기본값: 강남역 근처)
+            coord_y: 검색 기준 위도 (없으면 기본값: 강남역 근처)
         
         Returns:
             (검색 결과 리스트, 전체 업체수)
         """
         try:
+            # 좌표 기본값 설정 (강남역 근처)
+            search_x = coord_x if coord_x else "127.0276"
+            search_y = coord_y if coord_y else "37.4979"
+            
+            logger.info(f"[신API Rank] 검색 위치: x={search_x}, y={search_y}")
+            
             graphql_query = """
             query getPlacesList($input: PlacesInput) {
                 places(input: $input) {
@@ -246,8 +258,8 @@ class NaverRankNewAPIService:
                         "start": start_idx,
                         "display": current_display,
                         "deviceType": "mobile",
-                        "x": "127.0276",
-                        "y": "37.4979"
+                        "x": search_x,
+                        "y": search_y
                     }
                 }
                 
