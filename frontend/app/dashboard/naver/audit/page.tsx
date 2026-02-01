@@ -223,6 +223,17 @@ export default function NaverAuditPage() {
       if (!response.ok) {
         const errorText = await response.text()
         console.error("❌ Response error:", errorText)
+        
+        // 402 에러 (크레딧 부족)를 명시적으로 처리
+        if (response.status === 402) {
+          try {
+            const errorData = JSON.parse(errorText)
+            throw new Error(errorData.detail || "크레딧이 부족합니다.")
+          } catch (parseError) {
+            throw new Error("크레딧이 부족합니다.")
+          }
+        }
+        
         throw new Error("플레이스 진단에 실패했습니다.")
       }
 
@@ -253,10 +264,13 @@ export default function NaverAuditPage() {
       }, 100)
     } catch (error) {
       console.error("❌ Error analyzing place:", error)
+      const errorMessage = error instanceof Error ? error.message : "플레이스 진단에 실패했습니다."
+      const isCreditsError = errorMessage.includes("크레딧")
+      
       toast({
         variant: "destructive",
-        title: "❌ 진단 실패",
-        description: error instanceof Error ? error.message : "플레이스 진단에 실패했습니다.",
+        title: isCreditsError ? "💳 크레딧 부족" : "❌ 진단 실패",
+        description: errorMessage,
       })
       setSelectedStore(null)
     } finally {
