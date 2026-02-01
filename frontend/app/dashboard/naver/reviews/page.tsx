@@ -959,7 +959,7 @@ export default function ReviewManagementPage() {
                 <button
                   onClick={() => setDatePeriod("today")}
                   disabled={analyzing}
-                  className={`h-10 px-3 rounded-lg font-medium text-sm transition-all ${
+                  className={`h-10 px-2 sm:px-3 rounded-lg font-medium text-xs sm:text-sm whitespace-nowrap transition-all ${
                     datePeriod === "today"
                       ? "bg-blue-500 text-white shadow-md border-2 border-blue-500"
                       : "bg-white border-2 border-gray-200 text-gray-700 hover:border-blue-300 hover:bg-blue-50"
@@ -970,7 +970,7 @@ export default function ReviewManagementPage() {
                 <button
                   onClick={() => setDatePeriod("yesterday")}
                   disabled={analyzing}
-                  className={`h-10 px-3 rounded-lg font-medium text-sm transition-all ${
+                  className={`h-10 px-2 sm:px-3 rounded-lg font-medium text-xs sm:text-sm whitespace-nowrap transition-all ${
                     datePeriod === "yesterday"
                       ? "bg-blue-500 text-white shadow-md border-2 border-blue-500"
                       : "bg-white border-2 border-gray-200 text-gray-700 hover:border-blue-300 hover:bg-blue-50"
@@ -981,7 +981,7 @@ export default function ReviewManagementPage() {
                 <button
                   onClick={() => setDatePeriod("last7days")}
                   disabled={analyzing}
-                  className={`h-10 px-3 rounded-lg font-medium text-sm transition-all ${
+                  className={`h-10 px-2 sm:px-3 rounded-lg font-medium text-xs sm:text-sm whitespace-nowrap transition-all ${
                     datePeriod === "last7days"
                       ? "bg-blue-500 text-white shadow-md border-2 border-blue-500"
                       : "bg-white border-2 border-gray-200 text-gray-700 hover:border-blue-300 hover:bg-blue-50"
@@ -992,7 +992,7 @@ export default function ReviewManagementPage() {
                 <button
                   onClick={() => setDatePeriod("last30days")}
                   disabled={analyzing}
-                  className={`h-10 px-3 rounded-lg font-medium text-sm transition-all ${
+                  className={`h-10 px-2 sm:px-3 rounded-lg font-medium text-xs sm:text-sm whitespace-nowrap transition-all ${
                     datePeriod === "last30days"
                       ? "bg-blue-500 text-white shadow-md border-2 border-blue-500"
                       : "bg-white border-2 border-gray-200 text-gray-700 hover:border-blue-300 hover:bg-blue-50"
