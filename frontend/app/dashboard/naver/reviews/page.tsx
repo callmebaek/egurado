@@ -625,8 +625,19 @@ export default function ReviewManagementPage() {
       const sseTimeout = setTimeout(() => {
         console.error("⏰ SSE 타임아웃: 5분 초과")
         eventSource.close()
+        
+        // 타임아웃 시 모든 상태 초기화
         setAnalyzing(false)
         setExtractingSummary(false)
+        setAnalysisProgress(0)
+        setAnalyzedCount(0)
+        setCurrentStats({ positive: 0, neutral: 0, negative: 0 })
+        setTotalReviewsCount(0)
+        setHasAttemptedAnalysis(false)
+        setStats(null)
+        setReviews([])
+        setFilteredReviews([])
+        
         toast({
           title: "분석 시간 초과",
           description: "분석 시간이 너무 오래 걸립니다. 다시 시도해주세요.",
@@ -763,8 +774,19 @@ export default function ReviewManagementPage() {
               console.error("❌ 백엔드 분석 오류:", data.message)
               clearTimeout(sseTimeout)
               eventSource.close()
+              
+              // 에러 발생 시 모든 상태 초기화
               setAnalyzing(false)
               setExtractingSummary(false)
+              setAnalysisProgress(0)
+              setAnalyzedCount(0)
+              setCurrentStats({ positive: 0, neutral: 0, negative: 0 })
+              setTotalReviewsCount(0)
+              setHasAttemptedAnalysis(false)
+              setStats(null)
+              setReviews([])
+              setFilteredReviews([])
+              
               toast({
                 title: "분석 실패",
                 description: data.message || "리뷰 분석 중 오류가 발생했습니다.",
@@ -782,8 +804,19 @@ export default function ReviewManagementPage() {
         console.error("   readyState:", eventSource.readyState)
         clearTimeout(sseTimeout)
         eventSource.close()
+        
+        // 에러 발생 시 모든 상태 초기화
         setAnalyzing(false)
         setExtractingSummary(false)
+        setAnalysisProgress(0)
+        setAnalyzedCount(0)
+        setCurrentStats({ positive: 0, neutral: 0, negative: 0 })
+        setTotalReviewsCount(0)
+        setHasAttemptedAnalysis(false)
+        setStats(null)
+        setReviews([])
+        setFilteredReviews([])
+        
         toast({
           title: "분석 중 연결 오류 발생",
           description: "서버 연결이 끊어졌습니다. 다시 시도해주세요.",
@@ -793,9 +826,24 @@ export default function ReviewManagementPage() {
       
     } catch (error) {
       console.error("리뷰 분석 실패:", error)
+      
+      // 에러 발생 시 모든 상태 초기화
       setExtracting(false)
       setAnalyzing(false)
       setExtractingSummary(false)
+      setAnalysisProgress(0)
+      setAnalyzedCount(0)
+      setCurrentStats({ positive: 0, neutral: 0, negative: 0 })
+      setTotalReviewsCount(0)
+      
+      // 분석 시도 플래그 초기화 (초기 화면으로 복귀)
+      setHasAttemptedAnalysis(false)
+      
+      // 분석 결과 데이터 초기화
+      setStats(null)
+      setReviews([])
+      setFilteredReviews([])
+      
       toast({
         title: "리뷰 분석 실패",
         description: error instanceof Error ? error.message : "오류가 발생했습니다.",
