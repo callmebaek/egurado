@@ -133,42 +133,42 @@ export default function NaverSessionPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="w-full max-w-4xl mx-auto p-4 md:p-6 lg:p-8 min-h-screen bg-neutral-50">
       {/* 헤더 */}
-      <div>
-        <h1 className="text-2xl md:text-3xl font-bold text-primary mb-2">
+      <div className="mb-6 md:mb-8">
+        <h1 className="text-xl md:text-2xl font-bold text-neutral-900 mb-1.5 leading-tight">
           네이버 로그인 세션 관리
         </h1>
-        <p className="text-muted-foreground">
-          AI 답글 생성 기능을 사용하려면 네이버 스마트플레이스 로그인이 필요합니다.
+        <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
+          AI 답글 생성 기능을 사용하려면 네이버 스마트플레이스 로그인이 필요합니다
         </p>
       </div>
 
       {/* 메시지 */}
       {message && (
-        <div className={`rounded-lg p-4 flex items-start gap-3 ${
+        <Card className={`p-3 md:p-4 shadow-sm flex items-start gap-2 md:gap-3 ${
           message.type === "success" 
-            ? "bg-green-50 border border-green-200" 
-            : "bg-red-50 border border-red-200"
+            ? "bg-green-50 border-green-200" 
+            : "bg-red-50 border-red-200"
         }`}>
           {message.type === "success" ? (
-            <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
+            <CheckCircle className="h-4 w-4 md:h-5 md:w-5 text-green-600 mt-0.5 flex-shrink-0" />
           ) : (
-            <AlertCircle className="h-5 w-5 text-red-600 mt-0.5" />
+            <AlertCircle className="h-4 w-4 md:h-5 md:w-5 text-red-600 mt-0.5 flex-shrink-0" />
           )}
-          <p className={message.type === "success" ? "text-green-800" : "text-red-800"}>
+          <p className={`text-sm md:text-base ${message.type === "success" ? "text-green-800" : "text-red-800"}`}>
             {message.text}
           </p>
-        </div>
+        </Card>
       )}
 
       {/* 매장 선택 */}
-      <Card className="p-6">
+      <Card className="p-4 md:p-6 shadow-sm border-neutral-200">
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-2">매장 선택</label>
+            <label className="block text-sm font-medium text-neutral-700 mb-2">매장 선택</label>
             <Select value={selectedStoreId} onValueChange={setSelectedStoreId}>
-              <SelectTrigger>
+              <SelectTrigger className="h-11">
                 <SelectValue placeholder="매장을 선택하세요" />
               </SelectTrigger>
               <SelectContent>
@@ -183,9 +183,9 @@ export default function NaverSessionPage() {
 
           {/* 세션 상태 */}
           {selectedStoreId && (
-            <div className="border-t pt-4 mt-4">
+            <div className="border-t border-neutral-200 pt-4 mt-4">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-semibold">세션 상태</h3>
+                <h3 className="text-sm font-semibold text-neutral-900">세션 상태</h3>
                 <Button
                   onClick={() => checkSession(selectedStoreId)}
                   disabled={isChecking}
@@ -201,17 +201,17 @@ export default function NaverSessionPage() {
               </div>
 
               {sessionStatus && (
-                <div className="space-y-3">
+                <div className="space-y-2 md:space-y-3">
                   {/* 세션 존재 여부 */}
-                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <span className="text-sm text-gray-700">로그인 상태</span>
+                  <div className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg">
+                    <span className="text-sm text-neutral-700">로그인 상태</span>
                     {sessionStatus.has_session && sessionStatus.is_valid ? (
-                      <Badge className="bg-green-100 text-green-800">
+                      <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
                         <CheckCircle className="h-3 w-3 mr-1" />
                         로그인됨
                       </Badge>
                     ) : (
-                      <Badge variant="secondary" className="bg-red-100 text-red-800">
+                      <Badge variant="secondary" className="bg-red-100 text-red-800 hover:bg-red-100">
                         <XCircle className="h-3 w-3 mr-1" />
                         로그인 필요
                       </Badge>
@@ -220,9 +220,9 @@ export default function NaverSessionPage() {
 
                   {/* 만료 정보 */}
                   {sessionStatus.has_session && sessionStatus.is_valid && sessionStatus.days_remaining !== null && (
-                    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <span className="text-sm text-gray-700">남은 기간</span>
-                      <span className="text-sm font-semibold">
+                    <div className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg">
+                      <span className="text-sm text-neutral-700">남은 기간</span>
+                      <span className="text-sm font-semibold text-neutral-900">
                         {sessionStatus.days_remaining}일
                       </span>
                     </div>
@@ -259,36 +259,36 @@ export default function NaverSessionPage() {
 
       {/* Chrome 확장 프로그램 안내 */}
       {selectedStoreId && (
-        <Card className="p-6">
-          <div className="space-y-6">
+        <Card className="p-4 md:p-6 shadow-sm border-neutral-200">
+          <div className="space-y-4 md:space-y-6">
             {/* 헤더 */}
-            <div className="flex items-start gap-3">
-              <Chrome className="h-8 w-8 text-blue-600 mt-1" />
+            <div className="flex items-start gap-2 md:gap-3">
+              <Chrome className="h-6 w-6 md:h-8 md:w-8 text-blue-600 mt-0.5 md:mt-1 flex-shrink-0" />
               <div className="flex-1">
-                <h2 className="text-xl font-semibold mb-2">
+                <h2 className="text-lg md:text-xl font-semibold text-neutral-900 mb-1 md:mb-2">
                   Chrome 확장 프로그램으로 간편 로그인
                 </h2>
-                <p className="text-sm text-muted-foreground">
-                  Chrome 확장 프로그램을 설치하면 버튼 클릭 한 번으로 네이버 세션을 저장할 수 있습니다.
+                <p className="text-xs md:text-sm text-neutral-600 leading-relaxed">
+                  Chrome 확장 프로그램을 설치하면 버튼 클릭 한 번으로 네이버 세션을 저장할 수 있습니다
                 </p>
               </div>
             </div>
 
             {/* 설치 방법 */}
-            <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-6">
-              <h3 className="font-semibold text-blue-900 mb-4 flex items-center gap-2">
-                <Download className="h-5 w-5" />
+            <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4 md:p-6">
+              <h3 className="font-semibold text-blue-900 mb-3 md:mb-4 flex items-center gap-2 text-sm md:text-base">
+                <Download className="h-4 w-4 md:h-5 md:w-5" />
                 설치 방법 (3분 소요)
               </h3>
               
-              <div className="space-y-4">
+              <div className="space-y-3 md:space-y-4">
                 {/* Step 1 */}
-                <div className="bg-white rounded-lg p-4">
-                  <p className="font-medium text-gray-900 mb-2">
+                <div className="bg-white rounded-lg p-3 md:p-4">
+                  <p className="font-medium text-neutral-900 mb-1.5 md:mb-2 text-sm md:text-base">
                     1️⃣ 확장 프로그램 다운로드
                   </p>
-                  <p className="text-sm text-gray-700 mb-3">
-                    아래 버튼을 클릭하여 확장 프로그램 파일을 다운로드하세요.
+                  <p className="text-xs md:text-sm text-neutral-700 mb-2 md:mb-3">
+                    아래 버튼을 클릭하여 확장 프로그램 파일을 다운로드하세요
                   </p>
                   <Button 
                     onClick={() => {
@@ -308,31 +308,31 @@ export default function NaverSessionPage() {
                 </div>
 
                 {/* Step 2 */}
-                <div className="bg-white rounded-lg p-4">
-                  <p className="font-medium text-gray-900 mb-2">
+                <div className="bg-white rounded-lg p-3 md:p-4">
+                  <p className="font-medium text-neutral-900 mb-1.5 md:mb-2 text-sm md:text-base">
                     2️⃣ 파일 압축 해제
                   </p>
-                  <p className="text-sm text-gray-700">
-                    다운로드한 <code className="bg-gray-100 px-2 py-0.5 rounded">chrome-extension.zip</code> 파일을 압축 해제하세요.
+                  <p className="text-xs md:text-sm text-neutral-700">
+                    다운로드한 <code className="bg-neutral-100 px-2 py-0.5 rounded text-xs">chrome-extension.zip</code> 파일을 압축 해제하세요
                   </p>
                 </div>
 
                 {/* Step 3 */}
-                <div className="bg-white rounded-lg p-4">
-                  <p className="font-medium text-gray-900 mb-2">
+                <div className="bg-white rounded-lg p-3 md:p-4">
+                  <p className="font-medium text-neutral-900 mb-1.5 md:mb-2 text-sm md:text-base">
                     3️⃣ Chrome에 설치
                   </p>
-                  <ol className="text-sm text-gray-700 space-y-2 list-decimal list-inside ml-2">
-                    <li>Chrome 브라우저에서 <code className="bg-gray-100 px-2 py-0.5 rounded">chrome://extensions/</code> 접속</li>
+                  <ol className="text-xs md:text-sm text-neutral-700 space-y-1.5 md:space-y-2 list-decimal list-inside ml-1 md:ml-2">
+                    <li>Chrome 브라우저에서 <code className="bg-neutral-100 px-1.5 md:px-2 py-0.5 rounded text-xs">chrome://extensions/</code> 접속</li>
                     <li>우측 상단의 <strong>"개발자 모드"</strong> 토글 켜기</li>
                     <li><strong>"압축해제된 확장 프로그램을 로드합니다"</strong> 버튼 클릭</li>
-                    <li>압축 해제한 <code className="bg-gray-100 px-2 py-0.5 rounded">chrome-extension</code> 폴더 선택</li>
+                    <li>압축 해제한 <code className="bg-neutral-100 px-1.5 md:px-2 py-0.5 rounded text-xs">chrome-extension</code> 폴더 선택</li>
                     <li>완료! 브라우저 우측 상단에 🔐 아이콘이 표시됩니다</li>
                   </ol>
                   <Button 
                     variant="outline"
                     size="sm"
-                    className="mt-3"
+                    className="mt-2 md:mt-3 w-full sm:w-auto"
                     onClick={() => window.open('chrome://extensions/', '_blank')}
                   >
                     <ExternalLink className="mr-2 h-4 w-4" />
@@ -343,15 +343,15 @@ export default function NaverSessionPage() {
             </div>
 
             {/* 사용 방법 */}
-            <div className="bg-gray-50 rounded-lg p-4 space-y-3">
-              <h3 className="font-semibold text-sm">📖 사용 방법</h3>
-              <ol className="text-sm text-gray-700 space-y-2 list-decimal list-inside">
+            <div className="bg-neutral-50 rounded-lg p-3 md:p-4 space-y-2 md:space-y-3">
+              <h3 className="font-semibold text-xs md:text-sm text-neutral-900">📖 사용 방법</h3>
+              <ol className="text-xs md:text-sm text-neutral-700 space-y-1.5 md:space-y-2 list-decimal list-inside">
                 <li>
                   <a 
                     href="https://new.smartplace.naver.com" 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="text-blue-600 hover:underline"
+                    className="text-primary hover:underline"
                   >
                     네이버 스마트플레이스
                   </a>
@@ -365,9 +365,9 @@ export default function NaverSessionPage() {
             </div>
 
             {/* 장점 */}
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-              <h3 className="font-semibold text-green-900 mb-2">✨ 확장 프로그램의 장점</h3>
-              <ul className="text-sm text-green-800 space-y-1 list-disc list-inside">
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3 md:p-4">
+              <h3 className="font-semibold text-green-900 mb-1.5 md:mb-2 text-xs md:text-sm">✨ 확장 프로그램의 장점</h3>
+              <ul className="text-xs md:text-sm text-green-800 space-y-0.5 md:space-y-1 list-disc list-inside">
                 <li>원클릭으로 세션 저장 (10초 소요)</li>
                 <li>복잡한 설정 없이 간편하게 사용</li>
                 <li>안전하고 빠른 쿠키 추출</li>
@@ -376,12 +376,12 @@ export default function NaverSessionPage() {
             </div>
 
             {/* 보안 안내 */}
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-              <div className="flex items-start gap-3">
-                <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5" />
-                <div className="text-sm">
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 md:p-4">
+              <div className="flex items-start gap-2 md:gap-3">
+                <AlertCircle className="h-4 w-4 md:h-5 md:w-5 text-yellow-600 mt-0.5 flex-shrink-0" />
+                <div className="text-xs md:text-sm">
                   <p className="font-semibold text-yellow-900 mb-1">🔒 보안 안내</p>
-                  <ul className="text-yellow-800 space-y-1 list-disc list-inside">
+                  <ul className="text-yellow-800 space-y-0.5 md:space-y-1 list-disc list-inside">
                     <li>비밀번호는 절대 저장되지 않습니다</li>
                     <li>세션 정보는 암호화되어 안전하게 저장됩니다</li>
                     <li>확장 프로그램은 네이버 도메인의 쿠키만 접근합니다</li>
@@ -393,25 +393,25 @@ export default function NaverSessionPage() {
             </div>
 
             {/* 문제 해결 */}
-            <details className="bg-gray-50 rounded-lg p-4">
-              <summary className="font-semibold text-sm cursor-pointer">❓ 문제 해결 (FAQ)</summary>
-              <div className="mt-3 space-y-3 text-sm text-gray-700">
+            <details className="bg-neutral-50 rounded-lg p-3 md:p-4">
+              <summary className="font-semibold text-xs md:text-sm cursor-pointer text-neutral-900">❓ 문제 해결 (FAQ)</summary>
+              <div className="mt-2 md:mt-3 space-y-2 md:space-y-3 text-xs md:text-sm text-neutral-700">
                 <div>
-                  <p className="font-medium">Q. 확장 프로그램 아이콘이 안 보여요</p>
-                  <p className="text-gray-600 mt-1">
-                    A. 퍼즐 모양(🧩) 아이콘을 클릭하여 "네이버 세션 저장"을 찾아 📌 아이콘으로 고정하세요.
+                  <p className="font-medium text-neutral-900">Q. 확장 프로그램 아이콘이 안 보여요</p>
+                  <p className="text-neutral-600 mt-0.5 md:mt-1">
+                    A. 퍼즐 모양(🧩) 아이콘을 클릭하여 "네이버 세션 저장"을 찾아 📌 아이콘으로 고정하세요
                   </p>
                 </div>
                 <div>
-                  <p className="font-medium">Q. "로그인이 필요합니다" 오류가 나와요</p>
-                  <p className="text-gray-600 mt-1">
-                    A. 이 웹사이트에 먼저 로그인한 후 확장 프로그램을 사용하세요.
+                  <p className="font-medium text-neutral-900">Q. "로그인이 필요합니다" 오류가 나와요</p>
+                  <p className="text-neutral-600 mt-0.5 md:mt-1">
+                    A. 이 웹사이트에 먼저 로그인한 후 확장 프로그램을 사용하세요
                   </p>
                 </div>
                 <div>
-                  <p className="font-medium">Q. 모바일에서도 사용할 수 있나요?</p>
-                  <p className="text-gray-600 mt-1">
-                    A. 죄송합니다. 현재는 PC Chrome 브라우저만 지원합니다.
+                  <p className="font-medium text-neutral-900">Q. 모바일에서도 사용할 수 있나요?</p>
+                  <p className="text-neutral-600 mt-0.5 md:mt-1">
+                    A. 죄송합니다. 현재는 PC Chrome 브라우저만 지원합니다
                   </p>
                 </div>
               </div>
@@ -422,8 +422,8 @@ export default function NaverSessionPage() {
 
       {/* 선택 안내 */}
       {!selectedStoreId && (
-        <Card className="p-8 text-center">
-          <p className="text-muted-foreground">
+        <Card className="p-6 md:p-8 shadow-sm border-neutral-200 text-center">
+          <p className="text-sm md:text-base text-neutral-600">
             매장을 선택하여 네이버 로그인 세션을 관리하세요
           </p>
         </Card>
