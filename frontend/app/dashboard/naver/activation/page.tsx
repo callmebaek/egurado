@@ -1094,10 +1094,10 @@ export default function ActivationPage() {
         <div className="space-y-6">
           {/* 헤더 */}
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-neutral-900 mb-2">
+            <h1 className="text-xl md:text-2xl font-bold text-neutral-900 mb-1.5 leading-tight">
               플레이스 활성화
             </h1>
-            <p className="text-sm md:text-base text-neutral-600">
+            <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
               매장의 플레이스 활성화 현황을 확인하고 개선하세요
             </p>
           </div>

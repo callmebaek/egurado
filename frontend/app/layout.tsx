@@ -3,6 +3,7 @@ import { Geist, Geist_Mono, Noto_Sans_KR } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth-context";
 import { Toaster } from "@/components/ui/toaster";
+import { ViewportHeight } from "@/components/ViewportHeight";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -126,30 +127,12 @@ export default function RootLayout({
           rel="stylesheet"
           href="https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_11-01@1.0/NanumSquareNeo.css"
         />
-        
-        {/* 동적 뷰포트 높이 설정 (모바일 주소창 대응) */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function() {
-                function setVH() {
-                  var vh = window.innerHeight * 0.01;
-                  document.documentElement.style.setProperty('--vh', vh + 'px');
-                }
-                setVH();
-                window.addEventListener('resize', setVH);
-                window.addEventListener('orientationchange', function() {
-                  setTimeout(setVH, 100);
-                });
-              })();
-            `,
-          }}
-        />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${notoSansKR.variable} antialiased`}
       >
         <AuthProvider>
+          <ViewportHeight />
           {children}
           <Toaster />
         </AuthProvider>

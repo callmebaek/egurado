@@ -9,7 +9,7 @@ import { useSearchParams } from "next/navigation"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 
 interface RegisteredStore {
   id: string
@@ -1424,14 +1424,14 @@ export default function NaverAuditPage() {
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2">
                   <Button
-                    className="flex-1 font-semibold"
+                    className="flex-1 font-semibold h-12 md:h-11"
                     onClick={() => handleStoreSelect(store)}
                   >
                     진단 시작하기
                   </Button>
                   <Button
                     variant="outline"
-                    className="flex-1 font-semibold border-neutral-300 hover:border-primary-400"
+                    className="flex-1 font-semibold h-12 md:h-11 border-neutral-300 hover:border-primary-400"
                     onClick={() => handleViewHistory(store)}
                   >
                     📜 과거 진단 보기
@@ -1448,6 +1448,9 @@ export default function NaverAuditPage() {
         <DialogContent className="w-[calc(100%-32px)] sm:w-[calc(100%-64px)] max-w-xl mx-auto p-5 md:p-6">
           <DialogHeader className="mb-4 md:mb-5">
             <DialogTitle className="text-lg md:text-xl font-bold text-neutral-900">플레이스 진단</DialogTitle>
+            <DialogDescription className="sr-only">
+              네이버 플레이스 매장의 종합 진단을 시작합니다
+            </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4 md:space-y-5">

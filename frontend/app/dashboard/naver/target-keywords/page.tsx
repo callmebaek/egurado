@@ -13,7 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/components/ui/use-toast"
-import { Loader2, Search, Target, TrendingUp, Plus, X, AlertCircle, CheckCircle2, Info, History, Calendar, Eye } from "lucide-react"
+import { Loader2, Search, Target, TrendingUp, Plus, X, AlertCircle, CheckCircle2, Info, History, Calendar, Eye, ChevronDown, ChevronUp } from "lucide-react"
 import { api } from "@/lib/config"
 import {
   Select,
@@ -126,6 +126,19 @@ export default function TargetKeywordsPage() {
 
   // 분석 결과 섹션 ref (자동 스크롤용)
   const analysisResultRef = useRef<HTMLDivElement>(null)
+
+  // 확장된 키워드 카드 상태
+  const [expandedKeywordIds, setExpandedKeywordIds] = useState<Set<string>>(new Set())
+  
+  const toggleKeywordExpansion = (keyword: string) => {
+    const newExpanded = new Set(expandedKeywordIds)
+    if (newExpanded.has(keyword)) {
+      newExpanded.delete(keyword)
+    } else {
+      newExpanded.add(keyword)
+    }
+    setExpandedKeywordIds(newExpanded)
+  }
 
   // 등록된 매장 불러오기
   useEffect(() => {
@@ -991,17 +1004,19 @@ export default function TargetKeywordsPage() {
             </CardHeader>
             <CardContent className="pt-0">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
-                <div className="p-4 md:p-5 bg-primary-50 rounded-lg border border-primary-200">
-                  <p className="text-xs md:text-sm text-primary-700 font-semibold mb-1">매장명</p>
-                  <p className="text-lg md:text-xl font-bold text-neutral-900 line-clamp-1">{analysisResult.store_info.store_name}</p>
+                <div className="p-3 md:p-4 bg-primary-50 rounded-lg border border-primary-200">
+                  <p className="text-xs text-primary-700 font-semibold mb-1">매장명</p>
+                  <p className="text-sm md:text-base font-bold text-neutral-900 truncate" title={analysisResult.store_info.store_name}>
+                    {analysisResult.store_info.store_name}
+                  </p>
                 </div>
-                <div className="p-4 md:p-5 bg-green-50 rounded-lg border border-green-200">
-                  <p className="text-xs md:text-sm text-green-700 font-semibold mb-1">생성된 조합</p>
-                  <p className="text-lg md:text-xl font-bold text-neutral-900">{analysisResult.total_combinations}개</p>
+                <div className="p-3 md:p-4 bg-green-50 rounded-lg border border-green-200">
+                  <p className="text-xs text-green-700 font-semibold mb-1">생성된 조합</p>
+                  <p className="text-base md:text-lg font-bold text-neutral-900">{analysisResult.total_combinations}개</p>
                 </div>
-                <div className="p-4 md:p-5 bg-purple-50 rounded-lg border border-purple-200">
-                  <p className="text-xs md:text-sm text-purple-700 font-semibold mb-1">타겟 키워드</p>
-                  <p className="text-lg md:text-xl font-bold text-neutral-900">{analysisResult.top_keywords.length}개</p>
+                <div className="p-3 md:p-4 bg-purple-50 rounded-lg border border-purple-200">
+                  <p className="text-xs text-purple-700 font-semibold mb-1">타겟 키워드</p>
+                  <p className="text-base md:text-lg font-bold text-neutral-900">{analysisResult.top_keywords.length}개</p>
                 </div>
               </div>
             </CardContent>
@@ -1017,91 +1032,108 @@ export default function TargetKeywordsPage() {
               {/* 모바일: 카드 레이아웃 */}
               <div className="md:hidden space-y-3">
                 {analysisResult.top_keywords.map((keyword, index) => {
-                  const fieldMatches = analysisResult.seo_analysis.keyword_field_matches?.[keyword.keyword] || {
-                    menu: 0,
-                    conveniences: 0,
-                    microReviews: 0,
-                    description: 0,
-                    ai_briefing: 0,
-                    road: 0,
-                    visitor_reviews: 0,
-                    total: 0
-                  }
-                  
                   const rankInfo = analysisResult.rank_data?.[keyword.keyword] || { rank: 0, total_count: 0 }
                   const rank = rankInfo.rank || 0
                   const totalCount = rankInfo.total_count || 0
+                  const isExpanded = expandedKeywordIds.has(keyword.keyword)
                   
                   return (
                     <Card key={index} className="border-neutral-200 hover:border-primary-300 transition-colors">
                       <CardContent className="p-4 space-y-3">
-                        {/* 헤더: 순위 & 키워드 & 경쟁도 */}
+                        {/* 헤더: 순위 & 키워드 */}
                         <div className="space-y-2">
                           <div className="flex items-center justify-between gap-2">
                             <div className="flex items-center gap-2">
-                              <span className="font-bold text-sm text-primary-700">
+                              <Badge variant="outline" className="font-bold text-sm border-primary-300 text-primary-700">
                                 #{index + 1}
-                              </span>
-                              {rank > 0 && (
-                                <span className="font-semibold text-xs text-primary-600">
-                                  ({rank}위)
-                                </span>
-                              )}
-                            </div>
-                            <Badge
-                              variant={
-                                keyword.comp_idx === "높음" ? "destructive" :
-                                keyword.comp_idx === "중간" ? "default" : "secondary"
-                              }
-                              className={`font-semibold text-xs flex-shrink-0 ${
-                                keyword.comp_idx === "높음" ? "bg-red-500 hover:bg-red-600 text-white" :
-                                keyword.comp_idx === "중간" ? "bg-orange-500 hover:bg-orange-600 text-white" : 
-                                "bg-green-500 hover:bg-green-600 text-white"
-                              }`}
-                            >
-                              {keyword.comp_idx}
-                            </Badge>
-                          </div>
-                          <h4 className="text-base font-bold text-neutral-900">{keyword.keyword}</h4>
-                          <div className="flex flex-wrap gap-1">
-                            {Object.entries(keyword.components).map(([key, value]) => (
-                              <Badge key={key} variant="secondary" className="text-xs font-medium bg-neutral-100 text-neutral-700">
-                                {value}
                               </Badge>
-                            ))}
-                          </div>
-                        </div>
-                        
-                        {/* 통계 */}
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="bg-primary-50 rounded-lg p-3 border border-primary-200">
-                            <p className="text-xs text-primary-700 font-semibold mb-1">전체 검색량</p>
-                            <p className="text-lg font-bold text-neutral-900">{keyword.total_volume.toLocaleString()}</p>
-                          </div>
-                          <div className="bg-neutral-50 rounded-lg p-3 border border-neutral-200">
-                            <p className="text-xs text-neutral-600 font-semibold mb-1">검색 업체수</p>
-                            <p className="text-lg font-bold text-neutral-900">{totalCount > 0 ? totalCount.toLocaleString() : '-'}</p>
-                          </div>
-                        </div>
-                        
-                        {/* 상세 정보 */}
-                        <div className="pt-2 border-t border-neutral-200 space-y-1.5">
-                          <div className="flex justify-between text-xs">
-                            <span className="text-neutral-600">PC 검색량</span>
-                            <span className="font-semibold text-neutral-900">{keyword.monthly_pc_qc_cnt.toLocaleString()}</span>
-                          </div>
-                          <div className="flex justify-between text-xs">
-                            <span className="text-neutral-600">모바일 검색량</span>
-                            <span className="font-semibold text-neutral-900">{keyword.monthly_mobile_qc_cnt.toLocaleString()}</span>
-                          </div>
-                          {rank === 0 && (
-                            <div className="pt-1">
-                              <Badge variant="outline" className="text-xs border-red-300 text-red-600 bg-red-50 font-medium">
+                              <Badge
+                                variant={
+                                  keyword.comp_idx === "높음" ? "destructive" :
+                                  keyword.comp_idx === "중간" ? "default" : "secondary"
+                                }
+                                className={`font-semibold text-xs flex-shrink-0 ${
+                                  keyword.comp_idx === "높음" ? "bg-red-500 hover:bg-red-600 text-white" :
+                                  keyword.comp_idx === "중간" ? "bg-orange-500 hover:bg-orange-600 text-white" : 
+                                  "bg-green-500 hover:bg-green-600 text-white"
+                                }`}
+                              >
+                                {keyword.comp_idx}
+                              </Badge>
+                            </div>
+                            {rank > 0 ? (
+                              <Badge variant="default" className="bg-primary-500 hover:bg-primary-600 text-white font-bold text-xs">
+                                {rank}위
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="border-red-300 text-red-600 bg-red-50 font-bold text-xs">
                                 300위권 밖
                               </Badge>
-                            </div>
-                          )}
+                            )}
+                          </div>
+                          <h4 className="text-sm font-bold text-neutral-900">{keyword.keyword}</h4>
                         </div>
+                        
+                        {/* 핵심 통계 */}
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="bg-primary-50 rounded-lg p-2.5 border border-primary-200">
+                            <p className="text-xs text-primary-700 font-semibold mb-1">전체 검색량</p>
+                            <p className="text-base font-bold text-primary-600">{keyword.total_volume.toLocaleString()}</p>
+                          </div>
+                          <div className="bg-neutral-50 rounded-lg p-2.5 border border-neutral-200">
+                            <p className="text-xs text-neutral-600 font-semibold mb-1">검색 업체수</p>
+                            <p className="text-base font-bold text-neutral-900">{totalCount > 0 ? totalCount.toLocaleString() : '-'}</p>
+                          </div>
+                        </div>
+                        
+                        {/* 확장 버튼 */}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => toggleKeywordExpansion(keyword.keyword)}
+                          className="w-full text-xs"
+                        >
+                          {isExpanded ? (
+                            <>
+                              <ChevronUp className="w-4 h-4 mr-1" />
+                              간단히 보기
+                            </>
+                          ) : (
+                            <>
+                              <ChevronDown className="w-4 h-4 mr-1" />
+                              상세 정보 보기
+                            </>
+                          )}
+                        </Button>
+                        
+                        {/* 상세 정보 (확장 시) */}
+                        {isExpanded && (
+                          <div className="pt-2.5 border-t border-neutral-200 space-y-2.5">
+                            <div>
+                              <p className="text-xs text-neutral-600 mb-1.5 font-semibold">구성 요소</p>
+                              <div className="flex flex-wrap gap-1">
+                                {Object.entries(keyword.components).map(([key, value]) => (
+                                  <Badge key={key} variant="secondary" className="text-xs font-medium bg-neutral-100 text-neutral-700">
+                                    {value}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                            <div className="space-y-1.5">
+                              <p className="text-xs text-neutral-600 font-semibold">상세 검색량</p>
+                              <div className="grid grid-cols-2 gap-2 text-xs">
+                                <div className="bg-neutral-50 rounded p-2 border border-neutral-200">
+                                  <span className="text-neutral-600 block mb-0.5">PC</span>
+                                  <span className="font-semibold text-neutral-900 text-sm">{keyword.monthly_pc_qc_cnt.toLocaleString()}</span>
+                                </div>
+                                <div className="bg-neutral-50 rounded p-2 border border-neutral-200">
+                                  <span className="text-neutral-600 block mb-0.5">모바일</span>
+                                  <span className="font-semibold text-neutral-900 text-sm">{keyword.monthly_mobile_qc_cnt.toLocaleString()}</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
                   )
@@ -1113,82 +1145,129 @@ export default function TargetKeywordsPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[50px]">순위</TableHead>
-                      <TableHead>키워드</TableHead>
-                      <TableHead>구성 요소</TableHead>
-                      <TableHead className="text-right">PC 검색량</TableHead>
-                      <TableHead className="text-right">모바일 검색량</TableHead>
-                      <TableHead className="text-right">전체 검색량</TableHead>
-                      <TableHead className="text-right">검색 업체수</TableHead>
-                      <TableHead className="w-[80px]">경쟁도</TableHead>
-                      <TableHead className="w-[80px] text-center bg-primary-50 font-semibold text-primary-900">순위</TableHead>
+                      <TableHead className="w-[60px] text-xs">순위</TableHead>
+                      <TableHead className="min-w-[150px] text-xs">키워드</TableHead>
+                      <TableHead className="text-right w-[120px] text-xs">전체 검색량</TableHead>
+                      <TableHead className="text-center w-[110px] bg-primary-50 text-xs">우리매장 순위</TableHead>
+                      <TableHead className="text-center w-[90px] text-xs">경쟁도</TableHead>
+                      <TableHead className="text-center w-[90px] text-xs">상세</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {analysisResult.top_keywords.map((keyword, index) => {
-                      const fieldMatches = analysisResult.seo_analysis.keyword_field_matches?.[keyword.keyword] || {
-                        menu: 0,
-                        conveniences: 0,
-                        microReviews: 0,
-                        description: 0,
-                        ai_briefing: 0,
-                        road: 0,
-                        visitor_reviews: 0,
-                        total: 0
-                      }
-                      
                       const rankInfo = analysisResult.rank_data?.[keyword.keyword] || { rank: 0, total_count: 0 }
                       const rank = rankInfo.rank || 0
                       const totalCount = rankInfo.total_count || 0
+                      const isExpanded = expandedKeywordIds.has(keyword.keyword)
                       
                       return (
-                        <TableRow key={index} className="hover:bg-neutral-50 transition-colors">
-                          <TableCell className="font-bold text-neutral-900">{index + 1}</TableCell>
-                          <TableCell className="font-semibold text-neutral-900">{keyword.keyword}</TableCell>
-                          <TableCell>
-                            <div className="flex flex-wrap gap-1">
-                              {Object.entries(keyword.components).map(([key, value]) => (
-                                <Badge key={key} variant="secondary" className="text-xs font-medium bg-neutral-100 text-neutral-700 hover:bg-neutral-200">
-                                  {value}
+                        <React.Fragment key={index}>
+                          <TableRow className={`${isExpanded ? "bg-primary-50" : ""} hover:bg-neutral-50 transition-colors`}>
+                            <TableCell className="py-3">
+                              <Badge variant="outline" className="border-primary-300 text-primary-700 font-bold text-xs">
+                                #{index + 1}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="font-semibold text-neutral-900 text-sm py-3">
+                              {keyword.keyword}
+                            </TableCell>
+                            <TableCell className="text-right font-bold text-primary-600 text-sm py-3">
+                              {keyword.total_volume.toLocaleString()}
+                            </TableCell>
+                            <TableCell className="text-center bg-primary-50 py-3">
+                              {rank > 0 ? (
+                                <Badge variant="default" className="bg-primary-500 hover:bg-primary-600 text-white font-bold text-xs">
+                                  {rank}위
                                 </Badge>
-                              ))}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-right text-neutral-600 text-sm">
-                            {keyword.monthly_pc_qc_cnt.toLocaleString()}
-                          </TableCell>
-                          <TableCell className="text-right text-neutral-600 text-sm">
-                            {keyword.monthly_mobile_qc_cnt.toLocaleString()}
-                          </TableCell>
-                          <TableCell className="text-right font-bold text-primary-600">
-                            {keyword.total_volume.toLocaleString()}
-                          </TableCell>
-                          <TableCell className="text-right text-neutral-900 font-semibold text-sm">
-                            {totalCount > 0 ? totalCount.toLocaleString() : '-'}
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              variant={
-                                keyword.comp_idx === "높음" ? "destructive" :
-                                keyword.comp_idx === "중간" ? "default" : "secondary"
-                              }
-                              className={`font-semibold text-xs whitespace-nowrap ${
-                                keyword.comp_idx === "높음" ? "bg-red-500 hover:bg-red-600 text-white" :
-                                keyword.comp_idx === "중간" ? "bg-orange-500 hover:bg-orange-600 text-white" : 
-                                "bg-green-500 hover:bg-green-600 text-white"
-                              }`}
-                            >
-                              {keyword.comp_idx}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-center bg-primary-50">
-                            {rank > 0 ? (
-                              <span className="text-primary-700 font-bold">{rank}위</span>
-                            ) : (
-                              <span className="text-red-600 text-xs font-semibold">300위권 밖</span>
-                            )}
-                          </TableCell>
-                        </TableRow>
+                              ) : (
+                                <Badge variant="outline" className="border-red-300 text-red-600 bg-red-50 font-bold text-xs">
+                                  300위권 밖
+                                </Badge>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-center py-3">
+                              <Badge
+                                variant={
+                                  keyword.comp_idx === "높음" ? "destructive" :
+                                  keyword.comp_idx === "중간" ? "default" : "secondary"
+                                }
+                                className={`font-semibold text-xs whitespace-nowrap ${
+                                  keyword.comp_idx === "높음" ? "bg-red-500 hover:bg-red-600 text-white" :
+                                  keyword.comp_idx === "중간" ? "bg-orange-500 hover:bg-orange-600 text-white" : 
+                                  "bg-green-500 hover:bg-green-600 text-white"
+                                }`}
+                              >
+                                {keyword.comp_idx}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-center py-3">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => toggleKeywordExpansion(keyword.keyword)}
+                                className="h-7 text-xs px-2"
+                              >
+                                {isExpanded ? (
+                                  <>
+                                    <ChevronUp className="w-3 h-3 mr-1" />
+                                    접기
+                                  </>
+                                ) : (
+                                  <>
+                                    <ChevronDown className="w-3 h-3 mr-1" />
+                                    펼치기
+                                  </>
+                                )}
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                          
+                          {/* 확장된 상세 정보 */}
+                          {isExpanded && (
+                            <TableRow className="bg-primary-50">
+                              <TableCell colSpan={6} className="p-3">
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                                  {/* 구성 요소 */}
+                                  <div className="bg-white rounded-lg p-3 border border-primary-200">
+                                    <h5 className="text-xs font-bold text-neutral-900 mb-2 flex items-center gap-1.5">
+                                      <Target className="w-3.5 h-3.5 text-primary-600" />
+                                      구성 요소
+                                    </h5>
+                                    <div className="flex flex-wrap gap-1">
+                                      {Object.entries(keyword.components).map(([key, value]) => (
+                                        <Badge key={key} variant="secondary" className="text-xs font-medium bg-neutral-100 text-neutral-700">
+                                          {value}
+                                        </Badge>
+                                      ))}
+                                    </div>
+                                  </div>
+                                  
+                                  {/* 검색량 상세 */}
+                                  <div className="bg-white rounded-lg p-3 border border-primary-200">
+                                    <h5 className="text-xs font-bold text-neutral-900 mb-2 flex items-center gap-1.5">
+                                      <TrendingUp className="w-3.5 h-3.5 text-primary-600" />
+                                      검색량 상세
+                                    </h5>
+                                    <div className="grid grid-cols-3 gap-2">
+                                      <div>
+                                        <p className="text-xs text-neutral-600 mb-0.5">PC</p>
+                                        <p className="text-xs font-bold text-neutral-900">{keyword.monthly_pc_qc_cnt.toLocaleString()}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-xs text-neutral-600 mb-0.5">모바일</p>
+                                        <p className="text-xs font-bold text-neutral-900">{keyword.monthly_mobile_qc_cnt.toLocaleString()}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-xs text-neutral-600 mb-0.5">검색 업체수</p>
+                                        <p className="text-xs font-bold text-neutral-900">{totalCount > 0 ? totalCount.toLocaleString() : '-'}</p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </React.Fragment>
                       )
                     })}
                   </TableBody>
