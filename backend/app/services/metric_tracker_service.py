@@ -353,22 +353,9 @@ class MetricTrackerService:
             
             logger.info(f"[Metrics Collect] 시작: {tracker_id} - {store['store_name']} / {keyword}")
             
-            # #region agent log
-            import httpx
-            try:
-                await httpx.AsyncClient().post('http://127.0.0.1:7242/ingest/5225ed4a-ae1a-48e3-babe-f4c35d5f29b0',json={'location':'metric_tracker_service.py:354','message':'A1: collect_metrics 시작','data':{'tracker_id':tracker_id,'keyword':keyword,'store_name':store.get('store_name'),'place_id':store.get('place_id'),'coord_x':store.get('x'),'coord_y':store.get('y')},'timestamp':__import__('datetime').datetime.now().timestamp()*1000,'sessionId':'debug-session','hypothesisId':'A,B,C'},timeout=1.0)
-            except: pass
-            # #endregion
-            
             # Naver Rank API 호출
             from app.services.naver_rank_api_unofficial import rank_service_api_unofficial
             import asyncio
-            
-            # #region agent log
-            try:
-                await httpx.AsyncClient().post('http://127.0.0.1:7242/ingest/5225ed4a-ae1a-48e3-babe-f4c35d5f29b0',json={'location':'metric_tracker_service.py:360','message':'A2: check_rank 호출 전','data':{'keyword':keyword,'target_place_id':store['place_id'],'store_name':store['store_name'],'coord_x':store.get('x'),'coord_y':store.get('y'),'has_x':store.get('x') is not None,'has_y':store.get('y') is not None},'timestamp':__import__('datetime').datetime.now().timestamp()*1000,'sessionId':'debug-session','hypothesisId':'A,C'},timeout=1.0)
-            except: pass
-            # #endregion
             
             rank_result = await rank_service_api_unofficial.check_rank(
                 keyword=keyword,
@@ -416,36 +403,18 @@ class MetricTrackerService:
             except: pass
             # #endregion
             
-            # #region agent log
-            try:
-                await httpx.AsyncClient().post('http://127.0.0.1:7242/ingest/5225ed4a-ae1a-48e3-babe-f4c35d5f29b0',json={'location':'metric_tracker_service.py:398','message':'A3: check_rank 결과','data':{'tracker_id':tracker_id,'rank':rank_result.get('rank'),'visitor_review_count':rank_result.get('visitor_review_count'),'blog_review_count':rank_result.get('blog_review_count'),'found':rank_result.get('found'),'total_results':rank_result.get('total_results')},'timestamp':__import__('datetime').datetime.now().timestamp()*1000,'sessionId':'debug-session','hypothesisId':'A,B,D'},timeout=1.0)
-            except: pass
-            # #endregion
-            
             # 지표 데이터 구성
             today = date.today()
-            
-            visitor_count = rank_result.get('visitor_review_count', 0)
-            blog_count = rank_result.get('blog_review_count', 0)
-            
-            logger.info(f"[Metrics Collect] 📊 rank_result에서 추출: visitor={visitor_count}, blog={blog_count}, rank={rank_result.get('rank')}")
-            
             metric_data = {
                 'tracker_id': tracker_id,
                 'keyword_id': tracker['keyword_id'],
                 'store_id': tracker['store_id'],
                 'collection_date': today.isoformat(),
                 'rank': rank_result.get('rank'),
-                'visitor_review_count': visitor_count,
-                'blog_review_count': blog_count,
+                'visitor_review_count': rank_result.get('visitor_review_count', 0),
+                'blog_review_count': rank_result.get('blog_review_count', 0),
                 'collected_at': datetime.now().isoformat()
             }
-            
-            # #region agent log
-            try:
-                await httpx.AsyncClient().post('http://127.0.0.1:7242/ingest/5225ed4a-ae1a-48e3-babe-f4c35d5f29b0',json={'location':'metric_tracker_service.py:410','message':'A4: DB 저장 전 metric_data','data':metric_data,'timestamp':__import__('datetime').datetime.now().timestamp()*1000,'sessionId':'debug-session','hypothesisId':'A,B,C,D'},timeout=1.0)
-            except: pass
-            # #endregion
             
             # 전일 데이터 조회 (순위 변동 계산)
             yesterday = today - timedelta(days=1)

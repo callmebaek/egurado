@@ -79,13 +79,6 @@ class NaverRankNewAPIService:
         """
         logger.info(f"[신API Rank] 순위 체크 시작: keyword={keyword}, place_id={target_place_id}, store_name={store_name}")
         
-        # #region agent log
-        import httpx as _httpx
-        try:
-            await _httpx.AsyncClient().post('http://127.0.0.1:7242/ingest/5225ed4a-ae1a-48e3-babe-f4c35d5f29b0',json={'location':'naver_rank_api_unofficial.py:80','message':'B1: check_rank 시작','data':{'keyword':keyword,'target_place_id':target_place_id,'store_name':store_name,'coord_x':coord_x,'coord_y':coord_y,'has_coord_x':coord_x is not None,'has_coord_y':coord_y is not None},'timestamp':__import__('datetime').datetime.now().timestamp()*1000,'sessionId':'debug-session','hypothesisId':'A,C'},timeout=1.0)
-        except: pass
-        # #endregion
-        
         try:
             # 1. GraphQL로 검색 결과 가져오기
             search_results, total_count = await self._search_places(keyword, max_results)
@@ -139,13 +132,6 @@ class NaverRankNewAPIService:
             # 3. 순위를 못 찾았을 때 매장명으로 리뷰 수 조회
             if not found:
                 logger.info(f"[신API Rank] ⭐ 순위 없음(300위 밖), 매장명으로 리뷰 수 조회 시도: place_id={target_place_id}, store_name={store_name}")
-                
-                # #region agent log
-                try:
-                    await _httpx.AsyncClient().post('http://127.0.0.1:7242/ingest/5225ed4a-ae1a-48e3-babe-f4c35d5f29b0',json={'location':'naver_rank_api_unofficial.py:133','message':'B2: 순위 못 찾음, get_place_info 호출 전','data':{'found':found,'target_place_id':target_place_id,'store_name':store_name,'coord_x':coord_x,'coord_y':coord_y,'has_store_name':store_name is not None and store_name != '','has_coord_x':coord_x is not None,'has_coord_y':coord_y is not None},'timestamp':__import__('datetime').datetime.now().timestamp()*1000,'sessionId':'debug-session','hypothesisId':'A,B,C'},timeout=1.0)
-                except: pass
-                # #endregion
-                
                 try:
                     # naver_review_service 사용 (매장명 검색 방식)
                     from .naver_review_service import NaverReviewService
@@ -157,29 +143,14 @@ class NaverRankNewAPIService:
                         y=coord_y
                     )
                     
-                    # #region agent log
-                    try:
-                        await _httpx.AsyncClient().post('http://127.0.0.1:7242/ingest/5225ed4a-ae1a-48e3-babe-f4c35d5f29b0',json={'location':'naver_rank_api_unofficial.py:145','message':'B3: get_place_info 호출 후','data':{'place_info':place_info,'is_none':place_info is None,'visitor_review_count':place_info.get('visitor_review_count') if place_info else None,'blog_review_count':place_info.get('blog_review_count') if place_info else None},'timestamp':__import__('datetime').datetime.now().timestamp()*1000,'sessionId':'debug-session','hypothesisId':'B,D,E'},timeout=1.0)
-                    except: pass
-                    # #endregion
-                    
-                    logger.info(f"[신API Rank] 🔍 place_info 체크: type={type(place_info)}, bool={bool(place_info)}, keys={list(place_info.keys()) if isinstance(place_info, dict) else 'N/A'}")
-                    logger.info(f"[신API Rank] 🔍 place_info 값: visitor={place_info.get('visitor_review_count') if place_info else 'N/A'}, blog={place_info.get('blog_review_count') if place_info else 'N/A'}")
-                    
                     if place_info:
-                        logger.info(f"[신API Rank] ✅ if place_info 블록 진입!")
-                        try:
-                            target_store_data = {
-                                "place_id": target_place_id,
-                                "visitor_review_count": place_info.get("visitor_review_count", 0),
-                                "blog_review_count": place_info.get("blog_review_count", 0),
-                                "save_count": 0
-                            }
-                            logger.info(f"[신API Rank] ✅ target_store_data 생성 완료: {target_store_data}")
-                            logger.info(f"[신API Rank] ✅ 매장명 검색 성공: 방문자={target_store_data['visitor_review_count']}, 블로그={target_store_data['blog_review_count']}")
-                        except Exception as inner_e:
-                            logger.error(f"[신API Rank] ❌ target_store_data 생성 중 오류: {inner_e}", exc_info=True)
-                            raise
+                        target_store_data = {
+                            "place_id": target_place_id,
+                            "visitor_review_count": place_info.get("visitor_review_count", 0),
+                            "blog_review_count": place_info.get("blog_review_count", 0),
+                            "save_count": 0
+                        }
+                        logger.info(f"[신API Rank] ✅ 매장명 검색 성공: 방문자={target_store_data['visitor_review_count']}, 블로그={target_store_data['blog_review_count']}")
                     else:
                         logger.warning(f"[신API Rank] 매장 정보 없음 → 리뷰수 0으로 설정")
                         target_store_data = {
@@ -197,7 +168,6 @@ class NaverRankNewAPIService:
                         "save_count": 0
                     }
                     logger.warning(f"[신API Rank] 매장 정보 조회 실패 → 리뷰수 0으로 설정")
-                    logger.warning(f"[신API Rank] ⚠️ Exception 타입: {type(e).__name__}, 메시지: {str(e)}")
             
             # 4. 결과 구성
             result = {
@@ -211,12 +181,6 @@ class NaverRankNewAPIService:
                 "blog_review_count": target_store_data.get("blog_review_count", 0),
                 "save_count": target_store_data.get("save_count", 0)
             }
-            
-            # #region agent log
-            try:
-                await _httpx.AsyncClient().post('http://127.0.0.1:7242/ingest/5225ed4a-ae1a-48e3-babe-f4c35d5f29b0',json={'location':'naver_rank_api_unofficial.py:173','message':'B4: check_rank 최종 결과','data':{'rank':rank,'found':found,'visitor_review_count':result['visitor_review_count'],'blog_review_count':result['blog_review_count'],'target_store_data':target_store_data},'timestamp':__import__('datetime').datetime.now().timestamp()*1000,'sessionId':'debug-session','hypothesisId':'A,B,D'},timeout=1.0)
-            except: pass
-            # #endregion
             
             logger.info(
                 f"[신API Rank] 결과: Found={found}, Rank={rank}, "

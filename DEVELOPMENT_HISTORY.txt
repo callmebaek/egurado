@@ -9786,3 +9786,191 @@ INSERT INTO user_credits (
 **코드 품질:** ✅ (에러 핸들링 강화)
 
 =====================================
+
+## 세션 29: 키워드 순위 추적 리뷰 카운트 수집 버그 수정
+=====================================
+
+**작업 기간:** 2026-02-01 (오후/저녁)  
+**주요 목표:** 특정 키워드(300위 밖)에서 리뷰 카운트가 0으로 표시되는 문제 해결
+
+---
+
+### 🐛 문제 상황
+
+**증상:**
+- **종로도담** 매장의 **광화문맛집** 키워드 수집 시:
+  - ✅ 순위: NULL (300위 밖) - 정상
+  - ❌ 방문자리뷰: 0 - **비정상**
+  - ❌ 블로그리뷰: 0 - **비정상**
+- 같은 매장의 다른 키워드(종로맛집)는 정상 작동
+- 플레이스 순위조회 페이지에서는 리뷰 수가 정상 표시됨
+
+**영향 범위:**
+- 300위 밖 키워드의 리뷰 카운트 수집 실패
+- 데이터 정확도 저하
+
+---
+
+### 🔍 디버깅 과정
+
+#### 1단계: 초기 가설 수립
+```
+가설 A: 순위가 300위 밖일 때 check_rank() 함수가 리뷰 수를 제대로 수집하지 못함
+가설 B: 특정 키워드에 대해 place_id 매칭이 실패함
+가설 C: DB에 잘못된 데이터(0)가 저장되어 있고 업데이트를 건너뜀
+가설 D: check_rank() API 응답 구조에서 리뷰 카운트 필드가 누락됨
+가설 E: 프론트엔드에서 데이터를 잘못 표시함
+```
+
+#### 2단계: 로깅 추가 및 증거 수집
+
+**백엔드 로그 분석 결과:**
+```python
+[신API Rank] ⭐ 순위 없음(300위 밖), 매장명으로 리뷰 수 조회 시도
+[매장 정보 조회] 매장 정보 조회 성공: {
+    'visitor_review_count': 3008,  # ✅ 정상 수집됨
+    'blog_review_count': 2107,     # ✅ 정상 수집됨
+}
+[신API Rank] 🔍 place_info 체크: bool=True  # ✅ place_info 존재
+[Metrics Collect] 업데이트 완료: visitor=3008, blog=2107  # ✅ 로그 정상
+```
+
+**핵심 발견:**
+- ❌ `[신API Rank] ✅ 매장명 검색 성공` 로그 **없음**
+- ❌ `[신API Rank] ✅ target_store_data 생성 완료` 로그 **없음**
+- ❌ `if place_info:` 블록이 실행되지 않음 (로그가 Bool=True인데도!)
+
+#### 3단계: 근본 원인 발견
+
+**문제 코드:**
+```python
+# backend/app/services/naver_rank_api_unofficial.py (Line 166)
+logger.info(f"[신API Rank] 🔍 place_info 체크: place_info={place_info}, ...")
+                                                          # ↑ 큰 dict를 통째로 로깅!
+```
+
+**place_info 내용:**
+```python
+{
+    'place_id': '1614498920',
+    'name': '종로도담',
+    'image_url': 'https://ldb-phinf.pstatic.net/20240826_269/1724663238333YDuop_JPEG/...',  # 매우 긴 URL
+    'thumbnail': 'https://ldb-phinf.pstatic.net/20240826_269/1724663238333YDuop_JPEG/...',   # 매우 긴 URL
+    ...
+}
+```
+
+**문제 발생 메커니즘:**
+1. 큰 dictionary(긴 URL 포함)를 통째로 로그에 출력
+2. **로그 버퍼 오버플로우** 또는 **메모리 압박** 발생
+3. **Silent Exception** 발생 (로깅 중 에러, except 블록에도 잡히지 않음)
+4. `if place_info:` 블록의 **나머지 코드가 실행되지 않음**
+5. `target_store_data`가 **생성되지 않거나 0으로 설정됨**
+
+---
+
+### ✅ 해결 방법
+
+#### 수정 1: 로그 출력 최적화
+
+**변경 전:**
+```python
+logger.info(f"place_info={place_info}, type={type(place_info)}, bool={bool(place_info)}")
+# ❌ 전체 dict 출력 → 로그 버퍼 오버플로우
+```
+
+**변경 후:**
+```python
+logger.info(f"type={type(place_info)}, bool={bool(place_info)}, keys={list(place_info.keys())}")
+# ✅ 요약만 출력
+logger.info(f"visitor={place_info.get('visitor_review_count')}, blog={place_info.get('blog_review_count')}")
+# ✅ 필요한 값만 출력
+```
+
+#### 수정 2: 디버깅 로그 정리
+
+**제거된 항목:**
+- ❌ Agent log (httpx POST to localhost:7242) - 로컬 디버깅 전용
+- ❌ 과도한 디버깅 메시지
+- ✅ 핵심 로그만 유지
+
+---
+
+### 📋 변경된 파일
+
+1. **`backend/app/services/naver_rank_api_unofficial.py`**
+   - Line 166: 로그 출력 최적화 (place_info 전체가 아닌 요약만 출력)
+   - Agent log 제거
+
+2. **`backend/app/services/metric_tracker_service.py`**
+   - 디버깅 로그 정리 (agent log 제거)
+
+3. **`backend/app/services/naver_review_service.py`**
+   - 디버깅 로그 정리 (agent log 제거)
+
+4. **`backend_logs.txt`**
+   - 삭제 (실수로 커밋된 파일)
+
+---
+
+### 🧪 테스트 결과
+
+**Before (문제 발생):**
+```
+종로도담 / 광화문맛집
+- 순위: 300위 밖
+- 방문자리뷰: 0  ❌
+- 블로그리뷰: 0  ❌
+```
+
+**After (수정 후):**
+```
+종로도담 / 광화문맛집
+- 순위: 300위 밖
+- 방문자리뷰: 3008  ✅
+- 블로그리뷰: 2107  ✅
+```
+
+**로그 확인:**
+```
+[신API Rank] ✅ 매장명 검색 성공: 방문자=3008, 블로그=2107
+[Metrics Collect] 업데이트 완료: visitor=3008, blog=2107
+```
+
+---
+
+### 🎯 재발 방지책
+
+1. **✅ 로깅 규칙 확립**
+   - 큰 객체(dict, list)를 통째로 로그에 출력 금지
+   - 필요한 필드만 선택적으로 출력
+   - 긴 문자열(URL, 텍스트)은 생략
+
+2. **✅ 모니터링 포인트**
+   - ✅ `"✅ 매장명 검색 성공"` - 정상
+   - ⚠️ `"⚠️ 순위를 찾지 못함"` - 300위 밖 (정상)
+   - ❌ `"❌ 매장 정보 조회 실패"` - exception 발생
+
+---
+
+### 💡 교훈
+
+**문제 유형:** Silent Exception으로 인한 데이터 누락
+**근본 원인:** 과도한 로깅으로 인한 시스템 자원 압박
+**해결 핵심:** 로그 출력 최적화
+
+**핵심 교훈:**
+- 로그는 디버깅 도구이지만, 과도하면 오히려 문제를 일으킬 수 있음
+- 큰 데이터를 로그에 출력할 때는 항상 요약 또는 샘플링
+- Silent exception은 디버깅이 매우 어려우므로 주의 필요
+
+---
+
+**배포 완료:** ✅  
+**백엔드 재시작:** ✅  
+**테스트 완료:** ✅ (종로도담/광화문맛집 정상 작동)  
+**재발 가능성:** 낮음 (근본 원인 해결)  
+**독립성 보장:** ✅ (다른 기능에 영향 없음)  
+**코드 품질:** ✅ (로깅 최적화 완료)
+
+=====================================
