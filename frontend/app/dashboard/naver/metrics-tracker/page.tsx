@@ -348,40 +348,25 @@ export default function MetricsTrackerPage() {
         // API 응답으로 받은 최신 지표 사용
         const collectedMetric = await response.json()
         
-        console.log('[키워드 추적] 수집 완료:', {
-          trackerId,
-          collectedMetric,
-          rank: collectedMetric.rank,
-          visitor: collectedMetric.visitor_review_count,
-          blog: collectedMetric.blog_review_count
-        })
-        
         toast({
           title: "✅ 수집 완료",
           description: "지표가 수집되었습니다"
         })
         
         // ✅ tracker의 last_collected_at 및 최신 지표 업데이트 (전체 새로고침 불필요)
-        setTrackers(prev => {
-          console.log('[키워드 추적] State 업데이트 전:', prev.find(t => t.id === trackerId))
-          
-          const updated = prev.map(t => 
-            t.id === trackerId 
-              ? { 
-                  ...t, 
-                  last_collected_at: new Date().toISOString(),
-                  // 수집된 지표로 업데이트
-                  latest_rank: collectedMetric.rank,
-                  rank_change: collectedMetric.rank_change,
-                  visitor_review_count: collectedMetric.visitor_review_count,
-                  blog_review_count: collectedMetric.blog_review_count
-                }
-              : t
-          )
-          
-          console.log('[키워드 추적] State 업데이트 후:', updated.find(t => t.id === trackerId))
-          return updated
-        })
+        setTrackers(prev => prev.map(t => 
+          t.id === trackerId 
+            ? { 
+                ...t, 
+                last_collected_at: new Date().toISOString(),
+                // 수집된 지표로 업데이트
+                latest_rank: collectedMetric.rank,
+                rank_change: collectedMetric.rank_change,
+                visitor_review_count: collectedMetric.visitor_review_count,
+                blog_review_count: collectedMetric.blog_review_count
+              }
+            : t
+        ))
       } else {
         const errorData = await response.json().catch(() => ({}))
         throw new Error(errorData.detail || "지표 수집 실패")
