@@ -593,7 +593,7 @@ export default function NaverAIReplyPage() {
   }
 
   return (
-    <div className="space-y-4 md:space-y-6 p-4 md:p-6">
+    <div className="w-full max-w-4xl mx-auto space-y-4 md:space-y-6 p-4 md:p-6 lg:p-8">
       {/* 헤더 */}
       <div className="space-y-4">
         <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">

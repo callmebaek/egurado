@@ -912,7 +912,7 @@ export default function ReviewManagementPage() {
   }, [])
   
   return (
-    <div className="space-y-4 md:space-y-6 p-4 md:p-6">
+    <div className="w-full max-w-4xl mx-auto space-y-4 md:space-y-6 p-4 md:p-6 lg:p-8">
       {/* 헤더 */}
       <div>
         <h1 className="text-xl md:text-2xl font-bold text-gray-900 mb-2">리뷰 분석</h1>
