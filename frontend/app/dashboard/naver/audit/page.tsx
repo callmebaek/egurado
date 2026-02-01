@@ -5,6 +5,7 @@ import { Store, CheckCircle2, AlertCircle, X, ExternalLink, FileText, Calendar, 
 import { useToast } from "@/components/ui/use-toast"
 import { useAuth } from "@/lib/auth-context"
 import { api } from "@/lib/config"
+import { notifyCreditUsed } from "@/lib/credit-utils"
 import { useSearchParams } from "next/navigation"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -232,6 +233,11 @@ export default function NaverAuditPage() {
       
       setPlaceDetails(data.details)
       setDiagnosisResult(data.diagnosis)
+
+      // ✨ 크레딧 실시간 차감 알림 (진단 10 크레딧, 인증된 경우만)
+      if (token) {
+        notifyCreditUsed(10, token)
+      }
 
       toast({
         title: "✅ 진단 완료",

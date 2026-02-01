@@ -13,6 +13,7 @@ import { useToast } from '@/components/ui/use-toast'
 import { useAuth } from '@/lib/auth-context'
 import { Search, TrendingUp, Star } from 'lucide-react'
 import { api } from '@/lib/config'
+import { notifyCreditUsed } from '@/lib/credit-utils'
 
 interface StoreKeywordInfo {
   rank: number
@@ -107,6 +108,9 @@ export default function MainKeywordsAnalysisPage() {
           
           const data: AnalysisResult = await response.json()
           setResult(data)
+
+          // ✨ 크레딧 실시간 차감 알림 (메인 키워드 분석 5 크레딧)
+          notifyCreditUsed(5, token)
           
           // 🆕 캐시에 저장
           try {
@@ -177,6 +181,9 @@ export default function MainKeywordsAnalysisPage() {
       
       const data: AnalysisResult = await response.json()
       setResult(data)
+
+      // ✨ 크레딧 실시간 차감 알림 (메인 키워드 분석 5 크레딧)
+      notifyCreditUsed(5, token)
       
       toast({
         title: "분석 완료",

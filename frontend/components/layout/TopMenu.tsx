@@ -4,6 +4,8 @@
  * 상단 메뉴 컴포넌트
  * 로고, 메뉴, 프로필 아이콘
  * 반응형: 모바일에서는 햄버거 메뉴 표시
+ * 
+ * ✨ 크레딧 실시간 업데이트 지원 (하이브리드 방식)
  */
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -13,6 +15,11 @@ import { supabase } from '@/lib/supabase'
 import { useToast } from '@/components/ui/use-toast'
 import { useAuth } from '@/lib/auth-context'
 import { memo, useCallback, useState, useEffect } from 'react'
+import { 
+  getCachedCredits, 
+  setCachedCredits,
+  type Credits 
+} from '@/lib/credit-utils'
 
 interface TopMenuProps {
   onMenuClick: () => void
@@ -21,37 +28,68 @@ interface TopMenuProps {
 export const TopMenu = memo(function TopMenu({ onMenuClick }: TopMenuProps) {
   const router = useRouter()
   const { toast } = useToast()
-  const [credits, setCredits] = useState<{ total_remaining: number; tier: string } | null>(null)
+  const [credits, setCredits] = useState<Credits | null>(null)
   const { user, getToken } = useAuth()
 
-  // 크레딧 정보 로드
-  useEffect(() => {
-    const loadCredits = async () => {
-      const token = getToken()
-      if (!token) return
+  // 크레딧 정보 로드 (재사용 가능하도록 useCallback으로 분리)
+  const loadCredits = useCallback(async () => {
+    const token = getToken()
+    if (!token || !user) return
 
-      try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/credits/me`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        })
-        if (response.ok) {
-          const data = await response.json()
-          setCredits({
-            total_remaining: data.total_remaining || 0,
-            tier: data.tier || 'free'
-          })
-        }
-      } catch (error) {
-        console.error('Failed to load credits:', error)
+    try {
+      // 1️⃣ 캐시가 있으면 즉시 표시 (0ms, 페이지 로드 속도 향상)
+      const cached = getCachedCredits()
+      if (cached) {
+        setCredits(cached)
       }
-    }
 
+      // 2️⃣ 백그라운드에서 실제 값 갱신 (최신 크레딧 확보)
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/credits/me`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        const freshCredits: Credits = {
+          total_remaining: data.total_remaining || 0,
+          tier: data.tier || 'free'
+        }
+        
+        // 캐시 업데이트
+        setCachedCredits(freshCredits)
+        setCredits(freshCredits)
+      }
+    } catch (error) {
+      console.error('Failed to load credits:', error)
+    }
+  }, [user, getToken])
+
+  // 초기 로드 및 user 변경 시 (기존 로직 유지)
+  useEffect(() => {
     if (user) {
       loadCredits()
     }
-  }, [user, getToken])
+  }, [user, loadCredits])
+
+  // 🆕 크레딧 변경 이벤트 리스너 (실시간 업데이트)
+  useEffect(() => {
+    const handleCreditChanged = (e: CustomEvent<Credits>) => {
+      console.log('💳 Credit changed event received:', e.detail)
+      setCredits(e.detail)
+    }
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('creditChanged' as any, handleCreditChanged as any)
+    }
+
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('creditChanged' as any, handleCreditChanged as any)
+      }
+    }
+  }, [])
 
   const handleLogout = useCallback(async () => {
     try {

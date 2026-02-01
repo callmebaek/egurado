@@ -10898,3 +10898,450 @@ fix: 키워드 순위 추적 시스템 안정화 및 성능 개선
 ```
 
 =====================================
+
+## 📧 이메일 시스템 설정 (AWS SES 시도 및 대안 검토)
+
+**날짜:** 2026-02-01  
+**작업자:** AI Assistant + 사용자  
+**목적:** whiplace.com 이메일 인증 및 알림 시스템 구축
+
+---
+
+### 🎯 작업 목표
+
+**구현하려는 기능:**
+1. 회원가입 시 이메일 인증 활성화
+2. 비밀번호 변경/재설정을 위한 이메일 인증
+3. 키워드 순위 추적 알림 이메일 자동 발송
+
+**예상 발송량:**
+- 회원가입 인증: 1~50건/일
+- 비밀번호 재설정: ~10건/일
+- 순위 알림: 초기 100~200건/일 → 목표 2,500건/일 (유저 250명 시점)
+
+---
+
+### 📋 진행 단계 및 결과
+
+#### Step 1: AWS SES 초기 설정 시도 ✅
+
+**1.1 도메인 인증 (Domain Verification)**
+```
+도메인: whiplace.com
+발송 이메일: support@whiplace.com
+리전: 서울 (ap-northeast-2)
+
+작업 내용:
+1. AWS SES Console에서 자격 증명 생성
+2. DNS 레코드 추가 요청:
+   - CNAME 레코드 3개 (DKIM 인증용)
+   - TXT 레코드 1개 (도메인 소유권 확인)
+3. 가비아 DNS 설정에 레코드 추가
+4. ✅ 인증 완료 (약 10분 소요)
+```
+
+**1.2 SMTP 자격 증명 생성**
+```
+SMTP 엔드포인트: email-smtp.ap-northeast-2.amazonaws.com
+포트: 587 (TLS)
+인증 방식: STARTTLS
+
+생성된 자격 증명:
+- Username: AKIAYR6C4FNSWJQYXXX (IAM User)
+- Password: [AWS 생성 비밀번호]
+```
+
+**1.3 Sandbox 모드 해제 신청**
+```
+목적: 프로덕션 환경에서 모든 이메일 주소로 발송 가능하도록
+
+신청 내용:
+- 사용 사례: 회원 인증 및 순위 알림 서비스
+- 예상 발송량: 일 50~2,500건
+- 수신자 목록 관리: Supabase를 통한 Opt-in 방식
+- Bounce/Complaint 처리: 자동 처리 + 모니터링
+```
+
+**1.4 AWS 추가 정보 요청 및 답변**
+```
+AWS 요청 사항:
+- 이메일 발송 빈도
+- 수신자 목록 관리 방법
+- 반송/불만 처리 방법
+- 발송 이메일 예시
+- 도메인 인증 확인
+
+제출 답변:
+- 상세한 사용 계획 설명
+- 이메일 종류별 발송 빈도
+- 보안 및 품질 관리 절차
+- HTML 이메일 템플릿 예시 제공
+```
+
+**1.5 AWS SES 거절 ❌**
+```
+거절 사유:
+"We reviewed your request and determined that your use 
+of Amazon SES could have a negative impact on our service."
+
+분석:
+- 신규 계정이라 신뢰도 부족
+- 상세 사유는 보안상 미공개
+- 재신청 가능하지만 시간 소요 예상
+```
+
+---
+
+#### Step 2: Supabase SMTP 설정 ✅
+
+**2.1 Custom SMTP 활성화**
+```
+위치: Project Settings → Authentication → SMTP Settings
+
+설정 내용:
+✅ Enable custom SMTP: ON
+✅ Sender email: support@whiplace.com
+✅ Sender name: 윕플 (whiplace)
+✅ Host: email-smtp.ap-northeast-2.amazonaws.com
+✅ Port: 587
+✅ Username: AKIAYR6C4FNSWJQYXXX
+✅ Password: [설정 완료]
+✅ Admin email: [관리자 이메일]
+
+결과: 설정 저장 완료 (AWS SES 거절로 실제 사용 불가)
+```
+
+**2.2 이메일 템플릿 확인**
+```
+위치: Notifications → Email → Templates
+
+확인된 템플릿:
+✅ Confirm sign up (회원가입 인증)
+✅ Invite user (사용자 초대)
+✅ Magic link (매직 링크 로그인)
+✅ Change email address (이메일 변경)
+✅ Reset password (비밀번호 재설정)
+✅ Reauthentication (재인증)
+
+상태: 모든 템플릿 활성화됨
+```
+
+**2.3 Email Provider 설정 확인**
+```
+위치: Project Settings → Authentication → Providers → Email
+
+설정 상태:
+✅ Enable Email provider: ON
+✅ Secure email change: ON
+☐ Secure password change: OFF (선택사항)
+✅ Minimum password length: 6 characters
+✅ Email OTP Expiration: 3600 seconds (1시간)
+✅ Email OTP Length: 8 numbers
+
+권장 변경사항:
+- Minimum password length: 6 → 8 characters (보안 강화)
+- Secure password change: OFF → ON (선택사항)
+```
+
+**2.4 이메일 템플릿 파일 생성**
+```
+파일: supabase/email-templates/confirm-signup.html
+
+특징:
+- 한국어 + TurboTax 스타일 디자인
+- 모바일 반응형
+- 인증 버튼 (44x44px 터치 타겟)
+- 브랜드 컬러 (#635bff, #9b87ff)
+- 보안 안내 문구 포함
+- 1시간 유효 기간 안내
+
+구성:
+1. 헤더 (브랜드 로고 및 제목)
+2. 본문 (환영 메시지)
+3. CTA 버튼 (이메일 인증하기)
+4. 보안 안내
+5. 푸터 (고객센터 정보)
+```
+
+---
+
+#### Step 3: 대안 검토 및 제안 📋
+
+**3.1 AWS SES 거절 후 대안 분석**
+
+**옵션 1: Resend (추천) ⭐**
+```
+장점:
+✅ 설정 간단 (승인 과정 없음)
+✅ 개발자 친화적
+✅ 한국 개발자들이 많이 사용
+✅ 직관적인 API
+
+비용:
+- 무료 플랜: 월 3,000건
+- Pro 플랜: $20/월 (50,000건)
+
+예상 비용:
+- 초기: 무료 플랜으로 시작
+- 성장 시: Pro 플랜 ($20/월)
+```
+
+**옵션 2: SendGrid**
+```
+장점:
+✅ 안정적인 서비스
+✅ 우수한 대시보드
+✅ 높은 신뢰도
+
+비용:
+- 무료 플랜: 월 100건 (부족)
+- Essentials: $19.95/월 (50,000건)
+```
+
+**옵션 3: AWS SES 재신청**
+```
+필요 작업:
+- 다른 AWS 계정으로 재신청
+- 더 상세한 사용 계획 제출
+- 신뢰도 구축 (결제 내역 등)
+
+단점:
+⏰ 시간 소요 (1-2주)
+❓ 승인 불확실성
+```
+
+---
+
+### 🎯 다음 단계 권장사항
+
+**즉시 조치 (추천):**
+1. **Resend 계정 생성 및 설정 (1시간)**
+   ```
+   1. Resend 가입 (https://resend.com)
+   2. 도메인 추가 (whiplace.com)
+   3. DNS 레코드 설정 (기존 SES 레코드 활용 가능)
+   4. API 키 생성
+   5. Supabase SMTP 정보 업데이트
+   ```
+
+2. **이메일 인증 테스트**
+   ```
+   1. 회원가입 테스트
+   2. 비밀번호 재설정 테스트
+   3. 이메일 수신 확인
+   ```
+
+3. **순위 알림 이메일 시스템 구축**
+   ```
+   Backend 작업:
+   - Python 이메일 서비스 클래스 작성
+   - HTML 이메일 템플릿 생성
+   - 스케줄러와 통합
+   - 알림 설정 UI 개발
+   ```
+
+**중장기 계획:**
+- SendGrid 또는 다른 서비스 검토 (비용 최적화)
+- AWS SES 재도전 (서비스 성장 후)
+- 이메일 발송 로그 및 분석 시스템 구축
+
+---
+
+### 📁 생성/수정된 파일
+
+**새로 생성:**
+1. `supabase/email-templates/confirm-signup.html`
+   - 회원가입 인증 이메일 템플릿
+   - 한국어 + 반응형 디자인
+
+**설정 변경:**
+1. **AWS SES**
+   - 도메인 인증 완료 (whiplace.com)
+   - SMTP 자격 증명 생성
+   - Sandbox 해제 신청 (거절됨)
+
+2. **Supabase**
+   - Custom SMTP 활성화
+   - Email Provider 설정 확인
+   - 모든 이메일 템플릿 활성화
+
+3. **가비아 DNS**
+   - CNAME 레코드 3개 추가 (DKIM)
+   - TXT 레코드 1개 추가 (도메인 소유권)
+
+---
+
+### 🎓 학습 포인트
+
+**1. 이메일 발송 서비스 선택**
+```
+신규 서비스의 경우:
+❌ AWS SES: 신뢰도 부족으로 거절 가능성
+✅ Resend, SendGrid: 승인 과정 없이 바로 사용 가능
+
+기존 서비스의 경우:
+✅ AWS SES: 비용 효율적, 안정적
+```
+
+**2. 이메일 인증 시스템 구성 요소**
+```
+필수 구성:
+1. SMTP 서버 (발송 인프라)
+2. DNS 레코드 (SPF, DKIM, DMARC)
+3. 발신자 인증 (도메인 소유권)
+4. 템플릿 시스템 (HTML/텍스트)
+5. Bounce/Complaint 처리
+```
+
+**3. Supabase 이메일 설정**
+```
+계층 구조:
+1. Project Settings → Authentication → Providers
+   → Email Provider 활성화
+
+2. Project Settings → Authentication → SMTP Settings
+   → SMTP 서버 정보 입력
+
+3. Notifications → Email → Templates
+   → 이메일 템플릿 커스터마이징
+```
+
+**4. 이메일 템플릿 모범 사례**
+```
+✅ 모바일 반응형 (대부분 모바일에서 확인)
+✅ 터치 타겟 최소 44x44px
+✅ 명확한 CTA 버튼
+✅ 보안 안내 문구 포함
+✅ 브랜드 아이덴티티 반영
+✅ 다크모드 대응 (선택사항)
+```
+
+---
+
+### 🔍 트러블슈팅 경험
+
+**문제 1: Supabase UI가 문서와 다름**
+```
+원인: Supabase UI가 지속적으로 업데이트됨
+
+해결:
+- 실제 화면 구조 파악
+- 한글/영어 버전 차이 고려
+- 스크린샷 기반 가이드 제공
+```
+
+**문제 2: AWS SES 승인 거절**
+```
+원인:
+- 신규 계정 신뢰도 부족
+- 사용 계획이 불명확하거나 의심스러움
+- AWS의 엄격한 스팸 방지 정책
+
+해결책:
+- 대안 서비스 사용 (Resend, SendGrid)
+- 서비스 성장 후 재신청
+- 다른 AWS 계정으로 재도전
+```
+
+**문제 3: 이메일 설정 메뉴 찾기 어려움**
+```
+Supabase UI 구조:
+1. 좌측 사이드바 "Authentication" 
+   → 사용자 관리, 정책 설정
+
+2. Project Settings → Authentication
+   → 이메일 발송 관련 설정 (SMTP, Providers)
+
+3. Notifications → Email
+   → 템플릿 편집
+
+혼동 포인트: "Authentication"이 두 곳에 존재
+```
+
+---
+
+### 💡 권장 후속 작업
+
+**Phase 1: 이메일 서비스 교체 (우선순위 높음)**
+```
+1. Resend 가입 및 설정 (1시간)
+2. Supabase SMTP 정보 업데이트 (10분)
+3. 회원가입 테스트 (10분)
+4. 프로덕션 배포
+```
+
+**Phase 2: 순위 알림 시스템 구축**
+```
+Backend:
+1. 이메일 서비스 클래스 작성
+   - `backend/app/services/email_service.py`
+   - Resend API 통합
+   - 템플릿 렌더링
+
+2. 순위 변동 감지 및 알림 로직
+   - `backend/app/services/rank_notification_service.py`
+   - 변동 임계값 설정 (예: 10위 이상 변동)
+   - 알림 빈도 제한 (스팸 방지)
+
+3. 스케줄러 통합
+   - 자동 수집 후 알림 발송
+   - 배치 처리 (성능 최적화)
+
+Frontend:
+4. 알림 설정 UI
+   - 키워드별 알림 ON/OFF
+   - 알림 수신 시간 설정
+   - 이메일 주소 관리
+```
+
+**Phase 3: 모니터링 및 최적화**
+```
+1. 이메일 발송 로그 수집
+2. Bounce/Complaint 율 모니터링
+3. 발송 성공률 추적
+4. 비용 분석 및 최적화
+```
+
+---
+
+### 📊 현재 상태 요약
+
+**완료 항목:**
+- ✅ AWS SES 도메인 인증 (whiplace.com)
+- ✅ AWS SES SMTP 자격 증명 생성
+- ✅ 가비아 DNS 레코드 설정
+- ✅ Supabase SMTP 연동 설정
+- ✅ Supabase Email Provider 활성화
+- ✅ 이메일 템플릿 생성 (confirm-signup.html)
+- ✅ 대안 서비스 분석 및 제안
+
+**대기/진행 중:**
+- ⏸️ AWS SES Production Access (거절됨)
+- ⏸️ 이메일 발송 기능 (SMTP 미작동)
+
+**다음 작업:**
+- 🔄 Resend로 이메일 서비스 교체
+- 🔄 순위 알림 이메일 시스템 구축
+- 🔄 이메일 발송 테스트 및 검증
+
+---
+
+**작업 시간:** 약 2시간  
+**배포 상태:** ⏸️ 대기 (이메일 서비스 교체 필요)  
+**테스트 상태:** ⏸️ 대기 (SMTP 미설정)  
+**우선순위:** 🔴 높음 (회원가입 인증 필수 기능)
+
+**다음 단계:**
+```
+Step 1: Resend 가입 및 설정 (추천)
+Step 2: Supabase SMTP 업데이트
+Step 3: 이메일 인증 테스트
+Step 4: 순위 알림 시스템 구축
+```
+
+**참고 문서:**
+- AWS SES 문서: https://docs.aws.amazon.com/ses/
+- Resend 문서: https://resend.com/docs
+- Supabase Auth 문서: https://supabase.com/docs/guides/auth
+
+=====================================

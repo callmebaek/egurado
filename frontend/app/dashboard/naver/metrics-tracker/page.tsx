@@ -45,6 +45,7 @@ import {
 import { useState, useEffect, useMemo } from "react"
 import { api } from "@/lib/config"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { notifyCreditUsed } from "@/lib/credit-utils"
 
 interface Store {
   id: string
@@ -353,6 +354,9 @@ export default function MetricsTrackerPage() {
           title: "✅ 수집 완료",
           description: "지표가 수집되었습니다"
         })
+
+        // ✨ 크레딧 실시간 차감 알림
+        notifyCreditUsed(2, token)
         
         // ✅ tracker의 last_collected_at 및 최신 지표 업데이트 (전체 새로고침 불필요)
         setTrackers(prev => prev.map(t => 
@@ -452,6 +456,12 @@ export default function MetricsTrackerPage() {
       })
       
       const successCount = results.filter(r => r.success).length
+      
+      // ✨ 크레딧 실시간 차감 알림 (성공한 수집 개수만큼)
+      if (successCount > 0) {
+        notifyCreditUsed(successCount * 2, token)
+      }
+      
       toast({
         title: "🎉 전체 수집 완료",
         description: `${successCount}/${trackerIds.length}개 키워드의 지표가 수집되었습니다`

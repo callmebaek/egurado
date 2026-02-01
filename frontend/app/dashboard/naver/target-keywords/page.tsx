@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label"
 import { useToast } from "@/components/ui/use-toast"
 import { Loader2, Search, Target, TrendingUp, Plus, X, AlertCircle, CheckCircle2, Info, History, Calendar, Eye, ChevronDown, ChevronUp } from "lucide-react"
 import { api } from "@/lib/config"
+import { notifyCreditUsed } from "@/lib/credit-utils"
 import {
   Select,
   SelectContent,
@@ -371,6 +372,9 @@ export default function TargetKeywordsPage() {
       
       if (result.status === "success") {
         setAnalysisResult(result.data)
+
+        // ✨ 크레딧 실시간 차감 알림 (타겟 키워드 추출 30 크레딧)
+        notifyCreditUsed(30, token)
         
         // 히스토리 ID가 있으면 URL 업데이트
         if (result.history_id) {

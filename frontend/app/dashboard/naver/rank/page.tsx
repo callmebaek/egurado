@@ -22,6 +22,7 @@ import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
+import { notifyCreditUsed } from "@/lib/credit-utils"
 
 interface Store {
   id: string
@@ -368,6 +369,9 @@ export default function NaverRankPage() {
         blog_review_count: data.blog_review_count,
         save_count: data.save_count,
       })
+
+      // ✨ 크레딧 실시간 차감 알림
+      notifyCreditUsed(5, token)
 
       await loadKeywords(selectedStoreId)
       calculateTotalKeywordCount()

@@ -9,6 +9,7 @@ import { useToast } from "@/components/ui/use-toast"
 import { useAuth } from "@/lib/auth-context"
 import { supabase } from "@/lib/supabase"
 import { api } from "@/lib/config"
+import { notifyCreditUsed } from "@/lib/credit-utils"
 import { 
   MessageSquare, 
   ThumbsUp, 
@@ -698,6 +699,9 @@ export default function ReviewManagementPage() {
               console.log("🎉 분석 완료!", data)
               clearTimeout(sseTimeout) // 타임아웃 클리어
               eventSource.close()
+
+              // ✨ 크레딧 실시간 차감 알림 (리뷰 분석 10 크레딧)
+              notifyCreditUsed(10, token)
               
               // savedDate를 먼저 추출 (closure 문제 방지)
               const savedDate = data.saved_date || dateRange.end_date

@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
 import { useToast } from "@/components/ui/use-toast"
 import { api } from "@/lib/config"
+import { notifyCreditUsed } from "@/lib/credit-utils"
 
 interface SearchVolumeData {
   id: string
@@ -219,6 +220,10 @@ export default function NaverKeywordsPage() {
             ? `${displayResults.length}개 키워드 조회 완료 (${successCount}/${successCount + failCount} 그룹 성공)`
             : `${displayResults.length}개 키워드의 검색량을 조회했습니다.`,
         })
+
+        // ✨ 크레딧 실시간 차감 알림 (키워드 수에 따라 동적 차감, 최대 50 크레딧)
+        const creditsUsed = Math.min(displayResults.length * 10, 50)
+        notifyCreditUsed(creditsUsed, token)
       } else {
         throw new Error("모든 검색이 실패했습니다")
       }

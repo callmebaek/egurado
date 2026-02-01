@@ -40,6 +40,7 @@ import {
 import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/components/ui/use-toast'
 import { api } from '@/lib/config'
+import { notifyCreditUsed } from '@/lib/credit-utils'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -336,6 +337,9 @@ export default function ActivationPage() {
       const result = await response.json()
       setGeneratedText(result.generated_text || '')
       setGeneratedTextCharCount(result.generated_text?.length || 0)
+
+      // ✨ 크레딧 실시간 차감 알림 (설명문 생성 25 크레딧)
+      notifyCreditUsed(25, token)
       
       toast({
         title: '생성 완료',
@@ -389,6 +393,9 @@ export default function ActivationPage() {
       const result = await response.json()
       setGeneratedDirectionsText(result.generated_text || '')
       setGeneratedDirectionsCharCount(result.generated_text?.length || 0)
+
+      // ✨ 크레딧 실시간 차감 알림 (길찾기 생성 15 크레딧)
+      notifyCreditUsed(15, token)
       
       toast({
         title: '생성 완료',

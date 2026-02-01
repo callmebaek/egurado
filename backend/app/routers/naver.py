@@ -1295,6 +1295,25 @@ async def get_place_details(
         logger.info(f"[플레이스 진단] 채워진 정보: {filled_count}/{total_count} ({fill_rate:.1f}%)")
         logger.info(f"[플레이스 진단] 평가 점수: {diagnosis_result['total_score']}/{diagnosis_result['max_score']}점 ({diagnosis_result['grade']}등급)")
         
+        # 크레딧 차감 (인증된 사용자만)
+        if current_user and settings.CREDIT_SYSTEM_ENABLED and settings.CREDIT_AUTO_DEDUCT:
+            try:
+                user_id = current_user.get("id")
+                transaction_id = await credit_service.deduct_credits(
+                    user_id=user_id,
+                    feature="place_diagnosis",
+                    credits_amount=10,
+                    metadata={
+                        "place_id": place_id,
+                        "store_name": details.get("name", "Unknown"),
+                        "grade": diagnosis_result["grade"],
+                        "score": diagnosis_result["total_score"]
+                    }
+                )
+                logger.info(f"[Credits] Deducted 10 credits from user {user_id} (transaction: {transaction_id})")
+            except Exception as credit_error:
+                logger.error(f"[Credits] Failed to deduct credits: {credit_error}")
+        
         # 진단 히스토리 저장 (store_id와 current_user가 제공된 경우에만)
         history_id = None
         if store_id and current_user:

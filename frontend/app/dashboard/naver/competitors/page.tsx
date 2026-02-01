@@ -21,6 +21,7 @@ import {
 import { useToast } from "@/components/ui/use-toast"
 import { useAuth } from "@/lib/auth-context"
 import { api } from "@/lib/config"
+import { notifyCreditUsed } from "@/lib/credit-utils"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -403,6 +404,9 @@ export default function CompetitorsPage() {
       }
       
       setComparison(comparisonResult)
+
+      // ✨ 크레딧 실시간 차감 알림 (경쟁사 분석 30 크레딧)
+      notifyCreditUsed(30, token)
 
       setTimeout(() => {
         summaryRef.current?.scrollIntoView({ 
