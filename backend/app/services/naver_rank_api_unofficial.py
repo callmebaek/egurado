@@ -163,16 +163,23 @@ class NaverRankNewAPIService:
                     except: pass
                     # #endregion
                     
-                    logger.info(f"[신API Rank] 🔍 place_info 체크: place_info={place_info}, type={type(place_info)}, bool={bool(place_info)}")
+                    logger.info(f"[신API Rank] 🔍 place_info 체크: type={type(place_info)}, bool={bool(place_info)}, keys={list(place_info.keys()) if isinstance(place_info, dict) else 'N/A'}")
+                    logger.info(f"[신API Rank] 🔍 place_info 값: visitor={place_info.get('visitor_review_count') if place_info else 'N/A'}, blog={place_info.get('blog_review_count') if place_info else 'N/A'}")
                     
                     if place_info:
-                        target_store_data = {
-                            "place_id": target_place_id,
-                            "visitor_review_count": place_info.get("visitor_review_count", 0),
-                            "blog_review_count": place_info.get("blog_review_count", 0),
-                            "save_count": 0
-                        }
-                        logger.info(f"[신API Rank] ✅ 매장명 검색 성공: 방문자={target_store_data['visitor_review_count']}, 블로그={target_store_data['blog_review_count']}")
+                        logger.info(f"[신API Rank] ✅ if place_info 블록 진입!")
+                        try:
+                            target_store_data = {
+                                "place_id": target_place_id,
+                                "visitor_review_count": place_info.get("visitor_review_count", 0),
+                                "blog_review_count": place_info.get("blog_review_count", 0),
+                                "save_count": 0
+                            }
+                            logger.info(f"[신API Rank] ✅ target_store_data 생성 완료: {target_store_data}")
+                            logger.info(f"[신API Rank] ✅ 매장명 검색 성공: 방문자={target_store_data['visitor_review_count']}, 블로그={target_store_data['blog_review_count']}")
+                        except Exception as inner_e:
+                            logger.error(f"[신API Rank] ❌ target_store_data 생성 중 오류: {inner_e}", exc_info=True)
+                            raise
                     else:
                         logger.warning(f"[신API Rank] 매장 정보 없음 → 리뷰수 0으로 설정")
                         target_store_data = {
