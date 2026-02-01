@@ -2,40 +2,44 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useSearchParams } from 'next/navigation'
-import { Users, Search, Loader2, TrendingUp, TrendingDown, Minus, AlertCircle, CheckCircle2, Store, Target, FileText, ExternalLink } from "lucide-react"
+import { 
+  Users, 
+  Search, 
+  Loader2, 
+  TrendingUp, 
+  TrendingDown, 
+  Minus, 
+  AlertCircle, 
+  CheckCircle2, 
+  Store, 
+  Target, 
+  FileText, 
+  ExternalLink,
+  ChevronDown,
+  ChevronUp
+} from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { useAuth } from "@/lib/auth-context"
 import { api } from "@/lib/config"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import {
-  Paper,
-  Card,
-  Badge,
-  Progress,
-  RingProgress,
   Table,
-  Timeline,
-  Modal,
-  Grid,
-  Group,
-  Stack,
-  Title,
-  Text,
-  Button,
-  TextInput,
-  Container,
-  ThemeIcon,
-  Center,
-  Loader,
-  SimpleGrid,
-  Divider,
-} from '@mantine/core'
-import '@mantine/core/styles.css'
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 
 interface RegisteredStore {
   id: string
   place_id: string
   store_name: string
-  name?: string // API 응답에서 name으로 올 수도 있음
+  name?: string
   category: string
   address: string
   platform: string
@@ -143,6 +147,9 @@ export default function CompetitorsPage() {
   const [loadingAnalysis, setLoadingAnalysis] = useState(false)
   const [analysisProgress, setAnalysisProgress] = useState({ current: 0, total: 0 })
 
+  // 모바일 카드 확장 상태
+  const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set())
+
   // 분석 결과 섹션 ref
   const summaryRef = useRef<HTMLDivElement>(null)
   
@@ -158,7 +165,6 @@ export default function CompetitorsPage() {
     const keywordParam = searchParams.get('keyword')
     
     if (autoStart === 'true' && storeId && keywordParam && stores.length > 0 && !selectedStore) {
-      // 매장 찾기
       const store = stores.find(s => s.id === storeId)
       if (store) {
         console.log('[경쟁매장 분석] 자동 분석 시작:', store.store_name, keywordParam)
@@ -175,7 +181,6 @@ export default function CompetitorsPage() {
     
     if (autoStart === 'true' && selectedStore && keyword && step === 2 && !loadingSearch) {
       console.log('[경쟁매장 분석] 검색 시작:', keyword)
-      // 한 번만 실행하도록 autoStart 파라미터 제거 (브라우저 히스토리 변경 없이)
       window.history.replaceState({}, '', window.location.pathname)
       handleKeywordSubmit()
     }
@@ -205,12 +210,11 @@ export default function CompetitorsPage() {
       }
       
       const data = await response.json()
-      // API는 'name' 필드를 반환하지만, 이 컴포넌트는 'store_name'을 기대함
       const naverStores = (data.stores || [])
         .filter((s: any) => s.platform === "naver")
         .map((s: any) => ({
           ...s,
-          store_name: s.name || s.store_name // name을 store_name으로 매핑
+          store_name: s.name || s.store_name
         }))
       setStores(naverStores)
     } catch (error) {
@@ -229,7 +233,6 @@ export default function CompetitorsPage() {
     setSelectedStore(store)
     setStep(2)
     
-    // 해당 매장의 등록된 키워드 가져오기
     setLoadingKeywords(true)
     try {
       const response = await fetch(api.keywords.list(store.id))
@@ -285,7 +288,6 @@ export default function CompetitorsPage() {
         return
       }
       
-      // 기본 정보만 있는 매장 목록
       const basicStores = data.stores.map((store: any, index: number) => ({
         rank: index + 1,
         place_id: store.place_id,
@@ -302,7 +304,6 @@ export default function CompetitorsPage() {
         description: `상위 ${basicStores.length}개 매장을 찾았습니다. 상세 분석을 시작합니다.`,
       })
       
-      // 자동으로 상세 분석 시작 (basicStores를 직접 전달)
       setTimeout(() => {
         handleStartAnalysis(basicStores)
       }, 500)
@@ -321,7 +322,6 @@ export default function CompetitorsPage() {
   const handleStartAnalysis = async (storesToAnalyze?: CompetitorStore[]) => {
     if (!selectedStore) return
     
-    // topStores 대신 파라미터로 받은 stores 사용 (React 상태 업데이트 비동기 문제 해결)
     const stores = storesToAnalyze || topStores
     
     if (stores.length === 0) {
@@ -337,7 +337,6 @@ export default function CompetitorsPage() {
     setAnalysisProgress({ current: 0, total: stores.length + 1 })
     
     try {
-      // 점진적 분석: 우리 매장 먼저
       const myStoreUrl = `${api.baseUrl}/api/v1/naver/competitor/analyze-single/${selectedStore.place_id}?rank=0&store_name=${encodeURIComponent(selectedStore.store_name)}`
       
       setAnalysisProgress({ current: 1, total: stores.length + 1 })
@@ -352,7 +351,6 @@ export default function CompetitorsPage() {
       const myStoreData = await myStoreResponse.json()
       const myStore = myStoreData.result
       
-      // 경쟁사 분석 (점진적)
       const analyzed: CompetitorStore[] = []
       
       for (let i = 0; i < stores.length; i++) {
@@ -367,33 +365,21 @@ export default function CompetitorsPage() {
           if (response.ok) {
             const data = await response.json()
             analyzed.push(data.result)
-            
-            // 실시간 업데이트
             setAnalyzedStores([...analyzed])
           }
         } catch (error) {
           console.error(`${store.name} 분석 실패:`, error)
         }
         
-        // Rate limiting
         await new Promise(resolve => setTimeout(resolve, 1000))
       }
       
-      // 비교 분석 생성
       const token = await getToken()
       if (!token) {
         throw new Error("인증 토큰이 없습니다")
       }
       
       console.log('[경쟁매장] 비교 분석 요청 시작')
-      console.log('[경쟁매장] 우리 매장:', myStore.name, myStore.diagnosis_score)
-      console.log('[경쟁매장] 경쟁사 수:', analyzed.length)
-      console.log('[경쟁매장] 경쟁사 데이터 샘플:', analyzed.slice(0, 2).map(c => ({
-        name: c.name,
-        diagnosis_score: c.diagnosis_score,
-        visitor_reviews_7d_avg: c.visitor_reviews_7d_avg,
-        blog_reviews_7d_avg: c.blog_reviews_7d_avg
-      })))
       
       const comparisonResponse = await fetch(
         `${api.url("/api/v1/naver/competitor/compare")}`,
@@ -410,20 +396,14 @@ export default function CompetitorsPage() {
         }
       )
       
-      console.log('[경쟁매장] 비교 분석 응답 상태:', comparisonResponse.status)
-      
       const comparisonResult = await comparisonResponse.json()
       
-      console.log('[경쟁매장] 비교 분석 결과:', comparisonResult)
-      
       if (!comparisonResponse.ok) {
-        // 402 (크레딧 부족) 또는 기타 에러 시 백엔드 메시지 표시
         throw new Error(comparisonResult.detail || "비교 분석 중 오류가 발생했습니다")
       }
       
       setComparison(comparisonResult)
 
-      // 분석 완료 후 결과 섹션으로 스크롤
       setTimeout(() => {
         summaryRef.current?.scrollIntoView({ 
           behavior: 'smooth', 
@@ -454,129 +434,6 @@ export default function CompetitorsPage() {
     }
   }
   
-  const generateComparison = (myStore: CompetitorStore, competitors: CompetitorStore[]): ComparisonResult => {
-    if (competitors.length === 0) {
-      return {
-        my_store: myStore,
-        competitor_count: 0,
-        gaps: {} as any,
-        recommendations: [],
-        score_distribution: { S: 0, A: 0, B: 0, C: 0, D: 0 },
-      }
-    }
-    
-    const avgScore = competitors.reduce((sum, c) => sum + (c.diagnosis_score || 0), 0) / competitors.length
-    const avgVisitorReviews = competitors.reduce((sum, c) => sum + (c.visitor_reviews_7d_avg || 0), 0) / competitors.length
-    const avgBlogReviews = competitors.reduce((sum, c) => sum + (c.blog_reviews_7d_avg || 0), 0) / competitors.length
-    const avgAnnouncements = competitors.reduce((sum, c) => sum + (c.announcements_7d || 0), 0) / competitors.length
-    
-    const couponRate = (competitors.filter(c => c.has_coupon).length / competitors.length) * 100
-    const placePlusRate = (competitors.filter(c => c.is_place_plus).length / competitors.length) * 100
-    const naverpayRate = (competitors.filter(c => c.supports_naverpay).length / competitors.length) * 100
-    const naverTalkRate = (competitors.filter(c => c.has_naver_talk).length / competitors.length) * 100
-    const naverOrderRate = (competitors.filter(c => c.has_naver_order).length / competitors.length) * 100
-    
-    const scoreDistribution = {
-      S: competitors.filter(c => c.diagnosis_grade === "S").length,
-      A: competitors.filter(c => c.diagnosis_grade === "A").length,
-      B: competitors.filter(c => c.diagnosis_grade === "B").length,
-      C: competitors.filter(c => c.diagnosis_grade === "C").length,
-      D: competitors.filter(c => c.diagnosis_grade === "D").length,
-    }
-    
-    const gaps: {
-      diagnosis_score: ComparisonGap
-      visitor_reviews_7d_avg: ComparisonGap
-      blog_reviews_7d_avg: ComparisonGap
-      announcements_7d: ComparisonGap
-      has_coupon: ComparisonGap
-      is_place_plus: ComparisonGap
-      supports_naverpay: ComparisonGap
-      has_naver_talk: ComparisonGap
-      has_naver_order: ComparisonGap
-    } = {
-      diagnosis_score: {
-        my_value: myStore.diagnosis_score || 0,
-        competitor_avg: avgScore,
-        gap: (myStore.diagnosis_score || 0) - avgScore,
-        status: ((myStore.diagnosis_score || 0) >= avgScore ? "good" : "bad") as "good" | "bad",
-      },
-      visitor_reviews_7d_avg: {
-        my_value: myStore.visitor_reviews_7d_avg || 0,
-        competitor_avg: avgVisitorReviews,
-        gap: (myStore.visitor_reviews_7d_avg || 0) - avgVisitorReviews,
-        status: ((myStore.visitor_reviews_7d_avg || 0) >= avgVisitorReviews ? "good" : "bad") as "good" | "bad",
-      },
-      blog_reviews_7d_avg: {
-        my_value: myStore.blog_reviews_7d_avg || 0,
-        competitor_avg: avgBlogReviews,
-        gap: (myStore.blog_reviews_7d_avg || 0) - avgBlogReviews,
-        status: ((myStore.blog_reviews_7d_avg || 0) >= avgBlogReviews ? "good" : "bad") as "good" | "bad",
-      },
-      announcements_7d: {
-        my_value: myStore.announcements_7d || 0,
-        competitor_avg: avgAnnouncements,
-        gap: (myStore.announcements_7d || 0) - avgAnnouncements,
-        status: ((myStore.announcements_7d || 0) >= avgAnnouncements ? "good" : "bad") as "good" | "bad",
-      },
-      has_coupon: {
-        my_value: myStore.has_coupon || false,
-        competitor_rate: couponRate,
-        status: (myStore.has_coupon ? "good" : "bad") as "good" | "bad",
-      },
-      is_place_plus: {
-        my_value: myStore.is_place_plus || false,
-        competitor_rate: placePlusRate,
-        status: (myStore.is_place_plus ? "good" : "bad") as "good" | "bad",
-      },
-      supports_naverpay: {
-        my_value: myStore.supports_naverpay || false,
-        competitor_rate: naverpayRate,
-        status: (myStore.supports_naverpay ? "good" : "bad") as "good" | "bad",
-      },
-      has_naver_talk: {
-        my_value: myStore.has_naver_talk || false,
-        competitor_rate: naverTalkRate,
-        status: (myStore.has_naver_talk ? "good" : "bad") as "good" | "bad",
-      },
-      has_naver_order: {
-        my_value: myStore.has_naver_order || false,
-        competitor_rate: naverOrderRate,
-        status: (myStore.has_naver_order ? "good" : "bad") as "good" | "bad",
-      },
-    }
-    
-    const recommendations: any[] = []
-    
-    if (gaps.diagnosis_score.status === "bad") {
-      recommendations.push({
-        priority: "high",
-        category: "overall",
-        title: "전체 플레이스 진단 점수 개선 필요",
-        description: `경쟁매장 평균 대비 ${Math.abs(gaps.diagnosis_score.gap || 0).toFixed(1)}점 낮습니다.`,
-        impact: "high",
-      })
-    }
-    
-    if (gaps.visitor_reviews_7d_avg.status === "bad") {
-      recommendations.push({
-        priority: "high",
-        category: "reviews",
-        title: "방문자 리뷰 활성화 필요",
-        description: `경쟁매장은 일평균 ${gaps.visitor_reviews_7d_avg.competitor_avg?.toFixed(1)}개의 리뷰를 받고 있습니다.`,
-        impact: "high",
-      })
-    }
-    
-    return {
-      my_store: myStore,
-      competitor_count: competitors.length,
-      gaps,
-      recommendations,
-      score_distribution: scoreDistribution,
-    }
-  }
-  
   const resetAnalysis = () => {
     setStep(1)
     setSelectedStore(null)
@@ -588,604 +445,669 @@ export default function CompetitorsPage() {
 
   const getGradeColor = (grade: string) => {
     switch (grade) {
-      case 'S': return '#9b59b6'
-      case 'A': return '#3498db'
-      case 'B': return '#2ecc71'
-      case 'C': return '#f39c12'
-      default: return '#e74c3c'
+      case 'S': return 'bg-purple-500'
+      case 'A': return 'bg-blue-500'
+      case 'B': return 'bg-green-500'
+      case 'C': return 'bg-orange-500'
+      default: return 'bg-red-500'
     }
+  }
+
+  const toggleCardExpansion = (placeId: string) => {
+    const newExpanded = new Set(expandedCards)
+    if (newExpanded.has(placeId)) {
+      newExpanded.delete(placeId)
+    } else {
+      newExpanded.add(placeId)
+    }
+    setExpandedCards(newExpanded)
   }
   
   return (
-    <Container size="xl" px="md" py="xl" style={{ backgroundColor: '#f8f9fa', minHeight: '100vh' }}>
-      {/* Header */}
-      <Paper shadow="sm" p="xl" mb="xl" style={{ borderLeft: '6px solid #635bff' }}>
-        <Group justify="space-between" align="flex-start">
-          <div>
-            <Group gap="sm" mb="xs">
-              <Users size={32} color="#635bff" />
-              <Title order={1} style={{ color: '#212529' }}>경쟁매장 분석</Title>
-            </Group>
-            <Text size="lg" c="dimmed">
+    <div className="w-full max-w-4xl mx-auto p-4 md:p-6 lg:p-8 min-h-screen bg-neutral-50">
+      {/* Header - TurboTax Style */}
+      <div className="mb-6 md:mb-8">
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <h1 className="text-xl md:text-2xl font-bold text-neutral-900 mb-1.5 leading-tight">
+              경쟁매장 분석
+            </h1>
+            <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
               키워드 기반으로 상위 노출 경쟁매장을 분석하고 우리 매장과 비교합니다
-            </Text>
+            </p>
           </div>
           {step > 1 && (
             <Button
               variant="outline"
-              color="gray"
               onClick={resetAnalysis}
+              className="ml-4"
             >
               처음으로
             </Button>
           )}
-        </Group>
-      </Paper>
+        </div>
+      </div>
 
       {/* 진행 단계 표시 */}
-      <Paper shadow="sm" p="lg" mb="xl">
-        <Group justify="space-between">
-          {[1, 2, 3].map((s) => (
-            <div key={s} style={{ display: 'flex', alignItems: 'center' }}>
-              <ThemeIcon
-                size="xl"
-                radius="xl"
-                color={step >= s ? '#635bff' : 'gray'}
-                variant={step >= s ? 'filled' : 'light'}
-              >
-                <Text fw={700}>{s}</Text>
-              </ThemeIcon>
-              <Text size="sm" fw={600} ml="xs">
-                {s === 1 && "매장 선택"}
-                {s === 2 && "키워드 입력"}
-                {s === 3 && "분석 결과"}
-              </Text>
-              {s < 3 && (
-                <div style={{
-                  width: '80px',
-                  height: '3px',
-                  marginLeft: '16px',
-                  marginRight: '16px',
-                  backgroundColor: step > s ? '#635bff' : '#dee2e6',
-                  borderRadius: '3px'
-                }} />
-              )}
-            </div>
-          ))}
-        </Group>
-      </Paper>
+      <Card className="mb-6">
+        <CardContent className="pt-6">
+          <div className="flex items-center justify-between">
+            {[1, 2, 3].map((s, idx) => (
+              <div key={s} className="flex items-center flex-1">
+                <div className="flex items-center gap-2">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all ${
+                    step >= s 
+                      ? 'bg-primary text-white' 
+                      : 'bg-neutral-200 text-neutral-500'
+                  }`}>
+                    {s}
+                  </div>
+                  <span className="text-sm font-semibold text-neutral-700 hidden sm:inline">
+                    {s === 1 && "매장 선택"}
+                    {s === 2 && "키워드 입력"}
+                    {s === 3 && "분석 결과"}
+                  </span>
+                </div>
+                {s < 3 && (
+                  <div className={`flex-1 h-1 mx-4 rounded transition-all ${
+                    step > s ? 'bg-primary' : 'bg-neutral-200'
+                  }`} />
+                )}
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* 1단계: 매장 선택 */}
       {step === 1 && (
-        <Paper shadow="sm" p="xl">
-          <Group mb="lg">
-            <ThemeIcon size="lg" radius="md" color="blue" variant="light">
-              <Store size={20} />
-            </ThemeIcon>
-            <div>
-              <Title order={2}>1단계: 분석할 매장 선택</Title>
-              <Text size="sm" c="dimmed">경쟁 분석을 진행할 우리 매장을 선택하세요</Text>
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                <Store className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <CardTitle className="text-xl">1단계: 분석할 매장 선택</CardTitle>
+                <CardDescription>경쟁 분석을 진행할 우리 매장을 선택하세요</CardDescription>
+              </div>
             </div>
-          </Group>
-
-          {loadingStores ? (
-            <Center py="xl">
-              <Stack align="center" gap="md">
-                <Loader size="lg" color="#635bff" />
-                <Text c="dimmed">매장 목록을 불러오는 중...</Text>
-              </Stack>
-            </Center>
-          ) : stores.length === 0 ? (
-            <Center py="xl">
-              <Stack align="center" gap="md">
-                <AlertCircle size={64} color="#dee2e6" />
-                <Text c="dimmed">등록된 매장이 없습니다.</Text>
-                <Text size="sm" c="dimmed">먼저 네이버 플레이스 매장을 등록해주세요.</Text>
-              </Stack>
-            </Center>
-          ) : (
-            <Grid>
-              {stores.map((store) => (
-                <Grid.Col key={store.id} span={{ base: 12, sm: 6, md: 4 }}>
+          </CardHeader>
+          <CardContent>
+            {loadingStores ? (
+              <div className="flex flex-col items-center justify-center py-12 gap-4">
+                <Loader2 className="w-12 h-12 animate-spin text-primary" />
+                <p className="text-neutral-600">매장 목록을 불러오는 중...</p>
+              </div>
+            ) : stores.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 gap-4">
+                <AlertCircle className="w-16 h-16 text-neutral-300" />
+                <p className="text-neutral-600">등록된 매장이 없습니다.</p>
+                <p className="text-sm text-neutral-500">먼저 네이버 플레이스 매장을 등록해주세요.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {stores.map((store) => (
                   <Card
-                    shadow="sm"
-                    padding="lg"
-                    radius="md"
-                    withBorder
-                    style={{ height: '100%', cursor: 'pointer', transition: 'transform 0.2s, box-shadow 0.2s' }}
+                    key={store.id}
+                    className="cursor-pointer transition-all hover:shadow-lg hover:-translate-y-1 border-2 border-neutral-200 hover:border-primary"
                     onClick={() => handleStoreSelect(store)}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = 'translateY(-4px)'
-                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)'
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'translateY(0)'
-                      e.currentTarget.style.boxShadow = ''
-                    }}
                   >
-                    {/* Thumbnail */}
                     {store.thumbnail ? (
-                      <Card.Section>
-                        <div style={{ position: 'relative', width: '100%', paddingTop: '100%' }}>
-                          <img
-                            src={store.thumbnail}
-                            alt={store.store_name}
-                            style={{
-                              position: 'absolute',
-                              top: 0,
-                              left: 0,
-                              width: '100%',
-                              height: '100%',
-                              objectFit: 'cover'
-                            }}
-                          />
-                        </div>
-                      </Card.Section>
+                      <div className="relative w-full pt-[100%]">
+                        <img
+                          src={store.thumbnail}
+                          alt={store.store_name}
+                          className="absolute top-0 left-0 w-full h-full object-cover rounded-t-lg"
+                        />
+                      </div>
                     ) : (
-                      <Card.Section>
-                        <div style={{
-                          backgroundColor: '#f8f9fa',
-                          paddingTop: '100%',
-                          position: 'relative'
-                        }}>
-                          <Center style={{
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            width: '100%',
-                            height: '100%'
-                          }}>
-                            <Store size={64} color="#635bff" />
-                          </Center>
+                      <div className="relative w-full pt-[100%] bg-neutral-100">
+                        <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center">
+                          <Store className="w-16 h-16 text-primary" />
                         </div>
-                      </Card.Section>
+                      </div>
                     )}
-
-                    {/* Store Info */}
-                    <Stack gap="xs" mt="md" style={{ textAlign: 'center' }}>
-                      <Text fw={600} size="lg" lineClamp={1}>{store.store_name || "매장명 없음"}</Text>
-                      <Text size="sm" c="dimmed" lineClamp={1}>{store.category || "카테고리 없음"}</Text>
-                      <Text size="xs" c="dimmed" lineClamp={2}>{store.address || "주소 없음"}</Text>
-                    </Stack>
-
-                    <Button
-                      fullWidth
-                      mt="md"
-                      color="#635bff"
-                      leftSection={<Target size={16} />}
-                    >
-                      이 매장 선택
-                    </Button>
+                    <CardContent className="p-4 text-center">
+                      <h3 className="font-semibold text-lg mb-1 truncate">{store.store_name || "매장명 없음"}</h3>
+                      <p className="text-sm text-neutral-600 truncate mb-1">{store.category || "카테고리 없음"}</p>
+                      <p className="text-xs text-neutral-500 line-clamp-2">{store.address || "주소 없음"}</p>
+                      <Button className="w-full mt-3" size="sm">
+                        <Target className="w-4 h-4 mr-2" />
+                        이 매장 선택
+                      </Button>
+                    </CardContent>
                   </Card>
-                </Grid.Col>
-              ))}
-            </Grid>
-          )}
-        </Paper>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       )}
 
       {/* 2단계: 키워드 입력 */}
       {step === 2 && selectedStore && (
-        <Paper shadow="sm" p="xl">
-          <Group mb="lg">
-            <ThemeIcon size="lg" radius="md" color="green" variant="light">
-              <Target size={20} />
-            </ThemeIcon>
-            <div>
-              <Title order={2}>2단계: 타겟 키워드 입력</Title>
-              <Text size="sm" c="dimmed">경쟁 분석을 진행할 키워드를 입력하세요</Text>
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
+                <Target className="w-5 h-5 text-green-600" />
+              </div>
+              <div>
+                <CardTitle className="text-xl">2단계: 타겟 키워드 입력</CardTitle>
+                <CardDescription>경쟁 분석을 진행할 키워드를 입력하세요</CardDescription>
+              </div>
             </div>
-          </Group>
-
-          <Stack gap="md">
-            <Paper p="md" style={{ backgroundColor: '#f8f9fa' }}>
-              <Text size="sm" fw={600} mb="xs">선택된 매장</Text>
-              <Text size="lg" fw={700}>{selectedStore.store_name}</Text>
-              <Text size="sm" c="dimmed">{selectedStore.category || "카테고리 정보 없음"}</Text>
-            </Paper>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Card className="bg-neutral-50 border-neutral-200">
+              <CardContent className="pt-4">
+                <p className="text-sm font-semibold text-neutral-700 mb-1">선택된 매장</p>
+                <p className="text-lg font-bold text-neutral-900">{selectedStore.store_name}</p>
+                <p className="text-sm text-neutral-600">{selectedStore.category || "카테고리 정보 없음"}</p>
+              </CardContent>
+            </Card>
 
             <div>
-              <Text size="sm" fw={600} mb="xs">분석할 키워드 입력</Text>
-              <Group>
-                <TextInput
+              <label className="text-sm font-semibold text-neutral-700 mb-2 block">분석할 키워드 입력</label>
+              <div className="flex gap-2">
+                <Input
                   placeholder="예: 강남 맛집, 성수동 카페"
                   value={keyword}
                   onChange={(e) => setKeyword(e.target.value)}
                   onKeyPress={(e) => e.key === "Enter" && handleKeywordSubmit()}
-                  style={{ flex: 1 }}
-                  size="lg"
+                  className="flex-1"
                 />
                 <Button
                   onClick={handleKeywordSubmit}
                   disabled={loadingSearch || !keyword.trim()}
-                  size="lg"
-                  color="#635bff"
-                  leftSection={loadingSearch ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search size={16} />}
+                  className="px-6"
                 >
+                  {loadingSearch ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : (
+                    <Search className="w-4 h-4 mr-2" />
+                  )}
                   검색
                 </Button>
-              </Group>
+              </div>
             </div>
 
             {loadingKeywords ? (
-              <Center py="md">
-                <Loader size="md" color="gray" />
-              </Center>
+              <div className="flex justify-center py-4">
+                <Loader2 className="w-6 h-6 animate-spin text-neutral-400" />
+              </div>
             ) : registeredKeywords.length > 0 && (
               <div>
-                <Text size="sm" fw={600} mb="xs">등록된 키워드에서 선택</Text>
-                <Group gap="xs">
+                <p className="text-sm font-semibold text-neutral-700 mb-2">등록된 키워드에서 선택</p>
+                <div className="flex flex-wrap gap-2">
                   {registeredKeywords.map((kw) => (
                     <Badge
                       key={kw.id}
-                      size="lg"
-                      variant="light"
-                      style={{ cursor: 'pointer' }}
+                      variant="outline"
+                      className="cursor-pointer hover:bg-primary hover:text-white transition-colors px-3 py-1"
                       onClick={() => setKeyword(kw.keyword)}
                     >
                       {kw.keyword}
                     </Badge>
                   ))}
-                </Group>
+                </div>
               </div>
             )}
-          </Stack>
-        </Paper>
+          </CardContent>
+        </Card>
       )}
 
       {/* 3단계: 분석 결과 */}
       {step === 3 && topStores.length > 0 && (
         <>
-          {/* 진행 상황 (작게 표시) */}
+          {/* 진행 상황 */}
           {loadingAnalysis && (
-            <Paper shadow="sm" p="md" mb="md" style={{ backgroundColor: '#f0f7ff', border: '1px solid #635bff' }}>
-              <Group>
-                <Loader size="md" color="#635bff" />
-                <div>
-                  <Text fw={600} size="sm">
-                    경쟁매장 분석 중... ({analysisProgress.current}/{analysisProgress.total})
-                  </Text>
-                  <Progress
-                    value={(analysisProgress.current / analysisProgress.total) * 100}
-                    color="#635bff"
-                    size="sm"
-                    radius="xl"
-                    mt="xs"
-                    style={{ width: '200px' }}
+            <Alert className="mb-6 bg-blue-50 border-primary">
+              <Loader2 className="w-5 h-5 animate-spin text-primary" />
+              <AlertTitle className="text-primary font-semibold">
+                경쟁매장 분석 중... ({analysisProgress.current}/{analysisProgress.total})
+              </AlertTitle>
+              <AlertDescription>
+                <div className="mt-2 w-full bg-neutral-200 rounded-full h-2 overflow-hidden">
+                  <div 
+                    className="bg-primary h-full transition-all duration-300 ease-out"
+                    style={{ width: `${(analysisProgress.current / analysisProgress.total) * 100}%` }}
                   />
                 </div>
-              </Group>
-            </Paper>
+              </AlertDescription>
+            </Alert>
           )}
 
-          {/* 경쟁매장 상세 목록 (항상 표시) */}
-          <Paper shadow="sm" p="xl" mb="xl">
-            <Title order={2} mb="md" style={{ color: '#212529' }}>
-              📋 경쟁매장 상세 분석
-            </Title>
-            
-            <Text size="sm" c="dimmed" mb="md">
-              분석 완료: {analyzedStores.length} / {topStores.length}개
-            </Text>
+          {/* 경쟁매장 상세 목록 */}
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="text-xl flex items-center gap-2">
+                <FileText className="w-5 h-5" />
+                경쟁매장 상세 분석
+              </CardTitle>
+              <CardDescription>
+                분석 완료: {analyzedStores.length} / {topStores.length}개
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {/* PC: 테이블 뷰 */}
+              <div className="hidden lg:block overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[60px]">순위</TableHead>
+                      <TableHead className="min-w-[150px]">매장명</TableHead>
+                      <TableHead className="min-w-[100px]">업종</TableHead>
+                      <TableHead className="min-w-[120px]">진단점수</TableHead>
+                      <TableHead className="min-w-[100px]">전체리뷰</TableHead>
+                      <TableHead className="min-w-[100px]">방문자(7일)</TableHead>
+                      <TableHead className="min-w-[100px]">블로그(7일)</TableHead>
+                      <TableHead className="min-w-[90px]">공지(7일)</TableHead>
+                      <TableHead className="w-[70px] text-center">쿠폰</TableHead>
+                      <TableHead className="w-[70px] text-center">플플</TableHead>
+                      <TableHead className="w-[80px] text-center">네페이</TableHead>
+                      <TableHead className="w-[80px] text-center">네톡</TableHead>
+                      <TableHead className="w-[80px] text-center">네주문</TableHead>
+                      <TableHead className="w-[90px] text-center">네예약</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {topStores.map((store) => {
+                      const analyzed = analyzedStores.find(s => s.place_id === store.place_id)
+                      const isLoading = !analyzed && loadingAnalysis
+                      
+                      return (
+                        <TableRow key={store.place_id}>
+                          <TableCell className="font-semibold">{store.rank}</TableCell>
+                          <TableCell className="font-semibold">{store.name}</TableCell>
+                          <TableCell className="text-sm text-neutral-600">{store.category}</TableCell>
+                          <TableCell>
+                            {isLoading ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : analyzed ? (
+                              <Badge className={`${getGradeColor(analyzed.diagnosis_grade || 'D')} text-white`}>
+                                {analyzed.diagnosis_score?.toFixed(1)}점 ({analyzed.diagnosis_grade})
+                              </Badge>
+                            ) : (
+                              <span className="text-xs text-neutral-400">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {isLoading ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : analyzed ? (
+                              <span className="text-sm">{analyzed.visitor_review_count || 0}+{analyzed.blog_review_count || 0}</span>
+                            ) : '-'}
+                          </TableCell>
+                          <TableCell>
+                            {isLoading ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : analyzed ? (
+                              analyzed.visitor_reviews_7d_avg?.toFixed(1) || 0
+                            ) : '-'}
+                          </TableCell>
+                          <TableCell>
+                            {isLoading ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : analyzed ? (
+                              analyzed.blog_reviews_7d_avg?.toFixed(1) || 0
+                            ) : '-'}
+                          </TableCell>
+                          <TableCell>
+                            {isLoading ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : analyzed ? (
+                              analyzed.announcements_7d || 0
+                            ) : '-'}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {isLoading ? (
+                              <Loader2 className="w-4 h-4 animate-spin mx-auto" />
+                            ) : analyzed ? (
+                              analyzed.has_coupon ? <CheckCircle2 className="w-4 h-4 text-green-500 mx-auto" /> : <Minus className="w-4 h-4 text-neutral-300 mx-auto" />
+                            ) : '-'}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {isLoading ? (
+                              <Loader2 className="w-4 h-4 animate-spin mx-auto" />
+                            ) : analyzed ? (
+                              analyzed.is_place_plus ? <CheckCircle2 className="w-4 h-4 text-green-500 mx-auto" /> : <Minus className="w-4 h-4 text-neutral-300 mx-auto" />
+                            ) : '-'}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {isLoading ? (
+                              <Loader2 className="w-4 h-4 animate-spin mx-auto" />
+                            ) : analyzed ? (
+                              analyzed.supports_naverpay ? <CheckCircle2 className="w-4 h-4 text-green-500 mx-auto" /> : <Minus className="w-4 h-4 text-neutral-300 mx-auto" />
+                            ) : '-'}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {isLoading ? (
+                              <Loader2 className="w-4 h-4 animate-spin mx-auto" />
+                            ) : analyzed ? (
+                              analyzed.has_naver_talk ? <CheckCircle2 className="w-4 h-4 text-green-500 mx-auto" /> : <Minus className="w-4 h-4 text-neutral-300 mx-auto" />
+                            ) : '-'}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {isLoading ? (
+                              <Loader2 className="w-4 h-4 animate-spin mx-auto" />
+                            ) : analyzed ? (
+                              analyzed.has_naver_order ? <CheckCircle2 className="w-4 h-4 text-green-500 mx-auto" /> : <Minus className="w-4 h-4 text-neutral-300 mx-auto" />
+                            ) : '-'}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {isLoading ? (
+                              <Loader2 className="w-4 h-4 animate-spin mx-auto" />
+                            ) : analyzed ? (
+                              analyzed.has_naver_booking ? <CheckCircle2 className="w-4 h-4 text-green-500 mx-auto" /> : <Minus className="w-4 h-4 text-neutral-300 mx-auto" />
+                            ) : '-'}
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
 
-            <div style={{ overflowX: 'auto' }}>
-              <Table striped highlightOnHover withTableBorder withColumnBorders>
-                <Table.Thead>
-                  <Table.Tr>
-                    <Table.Th style={{ fontWeight: 700, minWidth: '60px' }}>순위</Table.Th>
-                    <Table.Th style={{ fontWeight: 700, minWidth: '150px' }}>매장명</Table.Th>
-                    <Table.Th style={{ fontWeight: 700, minWidth: '100px' }}>업종</Table.Th>
-                    <Table.Th style={{ fontWeight: 700, minWidth: '200px' }}>주소</Table.Th>
-                    <Table.Th style={{ fontWeight: 700, minWidth: '120px' }}>진단점수</Table.Th>
-                    <Table.Th style={{ fontWeight: 700, minWidth: '100px' }}>전체리뷰</Table.Th>
-                    <Table.Th style={{ fontWeight: 700, minWidth: '100px' }}>방문자(7일)</Table.Th>
-                    <Table.Th style={{ fontWeight: 700, minWidth: '100px' }}>블로그(7일)</Table.Th>
-                    <Table.Th style={{ fontWeight: 700, minWidth: '90px' }}>공지(7일)</Table.Th>
-                    <Table.Th style={{ fontWeight: 700, minWidth: '70px', textAlign: 'center' }}>쿠폰</Table.Th>
-                    <Table.Th style={{ fontWeight: 700, minWidth: '70px', textAlign: 'center' }}>플플</Table.Th>
-                    <Table.Th style={{ fontWeight: 700, minWidth: '90px', textAlign: 'center' }}>새로오픈</Table.Th>
-                    <Table.Th style={{ fontWeight: 700, minWidth: '80px', textAlign: 'center' }}>네페이</Table.Th>
-                    <Table.Th style={{ fontWeight: 700, minWidth: '80px', textAlign: 'center' }}>네톡</Table.Th>
-                    <Table.Th style={{ fontWeight: 700, minWidth: '80px', textAlign: 'center' }}>네주문</Table.Th>
-                    <Table.Th style={{ fontWeight: 700, minWidth: '90px', textAlign: 'center' }}>네예약</Table.Th>
-                    <Table.Th style={{ fontWeight: 700, minWidth: '100px' }}>검색량</Table.Th>
-                    <Table.Th style={{ fontWeight: 700, minWidth: '250px' }}>하이라이트 리뷰</Table.Th>
-                  </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
-                  {topStores.map((store) => {
-                    const analyzed = analyzedStores.find(s => s.place_id === store.place_id)
-                    const isLoading = !analyzed && loadingAnalysis
-                    
-                    return (
-                      <Table.Tr key={store.place_id}>
-                        <Table.Td>{store.rank}</Table.Td>
-                        <Table.Td><Text fw={600}>{store.name}</Text></Table.Td>
-                        <Table.Td><Text size="sm" c="dimmed">{store.category}</Text></Table.Td>
-                        <Table.Td><Text size="xs" c="dimmed">{store.address}</Text></Table.Td>
-                        <Table.Td>
-                          {isLoading ? (
-                            <Loader size="xs" />
-                          ) : analyzed ? (
-                            <Badge color={getGradeColor(analyzed.diagnosis_grade || 'D')}>
-                              {analyzed.diagnosis_score?.toFixed(1)}점 ({analyzed.diagnosis_grade})
-                            </Badge>
-                          ) : (
-                            <Text size="xs" c="dimmed">-</Text>
+              {/* Mobile & Tablet: 카드 뷰 */}
+              <div className="lg:hidden space-y-3">
+                {topStores.map((store) => {
+                  const analyzed = analyzedStores.find(s => s.place_id === store.place_id)
+                  const isLoading = !analyzed && loadingAnalysis
+                  const isExpanded = expandedCards.has(store.place_id)
+                  
+                  return (
+                    <Card key={store.place_id} className="border-2">
+                      <CardContent className="p-4">
+                        {/* 기본 정보 (항상 표시) */}
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <Badge variant="outline" className="font-bold">#{store.rank}</Badge>
+                              <h3 className="font-bold text-base">{store.name}</h3>
+                            </div>
+                            <p className="text-sm text-neutral-600">{store.category}</p>
+                          </div>
+                          {isLoading && (
+                            <Loader2 className="w-5 h-5 animate-spin text-primary" />
                           )}
-                        </Table.Td>
-                        <Table.Td>
-                          {isLoading ? (
-                            <Loader size="xs" />
-                          ) : analyzed ? (
-                            <Text size="sm">{analyzed.visitor_review_count || 0}+{analyzed.blog_review_count || 0}</Text>
-                          ) : '-'}
-                        </Table.Td>
-                        <Table.Td>
-                          {isLoading ? (
-                            <Loader size="xs" />
-                          ) : analyzed ? (
-                            analyzed.visitor_reviews_7d_avg?.toFixed(1) || 0
-                          ) : '-'}
-                        </Table.Td>
-                        <Table.Td>
-                          {isLoading ? (
-                            <Loader size="xs" />
-                          ) : analyzed ? (
-                            analyzed.blog_reviews_7d_avg?.toFixed(1) || 0
-                          ) : '-'}
-                        </Table.Td>
-                        <Table.Td>
-                          {isLoading ? (
-                            <Loader size="xs" />
-                          ) : analyzed ? (
-                            analyzed.announcements_7d || 0
-                          ) : '-'}
-                        </Table.Td>
-                        <Table.Td style={{ textAlign: 'center' }}>
-                          {isLoading ? (
-                            <Loader size="xs" />
-                          ) : analyzed ? (
-                            analyzed.has_coupon ? <CheckCircle2 size={16} color="#2ecc71" /> : <Minus size={16} color="#dee2e6" />
-                          ) : '-'}
-                        </Table.Td>
-                        <Table.Td style={{ textAlign: 'center' }}>
-                          {isLoading ? (
-                            <Loader size="xs" />
-                          ) : analyzed ? (
-                            analyzed.is_place_plus ? <CheckCircle2 size={16} color="#2ecc71" /> : <Minus size={16} color="#dee2e6" />
-                          ) : '-'}
-                        </Table.Td>
-                        <Table.Td style={{ textAlign: 'center' }}>
-                          {isLoading ? (
-                            <Loader size="xs" />
-                          ) : analyzed ? (
-                            analyzed.is_new_business ? <CheckCircle2 size={16} color="#2ecc71" /> : <Minus size={16} color="#dee2e6" />
-                          ) : '-'}
-                        </Table.Td>
-                        <Table.Td style={{ textAlign: 'center' }}>
-                          {isLoading ? (
-                            <Loader size="xs" />
-                          ) : analyzed ? (
-                            analyzed.supports_naverpay ? <CheckCircle2 size={16} color="#2ecc71" /> : <Minus size={16} color="#dee2e6" />
-                          ) : '-'}
-                        </Table.Td>
-                        <Table.Td style={{ textAlign: 'center' }}>
-                          {isLoading ? (
-                            <Loader size="xs" />
-                          ) : analyzed ? (
-                            analyzed.has_naver_talk ? <CheckCircle2 size={16} color="#2ecc71" /> : <Minus size={16} color="#dee2e6" />
-                          ) : '-'}
-                        </Table.Td>
-                        <Table.Td style={{ textAlign: 'center' }}>
-                          {isLoading ? (
-                            <Loader size="xs" />
-                          ) : analyzed ? (
-                            analyzed.has_naver_order ? <CheckCircle2 size={16} color="#2ecc71" /> : <Minus size={16} color="#dee2e6" />
-                          ) : '-'}
-                        </Table.Td>
-                        <Table.Td style={{ textAlign: 'center' }}>
-                          {isLoading ? (
-                            <Loader size="xs" />
-                          ) : analyzed ? (
-                            analyzed.has_naver_booking ? <CheckCircle2 size={16} color="#2ecc71" /> : <Minus size={16} color="#dee2e6" />
-                          ) : '-'}
-                        </Table.Td>
-                        <Table.Td>
-                          {isLoading ? (
-                            <Loader size="xs" />
-                          ) : analyzed ? (
-                            <Text size="sm">{analyzed.store_search_volume ? analyzed.store_search_volume.toLocaleString() : '0'}</Text>
-                          ) : '-'}
-                        </Table.Td>
-                        <Table.Td style={{ maxWidth: '250px' }}>
-                          {isLoading ? (
-                            <Loader size="xs" />
-                          ) : analyzed ? (
-                            <Text size="xs" c="dimmed" lineClamp={2}>{analyzed.important_review || '-'}</Text>
-                          ) : '-'}
-                        </Table.Td>
-                      </Table.Tr>
-                    )
-                  })}
-                </Table.Tbody>
-              </Table>
-            </div>
-          </Paper>
+                        </div>
 
-          {/* 비교 분석 요약 (분석 완료 후에만 표시) */}
+                        {/* 핵심 지표 (항상 표시) */}
+                        {analyzed && (
+                          <div className="grid grid-cols-2 gap-2 mb-3">
+                            <div className="bg-neutral-50 p-2 rounded">
+                              <p className="text-xs text-neutral-600 mb-1">진단점수</p>
+                              <Badge className={`${getGradeColor(analyzed.diagnosis_grade || 'D')} text-white text-xs`}>
+                                {analyzed.diagnosis_score?.toFixed(1)}점 ({analyzed.diagnosis_grade})
+                              </Badge>
+                            </div>
+                            <div className="bg-neutral-50 p-2 rounded">
+                              <p className="text-xs text-neutral-600 mb-1">전체 리뷰</p>
+                              <p className="font-semibold text-sm">
+                                {(analyzed.visitor_review_count || 0) + (analyzed.blog_review_count || 0)}개
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* 확장 버튼 */}
+                        {analyzed && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => toggleCardExpansion(store.place_id)}
+                            className="w-full text-xs"
+                          >
+                            {isExpanded ? (
+                              <>
+                                <ChevronUp className="w-4 h-4 mr-1" />
+                                접기
+                              </>
+                            ) : (
+                              <>
+                                <ChevronDown className="w-4 h-4 mr-1" />
+                                상세 정보 보기
+                              </>
+                            )}
+                          </Button>
+                        )}
+
+                        {/* 상세 정보 (확장 시 표시) */}
+                        {isExpanded && analyzed && (
+                          <div className="mt-3 pt-3 border-t space-y-2">
+                            <div className="grid grid-cols-2 gap-2 text-xs">
+                              <div>
+                                <p className="text-neutral-600">방문자 리뷰 (7일)</p>
+                                <p className="font-semibold">{analyzed.visitor_reviews_7d_avg?.toFixed(1) || 0}개</p>
+                              </div>
+                              <div>
+                                <p className="text-neutral-600">블로그 리뷰 (7일)</p>
+                                <p className="font-semibold">{analyzed.blog_reviews_7d_avg?.toFixed(1) || 0}개</p>
+                              </div>
+                              <div>
+                                <p className="text-neutral-600">공지사항 (7일)</p>
+                                <p className="font-semibold">{analyzed.announcements_7d || 0}개</p>
+                              </div>
+                              <div>
+                                <p className="text-neutral-600">검색량</p>
+                                <p className="font-semibold">{analyzed.store_search_volume?.toLocaleString() || '0'}</p>
+                              </div>
+                            </div>
+
+                            <div className="pt-2">
+                              <p className="text-xs text-neutral-600 mb-2">네이버 서비스</p>
+                              <div className="flex flex-wrap gap-2">
+                                {analyzed.has_coupon && <Badge variant="secondary" className="text-xs">쿠폰</Badge>}
+                                {analyzed.is_place_plus && <Badge variant="secondary" className="text-xs">플플</Badge>}
+                                {analyzed.supports_naverpay && <Badge variant="secondary" className="text-xs">네페이</Badge>}
+                                {analyzed.has_naver_talk && <Badge variant="secondary" className="text-xs">네톡</Badge>}
+                                {analyzed.has_naver_order && <Badge variant="secondary" className="text-xs">네주문</Badge>}
+                                {analyzed.has_naver_booking && <Badge variant="secondary" className="text-xs">네예약</Badge>}
+                                {!analyzed.has_coupon && !analyzed.is_place_plus && !analyzed.supports_naverpay && 
+                                 !analyzed.has_naver_talk && !analyzed.has_naver_order && !analyzed.has_naver_booking && (
+                                  <span className="text-xs text-neutral-400">등록된 서비스 없음</span>
+                                )}
+                              </div>
+                            </div>
+
+                            {analyzed.important_review && (
+                              <div className="pt-2">
+                                <p className="text-xs text-neutral-600 mb-1">하이라이트 리뷰</p>
+                                <p className="text-xs text-neutral-700 line-clamp-3">{analyzed.important_review}</p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  )
+                })}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 비교 분석 요약 */}
           {!loadingAnalysis && analyzedStores.length > 0 && comparison && (
             <>
-              <Paper ref={summaryRef} shadow="sm" p="xl" mb="xl">
-                <Group mb="md" justify="space-between">
-                  <Title order={2} style={{ color: '#212529' }}>
-                    📊 비교 분석 요약
-                  </Title>
-                  <Badge size="lg" color="blue" variant="light">
-                    {selectedStore?.store_name} vs 상위 {comparison.competitor_count}개
-                  </Badge>
-                </Group>
-                
-                <Divider mb="xl" />
+              <Card ref={summaryRef} className="mb-6">
+                <CardHeader>
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <CardTitle className="text-xl flex items-center gap-2">
+                      📊 비교 분석 요약
+                    </CardTitle>
+                    <Badge variant="secondary" className="text-sm">
+                      {selectedStore?.store_name} vs 상위 {comparison.competitor_count}개
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {/* 플레이스 진단 점수 */}
+                    <Card className="border-2">
+                      <CardContent className="p-4">
+                        <p className="text-sm text-neutral-600 mb-2">플레이스 진단 점수</p>
+                        <div className="flex items-baseline gap-2 mb-3">
+                          <span className="text-3xl font-bold text-primary">
+                            {comparison.gaps.diagnosis_score.my_value?.toFixed(1) || '0.0'}
+                          </span>
+                          <span className="text-sm text-neutral-600">점</span>
+                        </div>
+                        <div className="border-t pt-2 space-y-1">
+                          <p className="text-xs text-neutral-600">
+                            경쟁매장 평균: <span className="font-semibold">{comparison.gaps.diagnosis_score.competitor_avg?.toFixed(1) || '0.0'}점</span>
+                          </p>
+                          <div className="flex items-center gap-1">
+                            {comparison.gaps.diagnosis_score.status === 'good' ? (
+                              <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center">
+                                <TrendingUp className="w-3 h-3 text-green-600" />
+                              </div>
+                            ) : (
+                              <div className="w-5 h-5 rounded-full bg-red-100 flex items-center justify-center">
+                                <TrendingDown className="w-3 h-3 text-red-600" />
+                              </div>
+                            )}
+                            <span className={`text-xs font-semibold ${comparison.gaps.diagnosis_score.status === 'good' ? 'text-green-600' : 'text-red-600'}`}>
+                              {Math.abs((comparison.gaps.diagnosis_score.my_value || 0) - (comparison.gaps.diagnosis_score.competitor_avg || 0)).toFixed(1)}점 {comparison.gaps.diagnosis_score.status === 'good' ? '우수' : '부족'}
+                            </span>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
 
-                {/* 핵심 지표 카드 (플레이스 활성화 스타일) */}
-                <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="md" mb="xl">
-                  <Card shadow="sm" padding="lg" radius="md" withBorder>
-                    <Stack gap="xs">
-                      <Text size="sm" c="dimmed" fw={500}>플레이스 진단 점수</Text>
-                      <Group gap="xs" align="baseline">
-                        <Text size="32px" fw={700} style={{ color: '#635bff' }}>
-                          {comparison.gaps.diagnosis_score.my_value?.toFixed(1) || '0.0'}
-                        </Text>
-                        <Text size="sm" c="dimmed">점</Text>
-                      </Group>
-                      <Divider />
-                      <Stack gap={4}>
-                        <Text size="xs" c="dimmed">
-                          경쟁매장 평균: <Text component="span" fw={600}>{comparison.gaps.diagnosis_score.competitor_avg?.toFixed(1) || '0.0'}점</Text>
-                        </Text>
-                        <Group gap="xs">
-                          {comparison.gaps.diagnosis_score.status === 'good' ? (
-                            <ThemeIcon size="sm" radius="xl" color="green" variant="light">
-                              <TrendingUp size={14} />
-                            </ThemeIcon>
-                          ) : (
-                            <ThemeIcon size="sm" radius="xl" color="red" variant="light">
-                              <TrendingDown size={14} />
-                            </ThemeIcon>
-                          )}
-                          <Text size="xs" fw={600} c={comparison.gaps.diagnosis_score.status === 'good' ? 'green' : 'red'}>
-                            {Math.abs((comparison.gaps.diagnosis_score.my_value || 0) - (comparison.gaps.diagnosis_score.competitor_avg || 0)).toFixed(1)}점 {comparison.gaps.diagnosis_score.status === 'good' ? '우수' : '부족'}
-                          </Text>
-                        </Group>
-                      </Stack>
-                    </Stack>
-                  </Card>
+                    {/* 방문자 리뷰 */}
+                    <Card className="border-2">
+                      <CardContent className="p-4">
+                        <p className="text-sm text-neutral-600 mb-2">일평균 방문자 리뷰 (7일)</p>
+                        <div className="flex items-baseline gap-2 mb-3">
+                          <span className="text-3xl font-bold text-primary">
+                            {comparison.gaps.visitor_reviews_7d_avg.my_value?.toFixed(1) || '0.0'}
+                          </span>
+                          <span className="text-sm text-neutral-600">개</span>
+                        </div>
+                        <div className="border-t pt-2 space-y-1">
+                          <p className="text-xs text-neutral-600">
+                            경쟁매장 평균: <span className="font-semibold">{comparison.gaps.visitor_reviews_7d_avg.competitor_avg?.toFixed(1) || '0.0'}개</span>
+                          </p>
+                          <div className="flex items-center gap-1">
+                            {comparison.gaps.visitor_reviews_7d_avg.status === 'good' ? (
+                              <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center">
+                                <TrendingUp className="w-3 h-3 text-green-600" />
+                              </div>
+                            ) : (
+                              <div className="w-5 h-5 rounded-full bg-red-100 flex items-center justify-center">
+                                <TrendingDown className="w-3 h-3 text-red-600" />
+                              </div>
+                            )}
+                            <span className={`text-xs font-semibold ${comparison.gaps.visitor_reviews_7d_avg.status === 'good' ? 'text-green-600' : 'text-red-600'}`}>
+                              {Math.abs((comparison.gaps.visitor_reviews_7d_avg.my_value || 0) - (comparison.gaps.visitor_reviews_7d_avg.competitor_avg || 0)).toFixed(1)}개 {comparison.gaps.visitor_reviews_7d_avg.status === 'good' ? '우수' : '부족'}
+                            </span>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
 
-                  <Card shadow="sm" padding="lg" radius="md" withBorder>
-                    <Stack gap="xs">
-                      <Text size="sm" c="dimmed" fw={500}>일평균 방문자 리뷰 (7일)</Text>
-                      <Group gap="xs" align="baseline">
-                        <Text size="32px" fw={700} style={{ color: '#635bff' }}>
-                          {comparison.gaps.visitor_reviews_7d_avg.my_value?.toFixed(1) || '0.0'}
-                        </Text>
-                        <Text size="sm" c="dimmed">개</Text>
-                      </Group>
-                      <Divider />
-                      <Stack gap={4}>
-                        <Text size="xs" c="dimmed">
-                          경쟁매장 평균: <Text component="span" fw={600}>{comparison.gaps.visitor_reviews_7d_avg.competitor_avg?.toFixed(1) || '0.0'}개</Text>
-                        </Text>
-                        <Group gap="xs">
-                          {comparison.gaps.visitor_reviews_7d_avg.status === 'good' ? (
-                            <ThemeIcon size="sm" radius="xl" color="green" variant="light">
-                              <TrendingUp size={14} />
-                            </ThemeIcon>
-                          ) : (
-                            <ThemeIcon size="sm" radius="xl" color="red" variant="light">
-                              <TrendingDown size={14} />
-                            </ThemeIcon>
-                          )}
-                          <Text size="xs" fw={600} c={comparison.gaps.visitor_reviews_7d_avg.status === 'good' ? 'green' : 'red'}>
-                            {Math.abs((comparison.gaps.visitor_reviews_7d_avg.my_value || 0) - (comparison.gaps.visitor_reviews_7d_avg.competitor_avg || 0)).toFixed(1)}개 {comparison.gaps.visitor_reviews_7d_avg.status === 'good' ? '우수' : '부족'}
-                          </Text>
-                        </Group>
-                      </Stack>
-                    </Stack>
-                  </Card>
+                    {/* 블로그 리뷰 */}
+                    <Card className="border-2">
+                      <CardContent className="p-4">
+                        <p className="text-sm text-neutral-600 mb-2">일평균 블로그 리뷰 (7일)</p>
+                        <div className="flex items-baseline gap-2 mb-3">
+                          <span className="text-3xl font-bold text-primary">
+                            {comparison.gaps.blog_reviews_7d_avg.my_value?.toFixed(1) || '0.0'}
+                          </span>
+                          <span className="text-sm text-neutral-600">개</span>
+                        </div>
+                        <div className="border-t pt-2 space-y-1">
+                          <p className="text-xs text-neutral-600">
+                            경쟁매장 평균: <span className="font-semibold">{comparison.gaps.blog_reviews_7d_avg.competitor_avg?.toFixed(1) || '0.0'}개</span>
+                          </p>
+                          <div className="flex items-center gap-1">
+                            {comparison.gaps.blog_reviews_7d_avg.status === 'good' ? (
+                              <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center">
+                                <TrendingUp className="w-3 h-3 text-green-600" />
+                              </div>
+                            ) : (
+                              <div className="w-5 h-5 rounded-full bg-red-100 flex items-center justify-center">
+                                <TrendingDown className="w-3 h-3 text-red-600" />
+                              </div>
+                            )}
+                            <span className={`text-xs font-semibold ${comparison.gaps.blog_reviews_7d_avg.status === 'good' ? 'text-green-600' : 'text-red-600'}`}>
+                              {Math.abs((comparison.gaps.blog_reviews_7d_avg.my_value || 0) - (comparison.gaps.blog_reviews_7d_avg.competitor_avg || 0)).toFixed(1)}개 {comparison.gaps.blog_reviews_7d_avg.status === 'good' ? '우수' : '부족'}
+                            </span>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
 
-                  <Card shadow="sm" padding="lg" radius="md" withBorder>
-                    <Stack gap="xs">
-                      <Text size="sm" c="dimmed" fw={500}>일평균 블로그 리뷰 (7일)</Text>
-                      <Group gap="xs" align="baseline">
-                        <Text size="32px" fw={700} style={{ color: '#635bff' }}>
-                          {comparison.gaps.blog_reviews_7d_avg.my_value?.toFixed(1) || '0.0'}
-                        </Text>
-                        <Text size="sm" c="dimmed">개</Text>
-                      </Group>
-                      <Divider />
-                      <Stack gap={4}>
-                        <Text size="xs" c="dimmed">
-                          경쟁매장 평균: <Text component="span" fw={600}>{comparison.gaps.blog_reviews_7d_avg.competitor_avg?.toFixed(1) || '0.0'}개</Text>
-                        </Text>
-                        <Group gap="xs">
-                          {comparison.gaps.blog_reviews_7d_avg.status === 'good' ? (
-                            <ThemeIcon size="sm" radius="xl" color="green" variant="light">
-                              <TrendingUp size={14} />
-                            </ThemeIcon>
-                          ) : (
-                            <ThemeIcon size="sm" radius="xl" color="red" variant="light">
-                              <TrendingDown size={14} />
-                            </ThemeIcon>
-                          )}
-                          <Text size="xs" fw={600} c={comparison.gaps.blog_reviews_7d_avg.status === 'good' ? 'green' : 'red'}>
-                            {Math.abs((comparison.gaps.blog_reviews_7d_avg.my_value || 0) - (comparison.gaps.blog_reviews_7d_avg.competitor_avg || 0)).toFixed(1)}개 {comparison.gaps.blog_reviews_7d_avg.status === 'good' ? '우수' : '부족'}
-                          </Text>
-                        </Group>
-                      </Stack>
-                    </Stack>
-                  </Card>
-
-                  <Card shadow="sm" padding="lg" radius="md" withBorder>
-                    <Stack gap="xs">
-                      <Text size="sm" c="dimmed" fw={500}>7일간 공지 등록 수</Text>
-                      <Group gap="xs" align="baseline">
-                        <Text size="32px" fw={700} style={{ color: '#635bff' }}>
-                          {comparison.gaps.announcements_7d.my_value?.toFixed(1) || '0.0'}
-                        </Text>
-                        <Text size="sm" c="dimmed">개</Text>
-                      </Group>
-                      <Divider />
-                      <Stack gap={4}>
-                        <Text size="xs" c="dimmed">
-                          경쟁매장 평균: <Text component="span" fw={600}>{comparison.gaps.announcements_7d.competitor_avg?.toFixed(1) || '0.0'}개</Text>
-                        </Text>
-                        <Group gap="xs">
-                          {comparison.gaps.announcements_7d.status === 'good' ? (
-                            <ThemeIcon size="sm" radius="xl" color="green" variant="light">
-                              <TrendingUp size={14} />
-                            </ThemeIcon>
-                          ) : (
-                            <ThemeIcon size="sm" radius="xl" color="red" variant="light">
-                              <TrendingDown size={14} />
-                            </ThemeIcon>
-                          )}
-                          <Text size="xs" fw={600} c={comparison.gaps.announcements_7d.status === 'good' ? 'green' : 'red'}>
-                            {Math.abs((comparison.gaps.announcements_7d.my_value || 0) - (comparison.gaps.announcements_7d.competitor_avg || 0)).toFixed(1)}개 {comparison.gaps.announcements_7d.status === 'good' ? '우수' : '부족'}
-                          </Text>
-                        </Group>
-                      </Stack>
-                    </Stack>
-                  </Card>
-                </SimpleGrid>
-              </Paper>
+                    {/* 공지사항 */}
+                    <Card className="border-2">
+                      <CardContent className="p-4">
+                        <p className="text-sm text-neutral-600 mb-2">7일간 공지 등록 수</p>
+                        <div className="flex items-baseline gap-2 mb-3">
+                          <span className="text-3xl font-bold text-primary">
+                            {comparison.gaps.announcements_7d.my_value?.toFixed(1) || '0.0'}
+                          </span>
+                          <span className="text-sm text-neutral-600">개</span>
+                        </div>
+                        <div className="border-t pt-2 space-y-1">
+                          <p className="text-xs text-neutral-600">
+                            경쟁매장 평균: <span className="font-semibold">{comparison.gaps.announcements_7d.competitor_avg?.toFixed(1) || '0.0'}개</span>
+                          </p>
+                          <div className="flex items-center gap-1">
+                            {comparison.gaps.announcements_7d.status === 'good' ? (
+                              <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center">
+                                <TrendingUp className="w-3 h-3 text-green-600" />
+                              </div>
+                            ) : (
+                              <div className="w-5 h-5 rounded-full bg-red-100 flex items-center justify-center">
+                                <TrendingDown className="w-3 h-3 text-red-600" />
+                              </div>
+                            )}
+                            <span className={`text-xs font-semibold ${comparison.gaps.announcements_7d.status === 'good' ? 'text-green-600' : 'text-red-600'}`}>
+                              {Math.abs((comparison.gaps.announcements_7d.my_value || 0) - (comparison.gaps.announcements_7d.competitor_avg || 0)).toFixed(1)}개 {comparison.gaps.announcements_7d.status === 'good' ? '우수' : '부족'}
+                            </span>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </CardContent>
+              </Card>
 
               {/* 개선 권장사항 */}
               {comparison.recommendations.length > 0 && (
-                <Paper shadow="sm" p="xl" mb="xl">
-                  <Title order={2} mb="xl" style={{ color: '#212529' }}>
-                    🎯 개선 권장사항
-                  </Title>
-                  
-                  <Timeline active={comparison.recommendations.length} bulletSize={24} lineWidth={2}>
-                    {comparison.recommendations.map((rec, idx) => (
-                      <Timeline.Item
-                        key={idx}
-                        bullet={<Text size="xs" fw={700}>{idx + 1}</Text>}
-                        title={
-                          <Badge color={rec.priority === "high" ? "red" : "orange"} size="sm">
-                            {rec.priority === "high" ? "높음" : "보통"}
-                          </Badge>
-                        }
-                      >
-                        <Paper p="md" mt="xs" style={{ backgroundColor: '#f8f9fa' }}>
-                          <Text fw={600} mb="xs">{rec.title}</Text>
-                          <Text size="sm" c="dimmed">{rec.description}</Text>
-                        </Paper>
-                      </Timeline.Item>
-                    ))}
-                  </Timeline>
-                </Paper>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-xl flex items-center gap-2">
+                      🎯 개선 권장사항
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {comparison.recommendations.map((rec, idx) => (
+                        <Card key={idx} className="border-l-4 border-l-primary">
+                          <CardContent className="p-4">
+                            <div className="flex items-start gap-3">
+                              <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm flex-shrink-0">
+                                {idx + 1}
+                              </div>
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <Badge variant={rec.priority === "high" ? "destructive" : "default"} className="text-xs">
+                                    {rec.priority === "high" ? "높음" : "보통"}
+                                  </Badge>
+                                  <h4 className="font-semibold text-sm">{rec.title}</h4>
+                                </div>
+                                <p className="text-sm text-neutral-600">{rec.description}</p>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
               )}
             </>
           )}
@@ -1193,12 +1115,13 @@ export default function CompetitorsPage() {
       )}
 
       {/* Footer */}
-      <Paper p="md" mt="xl" style={{ backgroundColor: '#f8f9fa', textAlign: 'center' }}>
-        <Text size="xs" c="dimmed">
-          © {new Date().getFullYear()} Egurado Competitor Analysis Report • Generated on {new Date().toLocaleString('ko-KR')}
-        </Text>
-      </Paper>
-    </Container>
+      <Card className="mt-6 bg-neutral-100 border-neutral-200">
+        <CardContent className="p-4 text-center">
+          <p className="text-xs text-neutral-600">
+            © {new Date().getFullYear()} Egurado Competitor Analysis Report • Generated on {new Date().toLocaleString('ko-KR')}
+          </p>
+        </CardContent>
+      </Card>
+    </div>
   )
 }
-
