@@ -1556,8 +1556,8 @@ async def compare_competitors(
         print(f"[DEBUG] competitors length: {len(competitors)}")
         logger.info(f"[경쟁매장] 비교 분석 요청: user_id={user_id}, {len(competitors)}개 경쟁사")
         
-        # 🆕 크레딧 체크 (Feature Flag 확인)
-        if settings.CREDIT_SYSTEM_ENABLED and settings.CREDIT_CHECK_STRICT:
+        # 🆕 크레딧 사전 체크
+        if settings.CREDIT_SYSTEM_ENABLED:
             check_result = await credit_service.check_sufficient_credits(
                 user_id=user_id,
                 feature="competitor_analysis",
@@ -1565,13 +1565,13 @@ async def compare_competitors(
             )
             
             if not check_result.sufficient:
-                logger.warning(f"[Credits] User {user_id} has insufficient credits for competitor analysis")
+                logger.warning(f"[경쟁매장 분석] 크레딧 부족: user_id={user_id}, required=30, available={check_result.current_credits}")
                 raise HTTPException(
-                    status_code=status.HTTP_402_PAYMENT_REQUIRED,
-                    detail="크레딧이 부족합니다. 크레딧을 충전하거나 플랜을 업그레이드해주세요."
+                    status_code=402,
+                    detail=f"크레딧이 부족합니다. (필요: 30 크레딧, 보유: {check_result.current_credits} 크레딧)"
                 )
             
-            logger.info(f"[Credits] User {user_id} has sufficient credits for competitor analysis")
+            logger.info(f"[경쟁매장 분석] 크레딧 체크 통과: user_id={user_id}")
         
         comparison = await competitor_analysis_service.compare_with_my_store(
             my_store_data=my_store,

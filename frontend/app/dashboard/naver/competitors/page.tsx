@@ -400,6 +400,10 @@ export default function CompetitorsPage() {
       const comparisonResult = await comparisonResponse.json()
       
       if (!comparisonResponse.ok) {
+        // 402 에러 (크레딧 부족)를 명시적으로 처리
+        if (comparisonResponse.status === 402) {
+          throw new Error(comparisonResult.detail || "크레딧이 부족합니다. 크레딧을 충전하거나 플랜을 업그레이드해주세요.")
+        }
         throw new Error(comparisonResult.detail || "비교 분석 중 오류가 발생했습니다")
       }
       
@@ -420,9 +424,13 @@ export default function CompetitorsPage() {
         description: `${analyzed.length}개 경쟁매장 분석이 완료되었습니다.`,
       })
     } catch (error: any) {
+      console.error('경쟁매장 분석 에러:', error)
       let errorMessage = "경쟁매장 분석 중 오류가 발생했습니다."
       
-      if (error.message.includes("404")) {
+      if (error.message.includes("크레딧")) {
+        // 크레딧 부족 에러는 원본 메시지 그대로 표시
+        errorMessage = error.message
+      } else if (error.message.includes("404")) {
         errorMessage = "매장 정보를 찾을 수 없습니다. 매장이 올바르게 등록되었는지 확인해주세요."
       } else if (error.message.includes("우리 매장")) {
         errorMessage = "우리 매장 분석에 실패했습니다. place_id를 확인해주세요."
@@ -433,6 +441,9 @@ export default function CompetitorsPage() {
         description: errorMessage,
         variant: "destructive",
       })
+      
+      // 크레딧 부족 등의 에러 발생 시 분석 진행 상태 초기화
+      setAnalysisProgress({ current: 0, total: 0 })
     } finally {
       setLoadingAnalysis(false)
     }
