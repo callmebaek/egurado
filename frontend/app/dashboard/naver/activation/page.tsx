@@ -264,15 +264,22 @@ export default function ActivationPage() {
         title: '분석 완료',
         description: '플레이스 활성화 현황을 성공적으로 조회했습니다.',
       })
+      
+      // 성공 시에만 로딩 해제
+      setIsLoading(false)
     } catch (error) {
       console.error('활성화 분석 에러:', error)
+      
+      // 에러 발생 시 로딩 해제하고 매장 선택 화면으로 돌아가기
+      setIsLoading(false)
+      setSelectedStore(null)
+      setActivationData(null)
+      
       toast({
         title: '오류',
         description: error instanceof Error ? error.message : '활성화 분석에 실패했습니다.',
         variant: 'destructive',
       })
-    } finally {
-      setIsLoading(false)
     }
   }
 
