@@ -69,6 +69,9 @@
   --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  
+  /* 동적 뷰포트 높이 (모바일 주소창 대응) */
+  --vh: 1vh;
 }
 
 @theme inline {
@@ -146,6 +149,15 @@ body {
   font-size: 14px;
   line-height: 1.6;
   overflow-x: hidden; /* 모바일 가로 스크롤 방지 */
+  
+  /* 모바일 브라우저 폰트 자동 조정 방지 */
+  -webkit-text-size-adjust: 100%;
+  -moz-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  
+  /* 하드웨어 가속 (성능 최적화) */
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
 }
 
 /* TurboTax-style scrollbar */
@@ -299,6 +311,62 @@ button, a, [role="button"] {
     padding-bottom: env(safe-area-inset-bottom);
     padding-left: env(safe-area-inset-left);
     padding-right: env(safe-area-inset-right);
+  }
+}
+
+/* ============================================
+   모바일 브라우저 최적화 (갤럭시 등 실제 디바이스)
+   ============================================ */
+
+/* 동적 뷰포트 높이 지원 (주소창 대응) */
+.min-h-screen-dynamic {
+  min-height: 100vh;
+  min-height: calc(var(--vh, 1vh) * 100);
+}
+
+.h-screen-dynamic {
+  height: 100vh;
+  height: calc(var(--vh, 1vh) * 100);
+}
+
+/* Samsung Internet & Chrome Mobile 최적화 */
+@supports (-webkit-overflow-scrolling: touch) {
+  body {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* 모바일 입력 필드 최적화 (자동 줌 방지) */
+input, textarea, select {
+  font-size: 16px; /* 16px 이상이어야 모바일에서 자동 줌 방지 */
+  -webkit-text-size-adjust: 100%;
+}
+
+/* 모바일 스크롤바 숨김 */
+@media (max-width: 768px) {
+  ::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+  
+  body {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+}
+
+/* 이미지 최적화 (GPU 가속) */
+img {
+  transform: translateZ(0);
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+}
+
+/* 모바일 디바이스 픽셀 밀도 대응 */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  img {
+    image-rendering: -webkit-optimize-contrast;
   }
 }
 
@@ -546,5 +614,20 @@ button, a, [role="button"] {
     --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
     --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(3px + var(--tw-ring-offset-width)) var(--tw-ring-color);
     box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
+  }
+  
+  /* 모바일 최적화 유틸리티 */
+  .touch-target-minimum {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  .no-tap-highlight {
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  .gpu-accelerate {
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
   }
 }

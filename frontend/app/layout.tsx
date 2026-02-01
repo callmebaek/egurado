@@ -95,13 +95,14 @@ export const metadata: Metadata = {
   },
 };
 
-// 뷰포트 설정
+// 뷰포트 설정 (모바일 최적화)
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
   userScalable: true,
-  themeColor: "#6d7f48",
+  themeColor: "#405D99", // 디자인 시스템 primary color
+  viewportFit: "cover", // 노치/펀치홀 대응
 };
 
 export default function RootLayout({
@@ -114,10 +115,35 @@ export default function RootLayout({
       <head>
         {/* 추가 SEO 태그 */}
         <meta name="format-detection" content="telephone=no" />
+        
+        {/* 모바일 최적화 메타 태그 */}
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        
         {/* NanumSquare Neo 폰트 (CDN) */}
         <link
           rel="stylesheet"
           href="https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_11-01@1.0/NanumSquareNeo.css"
+        />
+        
+        {/* 동적 뷰포트 높이 설정 (모바일 주소창 대응) */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                function setVH() {
+                  var vh = window.innerHeight * 0.01;
+                  document.documentElement.style.setProperty('--vh', vh + 'px');
+                }
+                setVH();
+                window.addEventListener('resize', setVH);
+                window.addEventListener('orientationchange', function() {
+                  setTimeout(setVH, 100);
+                });
+              })();
+            `,
+          }}
         />
       </head>
       <body
