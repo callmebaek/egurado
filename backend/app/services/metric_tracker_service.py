@@ -5,13 +5,14 @@ Metric Tracker Service
 import logging
 from typing import List, Dict, Optional
 from datetime import datetime, date, timedelta, timezone
+from zoneinfo import ZoneInfo
 from uuid import UUID, uuid4
 from app.core.database import get_supabase_client
 
 logger = logging.getLogger(__name__)
 
-# KST 시간대 정의 (UTC+9)
-KST = timezone(timedelta(hours=9))
+# KST 시간대 정의 (Asia/Seoul - 정확한 시간대 사용)
+KST = ZoneInfo("Asia/Seoul")
 
 
 class MetricTrackerService:
