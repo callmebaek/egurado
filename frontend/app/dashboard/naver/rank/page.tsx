@@ -8,7 +8,7 @@
 import { useStores } from "@/lib/hooks/useStores"
 import { useAuth } from "@/lib/auth-context"
 import { EmptyStoreMessage } from "@/components/EmptyStoreMessage"
-import { Loader2, TrendingUp, TrendingDown, Search, Minus, MapPin, Star, X, LineChart as LineChartIcon } from "lucide-react"
+import { Loader2, TrendingUp, TrendingDown, Search, Minus, MapPin, Star, X, LineChart as LineChartIcon, Plus } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { useState, useEffect } from "react"
 import { supabase } from "@/lib/supabase"
@@ -600,262 +600,342 @@ export default function NaverRankPage() {
   const selectedStore = stores.find(s => s.id === selectedStoreId)
 
   return (
-    <div className="w-full max-w-4xl mx-auto p-4 md:p-6 lg:p-8">
-      {/* 헤더 - TurboTax Style */}
-      <div className="mb-6 md:mb-8">
-        <h1 className="text-xl md:text-2xl font-bold text-neutral-900 mb-1.5 leading-tight">
-          플레이스 순위 조회
-        </h1>
-        <p className="text-sm md:text-base text-neutral-600 leading-relaxed mb-2">
-          키워드별 네이버 플레이스 검색 순위를 실시간으로 확인하세요
+    <div className="w-full max-w-6xl mx-auto px-4 py-6 md:px-6 md:py-8 lg:px-8 lg:py-10">
+      {/* 헤더 섹션 - 홈페이지 스타일 */}
+      <header className="mb-8 md:mb-10 text-center">
+        <div className="flex items-center justify-center gap-3 mb-3">
+          <div className="w-12 h-12 md:w-14 md:h-14 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-xl flex items-center justify-center shadow-lg">
+            <TrendingUp className="w-6 h-6 md:w-7 md:h-7 text-white" />
+          </div>
+          <h1 className="text-2xl md:text-3xl lg:text-4xl font-extrabold text-neutral-900 leading-tight">
+            플레이스 순위 조회
+          </h1>
+        </div>
+        <p className="text-base md:text-lg text-neutral-600 leading-relaxed max-w-3xl mx-auto mb-4">
+          키워드별 네이버 플레이스 검색 순위를 <br className="md:hidden" />
+          <span className="hidden md:inline"> </span>실시간으로 확인하세요
         </p>
-        <Badge 
-          variant="secondary"
-          className="bg-primary-100 text-primary-700 border-primary-200 px-2.5 py-1 text-xs font-medium inline-flex"
-        >
-          최대 300위까지 조회
-        </Badge>
-      </div>
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3">
+          <Badge 
+            variant="secondary"
+            className="bg-blue-100 text-blue-700 border-blue-200 px-4 py-2 text-sm font-semibold inline-flex items-center gap-1.5"
+          >
+            <Search className="w-4 h-4" />
+            최대 300위까지 조회
+          </Badge>
+          <Badge 
+            variant="secondary"
+            className="bg-green-100 text-green-700 border-green-200 px-4 py-2 text-sm font-semibold inline-flex items-center gap-1.5"
+          >
+            💡 5 크레딧
+          </Badge>
+        </div>
+      </header>
 
-      <div className="space-y-6 md:space-y-8">
+      <div className="space-y-8 md:space-y-10">
 
-        {/* 조회 폼 - TurboTax Style */}
-        <Card className="rounded-card border-neutral-300 shadow-card">
-          <CardContent className="p-4 md:p-6 space-y-4 md:space-y-5">
-            {/* 매장 선택 */}
-            <div>
-              <Label htmlFor="store-select" className="text-sm font-bold text-neutral-900 mb-2 block">
-                매장 선택
-              </Label>
-              {stores.length === 0 ? (
-                <div className="bg-warning border border-warning-dark rounded-lg p-3 md:p-4">
-                  <p className="text-sm text-warning-dark">
-                    네이버 플레이스 매장이 없습니다.{' '}
-                    <a href="/dashboard/connect-store" className="font-bold underline hover:text-warning-darker">
-                      매장 등록하기
-                    </a>
+        {/* 조회 폼 섹션 */}
+        <section>
+          <div className="mb-4 md:mb-5">
+            <h2 className="text-lg md:text-xl font-bold text-neutral-900 mb-1.5 leading-tight">
+              순위 조회하기
+            </h2>
+            <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
+              매장과 키워드를 선택하여 현재 순위를 확인하세요
+            </p>
+          </div>
+
+          <Card className="rounded-xl border-2 border-neutral-300 shadow-md hover:shadow-lg transition-all duration-200">
+            <CardContent className="p-5 md:p-6 space-y-5 md:space-y-6">
+              {/* 매장 선택 */}
+              <div>
+                <Label htmlFor="store-select" className="text-sm md:text-base font-bold text-neutral-900 mb-2.5 block flex items-center gap-2">
+                  <MapPin className="h-4 w-4 md:h-5 md:w-5 text-blue-600" />
+                  매장 선택
+                </Label>
+                {stores.length === 0 ? (
+                  <div className="bg-gradient-to-r from-orange-50 to-red-50 border-2 border-orange-300 rounded-xl p-4 md:p-5">
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 bg-orange-400 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <span className="text-xl">⚠️</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm md:text-base font-semibold text-orange-900 mb-1">
+                          네이버 플레이스 매장이 없습니다
+                        </p>
+                        <a 
+                          href="/dashboard/connect-store" 
+                          className="text-sm text-orange-700 font-bold underline hover:text-orange-900 transition-colors"
+                        >
+                          매장 등록하러 가기 →
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <Select value={selectedStoreId} onValueChange={setSelectedStoreId}>
+                    <SelectTrigger 
+                      id="store-select"
+                      className="h-14 md:h-16 border-2 border-neutral-300 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all duration-200"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <MapPin className="h-5 w-5 text-blue-600" />
+                        </div>
+                        <SelectValue placeholder="매장을 선택하세요" className="text-base md:text-lg" />
+                      </div>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {stores.map((store) => (
+                        <SelectItem key={store.id} value={store.id} className="text-base">
+                          {store.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+
+              {/* 키워드 입력 */}
+              <div>
+                <Label htmlFor="keyword-input" className="text-sm md:text-base font-bold text-neutral-900 mb-2.5 block flex items-center gap-2">
+                  <Search className="h-4 w-4 md:h-5 md:w-5 text-blue-600" />
+                  검색 키워드
+                </Label>
+                <div className="flex flex-col sm:flex-row gap-3 md:gap-4">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-4 md:left-5 top-1/2 transform -translate-y-1/2 text-neutral-400 h-5 w-5 md:h-6 md:w-6 pointer-events-none" />
+                    <Input
+                      id="keyword-input"
+                      type="text"
+                      value={keyword}
+                      onChange={(e) => setKeyword(e.target.value)}
+                      placeholder="예: 강남 카페, 혜화 맛집"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !isChecking && selectedStoreId && keyword.trim()) {
+                          handleCheckRank()
+                        }
+                      }}
+                      disabled={isChecking}
+                      className="h-14 md:h-16 pl-12 md:pl-14 pr-4 text-base md:text-lg border-2 border-neutral-300 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all duration-200 font-medium placeholder:text-neutral-400 placeholder:font-normal"
+                    />
+                  </div>
+                  <Button
+                    onClick={handleCheckRank}
+                    disabled={isChecking || !selectedStoreId || stores.length === 0 || !keyword.trim()}
+                    className="h-14 md:h-16 px-8 md:px-10 text-base md:text-lg rounded-xl shadow-button hover:shadow-button-hover active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-bold whitespace-nowrap touch-target-minimum"
+                  >
+                    {isChecking ? (
+                      <>
+                        <Loader2 className="h-5 w-5 md:h-6 md:w-6 mr-2 animate-spin" />
+                        조회중...
+                      </>
+                    ) : (
+                      <>
+                        <TrendingUp className="h-5 w-5 md:h-6 md:w-6 mr-2" />
+                        순위 확인
+                      </>
+                    )}
+                  </Button>
+                </div>
+                <div className="mt-3 flex items-start gap-2 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <span className="text-lg flex-shrink-0">💡</span>
+                  <p className="text-xs md:text-sm text-blue-700 leading-relaxed">
+                    네이버 지도에서 검색할 키워드를 입력하세요. 최대 300위까지 확인 가능합니다.
                   </p>
                 </div>
-              ) : (
-                <Select value={selectedStoreId} onValueChange={setSelectedStoreId}>
-                  <SelectTrigger 
-                    id="store-select"
-                    className="h-11 md:h-12 border-neutral-300 focus:border-primary-500 focus:ring-primary-500"
-                  >
-                    <div className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4 text-neutral-400 flex-shrink-0" />
-                      <SelectValue placeholder="매장을 선택하세요" />
-                    </div>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {stores.map((store) => (
-                      <SelectItem key={store.id} value={store.id}>
-                        {store.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
-
-            {/* 키워드 입력 */}
-            <div>
-              <Label htmlFor="keyword-input" className="text-sm font-bold text-neutral-900 mb-2 block">
-                검색 키워드
-              </Label>
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 md:left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 h-4 w-4 md:h-5 md:w-5" />
-                  <Input
-                    id="keyword-input"
-                    type="text"
-                    value={keyword}
-                    onChange={(e) => setKeyword(e.target.value)}
-                    placeholder="예: 강남 카페"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        handleCheckRank()
-                      }
-                    }}
-                    disabled={isChecking}
-                    className="h-11 md:h-12 pl-10 md:pl-12 border-neutral-300 focus:border-primary-500 focus:ring-primary-500"
-                  />
-                </div>
-                <Button
-                  onClick={handleCheckRank}
-                  disabled={isChecking || !selectedStoreId || stores.length === 0}
-                  className="h-11 md:h-12 w-11 md:w-auto md:px-6 p-0 shadow-button hover:shadow-button-hover active:scale-95 transition-all duration-200 font-bold flex-shrink-0"
-                >
-                  {isChecking ? (
-                    <>
-                      <Loader2 className="h-5 w-5 md:mr-2 animate-spin" />
-                      <span className="hidden md:inline">조회중...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Search className="h-5 w-5 md:mr-2" />
-                      <span className="hidden md:inline">순위 확인</span>
-                    </>
-                  )}
-                </Button>
               </div>
-              <p className="text-xs md:text-sm text-neutral-500 mt-2 leading-relaxed">
-                네이버 지도에서 검색할 키워드를 입력하세요 (최대 300개까지 확인)
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </section>
 
-        {/* 순위 결과 - TurboTax Style */}
+        {/* 순위 결과 섹션 */}
         {rankResult && (
-          <Card className="rounded-card border-neutral-300 shadow-card">
-            <CardHeader className="pb-3 md:pb-4 px-4 md:px-6 pt-4 md:pt-6">
-              <CardTitle className="text-lg md:text-xl font-bold text-neutral-900">
-                순위 결과
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 md:p-6 pt-0">
-              {rankResult.found && rankResult.rank ? (
-                <div className="space-y-4 md:space-y-6">
+          <section>
+            <Card className="rounded-xl border-2 border-neutral-300 shadow-lg overflow-hidden">
+              <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b-2 border-blue-200 pb-4 px-5 md:px-6 pt-5 md:pt-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 md:w-12 md:h-12 bg-blue-500 rounded-xl flex items-center justify-center shadow-md">
+                    <TrendingUp className="w-5 h-5 md:w-6 md:h-6 text-white" />
+                  </div>
+                  <CardTitle className="text-xl md:text-2xl font-bold text-neutral-900">
+                    순위 결과
+                  </CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="p-5 md:p-6">
+                {rankResult.found && rankResult.rank ? (
+                  <div className="space-y-5 md:space-y-6">
                   {/* 순위 및 리뷰 정보 */}
-                  <div className="bg-success-light border border-success rounded-lg p-4 md:p-5">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                      {/* 순위 */}
-                      <div className="flex items-center gap-4">
-                        <div className="text-4xl md:text-5xl font-bold text-success whitespace-nowrap">
-                          {rankResult.rank}위
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-bold text-sm md:text-base text-neutral-900 truncate">{selectedStore?.name}</p>
-                          <p className="text-xs md:text-sm text-neutral-600 truncate">
-                            {rankResult.total_count 
-                              ? `전체 ${rankResult.total_count}개 중` 
-                              : `상위 ${rankResult.total_results}개 중`}
-                          </p>
+                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-300 rounded-xl p-5 md:p-6 shadow-md">
+                    <div className="flex flex-col gap-5">
+                      {/* 메인 순위 표시 */}
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-4 md:gap-5">
+                          {/* 순위 */}
+                          <div className="relative">
+                            <div className="w-20 h-20 md:w-24 md:h-24 bg-green-500 rounded-2xl flex items-center justify-center shadow-lg">
+                              <div className="text-center">
+                                <div className="text-3xl md:text-4xl font-extrabold text-white leading-none">
+                                  {rankResult.rank}
+                                </div>
+                                <div className="text-xs md:text-sm text-white/90 font-semibold mt-0.5">
+                                  위
+                                </div>
+                              </div>
+                            </div>
+                            {/* 순위 변동 배지 */}
+                            {rankResult.rank_change !== null && rankResult.rank_change !== 0 && (
+                              <div className={`absolute -top-2 -right-2 px-2 py-1 rounded-full shadow-md flex items-center gap-1 ${
+                                rankResult.rank_change > 0 ? 'bg-blue-500' : 'bg-red-500'
+                              }`}>
+                                {rankResult.rank_change > 0 ? (
+                                  <TrendingUp className="w-3 h-3 text-white" />
+                                ) : (
+                                  <TrendingDown className="w-3 h-3 text-white" />
+                                )}
+                                <span className="font-bold text-xs text-white">
+                                  {Math.abs(rankResult.rank_change)}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                          
+                          {/* 매장 정보 */}
+                          <div className="flex-1 min-w-0">
+                            <p className="font-bold text-base md:text-lg text-neutral-900 mb-1 line-clamp-2 leading-tight">
+                              {selectedStore?.name}
+                            </p>
+                            <p className="text-sm md:text-base text-neutral-600">
+                              {rankResult.total_count 
+                                ? `전체 ${rankResult.total_count}개 중` 
+                                : `상위 ${rankResult.total_results}개 중`}
+                            </p>
+                          </div>
                         </div>
                       </div>
 
-                      {/* 구분선 */}
-                      <div className="hidden sm:block w-px h-12 bg-success/30" />
-
-                      {/* 리뷰수 정보 */}
-                      <div className="flex flex-wrap gap-4 sm:gap-6 items-center w-full sm:w-auto">
+                      {/* 리뷰 통계 */}
+                      <div className="grid grid-cols-2 gap-3 md:gap-4">
                         {/* 방문자 리뷰 */}
-                        <div className="flex items-center gap-2">
-                          <div className="text-xs text-neutral-600 whitespace-nowrap">방문자 리뷰</div>
-                          <div className="text-lg md:text-xl font-bold text-primary-600 whitespace-nowrap">
-                            {(rankResult.visitor_review_count || 0).toLocaleString()}개
+                        <div className="bg-white border-2 border-blue-200 rounded-xl p-3 md:p-4">
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                              <span className="text-lg">👤</span>
+                            </div>
+                            <p className="text-xs md:text-sm text-neutral-600 font-medium">방문자 리뷰</p>
                           </div>
+                          <p className="text-xl md:text-2xl font-bold text-blue-600">
+                            {(rankResult.visitor_review_count || 0).toLocaleString()}<span className="text-base text-neutral-500">개</span>
+                          </p>
                         </div>
 
                         {/* 블로그 리뷰 */}
-                        <div className="flex items-center gap-2">
-                          <div className="text-xs text-neutral-600 whitespace-nowrap">블로그 리뷰</div>
-                          <div className="text-lg md:text-xl font-bold text-primary-600 whitespace-nowrap">
-                            {(rankResult.blog_review_count || 0).toLocaleString()}개
+                        <div className="bg-white border-2 border-purple-200 rounded-xl p-3 md:p-4">
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                              <span className="text-lg">📝</span>
+                            </div>
+                            <p className="text-xs md:text-sm text-neutral-600 font-medium">블로그 리뷰</p>
                           </div>
+                          <p className="text-xl md:text-2xl font-bold text-purple-600">
+                            {(rankResult.blog_review_count || 0).toLocaleString()}<span className="text-base text-neutral-500">개</span>
+                          </p>
                         </div>
                       </div>
-
-                      {/* 순위 변동 */}
-                      {rankResult.rank_change !== null && rankResult.rank_change !== 0 && (
-                        <div className={`flex items-center gap-1 ml-auto ${
-                          rankResult.rank_change > 0 ? 'text-success' : 'text-error'
-                        }`}>
-                          {rankResult.rank_change > 0 ? (
-                            <TrendingUp className="w-5 h-5" />
-                          ) : (
-                            <TrendingDown className="w-5 h-5" />
-                          )}
-                          <span className="font-bold text-sm md:text-base">
-                            {Math.abs(rankResult.rank_change)}
-                          </span>
-                        </div>
-                      )}
                     </div>
                   </div>
 
                   {/* 검색 결과 목록 */}
                   <div>
-                    <div className="flex items-center justify-between mb-3 md:mb-4">
-                      <h3 className="text-base md:text-lg font-bold text-neutral-900">검색 결과</h3>
-                      <Badge variant="secondary" className="bg-primary-100 text-primary-700 border-primary-200">
+                    <div className="flex items-center justify-between mb-4 md:mb-5">
+                      <h3 className="text-lg md:text-xl font-bold text-neutral-900 flex items-center gap-2">
+                        <Search className="w-5 h-5 md:w-6 md:h-6 text-blue-600" />
+                        검색 결과
+                      </h3>
+                      <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-blue-200 px-3 py-1.5 text-sm font-semibold">
                         {rankResult.search_results.length}개 확인
                       </Badge>
                     </div>
-                    <div className="space-y-2 md:space-y-3 max-h-[500px] overflow-y-auto">
+                    <div className="space-y-3 md:space-y-4 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
                       {rankResult.search_results.map((result, index) => (
                         <div
                           key={result.place_id}
-                          className={`p-3 md:p-4 rounded-lg border transition-all duration-200 ${
+                          className={`p-4 md:p-5 rounded-xl border-2 transition-all duration-200 ${
                             result.place_id === selectedStore?.place_id
-                              ? 'bg-success-light border-success'
-                              : 'bg-white border-neutral-200 hover:border-neutral-300'
+                              ? 'bg-gradient-to-br from-green-50 to-emerald-50 border-green-400 shadow-md'
+                              : 'bg-white border-neutral-200 hover:border-blue-300 hover:shadow-md'
                           }`}
                         >
-                          <div className="flex items-start gap-2 md:gap-3">
+                          <div className="flex items-start gap-3 md:gap-4">
                             {/* 순위 Badge */}
                             <div 
-                              className={`flex items-center justify-center w-10 h-10 md:w-12 md:h-12 rounded-full font-bold text-sm md:text-base flex-shrink-0 ${
+                              className={`flex items-center justify-center w-12 h-12 md:w-14 md:h-14 rounded-xl font-extrabold text-base md:text-lg flex-shrink-0 shadow-sm ${
                                 result.place_id === selectedStore?.place_id 
-                                  ? 'bg-success text-white' 
-                                  : 'bg-neutral-100 text-neutral-600'
+                                  ? 'bg-green-500 text-white' 
+                                  : index < 3
+                                  ? 'bg-yellow-100 text-yellow-800 border-2 border-yellow-300'
+                                  : 'bg-neutral-100 text-neutral-700'
                               }`}
                             >
                               {index + 1}
                             </div>
 
                             {/* 썸네일 */}
-                            {result.thumbnail && (
-                              <div className="relative w-10 h-10 md:w-12 md:h-12 flex-shrink-0">
+                            {result.thumbnail ? (
+                              <div className="relative w-14 h-14 md:w-16 md:h-16 flex-shrink-0">
                                 <img
                                   src={result.thumbnail}
                                   alt={result.name}
-                                  className="w-10 h-10 md:w-12 md:h-12 rounded-lg object-cover"
+                                  className="w-14 h-14 md:w-16 md:h-16 rounded-xl object-cover ring-2 ring-neutral-200"
                                   loading="lazy"
                                   onError={(e) => {
                                     e.currentTarget.style.display = 'none'
                                   }}
                                 />
                               </div>
+                            ) : (
+                              <div className="w-14 h-14 md:w-16 md:h-16 bg-neutral-200 rounded-xl flex items-center justify-center flex-shrink-0">
+                                <MapPin className="w-6 h-6 md:w-8 md:h-8 text-neutral-400" />
+                              </div>
                             )}
 
                             {/* 매장 정보 */}
                             <div className="flex-1 min-w-0">
                               {/* 상단: 매장명 + 내 매장 Badge */}
-                              <div className="flex items-start justify-between gap-2 mb-1">
-                                <p className="font-bold text-sm md:text-base text-neutral-900 line-clamp-2 leading-tight flex-1">
+                              <div className="flex items-start justify-between gap-2 mb-2">
+                                <p className="font-bold text-base md:text-lg text-neutral-900 line-clamp-2 leading-tight flex-1">
                                   {result.name}
                                 </p>
                                 {result.place_id === selectedStore?.place_id && (
-                                  <Badge className="bg-success text-white border-success flex-shrink-0 text-xs px-2 py-0.5">
-                                    내 매장
+                                  <Badge className="bg-green-500 text-white border-green-500 flex-shrink-0 text-xs px-2.5 py-1 font-semibold shadow-sm">
+                                    ✓ 내 매장
                                   </Badge>
                                 )}
                               </div>
                               
-                              <p className="text-xs md:text-sm text-neutral-500 truncate mb-1">
+                              <p className="text-xs md:text-sm text-neutral-600 bg-neutral-100 inline-block px-2.5 py-1 rounded-lg mb-2 font-medium">
                                 {result.category}
                               </p>
                               
-                              <div className="flex items-start gap-1.5">
-                                <MapPin className="w-3 h-3 md:w-3.5 md:h-3.5 text-neutral-400 mt-0.5 flex-shrink-0" />
-                                <p className="text-xs md:text-sm text-neutral-500 line-clamp-2 leading-tight flex-1">
+                              <div className="flex items-start gap-2 mb-2">
+                                <MapPin className="w-4 h-4 md:w-4.5 md:h-4.5 text-neutral-400 mt-0.5 flex-shrink-0" />
+                                <p className="text-xs md:text-sm text-neutral-600 line-clamp-2 leading-relaxed flex-1">
                                   {result.address}
                                 </p>
                               </div>
                               
-                              {/* 평점 및 리뷰 - 우측 하단 */}
+                              {/* 평점 및 리뷰 */}
                               {result.review_count && result.review_count > 0 && (
-                                <div className="flex items-center gap-1 mt-2">
-                                  <Star className="w-3 h-3 fill-warning text-warning flex-shrink-0" />
+                                <div className="flex items-center gap-2 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-1.5 w-fit">
+                                  <Star className="w-4 h-4 fill-yellow-500 text-yellow-500 flex-shrink-0" />
                                   {result.rating && typeof result.rating === 'number' && result.rating > 0 && (
-                                    <span className="text-xs font-bold text-neutral-900">
+                                    <span className="text-sm font-bold text-neutral-900">
                                       {result.rating.toFixed(1)}
                                     </span>
                                   )}
-                                  <span className="text-xs text-neutral-500">
-                                    ({typeof result.review_count === 'number' ? result.review_count.toLocaleString() : result.review_count})
+                                  <span className="text-xs text-neutral-600">
+                                    리뷰 {typeof result.review_count === 'number' ? result.review_count.toLocaleString() : result.review_count}
                                   </span>
                                 </div>
                               )}
@@ -867,160 +947,205 @@ export default function NaverRankPage() {
                   </div>
                 </div>
               ) : (
-                <div className="bg-gradient-to-br from-neutral-50 to-neutral-100 border border-neutral-200 rounded-lg p-6 md:p-8">
-                  <div className="flex flex-col items-center gap-4 max-w-md mx-auto">
+                <div className="bg-gradient-to-br from-orange-50 to-red-50 border-2 border-orange-300 rounded-xl p-8 md:p-10 shadow-md">
+                  <div className="flex flex-col items-center gap-5 max-w-lg mx-auto">
                     {/* 아이콘 */}
-                    <div className="w-16 h-16 md:w-20 md:h-20 bg-neutral-200 rounded-full flex items-center justify-center">
-                      <span className="text-3xl md:text-4xl">🔍</span>
+                    <div className="w-20 h-20 md:w-24 md:h-24 bg-orange-100 rounded-2xl flex items-center justify-center shadow-lg">
+                      <span className="text-4xl md:text-5xl">🔍</span>
                     </div>
                     
                     {/* 메인 메시지 */}
-                    <div className="text-center space-y-2">
-                      <h3 className="text-xl md:text-2xl font-bold text-neutral-900">
+                    <div className="text-center space-y-3">
+                      <h3 className="text-2xl md:text-3xl font-extrabold text-neutral-900">
                         300위 밖
                       </h3>
-                      <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
+                      <p className="text-base md:text-lg text-neutral-700 leading-relaxed">
                         상위 300개 내에서 매장을 찾을 수 없습니다
                       </p>
                     </div>
                     
                     {/* 통계 정보 */}
-                    <div className="w-full bg-white border border-neutral-200 rounded-lg p-3 md:p-4">
-                      <p className="text-xs md:text-sm text-neutral-500 text-center">
-                        {rankResult.total_count 
-                          ? `전체 ${rankResult.total_count}개 중 300개 확인됨` 
-                          : `총 ${rankResult.total_results}개 확인됨`}
-                      </p>
+                    <div className="w-full bg-white border-2 border-orange-200 rounded-xl p-4 md:p-5">
+                      <div className="flex items-center justify-center gap-2">
+                        <span className="text-2xl">📊</span>
+                        <p className="text-sm md:text-base text-neutral-700 font-medium">
+                          {rankResult.total_count 
+                            ? `전체 ${rankResult.total_count}개 중 300개 확인됨` 
+                            : `총 ${rankResult.total_results}개 확인됨`}
+                        </p>
+                      </div>
                     </div>
                     
                     {/* 제안 */}
-                    <div className="flex items-start gap-2 bg-primary-50 border border-primary-200 rounded-lg p-3 md:p-4 w-full">
-                      <span className="text-lg flex-shrink-0">💡</span>
-                      <p className="text-xs md:text-sm text-primary-700 leading-relaxed">
-                        <span className="font-bold">팁:</span> 더 구체적인 지역명이나 업종을 포함한 키워드로 다시 시도해보세요
-                      </p>
+                    <div className="w-full bg-blue-50 border-2 border-blue-200 rounded-xl p-4 md:p-5">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <span className="text-xl">💡</span>
+                        </div>
+                        <div>
+                          <p className="text-sm md:text-base font-bold text-blue-900 mb-1">
+                            검색 팁
+                          </p>
+                          <p className="text-xs md:text-sm text-blue-700 leading-relaxed">
+                            더 구체적인 지역명이나 업종을 포함한 키워드로 다시 시도해보세요.<br />
+                            예: "강남 카페" → "강남역 카페" 또는 "강남 디저트 카페"
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
               )}
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </section>
         )}
 
         {/* 조회한 키워드 목록 - TurboTax Style Table */}
         {keywords.length > 0 && (
-          <Card className="rounded-card border-neutral-300 shadow-card">
-            <CardHeader className="pb-3 md:pb-4 px-4 md:px-6 pt-4 md:pt-6">
+          <section>
+            <div className="mb-4 md:mb-5">
+              <h2 className="text-lg md:text-xl font-bold text-neutral-900 mb-1.5 leading-tight">
+                조회한 키워드 목록
+              </h2>
+              <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
+                최근 조회한 {keywords.length}개의 키워드를 관리하고 추적하세요
+              </p>
+            </div>
+
+          <Card className="rounded-xl border-2 border-neutral-300 shadow-lg overflow-hidden">
+            <CardHeader className="bg-gradient-to-r from-blue-50 to-primary-50 border-b-2 border-primary-200 pb-4 px-5 md:px-6 pt-5 md:pt-6">
               <div className="flex items-center justify-between flex-wrap gap-3">
-                <div>
-                  <CardTitle className="text-lg md:text-xl font-bold text-neutral-900">
-                    조회한 키워드
-                  </CardTitle>
-                  <p className="text-xs md:text-sm text-neutral-500 mt-1">
-                    최근 조회한 {keywords.length}개의 키워드
-                  </p>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 md:w-12 md:h-12 bg-primary-500 rounded-xl flex items-center justify-center shadow-md">
+                    <Search className="w-5 h-5 md:w-6 md:h-6 text-white" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg md:text-xl font-bold text-neutral-900">
+                      키워드 관리
+                    </CardTitle>
+                    <p className="text-xs md:text-sm text-neutral-600 mt-0.5">
+                      {keywords.length}개 등록됨
+                    </p>
+                  </div>
                 </div>
                 <Badge 
                   variant="secondary"
-                  className="bg-neutral-100 text-neutral-600 border-neutral-200 px-2.5 py-1 text-xs font-medium"
+                  className="bg-primary-100 text-primary-700 border-primary-200 px-3 py-1.5 text-xs font-semibold"
                 >
                   💡 최근 30개만 표시
                 </Badge>
               </div>
             </CardHeader>
-            <CardContent className="p-4 md:p-6 pt-0">
+            <CardContent className="p-0">
               {loadingKeywords ? (
                 <div className="flex items-center justify-center py-12">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary-500" />
+                  <div className="flex flex-col items-center gap-3">
+                    <Loader2 className="h-10 w-10 md:h-12 md:w-12 animate-spin text-primary-500" />
+                    <p className="text-sm md:text-base text-neutral-600 font-medium">키워드 불러오는 중...</p>
+                  </div>
                 </div>
               ) : (
-                <div className="overflow-x-auto -mx-4 md:mx-0">
+                <div className="overflow-x-auto">
                   <div className="inline-block min-w-full align-middle">
-                    <table className="min-w-full divide-y divide-neutral-200">
+                    <table className="min-w-full">
                       <thead>
-                        <tr className="bg-neutral-50">
-                          <th className="px-3 md:px-4 py-3 text-left text-xs md:text-sm font-bold text-neutral-700 w-1/3 md:w-auto">
+                        <tr className="bg-gradient-to-r from-blue-50 to-primary-50 border-b-2 border-primary-100">
+                          <th className="px-2 md:px-4 py-3.5 md:py-4 text-left text-xs md:text-sm font-extrabold text-neutral-900">
                             키워드
                           </th>
-                          <th className="px-2 md:px-3 py-3 text-center text-xs md:text-sm font-bold text-neutral-700 w-20 md:w-24">
+                          <th className="px-2 md:px-3 py-3.5 md:py-4 text-center text-xs md:text-sm font-extrabold text-neutral-900 w-20 md:w-24">
                             현재 순위
                           </th>
-                          <th className="hidden sm:table-cell px-2 md:px-3 py-3 text-center text-xs md:text-sm font-bold text-neutral-700 w-24">
-                            전체 업체 수
+                          <th className="hidden sm:table-cell px-2 md:px-3 py-3.5 md:py-4 text-center text-xs md:text-sm font-extrabold text-neutral-900 w-24">
+                            전체 업체
                           </th>
-                          <th className="hidden md:table-cell px-2 md:px-3 py-3 text-center text-xs md:text-sm font-bold text-neutral-700 w-24">
+                          <th className="hidden md:table-cell px-2 md:px-3 py-3.5 md:py-4 text-center text-xs md:text-sm font-extrabold text-neutral-900 w-28">
                             최근 조회
                           </th>
-                          <th className="hidden lg:table-cell px-2 py-3 text-center text-xs md:text-sm font-bold text-neutral-700 w-16">
+                          <th className="hidden lg:table-cell px-2 py-3.5 md:py-4 text-center text-xs md:text-sm font-extrabold text-neutral-900 w-16">
                             차트
                           </th>
-                          <th className="px-2 py-3 text-center text-xs md:text-sm font-bold text-neutral-700 w-16 md:w-20">
+                          <th className="px-2 py-3.5 md:py-4 text-center text-xs md:text-sm font-extrabold text-neutral-900 w-20 md:w-24">
                             추적
                           </th>
-                          <th className="px-2 py-3 text-center text-xs md:text-sm font-bold text-neutral-700 w-12 md:w-16">
+                          <th className="px-2 py-3.5 md:py-4 text-center text-xs md:text-sm font-extrabold text-neutral-900 w-14 md:w-16">
                             삭제
                           </th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-neutral-200 bg-white">
-                        {keywords.map((kw) => (
+                      <tbody className="divide-y divide-neutral-100 bg-white">
+                        {keywords.map((kw, index) => (
                           <tr 
                             key={kw.id}
-                            className="hover:bg-neutral-50 transition-colors"
+                            className="hover:bg-primary-50/30 transition-colors duration-150"
                           >
-                            <td className="px-3 md:px-4 py-3">
-                              <div className="font-bold text-xs md:text-sm text-neutral-900 break-words">{kw.keyword}</div>
+                            <td className="px-2 md:px-4 py-3.5 md:py-4">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-neutral-400 font-medium flex-shrink-0 w-4">{index + 1}</span>
+                                <div className="font-bold text-sm md:text-base text-neutral-900 break-words leading-tight">{kw.keyword}</div>
+                              </div>
                             </td>
-                            <td className="px-2 md:px-3 py-3 text-center">
-                              <span className="text-sm md:text-base font-bold text-success">
-                                {kw.current_rank ? `${kw.current_rank}위` : (
-                                  <span className="text-xs text-warning font-medium">300위권 밖</span>
+                            <td className="px-2 md:px-3 py-3.5 md:py-4 text-center">
+                              {kw.current_rank ? (
+                                <span className="text-base md:text-lg font-extrabold text-success">
+                                  {kw.current_rank}<span className="text-sm font-semibold text-neutral-600">위</span>
+                                </span>
+                              ) : (
+                                <span className="text-xs font-semibold text-warning">
+                                  300위 밖
+                                </span>
+                              )}
+                            </td>
+                            <td className="hidden sm:table-cell px-2 md:px-3 py-3.5 md:py-4 text-center">
+                              <span className="text-sm md:text-base text-neutral-700 font-medium">
+                                {kw.total_results && kw.total_results > 0 ? `${kw.total_results.toLocaleString()}개` : (
+                                  <span className="text-neutral-400">-</span>
                                 )}
                               </span>
                             </td>
-                            <td className="hidden sm:table-cell px-2 md:px-3 py-3 text-center text-xs md:text-sm text-neutral-600">
-                              {kw.total_results && kw.total_results > 0 ? `${kw.total_results.toLocaleString()}개` : "-"}
+                            <td className="hidden md:table-cell px-2 md:px-3 py-3.5 md:py-4 text-center">
+                              <span className="text-xs md:text-sm text-neutral-600 font-medium">
+                                {new Date(kw.last_checked_at).toLocaleDateString('ko-KR', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </span>
                             </td>
-                            <td className="hidden md:table-cell px-2 md:px-3 py-3 text-center text-xs text-neutral-600">
-                              {new Date(kw.last_checked_at).toLocaleDateString('ko-KR', {
-                                month: 'short',
-                                day: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })}
-                            </td>
-                            <td className="hidden lg:table-cell px-2 py-3 text-center">
+                            <td className="hidden lg:table-cell px-2 py-3.5 md:py-4 text-center">
                               <button
                                 onClick={() => handleViewKeywordHistory(kw)}
-                                className="inline-flex items-center justify-center p-1.5 rounded-lg transition-all duration-200 bg-primary-100 text-primary-600 hover:bg-primary-200 active:scale-95 mx-auto"
+                                className="inline-flex items-center justify-center w-9 h-9 rounded-lg transition-all duration-200 bg-primary-100 text-primary-600 hover:bg-primary-200 hover:shadow-md active:scale-95"
                                 title="순위 차트 보기"
                               >
-                                <LineChartIcon className="w-3.5 h-3.5" />
+                                <LineChartIcon className="w-4 h-4" />
                               </button>
                             </td>
-                            <td className="px-2 py-3 text-center">
+                            <td className="px-2 py-3.5 md:py-4 text-center">
                               {kw.is_tracked ? (
-                                <Badge variant="secondary" className="bg-success-light text-success border-success/20 text-xs px-1.5 py-0.5 whitespace-nowrap">
-                                  추적중
+                                <Badge variant="secondary" className="bg-green-100 text-green-700 border-green-300 text-xs px-2.5 py-1.5 whitespace-nowrap font-semibold">
+                                  ✓ 추적중
                                 </Badge>
                               ) : (
                                 <Button
                                   onClick={() => handleAddTracking(kw)}
                                   size="sm"
-                                  variant="outline"
-                                  className="h-7 px-2 text-xs border-primary-300 text-primary-600 hover:bg-primary-50 hover:border-primary-400 active:scale-95 transition-all duration-200 font-medium whitespace-nowrap"
+                                  className="h-8 px-2.5 text-xs bg-primary-500 text-white border-0 hover:bg-primary-600 hover:shadow-lg active:scale-95 transition-all duration-200 font-semibold whitespace-nowrap shadow-md group"
                                 >
+                                  <Plus className="w-3 h-3 mr-1 group-hover:rotate-90 transition-transform duration-200" />
                                   추적
                                 </Button>
                               )}
                             </td>
-                            <td className="px-2 py-3 text-center">
+                            <td className="px-2 py-3.5 md:py-4 text-center">
                               <button
                                 onClick={() => handleDeleteKeyword(kw.id, kw.keyword)}
-                                className="inline-flex items-center justify-center p-1.5 rounded-lg transition-all duration-200 bg-error-light text-error hover:bg-error/20 active:scale-95 mx-auto"
+                                className="inline-flex items-center justify-center w-9 h-9 rounded-lg transition-all duration-200 bg-red-100 text-red-600 hover:bg-red-200 hover:shadow-md active:scale-95"
                                 title="키워드 삭제"
                               >
-                                <X className="w-3.5 h-3.5" />
+                                <X className="w-4 h-4" />
                               </button>
                             </td>
                           </tr>
@@ -1032,19 +1157,30 @@ export default function NaverRankPage() {
               )}
             </CardContent>
           </Card>
+          </section>
         )}
 
         {/* 순위 히스토리 차트 - TurboTax Style */}
         {selectedKeywordForChart && (
-          <Card className="rounded-card border-primary-200 shadow-card bg-gradient-to-br from-primary-50/30 to-success-light/30">
-            <CardHeader className="pb-3 md:pb-4 px-4 md:px-6 pt-4 md:pt-6">
+          <section>
+            <div className="mb-4 md:mb-5">
+              <h2 className="text-lg md:text-xl font-bold text-neutral-900 mb-1.5 leading-tight">
+                순위 변화 차트
+              </h2>
+              <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
+                "{selectedKeywordForChart.keyword}" 키워드의 순위 변화를 확인하세요
+              </p>
+            </div>
+
+          <Card className="rounded-xl border-2 border-neutral-300 shadow-lg overflow-hidden">
+            <CardHeader className="bg-gradient-to-r from-purple-50 to-indigo-50 border-b-2 border-purple-200 pb-4 px-5 md:px-6 pt-5 md:pt-6">
               <div className="flex items-start justify-between gap-3">
-                <div className="flex items-start gap-2 md:gap-3">
-                  <div className="w-10 h-10 md:w-12 md:h-12 bg-primary-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 md:w-12 md:h-12 bg-purple-500 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md">
                     <LineChartIcon className="w-5 h-5 md:w-6 md:h-6 text-white" />
                   </div>
                   <div>
-                    <h3 className="text-base md:text-lg font-bold text-neutral-900">순위 변화 차트</h3>
+                    <h3 className="text-base md:text-lg font-bold text-neutral-900">순위 히스토리</h3>
                     <p className="text-xs md:text-sm text-neutral-600 mt-0.5">
                       "{selectedKeywordForChart.keyword}"
                     </p>
@@ -1057,56 +1193,79 @@ export default function NaverRankPage() {
                     setSelectedKeywordForChart(null)
                     setRankHistory([])
                   }}
-                  className="h-8 w-8 p-0 hover:bg-neutral-100"
+                  className="h-9 w-9 p-0 hover:bg-red-100 hover:text-red-600 rounded-lg transition-colors duration-200"
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-5 w-5" />
                 </Button>
               </div>
             </CardHeader>
 
-            <CardContent className="p-4 md:p-6 pt-0">
+            <CardContent className="p-5 md:p-6">
               {loadingHistory ? (
                 <div className="flex items-center justify-center py-12">
                   <div className="flex flex-col items-center gap-3">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary-500" />
-                    <p className="text-sm text-neutral-600">데이터를 불러오는 중...</p>
+                    <Loader2 className="h-10 w-10 md:h-12 md:w-12 animate-spin text-purple-500" />
+                    <p className="text-sm md:text-base text-neutral-600 font-medium">데이터를 불러오는 중...</p>
                   </div>
                 </div>
               ) : rankHistory.length === 0 ? (
                 <div className="flex items-center justify-center py-12">
-                  <div className="text-center">
-                    <p className="text-sm md:text-base text-neutral-600 mb-1">순위 히스토리가 없습니다.</p>
-                    <p className="text-xs md:text-sm text-neutral-500">
-                      순위를 조회하면 여기에 날짜별 변화가 표시됩니다.
-                    </p>
+                  <div className="bg-gradient-to-br from-neutral-50 to-neutral-100 border-2 border-dashed border-neutral-300 rounded-xl p-8 md:p-10 max-w-lg mx-auto">
+                    <div className="flex flex-col items-center gap-4">
+                      <div className="w-16 h-16 md:w-20 md:h-20 bg-neutral-200 rounded-2xl flex items-center justify-center">
+                        <span className="text-3xl md:text-4xl">📊</span>
+                      </div>
+                      <div className="text-center space-y-2">
+                        <p className="text-base md:text-lg font-bold text-neutral-900">순위 히스토리가 없습니다</p>
+                        <p className="text-sm md:text-base text-neutral-600">
+                          순위를 조회하면 여기에 날짜별 변화가 표시됩니다
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               ) : (
-                <div className="space-y-4 md:space-y-6">
+                <div className="space-y-5 md:space-y-6">
                   {/* 통계 요약 */}
                   <div className="grid grid-cols-2 gap-3 md:gap-4">
-                    <div className="bg-gradient-to-br from-primary-100 to-primary-50 border border-primary-200 rounded-lg p-3 md:p-4 text-center">
-                      <p className="text-xs text-primary-700 mb-1 font-medium uppercase">현재 순위</p>
-                      <p className="text-2xl md:text-3xl font-bold text-primary-600">
-                        {selectedKeywordForChart.current_rank || '-'}위
+                    {/* 현재 순위 */}
+                    <div className="bg-gradient-to-br from-purple-50 to-indigo-50 border-2 border-purple-200 rounded-xl p-4 md:p-5 shadow-sm">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center">
+                          <TrendingUp className="w-4 h-4 text-white" />
+                        </div>
+                        <p className="text-xs md:text-sm text-purple-700 font-semibold">현재 순위</p>
+                      </div>
+                      <p className="text-3xl md:text-4xl font-extrabold text-purple-600">
+                        {selectedKeywordForChart.current_rank || '-'}
+                        <span className="text-lg md:text-xl text-neutral-600 ml-1">위</span>
                       </p>
                     </div>
-                    <div className="bg-gradient-to-br from-success-light to-success-light/50 border border-success rounded-lg p-3 md:p-4 text-center">
-                      <p className="text-xs text-success-dark mb-1 font-medium uppercase">측정 횟수 (최근 30일)</p>
-                      <p className="text-2xl md:text-3xl font-bold text-success">
+
+                    {/* 측정 횟수 */}
+                    <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-4 md:p-5 shadow-sm">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center">
+                          <LineChartIcon className="w-4 h-4 text-white" />
+                        </div>
+                        <p className="text-xs md:text-sm text-green-700 font-semibold">측정 횟수</p>
+                      </div>
+                      <p className="text-3xl md:text-4xl font-extrabold text-green-600">
                         {(() => {
                           const thirtyDaysAgo = new Date()
                           thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
                           return rankHistory.filter(item => 
                             new Date(item.checked_at) >= thirtyDaysAgo
                           ).length
-                        })()}회
+                        })()}
+                        <span className="text-lg md:text-xl text-neutral-600 ml-1">회</span>
                       </p>
+                      <p className="text-xs text-green-600 mt-1 font-medium">최근 30일</p>
                     </div>
                   </div>
 
                   {/* 차트 */}
-                  <div className="w-full h-[300px] md:h-[400px] bg-white rounded-lg p-2 md:p-4 border border-neutral-200">
+                  <div className="w-full h-[300px] md:h-[400px] bg-white rounded-xl p-3 md:p-5 border-2 border-neutral-300 shadow-sm">
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart
                         data={(() => {
@@ -1226,39 +1385,66 @@ export default function NaverRankPage() {
                     </ResponsiveContainer>
                   </div>
 
-                  <p className="text-xs md:text-sm text-center text-neutral-500">
-                    💡 최근 30일간의 순위 변화를 확인할 수 있습니다
-                  </p>
+                  {/* 안내 메시지 */}
+                  <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 md:p-5">
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <span className="text-xl">💡</span>
+                      </div>
+                      <div>
+                        <p className="text-sm md:text-base font-bold text-blue-900 mb-1">
+                          순위 변화 추적
+                        </p>
+                        <p className="text-xs md:text-sm text-blue-700 leading-relaxed">
+                          최근 30일간의 순위 변화를 확인할 수 있습니다. 빨간색 점은 가장 최근 측정된 순위입니다.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
             </CardContent>
           </Card>
+          </section>
         )}
 
         {/* 추적 추가 모달 - TurboTax Style */}
         <Dialog open={showAddTrackingDialog} onOpenChange={setShowAddTrackingDialog}>
-          <DialogContent className="sm:max-w-[500px] rounded-card">
-            <DialogHeader>
-              <DialogTitle className="text-xl font-bold text-neutral-900">
-                📌 키워드 추적 추가
-              </DialogTitle>
-              <DialogDescription className="text-sm text-neutral-600">
-                선택한 키워드를 추적 목록에 추가하고 자동 수집 및 알림 설정을 구성하세요
-              </DialogDescription>
+          <DialogContent className="sm:max-w-[500px] rounded-2xl border-2 border-neutral-300 shadow-2xl">
+            <DialogHeader className="pb-4 border-b border-neutral-200">
+              <div className="flex items-start gap-3">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md">
+                  <Plus className="w-6 h-6 text-white" />
+                </div>
+                <div className="flex-1">
+                  <DialogTitle className="text-xl md:text-2xl font-bold text-neutral-900 mb-1">
+                    키워드 추적 추가
+                  </DialogTitle>
+                  <DialogDescription className="text-sm md:text-base text-neutral-600 leading-relaxed">
+                    선택한 키워드를 추적 목록에 추가하고 자동 수집 및 알림 설정을 구성하세요
+                  </DialogDescription>
+                </div>
+              </div>
             </DialogHeader>
 
-            <div className="space-y-4 py-4">
+            <div className="space-y-5 py-5">
               {/* 선택된 키워드 정보 */}
-              <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-3 md:p-4">
-                <Label className="text-xs text-neutral-500 mb-1 block">키워드</Label>
-                <p className="text-base md:text-lg font-bold text-neutral-900">
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-4 md:p-5">
+                <div className="flex items-center gap-2 mb-2">
+                  <Search className="w-4 h-4 text-blue-600" />
+                  <Label className="text-xs md:text-sm text-blue-700 font-semibold">선택한 키워드</Label>
+                </div>
+                <p className="text-lg md:text-xl font-extrabold text-neutral-900">
                   {selectedKeywordForTracking?.keyword}
                 </p>
               </div>
 
               {/* 수집 주기 */}
               <div>
-                <Label htmlFor="frequency-select" className="text-sm font-bold text-neutral-900 mb-2 block">
+                <Label htmlFor="frequency-select" className="text-sm md:text-base font-bold text-neutral-900 mb-3 block flex items-center gap-2">
+                  <div className="w-6 h-6 bg-purple-100 rounded-lg flex items-center justify-center">
+                    <span className="text-xs">🔄</span>
+                  </div>
                   수집 주기
                 </Label>
                 <Select 
@@ -1275,7 +1461,7 @@ export default function NaverRankPage() {
                     }
                   }}
                 >
-                  <SelectTrigger id="frequency-select" className="h-11 border-neutral-300">
+                  <SelectTrigger id="frequency-select" className="h-12 md:h-14 border-2 border-neutral-300 rounded-xl focus:border-primary-500 focus:ring-4 focus:ring-primary-500/20 transition-all duration-200">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -1288,13 +1474,16 @@ export default function NaverRankPage() {
 
               {/* 수집 시간 */}
               <div>
-                <Label className="text-sm font-bold text-neutral-900 mb-2 block">
+                <Label className="text-sm md:text-base font-bold text-neutral-900 mb-3 block flex items-center gap-2">
+                  <div className="w-6 h-6 bg-green-100 rounded-lg flex items-center justify-center">
+                    <span className="text-xs">⏰</span>
+                  </div>
                   수집 시간
                 </Label>
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {updateTimes.map((time, index) => (
-                    <div key={index} className="flex items-center gap-2">
-                      <Badge variant="secondary" className="bg-primary-100 text-primary-700 px-2 py-1 w-12 justify-center">
+                    <div key={index} className="flex items-center gap-3">
+                      <Badge variant="secondary" className="bg-primary-100 text-primary-700 border-primary-200 px-3 py-2 font-bold text-xs">
                         {index + 1}차
                       </Badge>
                       <Select
@@ -1305,7 +1494,7 @@ export default function NaverRankPage() {
                           setUpdateTimes(newTimes)
                         }}
                       >
-                        <SelectTrigger className="h-10 border-neutral-300">
+                        <SelectTrigger className="h-11 border-2 border-neutral-300 rounded-xl focus:border-primary-500 focus:ring-4 focus:ring-primary-500/20 transition-all duration-200">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -1322,11 +1511,16 @@ export default function NaverRankPage() {
               </div>
 
               {/* 순위 알림받기 */}
-              <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-3 md:p-4">
+              <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-yellow-200 rounded-xl p-4 md:p-5">
                 <div className="flex items-center justify-between mb-3">
-                  <div>
-                    <Label className="text-sm font-bold text-neutral-900">순위 알림받기</Label>
-                    <p className="text-xs text-neutral-500 mt-0.5">순위 변동 시 알림을 받습니다</p>
+                  <div className="flex items-start gap-2.5">
+                    <div className="w-8 h-8 bg-yellow-400 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <span className="text-base">🔔</span>
+                    </div>
+                    <div>
+                      <Label className="text-sm md:text-base font-bold text-neutral-900">순위 알림받기</Label>
+                      <p className="text-xs md:text-sm text-neutral-600 mt-0.5">순위 변동 시 알림을 받습니다</p>
+                    </div>
                   </div>
                   <Switch
                     checked={notificationEnabled}
@@ -1340,12 +1534,12 @@ export default function NaverRankPage() {
                 </div>
 
                 {notificationEnabled && (
-                  <div className="pt-3 border-t border-neutral-200">
-                    <Label htmlFor="notification-type" className="text-sm font-medium text-neutral-900 mb-2 block">
+                  <div className="pt-4 border-t-2 border-yellow-200 mt-4">
+                    <Label htmlFor="notification-type" className="text-sm md:text-base font-bold text-neutral-900 mb-3 block">
                       알림 방법
                     </Label>
                     <Select value={notificationType} onValueChange={(value) => setNotificationType(value as any)}>
-                      <SelectTrigger id="notification-type" className="h-10 border-neutral-300">
+                      <SelectTrigger id="notification-type" className="h-11 border-2 border-neutral-300 rounded-xl focus:border-primary-500 focus:ring-4 focus:ring-primary-500/20 transition-all duration-200">
                         <SelectValue placeholder="알림 방법 선택" />
                       </SelectTrigger>
                       <SelectContent>
@@ -1354,35 +1548,41 @@ export default function NaverRankPage() {
                         <SelectItem value="kakao">💬 카카오톡</SelectItem>
                       </SelectContent>
                     </Select>
-                    <p className="text-xs text-neutral-500 mt-2">
-                      💡 순위 변동 시 선택한 방법으로 알림을 받습니다
-                    </p>
+                    <div className="mt-3 flex items-start gap-2 bg-yellow-100 border border-yellow-300 rounded-lg p-3">
+                      <span className="text-sm flex-shrink-0">💡</span>
+                      <p className="text-xs md:text-sm text-yellow-800 leading-relaxed">
+                        순위 변동 시 선택한 방법으로 알림을 받습니다
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>
             </div>
 
-            <DialogFooter>
+            <DialogFooter className="pt-5 border-t border-neutral-200 gap-3">
               <Button
                 variant="outline"
                 onClick={() => setShowAddTrackingDialog(false)}
                 disabled={isAddingTracker}
-                className="border-neutral-300"
+                className="h-12 px-6 border-2 border-neutral-300 rounded-xl hover:bg-neutral-100 active:scale-95 transition-all duration-200 font-semibold"
               >
                 취소
               </Button>
               <Button
                 onClick={handleSubmitTracking}
                 disabled={isAddingTracker}
-                className="shadow-button hover:shadow-button-hover active:scale-95 transition-all duration-200"
+                className="h-12 px-6 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 rounded-xl shadow-lg hover:shadow-xl active:scale-95 transition-all duration-200 font-semibold"
               >
                 {isAddingTracker ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                     추가 중...
                   </>
                 ) : (
-                  '추적 추가'
+                  <>
+                    <Plus className="mr-2 h-5 w-5" />
+                    추적 추가
+                  </>
                 )}
               </Button>
             </DialogFooter>
