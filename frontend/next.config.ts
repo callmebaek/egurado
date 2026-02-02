@@ -14,6 +14,10 @@ const nextConfig: NextConfig = {
   }),
   // 외부 이미지 도메인 허용 (네이버 플레이스, 구글 등)
   images: {
+    formats: ['image/avif', 'image/webp'],
+    deviceSizes: [320, 640, 750, 828, 1080, 1200, 1920, 2048],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+    minimumCacheTTL: 60,
     remotePatterns: [
       {
         protocol: 'https',

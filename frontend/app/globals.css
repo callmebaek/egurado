@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import '@mantine/core/styles.css';
 
 :root {
   /* TurboTax-inspired color system for Korean service */
@@ -141,7 +142,7 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: "NanumSquare Neo", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
   font-feature-settings: "kern" 1, "liga" 1;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -629,5 +630,151 @@ img {
   .gpu-accelerate {
     transform: translateZ(0);
     -webkit-transform: translateZ(0);
+  }
+  
+  /* Cal.com Dashboard Card Styles */
+  .dashboard-card {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 1.5rem;
+    transition: all 0.2s;
+  }
+  
+  .dashboard-card:hover {
+    border-color: #d1d5db;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  }
+  
+  .dashboard-card-active {
+    background: white;
+    border: 2px solid #000;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  }
+  
+  .dashboard-stat-card {
+    background: linear-gradient(to bottom right, white, #f9fafb);
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 1.5rem;
+    transition: all 0.2s;
+  }
+  
+  .dashboard-stat-card:hover {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  }
+  
+  /* Active badges and indicators */
+  .badge-active {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    border-radius: 9999px;
+    background-color: #d1fae5;
+    color: #047857;
+    border: 1px solid #a7f3d0;
+  }
+  
+  .badge-inactive {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 9999px;
+    background-color: #f3f4f6;
+    color: #6b7280;
+  }
+  
+  .badge-pending {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 9999px;
+    background-color: #fef3c7;
+    color: #92400e;
+  }
+}
+
+/* Galaxy Fold and ultra-narrow screen optimizations (280px - 360px) */
+@media (max-width: 360px) {
+  /* Reduce base font sizes for narrow screens */
+  .section-title {
+    font-size: 1.75rem !important;
+    line-height: 1.2 !important;
+  }
+  
+  .section-subtitle {
+    font-size: 0.875rem !important;
+    line-height: 1.4 !important;
+  }
+  
+  /* Reduce container padding */
+  .mantine-Container-root {
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+  }
+  
+  /* Reduce card padding */
+  .mantine-Card-root {
+    padding: 0.75rem !important;
+  }
+  
+  /* Reduce button sizes */
+  .mantine-Button-root {
+    font-size: 0.875rem !important;
+    padding: 0.5rem 1rem !important;
+  }
+  
+  /* Reduce badge sizes */
+  .mantine-Badge-root {
+    font-size: 0.625rem !important;
+    padding: 0.25rem 0.5rem !important;
+  }
+  
+  /* Reduce grid gaps */
+  .mantine-Grid-root {
+    gap: 0.75rem !important;
+  }
+  
+  /* Reduce stack gaps */
+  .mantine-Stack-root {
+    gap: 0.5rem !important;
+  }
+  
+  /* Reduce title sizes */
+  .mantine-Title-root[data-order="2"] {
+    font-size: 1.5rem !important;
+  }
+  
+  .mantine-Title-root[data-order="3"] {
+    font-size: 1.25rem !important;
+  }
+}
+
+/* Image optimization - prevent stretching */
+@layer utilities {
+  .aspect-ratio-box {
+    position: relative;
+    width: 100%;
+  }
+  
+  .aspect-ratio-box::before {
+    content: '';
+    display: block;
+    padding-top: 75%; /* 4:3 ratio */
+  }
+  
+  .aspect-ratio-content {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+  }
+  
+  /* Prevent Next.js Image from stretching */
+  img[data-nimg="fill"] {
+    object-fit: cover !important;
   }
 }

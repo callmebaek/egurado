@@ -4,6 +4,7 @@ import "./globals.css";
 import { AuthProvider } from "@/lib/auth-context";
 import { Toaster } from "@/components/ui/toaster";
 import { ViewportHeight } from "@/components/ViewportHeight";
+import { MantineProvider, ColorSchemeScript } from '@mantine/core';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -86,12 +87,22 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/favicon.png', type: 'image/png', sizes: '32x32' },
+      { url: '/favicon-16x16.png', type: 'image/png', sizes: '16x16' },
+      { url: '/icon-192.png', type: 'image/png', sizes: '192x192' },
+      { url: '/icon-512.png', type: 'image/png', sizes: '512x512' },
       { url: '/favicon.svg', type: 'image/svg+xml' },
-      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
-      { url: '/icon-512.png', sizes: '512x512', type: 'image/png' },
     ],
+    shortcut: '/favicon.ico',
     apple: [
       { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
+    other: [
+      {
+        rel: 'mask-icon',
+        url: '/favicon.svg',
+      },
     ],
   },
 };
@@ -102,7 +113,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 5,
   userScalable: true,
-  themeColor: "#405D99", // 디자인 시스템 primary color
+  themeColor: "#14B8A6", // 디자인 시스템 primary color (teal-500)
   viewportFit: "cover", // 노치/펀치홀 대응
 };
 
@@ -114,6 +125,7 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <head>
+        <ColorSchemeScript />
         {/* 추가 SEO 태그 */}
         <meta name="format-detection" content="telephone=no" />
         
@@ -122,20 +134,24 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         
-        {/* NanumSquare Neo 폰트 (CDN) */}
+        {/* Pretendard 폰트 (CDN) */}
         <link
           rel="stylesheet"
-          href="https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_11-01@1.0/NanumSquareNeo.css"
+          as="style"
+          crossOrigin="anonymous"
+          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css"
         />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${notoSansKR.variable} antialiased`}
       >
-        <AuthProvider>
-          <ViewportHeight />
-          {children}
-          <Toaster />
-        </AuthProvider>
+        <MantineProvider>
+          <AuthProvider>
+            <ViewportHeight />
+            {children}
+            <Toaster />
+          </AuthProvider>
+        </MantineProvider>
       </body>
     </html>
   );
