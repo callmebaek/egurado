@@ -114,15 +114,16 @@ class MetricTrackerService:
             
             # 2️⃣ 모든 trackers의 최근 daily_metrics를 한 번에 조회 (최적화)
             # 각 tracker당 최근 2개의 데이터만 가져옴 (최신 + 이전 날짜)
-            today = date.today()
+            today = datetime.now(KST).date()  # ✅ KST 시간대 명시적 사용
             cutoff_date = (today - timedelta(days=30)).isoformat()  # 최근 30일치
-            logger.info(f"[Trackers Get All] 🔍 오늘: {today}, cutoff_date: {cutoff_date}")
+            logger.info(f"[Trackers Get All] 🔍 오늘(KST): {today}, cutoff_date: {cutoff_date}")
             
             all_metrics_result = self.supabase.table('daily_metrics')\
                 .select('*')\
                 .in_('tracker_id', tracker_ids)\
                 .gte('collection_date', cutoff_date)\
                 .order('collection_date', desc=True)\
+                .order('collected_at', desc=True)\
                 .execute()
             
             logger.info(f"[Trackers Get All] 🔍 조회된 total metrics: {len(all_metrics_result.data or [])}")
@@ -136,9 +137,10 @@ class MetricTrackerService:
                 metrics_by_tracker[tracker_id].append(metric)
             
             # 각 tracker의 metrics를 날짜순으로 정렬 (최신이 첫 번째)
+            # ✅ collected_at을 2차 정렬 기준으로 추가하여 같은 날짜에서도 최신 데이터 보장
             for tracker_id in metrics_by_tracker:
                 metrics_by_tracker[tracker_id].sort(
-                    key=lambda m: m['collection_date'], 
+                    key=lambda m: (m['collection_date'], m.get('collected_at', '')), 
                     reverse=True
                 )
             
@@ -475,10 +477,12 @@ class MetricTrackerService:
                 .execute()
             
             # 방금 삽입/업데이트한 데이터 조회 (id 포함)
+            # ✅ collected_at 기준 정렬 추가 (중복 데이터 있어도 최신 것 반환)
             final_result = self.supabase.table('daily_metrics')\
                 .select('*')\
                 .eq('tracker_id', tracker_id)\
                 .eq('collection_date', today.isoformat())\
+                .order('collected_at', desc=True)\
                 .execute()
             
             if final_result.data and len(final_result.data) > 0:
