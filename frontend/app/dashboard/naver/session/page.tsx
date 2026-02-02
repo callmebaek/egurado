@@ -133,16 +133,28 @@ export default function NaverSessionPage() {
   }
 
   return (
-    <div className="w-full max-w-4xl mx-auto p-4 md:p-6 lg:p-8 min-h-screen bg-neutral-50">
-      {/* 헤더 */}
-      <div className="mb-6 md:mb-8">
-        <h1 className="text-xl md:text-2xl font-bold text-neutral-900 mb-1.5 leading-tight">
-          네이버 로그인 세션 관리
-        </h1>
-        <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
-          AI 답글 생성 기능을 사용하려면 네이버 스마트플레이스 로그인이 필요합니다
+    <div className="w-full max-w-6xl mx-auto px-4 py-6 md:px-6 md:py-8 lg:px-8 lg:py-10">
+      {/* 헤더 섹션 - 홈페이지 스타일 */}
+      <header className="mb-8 md:mb-10 text-center">
+        <div className="flex items-center justify-center gap-3 mb-3">
+          <div className="w-12 h-12 md:w-14 md:h-14 bg-gradient-to-br from-indigo-400 to-violet-500 rounded-xl flex items-center justify-center shadow-lg">
+            <Chrome className="w-6 h-6 md:w-7 md:h-7 text-white" />
+          </div>
+          <h1 className="text-2xl md:text-3xl lg:text-4xl font-extrabold text-neutral-900 leading-tight">
+            네이버 로그인 세션 관리
+          </h1>
+        </div>
+        <p className="text-base md:text-lg text-neutral-600 leading-relaxed max-w-3xl mx-auto mb-4">
+          AI 답글 생성 기능을 사용하려면<br className="md:hidden" />
+          <span className="hidden md:inline"> </span>네이버 스마트플레이스 로그인이 필요합니다
         </p>
-      </div>
+        <Badge 
+          variant="secondary"
+          className="bg-indigo-100 text-indigo-700 border-indigo-200 px-4 py-2 text-sm font-semibold inline-flex items-center gap-1.5"
+        >
+          🔐 로그인 세션
+        </Badge>
+      </header>
 
       {/* 메시지 */}
       {message && (

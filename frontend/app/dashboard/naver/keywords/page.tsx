@@ -444,16 +444,38 @@ export default function NaverKeywordsPage() {
   }
 
   return (
-    <div className="w-full max-w-4xl mx-auto p-4 md:p-6 lg:p-8">
-      {/* 헤더 - TurboTax Style */}
-      <div className="mb-6 md:mb-8">
-        <h1 className="text-xl md:text-2xl font-bold text-neutral-900 mb-1.5 leading-tight">
-          키워드 검색량 분석
-        </h1>
-        <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
-          네이버 검색도구 API를 활용하여 키워드의 월간 검색량과 경쟁도를 분석하세요.
+    <div className="w-full max-w-6xl mx-auto px-4 py-6 md:px-6 md:py-8 lg:px-8 lg:py-10">
+      {/* 헤더 섹션 - 홈페이지 스타일 */}
+      <header className="mb-8 md:mb-10 text-center">
+        <div className="flex items-center justify-center gap-3 mb-3">
+          <div className="w-12 h-12 md:w-14 md:h-14 bg-gradient-to-br from-teal-400 to-cyan-500 rounded-xl flex items-center justify-center shadow-lg">
+            <TrendingUp className="w-6 h-6 md:w-7 md:h-7 text-white" />
+          </div>
+          <h1 className="text-2xl md:text-3xl lg:text-4xl font-extrabold text-neutral-900 leading-tight">
+            키워드 검색량 분석
+          </h1>
+        </div>
+        <p className="text-base md:text-lg text-neutral-600 leading-relaxed max-w-3xl mx-auto mb-4">
+          네이버 검색도구 API를 활용하여<br className="md:hidden" />
+          <span className="hidden md:inline"> </span>키워드의 월간 검색량과 경쟁도를 분석하세요
         </p>
-      </div>
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          <Badge 
+            variant="secondary"
+            className="bg-teal-100 text-teal-700 border-teal-200 px-4 py-2 text-sm font-semibold inline-flex items-center gap-1.5"
+          >
+            <Monitor className="w-4 h-4" />
+            PC 검색량
+          </Badge>
+          <Badge 
+            variant="secondary"
+            className="bg-cyan-100 text-cyan-700 border-cyan-200 px-4 py-2 text-sm font-semibold inline-flex items-center gap-1.5"
+          >
+            <Smartphone className="w-4 h-4" />
+            모바일 검색량
+          </Badge>
+        </div>
+      </header>
 
       <div className="space-y-6 md:space-y-8">
 

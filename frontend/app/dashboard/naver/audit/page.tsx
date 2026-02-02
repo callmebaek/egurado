@@ -1367,16 +1367,28 @@ export default function NaverAuditPage() {
 
   // 매장 선택 화면
   return (
-    <div className="w-full max-w-4xl mx-auto p-4 md:p-6 lg:p-8">
-      {/* 헤더 - TurboTax Style */}
-      <div className="mb-6 md:mb-8">
-        <h1 className="text-xl md:text-2xl font-bold text-neutral-900 mb-1.5 leading-tight">
-          플레이스 진단
-        </h1>
-        <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
-          진단할 매장을 선택하세요
+    <div className="w-full max-w-6xl mx-auto px-4 py-6 md:px-6 md:py-8 lg:px-8 lg:py-10">
+      {/* 헤더 섹션 - 홈페이지 스타일 */}
+      <header className="mb-8 md:mb-10 text-center">
+        <div className="flex items-center justify-center gap-3 mb-3">
+          <div className="w-12 h-12 md:w-14 md:h-14 bg-gradient-to-br from-blue-400 to-cyan-500 rounded-xl flex items-center justify-center shadow-lg">
+            <CheckCircle2 className="w-6 h-6 md:w-7 md:h-7 text-white" />
+          </div>
+          <h1 className="text-2xl md:text-3xl lg:text-4xl font-extrabold text-neutral-900 leading-tight">
+            플레이스 진단
+          </h1>
+        </div>
+        <p className="text-base md:text-lg text-neutral-600 leading-relaxed max-w-3xl mx-auto mb-4">
+          매장의 플레이스 정보를 진단하고<br className="md:hidden" />
+          <span className="hidden md:inline"> </span>개선점을 확인하세요
         </p>
-      </div>
+        <Badge 
+          variant="secondary"
+          className="bg-blue-100 text-blue-700 border-blue-200 px-4 py-2 text-sm font-semibold inline-flex items-center gap-1.5"
+        >
+          💡 30 크레딧
+        </Badge>
+      </header>
 
       {/* 매장 목록 */}
       {isLoading ? (

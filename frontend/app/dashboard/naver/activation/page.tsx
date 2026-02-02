@@ -1104,17 +1104,29 @@ export default function ActivationPage() {
   // 매장 선택 화면
   if (!selectedStore) {
     return (
-      <div className="w-full max-w-4xl mx-auto p-4 md:p-6 lg:p-8">
-        <div className="space-y-6">
-          {/* 헤더 */}
-          <div>
-            <h1 className="text-xl md:text-2xl font-bold text-neutral-900 mb-1.5 leading-tight">
-              플레이스 활성화
-            </h1>
-            <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
-              매장의 플레이스 활성화 현황을 확인하고 개선하세요
+      <div className="w-full max-w-6xl mx-auto px-4 py-6 md:px-6 md:py-8 lg:px-8 lg:py-10">
+        <div className="space-y-8 md:space-y-10">
+          {/* 헤더 섹션 - 홈페이지 스타일 */}
+          <header className="mb-8 md:mb-10 text-center">
+            <div className="flex items-center justify-center gap-3 mb-3">
+              <div className="w-12 h-12 md:w-14 md:h-14 bg-gradient-to-br from-green-400 to-emerald-500 rounded-xl flex items-center justify-center shadow-lg">
+                <Sparkles className="w-6 h-6 md:w-7 md:h-7 text-white" />
+              </div>
+              <h1 className="text-2xl md:text-3xl lg:text-4xl font-extrabold text-neutral-900 leading-tight">
+                플레이스 활성화
+              </h1>
+            </div>
+            <p className="text-base md:text-lg text-neutral-600 leading-relaxed max-w-3xl mx-auto mb-4">
+              매장의 플레이스 활성화 현황을 확인하고<br className="md:hidden" />
+              <span className="hidden md:inline"> </span>개선 방안을 확인하세요
             </p>
-          </div>
+            <Badge 
+              variant="secondary"
+              className="bg-green-100 text-green-700 border-green-200 px-4 py-2 text-sm font-semibold inline-flex items-center gap-1.5"
+            >
+              💡 10 크레딧
+            </Badge>
+          </header>
 
           {/* 매장 목록 */}
           {stores.length === 0 ? (
@@ -1187,11 +1199,11 @@ export default function ActivationPage() {
   // 분석 중
   if (isLoading) {
     return (
-      <div className="w-full max-w-4xl mx-auto p-4 md:p-6 lg:p-8">
+      <div className="w-full max-w-6xl mx-auto px-4 py-6 md:px-6 md:py-8 lg:px-8 lg:py-10">
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="text-center space-y-4">
-            <Loader2 className="h-12 w-12 animate-spin text-primary-500 mx-auto" />
-            <p className="text-neutral-600">플레이스 활성화 정보를 분석하는 중...</p>
+            <Loader2 className="h-16 w-16 md:h-20 md:w-20 animate-spin text-green-500 mx-auto" />
+            <p className="text-base md:text-lg font-semibold text-neutral-700">플레이스 활성화 정보를 분석하는 중...</p>
           </div>
         </div>
       </div>
@@ -1200,8 +1212,8 @@ export default function ActivationPage() {
 
   // 메인 화면
   return (
-    <div className="w-full max-w-4xl mx-auto p-4 md:p-6 lg:p-8">
-      <div className="space-y-6">
+    <div className="w-full max-w-6xl mx-auto px-4 py-6 md:px-6 md:py-8 lg:px-8 lg:py-10">
+      <div className="space-y-8 md:space-y-10">
         {/* 헤더 */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-3">

@@ -27,7 +27,8 @@ import {
   Mail,
   Phone,
   MessageCircle,
-  Sparkles
+  Sparkles,
+  Search
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -637,27 +638,38 @@ export default function MetricsTrackerPage() {
   }
 
   return (
-    <div className="w-full max-w-4xl mx-auto p-4 md:p-6 lg:p-8 min-h-screen bg-neutral-50">
-      {/* Header - TurboTax Style */}
-      <div className="mb-6 md:mb-8">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <h1 className="text-xl md:text-2xl font-bold text-neutral-900 mb-1.5 leading-tight">
-              키워드순위 추적
-            </h1>
-            <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
-              매장별 주요 키워드의 순위 변화와 방문자/블로그 리뷰 수를 자동으로 추적하고 알림을 받을 수 있습니다
-            </p>
+    <div className="w-full max-w-6xl mx-auto px-4 py-6 md:px-6 md:py-8 lg:px-8 lg:py-10">
+      {/* 헤더 섹션 - 홈페이지 스타일 */}
+      <header className="mb-8 md:mb-10 text-center">
+        <div className="flex items-center justify-center gap-3 mb-3">
+          <div className="w-12 h-12 md:w-14 md:h-14 bg-gradient-to-br from-violet-400 to-purple-500 rounded-xl flex items-center justify-center shadow-lg">
+            <BarChart3 className="w-6 h-6 md:w-7 md:h-7 text-white" />
           </div>
+          <h1 className="text-2xl md:text-3xl lg:text-4xl font-extrabold text-neutral-900 leading-tight">
+            키워드순위 추적
+          </h1>
+        </div>
+        <p className="text-base md:text-lg text-neutral-600 leading-relaxed max-w-3xl mx-auto mb-4">
+          매장별 주요 키워드의 순위 변화와<br className="md:hidden" />
+          <span className="hidden md:inline"> </span>리뷰 수를 자동으로 추적하고 알림을 받을 수 있습니다
+        </p>
+        <div className="flex items-center justify-center gap-3">
+          <Badge 
+            variant="secondary"
+            className="bg-violet-100 text-violet-700 border-violet-200 px-4 py-2 text-sm font-semibold inline-flex items-center gap-1.5"
+          >
+            <Clock className="w-4 h-4" />
+            자동 추적
+          </Badge>
           <Button
             onClick={() => setShowAddDialog(true)}
-            className="ml-4 flex-shrink-0"
+            className="h-11 px-5 bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all"
           >
-            <Plus className="w-4 h-4 mr-2" />
+            <Plus className="w-5 h-5 mr-2" />
             추적 추가
           </Button>
         </div>
-      </div>
+      </header>
 
       {/* 매장별 추적 키워드 카드 */}
       {trackers.length === 0 ? (
@@ -941,22 +953,32 @@ export default function MetricsTrackerPage() {
 
       {/* 추적 추가 모달 */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-        <DialogContent className="sm:max-w-lg backdrop-blur-xl bg-white/95 border-2 border-white/40 shadow-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              추적 추가
+        <DialogContent className="sm:max-w-2xl bg-white border-2 border-neutral-200 shadow-xl rounded-2xl max-h-[95vh] overflow-y-auto p-6">
+          <DialogHeader className="pb-3 border-b border-neutral-200 px-0">
+            {/* 아이콘 헤더 */}
+            <div className="flex items-center justify-center mb-2">
+              <div className="w-10 h-10 bg-gradient-to-br from-violet-400 to-purple-500 rounded-xl flex items-center justify-center shadow-lg">
+                <Plus className="w-5 h-5 text-white" />
+              </div>
+            </div>
+            <DialogTitle className="text-lg md:text-xl font-extrabold text-neutral-900 text-center">
+              키워드 추적 추가
             </DialogTitle>
-            <DialogDescription className="text-gray-600">
-              새로운 키워드 추적을 시작합니다
+            <DialogDescription className="text-xs md:text-sm text-neutral-600 text-center">
+              새로운 키워드의 순위를 자동으로 추적하고 알림을 받으세요
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-5 py-4">
-            <div>
-              <label className="text-sm font-semibold mb-2 block text-gray-700">매장 선택</label>
+          <div className="space-y-4 py-4 px-0">
+            {/* 매장 선택 */}
+            <div className="space-y-1.5">
+              <label className="flex items-center gap-1.5 text-xs md:text-sm font-semibold text-neutral-700">
+                <StoreIcon className="w-3.5 h-3.5 text-violet-500" />
+                매장 선택
+              </label>
               <select
                 value={selectedStoreId}
                 onChange={(e) => setSelectedStoreId(e.target.value)}
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white"
+                className="w-full h-11 px-3 border-2 border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-all bg-white text-sm font-medium"
               >
                 <option value="">매장을 선택하세요</option>
                 {stores.map((store) => (
@@ -966,31 +988,38 @@ export default function MetricsTrackerPage() {
                 ))}
               </select>
             </div>
-            <div>
-              <label className="text-sm font-semibold mb-2 block text-gray-700">키워드</label>
+            {/* 키워드 입력 */}
+            <div className="space-y-1.5">
+              <label className="flex items-center gap-1.5 text-xs md:text-sm font-semibold text-neutral-700">
+                <Search className="w-3.5 h-3.5 text-violet-500" />
+                키워드
+              </label>
               <Input
                 value={newKeyword}
                 onChange={(e) => setNewKeyword(e.target.value)}
                 placeholder="예: 강남 카페"
-                className="border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent h-12"
+                className="h-11 border-2 border-neutral-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-violet-500 text-sm"
               />
               
               {/* 조회된 키워드 목록 */}
               {selectedStoreId && (
-                <div className="mt-3">
+                <div className="mt-2">
                   {loadingKeywords ? (
-                    <div className="text-center py-3">
-                      <Loader2 className="w-4 h-4 animate-spin mx-auto text-gray-400" />
+                    <div className="flex items-center justify-center py-3">
+                      <Loader2 className="w-4 h-4 animate-spin text-violet-500" />
                     </div>
                   ) : searchedKeywords.length > 0 ? (
-                    <div>
-                      <p className="text-xs text-gray-500 mb-2">최근 조회한 키워드 (클릭하여 선택)</p>
-                      <div className="flex flex-wrap gap-2">
+                    <div className="bg-violet-50 rounded-lg p-3 border border-violet-200">
+                      <p className="text-xs font-semibold text-violet-700 mb-2 flex items-center gap-1">
+                        <Sparkles className="w-3 h-3" />
+                        최근 조회한 키워드
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
                         {searchedKeywords.map((kw) => (
                           <button
                             key={kw.id}
                             onClick={() => setNewKeyword(kw.keyword)}
-                            className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-sm font-medium hover:bg-blue-100 transition-all hover:scale-105"
+                            className="px-2.5 py-1.5 bg-white text-violet-700 rounded-md text-xs font-semibold hover:bg-violet-100 transition-all shadow-sm border border-violet-200"
                           >
                             {kw.keyword}
                           </button>
@@ -1001,59 +1030,74 @@ export default function MetricsTrackerPage() {
                 </div>
               )}
             </div>
-            <div>
-              <label className="text-sm font-semibold mb-2 block text-gray-700">수집 주기</label>
-              <select
-                value={updateFrequency}
-                onChange={(e) => {
-                  const newFrequency = e.target.value as 'daily_once' | 'daily_twice' | 'daily_thrice'
-                  setUpdateFrequency(newFrequency)
-                  // 수집 주기 변경 시 기본 시간으로 자동 설정
-                  setUpdateTimes(getDefaultUpdateTimes(newFrequency))
-                }}
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white"
-              >
-                <option value="daily_once">하루 1회</option>
-                <option value="daily_twice">하루 2회</option>
-                <option value="daily_thrice">하루 3회</option>
-              </select>
-            </div>
+            {/* 수집 주기 & 수집 시간 */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* 수집 주기 */}
+              <div className="space-y-1.5">
+                <label className="flex items-center gap-1.5 text-xs md:text-sm font-semibold text-neutral-700">
+                  <RefreshCw className="w-3.5 h-3.5 text-violet-500" />
+                  수집 주기
+                </label>
+                <select
+                  value={updateFrequency}
+                  onChange={(e) => {
+                    const newFrequency = e.target.value as 'daily_once' | 'daily_twice' | 'daily_thrice'
+                    setUpdateFrequency(newFrequency)
+                    // 수집 주기 변경 시 기본 시간으로 자동 설정
+                    setUpdateTimes(getDefaultUpdateTimes(newFrequency))
+                  }}
+                  className="w-full h-11 px-3 border-2 border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-all bg-white text-sm font-medium"
+                >
+                  <option value="daily_once">하루 1회</option>
+                  <option value="daily_twice">하루 2회</option>
+                  <option value="daily_thrice">하루 3회</option>
+                </select>
+              </div>
 
-            {/* 수집 시간 */}
-            <div>
-              <label className="text-sm font-semibold mb-2 block text-gray-700">수집 시간</label>
-              <div className="space-y-2">
-                {updateTimes.map((time, index) => (
-                  <div key={index} className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-gray-600 w-16">
-                      {index + 1}차
-                    </span>
-                    <select
-                      value={time}
-                      onChange={(e) => {
-                        const newTimes = [...updateTimes]
-                        newTimes[index] = parseInt(e.target.value)
-                        setUpdateTimes(newTimes)
-                      }}
-                      className="flex-1 px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white"
-                    >
-                      {Array.from({ length: 24 }, (_, i) => (
-                        <option key={i} value={i}>
-                          {i}시
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                ))}
+              {/* 수집 시간 */}
+              <div className="space-y-1.5">
+                <label className="flex items-center gap-1.5 text-xs md:text-sm font-semibold text-neutral-700">
+                  <Clock className="w-3.5 h-3.5 text-violet-500" />
+                  수집 시간
+                </label>
+                <div className="bg-neutral-50 rounded-lg p-2.5 border border-neutral-200 space-y-2">
+                  {updateTimes.map((time, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <Badge variant="secondary" className="w-12 justify-center text-xs bg-violet-100 text-violet-700 border-violet-200 font-semibold">
+                        {index + 1}차
+                      </Badge>
+                      <select
+                        value={time}
+                        onChange={(e) => {
+                          const newTimes = [...updateTimes]
+                          newTimes[index] = parseInt(e.target.value)
+                          setUpdateTimes(newTimes)
+                        }}
+                        className="flex-1 h-10 px-3 border-2 border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-all bg-white text-sm font-medium"
+                      >
+                        {Array.from({ length: 24 }, (_, i) => (
+                          <option key={i} value={i}>
+                            {i}시
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
 
             {/* 순위 알림받기 */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-                <div>
-                  <label className="text-sm font-semibold text-gray-700 block">순위 알림받기</label>
-                  <p className="text-xs text-gray-500 mt-1">순위 변동 시 알림을 받습니다</p>
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between p-3 bg-gradient-to-br from-yellow-50 to-amber-50 rounded-lg border border-yellow-200">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Bell className="w-4 h-4 text-yellow-600" />
+                  </div>
+                  <div>
+                    <label className="text-xs md:text-sm font-semibold text-neutral-900 block">순위 알림받기</label>
+                    <p className="text-xs text-neutral-600">순위 변동 시 알림</p>
+                  </div>
                 </div>
                 <Switch
                   checked={notificationEnabled}
@@ -1063,47 +1107,56 @@ export default function MetricsTrackerPage() {
                       setNotificationType(null)
                     }
                   }}
-                  className="data-[state=checked]:bg-blue-600"
+                  className="data-[state=checked]:bg-violet-600"
                 />
               </div>
 
               {notificationEnabled && (
-                <div className="pl-4 border-l-2 border-blue-200">
-                  <label className="text-sm font-medium mb-2 block text-gray-600">알림 방법</label>
+                <div className="pl-3 border-l-2 border-violet-300 space-y-2">
+                  <label className="flex items-center gap-1.5 text-xs md:text-sm font-semibold text-neutral-700">
+                    <MessageCircle className="w-3.5 h-3.5 text-violet-500" />
+                    알림 방법
+                  </label>
                   <select
                     value={notificationType || ''}
                     onChange={(e) => setNotificationType(e.target.value as 'email' | 'sms' | 'kakao')}
-                    className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white"
+                    className="w-full h-10 px-3 border-2 border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-all bg-white text-sm font-medium"
                   >
                     <option value="">알림 방법 선택</option>
                     <option value="email">📧 이메일</option>
                     <option value="sms">📱 SMS</option>
                     <option value="kakao">💬 카카오톡</option>
                   </select>
-                  <p className="text-xs text-gray-500 mt-2">
-                    💡 순위 변동 시 선택한 방법으로 알림을 받습니다
-                  </p>
                 </div>
               )}
             </div>
           </div>
-          <div className="flex gap-3">
+          
+          {/* 버튼 영역 */}
+          <div className="flex gap-2 pt-4 border-t border-neutral-200 px-0">
             <Button
               variant="outline"
               onClick={() => {
                 setShowAddDialog(false)
                 setSearchedKeywords([])
               }}
-              className="flex-1 h-12 rounded-xl border-2"
+              className="flex-1 h-11 rounded-lg border-2 border-neutral-300 hover:bg-neutral-50 font-semibold text-sm"
             >
               취소
             </Button>
             <Button
               onClick={handleAddTracker}
               disabled={isAdding}
-              className="flex-1 h-12 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold shadow-lg"
+              className="flex-1 h-11 rounded-lg bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white font-semibold text-sm shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isAdding ? <Loader2 className="w-5 h-5 animate-spin" /> : '추가'}
+              {isAdding ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+                  추가 중...
+                </>
+              ) : (
+                '추가하기'
+              )}
             </Button>
           </div>
         </DialogContent>

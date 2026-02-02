@@ -433,46 +433,107 @@ export default function TargetKeywordsPage() {
   }
 
   return (
-    <div className="w-full max-w-4xl mx-auto p-4 md:p-6 lg:p-8">
-      {/* 헤더 - TurboTax Style */}
-      <div className="mb-6 md:mb-8">
-        <h1 className="text-xl md:text-2xl font-bold text-neutral-900 mb-1.5 leading-tight flex items-center gap-2">
-          <Target className="w-5 h-5 md:w-6 md:h-6 text-primary-500" />
-          타겟 키워드 추출 및 진단
-        </h1>
-        <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
-          매장에 집중해야 할 키워드를 검색량 기반으로 추천하고, SEO 최적화 상태를 분석합니다.
+    <div className="w-full max-w-6xl mx-auto px-4 py-6 md:px-6 md:py-8 lg:px-8 lg:py-10">
+      {/* 헤더 섹션 - 홈페이지 스타일 */}
+      <header className="mb-8 md:mb-10 text-center">
+        <div className="flex items-center justify-center gap-3 mb-3">
+          <div className="w-12 h-12 md:w-14 md:h-14 bg-gradient-to-br from-orange-400 to-amber-500 rounded-xl flex items-center justify-center shadow-lg">
+            <Target className="w-6 h-6 md:w-7 md:h-7 text-white" />
+          </div>
+          <h1 className="text-2xl md:text-3xl lg:text-4xl font-extrabold text-neutral-900 leading-tight">
+            타겟 키워드 추출
+          </h1>
+        </div>
+        <p className="text-base md:text-lg text-neutral-600 leading-relaxed max-w-3xl mx-auto mb-4">
+          매장에 집중해야 할 키워드를 검색량 기반으로 추천하고,<br className="md:hidden" />
+          <span className="hidden md:inline"> </span>SEO 최적화 상태를 분석합니다
         </p>
-      </div>
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3">
+          <Badge 
+            variant="secondary"
+            className="bg-orange-100 text-orange-700 border-orange-200 px-4 py-2 text-sm font-semibold inline-flex items-center gap-1.5"
+          >
+            <Search className="w-4 h-4" />
+            최대 20개 키워드 추천
+          </Badge>
+          <Badge 
+            variant="secondary"
+            className="bg-amber-100 text-amber-700 border-amber-200 px-4 py-2 text-sm font-semibold inline-flex items-center gap-1.5"
+          >
+            💡 30 크레딧
+          </Badge>
+        </div>
+      </header>
 
-      <div className="space-y-6 md:space-y-8">
+      <div className="space-y-8 md:space-y-10">
 
       {/* 안내 메시지 */}
-      <Alert className="border-primary-200 bg-primary-50">
-        <Info className="h-4 w-4 text-primary-600" />
-        <AlertTitle className="text-neutral-900 font-semibold">사용 방법</AlertTitle>
-        <AlertDescription className="text-neutral-700 text-sm md:text-base leading-relaxed">
-          1. 매장을 선택하세요 (주소에서 자동으로 지역명이 추출됩니다)<br />
-          2. 지역명, 랜드마크, 메뉴/상품명, 업종, 기타 키워드를 입력하세요<br />
-          3. 분석 시작 버튼을 클릭하면 최적의 타겟 키워드 10개를 추천해드립니다
-        </AlertDescription>
-      </Alert>
+      <section>
+        <Alert className="border-2 border-orange-200 bg-gradient-to-r from-orange-50 to-amber-50 rounded-xl">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center flex-shrink-0">
+              <Info className="h-5 w-5 text-white" />
+            </div>
+            <div className="flex-1">
+              <AlertTitle className="text-neutral-900 font-bold text-base md:text-lg mb-2">사용 방법</AlertTitle>
+              <AlertDescription className="text-neutral-700 text-sm md:text-base leading-relaxed space-y-2">
+                <div className="flex items-start gap-2">
+                  <span className="flex-shrink-0 w-6 h-6 bg-orange-500 text-white rounded-full flex items-center justify-center text-xs font-bold">1</span>
+                  <p>매장을 선택하세요 (주소에서 자동으로 지역명이 추출됩니다)</p>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="flex-shrink-0 w-6 h-6 bg-orange-500 text-white rounded-full flex items-center justify-center text-xs font-bold">2</span>
+                  <p>지역명, 랜드마크, 메뉴/상품명, 업종, 기타 키워드를 입력하세요</p>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="flex-shrink-0 w-6 h-6 bg-orange-500 text-white rounded-full flex items-center justify-center text-xs font-bold">3</span>
+                  <p>분석 시작 버튼을 클릭하면 최적의 타겟 키워드를 추천해드립니다</p>
+                </div>
+              </AlertDescription>
+            </div>
+          </div>
+        </Alert>
+      </section>
 
       {/* 과거 추출된 키워드 보기 */}
       {selectedStore && histories.length > 0 && (
-        <Card className="rounded-card border-neutral-300 shadow-card">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base md:text-lg font-bold text-neutral-900 flex items-center gap-2">
-              <History className="h-4 h-4 md:h-5 md:w-5 text-primary-500" />
-              과거 추출된 키워드 보기
-            </CardTitle>
-            <CardDescription className="text-xs md:text-sm text-neutral-600">
-              이 매장의 최근 {histories.length}개 키워드 추출 히스토리 (최신순)
-            </CardDescription>
+        <section>
+          <div className="mb-4 md:mb-5">
+            <h2 className="text-lg md:text-xl font-bold text-neutral-900 mb-1.5 leading-tight">
+              과거 추출 히스토리
+            </h2>
+            <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
+              이 매장의 최근 {histories.length}개 키워드 추출 기록을 확인하세요
+            </p>
+          </div>
+
+        <Card className="rounded-xl border-2 border-neutral-300 shadow-lg overflow-hidden">
+          <CardHeader className="bg-gradient-to-r from-amber-50 to-orange-50 border-b-2 border-amber-200 pb-4 px-5 md:px-6 pt-5 md:pt-6">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 md:w-12 md:h-12 bg-amber-500 rounded-xl flex items-center justify-center shadow-md">
+                  <History className="w-5 h-5 md:w-6 md:h-6 text-white" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg md:text-xl font-bold text-neutral-900">
+                    추출 히스토리
+                  </CardTitle>
+                  <p className="text-xs md:text-sm text-neutral-600 mt-0.5">
+                    {histories.length}개 기록
+                  </p>
+                </div>
+              </div>
+              <Badge 
+                variant="secondary"
+                className="bg-amber-100 text-amber-700 border-amber-200 px-3 py-1.5 text-xs font-semibold"
+              >
+                최신순
+              </Badge>
+            </div>
           </CardHeader>
-          <CardContent className="pt-0">
+          <CardContent className="p-0 md:p-6">
             {/* 모바일: 카드 레이아웃 */}
-            <div className="md:hidden space-y-3">
+            <div className="md:hidden space-y-3 p-4">
               {histories.map((history) => {
                 const isExpanded = expandedHistoryId === history.id
                 const allInputKeywords = [
@@ -755,20 +816,45 @@ export default function TargetKeywordsPage() {
             </div>
           </CardContent>
         </Card>
+        </section>
       )}
 
       {/* 입력 폼 */}
-      <Card className="rounded-card border-neutral-300 shadow-card">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base md:text-lg font-bold text-neutral-900">분석 설정</CardTitle>
-          <CardDescription className="text-xs md:text-sm text-neutral-600">매장과 키워드 정보를 입력하세요</CardDescription>
+      <section>
+        <div className="mb-4 md:mb-5">
+          <h2 className="text-lg md:text-xl font-bold text-neutral-900 mb-1.5 leading-tight">
+            키워드 분석 설정
+          </h2>
+          <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
+            매장과 키워드 정보를 입력하여 타겟 키워드를 추출하세요
+          </p>
+        </div>
+
+      <Card className="rounded-xl border-2 border-neutral-300 shadow-lg overflow-hidden">
+        <CardHeader className="bg-gradient-to-r from-orange-50 to-amber-50 border-b-2 border-orange-200 pb-4 px-5 md:px-6 pt-5 md:pt-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 md:w-12 md:h-12 bg-orange-500 rounded-xl flex items-center justify-center shadow-md">
+              <Search className="w-5 h-5 md:w-6 md:h-6 text-white" />
+            </div>
+            <div>
+              <CardTitle className="text-lg md:text-xl font-bold text-neutral-900">분석 설정</CardTitle>
+              <CardDescription className="text-xs md:text-sm text-neutral-600 mt-0.5">
+                총 {getTotalKeywordCount()}개 키워드 입력됨
+              </CardDescription>
+            </div>
+          </div>
         </CardHeader>
-        <CardContent className="space-y-5">
+        <CardContent className="p-5 md:p-6 space-y-5 md:space-y-6">
           {/* 매장 선택 */}
-          <div className="space-y-2">
-            <Label htmlFor="store-select" className="text-sm font-semibold">매장 선택 *</Label>
+          <div className="space-y-3">
+            <Label htmlFor="store-select" className="text-sm md:text-base font-bold text-neutral-900 flex items-center gap-2">
+              <div className="w-6 h-6 bg-orange-100 rounded-lg flex items-center justify-center">
+                <Target className="w-4 h-4 text-orange-600" />
+              </div>
+              매장 선택 *
+            </Label>
             <Select value={selectedStore} onValueChange={setSelectedStore}>
-              <SelectTrigger id="store-select" className="h-12 text-base">
+              <SelectTrigger id="store-select" className="h-14 md:h-16 text-base md:text-lg border-2 border-neutral-300 rounded-xl focus:border-orange-500 focus:ring-4 focus:ring-orange-500/20 transition-all duration-200">
                 <SelectValue placeholder="분석할 매장을 선택하세요" />
               </SelectTrigger>
               <SelectContent>
@@ -780,14 +866,17 @@ export default function TargetKeywordsPage() {
               </SelectContent>
             </Select>
             {storeAddress && (
-              <p className="text-sm text-muted-foreground">📍 {storeAddress}</p>
+              <div className="flex items-start gap-2 bg-neutral-50 border border-neutral-200 rounded-lg p-3">
+                <span className="text-lg flex-shrink-0">📍</span>
+                <p className="text-sm text-neutral-700 leading-relaxed">{storeAddress}</p>
+              </div>
             )}
           </div>
 
           {/* 지역명 입력 */}
-          <div className="space-y-2">
-            <Label className="text-sm font-semibold">지역명 (구, 동, 역세권 등)</Label>
-            <div className="flex gap-2">
+          <div className="space-y-3">
+            <Label className="text-sm md:text-base font-bold text-neutral-900">지역명 (구, 동, 역세권 등)</Label>
+            <div className="flex gap-2 md:gap-3">
               <Input
                 placeholder="예: 종로, 성수, 강남"
                 value={tempRegion}
@@ -797,24 +886,24 @@ export default function TargetKeywordsPage() {
                     addKeyword(tempRegion, setRegions, setTempRegion)
                   }
                 }}
-                className="h-12 text-base"
+                className="h-12 md:h-14 text-base border-2 border-neutral-300 rounded-xl focus:border-orange-500 focus:ring-4 focus:ring-orange-500/20 transition-all duration-200"
               />
               <Button
                 type="button"
                 variant="outline"
-                className="h-12 w-12 flex-shrink-0"
+                className="h-12 md:h-14 w-12 md:w-14 flex-shrink-0 border-2 border-neutral-300 rounded-xl hover:bg-orange-50 hover:border-orange-500 active:scale-95 transition-all duration-200 touch-target-minimum"
                 onClick={() => addKeyword(tempRegion, setRegions, setTempRegion)}
               >
-                <Plus className="h-5 w-5" />
+                <Plus className="h-5 w-5 md:h-6 md:w-6" />
               </Button>
             </div>
             {regions.length > 0 && (
               <div className="flex flex-wrap gap-2">
                 {regions.map((region, index) => (
-                  <Badge key={index} variant="secondary" className="gap-1 text-sm py-1 px-2">
+                  <Badge key={index} variant="secondary" className="gap-1.5 text-sm py-1.5 px-3 bg-orange-100 text-orange-700 border-orange-200 hover:bg-orange-200 transition-colors">
                     {region}
                     <X
-                      className="h-3.5 w-3.5 cursor-pointer"
+                      className="h-4 w-4 cursor-pointer hover:text-orange-900"
                       onClick={() => removeKeyword(index, setRegions)}
                     />
                   </Badge>
@@ -824,9 +913,9 @@ export default function TargetKeywordsPage() {
           </div>
 
           {/* 랜드마크 입력 */}
-          <div className="space-y-2">
-            <Label className="text-sm font-semibold">랜드마크 (역, 건물, 명소 등)</Label>
-            <div className="flex gap-2">
+          <div className="space-y-3">
+            <Label className="text-sm md:text-base font-bold text-neutral-900">랜드마크 (역, 건물, 명소 등)</Label>
+            <div className="flex gap-2 md:gap-3">
               <Input
                 placeholder="예: 성수역, 종로타워"
                 value={tempLandmark}
@@ -836,24 +925,24 @@ export default function TargetKeywordsPage() {
                     addKeyword(tempLandmark, setLandmarks, setTempLandmark)
                   }
                 }}
-                className="h-12 text-base"
+                className="h-12 md:h-14 text-base border-2 border-neutral-300 rounded-xl focus:border-orange-500 focus:ring-4 focus:ring-orange-500/20 transition-all duration-200"
               />
               <Button
                 type="button"
                 variant="outline"
-                className="h-12 w-12 flex-shrink-0"
+                className="h-12 md:h-14 w-12 md:w-14 flex-shrink-0 border-2 border-neutral-300 rounded-xl hover:bg-orange-50 hover:border-orange-500 active:scale-95 transition-all duration-200 touch-target-minimum"
                 onClick={() => addKeyword(tempLandmark, setLandmarks, setTempLandmark)}
               >
-                <Plus className="h-5 w-5" />
+                <Plus className="h-5 w-5 md:h-6 md:w-6" />
               </Button>
             </div>
             {landmarks.length > 0 && (
               <div className="flex flex-wrap gap-2">
                 {landmarks.map((landmark, index) => (
-                  <Badge key={index} variant="secondary" className="gap-1 text-sm py-1 px-2">
+                  <Badge key={index} variant="secondary" className="gap-1.5 text-sm py-1.5 px-3 bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-200 transition-colors">
                     {landmark}
                     <X
-                      className="h-3.5 w-3.5 cursor-pointer"
+                      className="h-4 w-4 cursor-pointer hover:text-amber-900"
                       onClick={() => removeKeyword(index, setLandmarks)}
                     />
                   </Badge>
@@ -863,9 +952,9 @@ export default function TargetKeywordsPage() {
           </div>
 
           {/* 메뉴/상품명 입력 */}
-          <div className="space-y-2">
-            <Label className="text-sm font-semibold">메뉴 또는 상품명</Label>
-            <div className="flex gap-2">
+          <div className="space-y-3">
+            <Label className="text-sm md:text-base font-bold text-neutral-900">메뉴 또는 상품명</Label>
+            <div className="flex gap-2 md:gap-3">
               <Input
                 placeholder="예: 보쌈, 칼국수, 커피"
                 value={tempMenu}
@@ -875,24 +964,24 @@ export default function TargetKeywordsPage() {
                     addKeyword(tempMenu, setMenus, setTempMenu)
                   }
                 }}
-                className="h-12 text-base"
+                className="h-12 md:h-14 text-base border-2 border-neutral-300 rounded-xl focus:border-orange-500 focus:ring-4 focus:ring-orange-500/20 transition-all duration-200"
               />
               <Button
                 type="button"
                 variant="outline"
-                className="h-12 w-12 flex-shrink-0"
+                className="h-12 md:h-14 w-12 md:w-14 flex-shrink-0 border-2 border-neutral-300 rounded-xl hover:bg-orange-50 hover:border-orange-500 active:scale-95 transition-all duration-200 touch-target-minimum"
                 onClick={() => addKeyword(tempMenu, setMenus, setTempMenu)}
               >
-                <Plus className="h-5 w-5" />
+                <Plus className="h-5 w-5 md:h-6 md:w-6" />
               </Button>
             </div>
             {menus.length > 0 && (
               <div className="flex flex-wrap gap-2">
                 {menus.map((menu, index) => (
-                  <Badge key={index} variant="secondary" className="gap-1 text-sm py-1 px-2">
+                  <Badge key={index} variant="secondary" className="gap-1.5 text-sm py-1.5 px-3 bg-green-100 text-green-700 border-green-200 hover:bg-green-200 transition-colors">
                     {menu}
                     <X
-                      className="h-3.5 w-3.5 cursor-pointer"
+                      className="h-4 w-4 cursor-pointer hover:text-green-900"
                       onClick={() => removeKeyword(index, setMenus)}
                     />
                   </Badge>
@@ -902,9 +991,9 @@ export default function TargetKeywordsPage() {
           </div>
 
           {/* 업종 입력 */}
-          <div className="space-y-2">
-            <Label className="text-sm font-semibold">업종</Label>
-            <div className="flex gap-2">
+          <div className="space-y-3">
+            <Label className="text-sm md:text-base font-bold text-neutral-900">업종</Label>
+            <div className="flex gap-2 md:gap-3">
               <Input
                 placeholder="예: 맛집, 카페, 헤어샵"
                 value={tempIndustry}
@@ -914,24 +1003,24 @@ export default function TargetKeywordsPage() {
                     addKeyword(tempIndustry, setIndustries, setTempIndustry)
                   }
                 }}
-                className="h-12 text-base"
+                className="h-12 md:h-14 text-base border-2 border-neutral-300 rounded-xl focus:border-orange-500 focus:ring-4 focus:ring-orange-500/20 transition-all duration-200"
               />
               <Button
                 type="button"
                 variant="outline"
-                className="h-12 w-12 flex-shrink-0"
+                className="h-12 md:h-14 w-12 md:w-14 flex-shrink-0 border-2 border-neutral-300 rounded-xl hover:bg-orange-50 hover:border-orange-500 active:scale-95 transition-all duration-200 touch-target-minimum"
                 onClick={() => addKeyword(tempIndustry, setIndustries, setTempIndustry)}
               >
-                <Plus className="h-5 w-5" />
+                <Plus className="h-5 w-5 md:h-6 md:w-6" />
               </Button>
             </div>
             {industries.length > 0 && (
               <div className="flex flex-wrap gap-2">
                 {industries.map((industry, index) => (
-                  <Badge key={index} variant="secondary" className="gap-1 text-sm py-1 px-2">
+                  <Badge key={index} variant="secondary" className="gap-1.5 text-sm py-1.5 px-3 bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200 transition-colors">
                     {industry}
                     <X
-                      className="h-3.5 w-3.5 cursor-pointer"
+                      className="h-4 w-4 cursor-pointer hover:text-blue-900"
                       onClick={() => removeKeyword(index, setIndustries)}
                     />
                   </Badge>
@@ -941,9 +1030,9 @@ export default function TargetKeywordsPage() {
           </div>
 
           {/* 기타 키워드 입력 */}
-          <div className="space-y-2">
-            <Label className="text-sm font-semibold">기타 (판매형태, 특징 등)</Label>
-            <div className="flex gap-2">
+          <div className="space-y-3">
+            <Label className="text-sm md:text-base font-bold text-neutral-900">기타 (판매형태, 특징 등)</Label>
+            <div className="flex gap-2 md:gap-3">
               <Input
                 placeholder="예: 단체주문, 회식, 데이트"
                 value={tempOther}
@@ -953,24 +1042,24 @@ export default function TargetKeywordsPage() {
                     addKeyword(tempOther, setOthers, setTempOther)
                   }
                 }}
-                className="h-12 text-base"
+                className="h-12 md:h-14 text-base border-2 border-neutral-300 rounded-xl focus:border-orange-500 focus:ring-4 focus:ring-orange-500/20 transition-all duration-200"
               />
               <Button
                 type="button"
                 variant="outline"
-                className="h-12 w-12 flex-shrink-0"
+                className="h-12 md:h-14 w-12 md:w-14 flex-shrink-0 border-2 border-neutral-300 rounded-xl hover:bg-orange-50 hover:border-orange-500 active:scale-95 transition-all duration-200 touch-target-minimum"
                 onClick={() => addKeyword(tempOther, setOthers, setTempOther)}
               >
-                <Plus className="h-5 w-5" />
+                <Plus className="h-5 w-5 md:h-6 md:w-6" />
               </Button>
             </div>
             {others.length > 0 && (
               <div className="flex flex-wrap gap-2">
                 {others.map((other, index) => (
-                  <Badge key={index} variant="secondary" className="gap-1 text-sm py-1 px-2">
+                  <Badge key={index} variant="secondary" className="gap-1.5 text-sm py-1.5 px-3 bg-purple-100 text-purple-700 border-purple-200 hover:bg-purple-200 transition-colors">
                     {other}
                     <X
-                      className="h-3.5 w-3.5 cursor-pointer"
+                      className="h-4 w-4 cursor-pointer hover:text-purple-900"
                       onClick={() => removeKeyword(index, setOthers)}
                     />
                   </Badge>
@@ -980,76 +1069,146 @@ export default function TargetKeywordsPage() {
           </div>
 
           {/* 분석 버튼 */}
-          <div className="space-y-3 pt-2">
+          <div className="space-y-4 pt-4">
             <Button
               onClick={handleAnalyze}
               disabled={isAnalyzing || !selectedStore}
-              className="w-full font-semibold h-12 md:h-13 text-base"
+              className="w-full font-bold h-14 md:h-16 text-base md:text-lg bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 rounded-xl shadow-lg hover:shadow-xl active:scale-95 transition-all duration-200"
               size="lg"
             >
               {isAnalyzing ? (
                 <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  <Loader2 className="mr-2 h-6 w-6 animate-spin" />
                   분석 중...
                 </>
               ) : (
                 <>
-                  <Search className="mr-2 h-5 w-5" />
+                  <Target className="mr-2 h-6 w-6" />
                   타겟 키워드 분석 시작
                 </>
               )}
             </Button>
             {isAnalyzing && (
-              <div className="text-center bg-primary-50 rounded-lg p-3">
-                <p className="text-sm text-neutral-700">
-                  ⏱️ 잠시만 기다려주세요! 예상 소요시간: <span className="font-bold text-primary-600">{getEstimatedTime()}</span>
+              <div className="text-center bg-gradient-to-r from-orange-50 to-amber-50 border-2 border-orange-200 rounded-xl p-4 md:p-5">
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  <span className="text-2xl">⏱️</span>
+                  <p className="text-base md:text-lg font-bold text-neutral-900">
+                    분석 중입니다...
+                  </p>
+                </div>
+                <p className="text-sm md:text-base text-neutral-700">
+                  예상 소요시간: <span className="font-extrabold text-orange-600">{getEstimatedTime()}</span>
                 </p>
               </div>
             )}
           </div>
         </CardContent>
       </Card>
+      </section>
 
       {/* 분석 결과 */}
       {analysisResult && (
-        <div ref={analysisResultRef} className="space-y-6 md:space-y-8">
+        <div ref={analysisResultRef} className="space-y-8 md:space-y-10">
           {/* 요약 정보 */}
-          <Card className="rounded-card border-neutral-300 shadow-card">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base md:text-lg font-bold text-neutral-900 flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 md:h-5 md:w-5 text-green-600" />
+          <section>
+            <div className="mb-4 md:mb-5">
+              <h2 className="text-lg md:text-xl font-bold text-neutral-900 mb-1.5 leading-tight">
                 분석 결과 요약
-              </CardTitle>
+              </h2>
+              <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
+                키워드 분석이 완료되었습니다
+              </p>
+            </div>
+
+          <Card className="rounded-xl border-2 border-neutral-300 shadow-lg overflow-hidden">
+            <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b-2 border-green-200 pb-4 px-5 md:px-6 pt-5 md:pt-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 md:w-12 md:h-12 bg-green-500 rounded-xl flex items-center justify-center shadow-md">
+                  <TrendingUp className="w-5 h-5 md:w-6 md:h-6 text-white" />
+                </div>
+                <CardTitle className="text-lg md:text-xl font-bold text-neutral-900">
+                  분석 요약
+                </CardTitle>
+              </div>
             </CardHeader>
-            <CardContent className="pt-0">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
-                <div className="p-3 md:p-4 bg-primary-50 rounded-lg border border-primary-200">
-                  <p className="text-xs text-primary-700 font-semibold mb-1">매장명</p>
-                  <p className="text-sm md:text-base font-bold text-neutral-900 truncate" title={analysisResult.store_info.store_name}>
+            <CardContent className="p-5 md:p-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5">
+                <div className="p-4 md:p-5 bg-gradient-to-br from-orange-50 to-amber-50 rounded-xl border-2 border-orange-200 shadow-sm">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
+                      <Target className="w-4 h-4 text-white" />
+                    </div>
+                    <p className="text-xs md:text-sm text-orange-700 font-semibold">매장명</p>
+                  </div>
+                  <p className="text-base md:text-lg font-extrabold text-neutral-900 truncate" title={analysisResult.store_info.store_name}>
                     {analysisResult.store_info.store_name}
                   </p>
                 </div>
-                <div className="p-3 md:p-4 bg-green-50 rounded-lg border border-green-200">
-                  <p className="text-xs text-green-700 font-semibold mb-1">생성된 조합</p>
-                  <p className="text-base md:text-lg font-bold text-neutral-900">{analysisResult.total_combinations}개</p>
+                <div className="p-4 md:p-5 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border-2 border-green-200 shadow-sm">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center">
+                      <Search className="w-4 h-4 text-white" />
+                    </div>
+                    <p className="text-xs md:text-sm text-green-700 font-semibold">생성된 조합</p>
+                  </div>
+                  <p className="text-2xl md:text-3xl font-extrabold text-green-600">{analysisResult.total_combinations}
+                    <span className="text-base md:text-lg text-neutral-600 ml-1">개</span>
+                  </p>
                 </div>
-                <div className="p-3 md:p-4 bg-purple-50 rounded-lg border border-purple-200">
-                  <p className="text-xs text-purple-700 font-semibold mb-1">타겟 키워드</p>
-                  <p className="text-base md:text-lg font-bold text-neutral-900">{analysisResult.top_keywords.length}개</p>
+                <div className="p-4 md:p-5 bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl border-2 border-purple-200 shadow-sm">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center">
+                      <TrendingUp className="w-4 h-4 text-white" />
+                    </div>
+                    <p className="text-xs md:text-sm text-purple-700 font-semibold">타겟 키워드</p>
+                  </div>
+                  <p className="text-2xl md:text-3xl font-extrabold text-purple-600">{analysisResult.top_keywords.length}
+                    <span className="text-base md:text-lg text-neutral-600 ml-1">개</span>
+                  </p>
                 </div>
               </div>
             </CardContent>
           </Card>
+          </section>
 
           {/* 타겟 키워드 테이블 */}
-          <Card className="rounded-card border-neutral-300 shadow-card">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base md:text-lg font-bold text-neutral-900">타겟 키워드 (검색량 상위 20개)</CardTitle>
-              <CardDescription className="text-xs md:text-sm text-neutral-600">검색량이 높은 순서로 정렬되었습니다</CardDescription>
+          <section>
+            <div className="mb-4 md:mb-5">
+              <h2 className="text-lg md:text-xl font-bold text-neutral-900 mb-1.5 leading-tight">
+                타겟 키워드 목록
+              </h2>
+              <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
+                검색량이 높은 순서로 정렬된 상위 20개 키워드입니다
+              </p>
+            </div>
+
+          <Card className="rounded-xl border-2 border-neutral-300 shadow-lg overflow-hidden">
+            <CardHeader className="bg-gradient-to-r from-amber-50 to-yellow-50 border-b-2 border-amber-200 pb-4 px-5 md:px-6 pt-5 md:pt-6">
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 md:w-12 md:h-12 bg-amber-500 rounded-xl flex items-center justify-center shadow-md">
+                    <Target className="w-5 h-5 md:w-6 md:h-6 text-white" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg md:text-xl font-bold text-neutral-900">
+                      추천 키워드
+                    </CardTitle>
+                    <CardDescription className="text-xs md:text-sm text-neutral-600 mt-0.5">
+                      {analysisResult.top_keywords.length}개 추출됨
+                    </CardDescription>
+                  </div>
+                </div>
+                <Badge 
+                  variant="secondary"
+                  className="bg-amber-100 text-amber-700 border-amber-200 px-3 py-1.5 text-xs font-semibold"
+                >
+                  검색량 높은 순
+                </Badge>
+              </div>
             </CardHeader>
-            <CardContent className="pt-0">
+            <CardContent className="p-0 md:p-6">
               {/* 모바일: 카드 레이아웃 */}
-              <div className="md:hidden space-y-3">
+              <div className="md:hidden space-y-3 p-4">
                 {analysisResult.top_keywords.map((keyword, index) => {
                   const rankInfo = analysisResult.rank_data?.[keyword.keyword] || { rank: 0, total_count: 0 }
                   const rank = rankInfo.rank || 0
@@ -1294,14 +1453,34 @@ export default function TargetKeywordsPage() {
               </div>
             </CardContent>
           </Card>
+          </section>
 
           {/* SEO 분석 */}
-          <Card className="rounded-card border-neutral-300 shadow-card">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base md:text-lg font-bold text-neutral-900">플레이스 SEO 분석</CardTitle>
-              <CardDescription className="text-xs md:text-sm text-neutral-600">키워드가 플레이스 정보에 포함된 횟수를 분석합니다</CardDescription>
+          <section>
+            <div className="mb-4 md:mb-5">
+              <h2 className="text-lg md:text-xl font-bold text-neutral-900 mb-1.5 leading-tight">
+                플레이스 SEO 분석
+              </h2>
+              <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
+                키워드가 플레이스 정보에 포함된 횟수를 분석합니다
+              </p>
+            </div>
+
+          <Card className="rounded-xl border-2 border-neutral-300 shadow-lg overflow-hidden">
+            <CardHeader className="bg-gradient-to-r from-blue-50 to-cyan-50 border-b-2 border-blue-200 pb-4 px-5 md:px-6 pt-5 md:pt-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 md:w-12 md:h-12 bg-blue-500 rounded-xl flex items-center justify-center shadow-md">
+                  <CheckCircle2 className="w-5 h-5 md:w-6 md:h-6 text-white" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg md:text-xl font-bold text-neutral-900">SEO 최적화 분석</CardTitle>
+                  <CardDescription className="text-xs md:text-sm text-neutral-600 mt-0.5">
+                    키워드 매칭 현황
+                  </CardDescription>
+                </div>
+              </div>
             </CardHeader>
-            <CardContent className="pt-0">
+            <CardContent className="p-5 md:p-6">
               <div className="space-y-3 md:space-y-4">
                 {Object.entries(analysisResult.seo_analysis.field_analysis).map(([field, data]) => {
                   const fieldNames: Record<string, string> = {
@@ -1337,9 +1516,11 @@ export default function TargetKeywordsPage() {
               </div>
             </CardContent>
           </Card>
+          </section>
 
           {/* 개선 제안 */}
-          <Alert className={`${(() => {
+          <section>
+          <Alert className={`rounded-xl border-2 shadow-lg ${(() => {
             const totalMatches = Object.values(analysisResult.seo_analysis.field_analysis).reduce(
               (sum, field) => sum + field.total_matches,
               0
@@ -1379,6 +1560,7 @@ export default function TargetKeywordsPage() {
               })()}
             </AlertDescription>
           </Alert>
+          </section>
         </div>
       )}
       </div>

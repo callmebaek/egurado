@@ -600,33 +600,38 @@ export default function NaverAIReplyPage() {
   }
 
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-4 md:space-y-6 p-4 md:p-6 lg:p-8">
-      {/* 헤더 */}
-      <div className="space-y-4">
-        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
-          <div className="flex-1">
-            <h1 className="text-xl md:text-2xl font-bold text-gray-900 mb-2">
-              AI 리뷰답글
-            </h1>
-            <p className="text-sm text-gray-600 leading-relaxed mb-1">
-              AI가 리뷰 내용을 분석하여 감성에 맞는 전문적인 답글을 자동으로 생성합니다.
-            </p>
-            <p className="text-xs md:text-sm text-gray-500 leading-relaxed">
-              매장 톤앤매너를 설정하면 브랜드 이미지에 맞는 일관된 답글을 작성할 수 있습니다.
-            </p>
+    <div className="w-full max-w-6xl mx-auto px-4 py-6 md:px-6 md:py-8 lg:px-8 lg:py-10 space-y-8 md:space-y-10">
+      {/* 헤더 섹션 - 홈페이지 스타일 */}
+      <header className="text-center">
+        <div className="flex items-center justify-center gap-3 mb-3">
+          <div className="w-12 h-12 md:w-14 md:h-14 bg-gradient-to-br from-pink-400 to-rose-500 rounded-xl flex items-center justify-center shadow-lg">
+            <Sparkles className="w-6 h-6 md:w-7 md:h-7 text-white" />
           </div>
-          
-          {/* AI 설정 버튼 */}
+          <h1 className="text-2xl md:text-3xl lg:text-4xl font-extrabold text-neutral-900 leading-tight">
+            AI 리뷰답글
+          </h1>
+        </div>
+        <p className="text-base md:text-lg text-neutral-600 leading-relaxed max-w-3xl mx-auto mb-4">
+          AI가 리뷰 내용을 분석하여 감성에 맞는<br className="md:hidden" />
+          <span className="hidden md:inline"> </span>전문적인 답글을 자동으로 생성합니다
+        </p>
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3">
+          <Badge 
+            variant="secondary"
+            className="bg-pink-100 text-pink-700 border-pink-200 px-4 py-2 text-sm font-semibold inline-flex items-center gap-1.5"
+          >
+            🤖 AI 자동 생성
+          </Badge>
           <Button
             variant="outline"
             onClick={() => router.push('/dashboard/naver/ai-settings')}
-            className="flex items-center gap-2 h-10 px-4 border-gray-300 hover:bg-gray-50 text-gray-700 font-medium rounded-lg shadow-sm transition-all w-full md:w-auto"
+            className="h-11 px-5 border-2 border-neutral-300 hover:bg-neutral-50 text-neutral-700 font-semibold rounded-xl shadow-sm transition-all inline-flex items-center gap-2"
           >
-            <Settings className="h-4 w-4" />
+            <Settings className="h-5 w-5" />
             AI 설정
           </Button>
         </div>
-      </div>
+      </header>
 
       {/* 성공/오류 메시지 */}
       {successMessage && (

@@ -976,17 +976,29 @@ export default function ReviewManagementPage() {
   }, [])
   
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-4 md:space-y-6 p-4 md:p-6 lg:p-8">
-      {/* 헤더 */}
-      <div>
-        <h1 className="text-xl md:text-2xl font-bold text-gray-900 mb-2">리뷰 분석</h1>
-        <p className="text-sm text-gray-600 leading-relaxed mb-1">
-          방문자 리뷰와 블로그 리뷰를 AI로 분석하여 긍정/부정 감성과 핵심 키워드를 파악합니다.
+    <div className="w-full max-w-6xl mx-auto px-4 py-6 md:px-6 md:py-8 lg:px-8 lg:py-10 space-y-8 md:space-y-10">
+      {/* 헤더 섹션 - 홈페이지 스타일 */}
+      <header className="text-center">
+        <div className="flex items-center justify-center gap-3 mb-3">
+          <div className="w-12 h-12 md:w-14 md:h-14 bg-gradient-to-br from-purple-400 to-pink-500 rounded-xl flex items-center justify-center shadow-lg">
+            <MessageSquare className="w-6 h-6 md:w-7 md:h-7 text-white" />
+          </div>
+          <h1 className="text-2xl md:text-3xl lg:text-4xl font-extrabold text-neutral-900 leading-tight">
+            리뷰 분석
+          </h1>
+        </div>
+        <p className="text-base md:text-lg text-neutral-600 leading-relaxed max-w-3xl mx-auto mb-4">
+          방문자 리뷰와 블로그 리뷰를 AI로 분석하여<br className="md:hidden" />
+          <span className="hidden md:inline"> </span>긍정/부정 감성과 핵심 키워드를 파악합니다
         </p>
-        <p className="text-xs md:text-sm text-gray-500 leading-relaxed">
-          리뷰 추이와 고객 반응을 실시간으로 모니터링하고 개선점을 도출할 수 있습니다.
-        </p>
-      </div>
+        <Badge 
+          variant="secondary"
+          className="bg-purple-100 text-purple-700 border-purple-200 px-4 py-2 text-sm font-semibold inline-flex items-center gap-1.5"
+        >
+          <Sparkles className="w-4 h-4" />
+          AI 분석
+        </Badge>
+      </header>
       
       {/* 매장 선택 + 기간 선택 (PC에서 한 행) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
