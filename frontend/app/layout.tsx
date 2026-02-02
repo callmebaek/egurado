@@ -141,6 +141,16 @@ export default function RootLayout({
           crossOrigin="anonymous"
           href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css"
         />
+        
+        {/* 210 Millenial 폰트 (CDN) - 눈누 */}
+        <link
+          rel="preconnect"
+          href="https://cdn.jsdelivr.net"
+        />
+        <link
+          rel="stylesheet"
+          href="https://cdn.jsdelivr.net/gh/fonts-archive/210Millenial/210Millenial.css"
+        />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${notoSansKR.variable} antialiased`}

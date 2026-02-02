@@ -2,7 +2,6 @@
 
 import { Check } from 'lucide-react';
 import Link from 'next/link';
-import { Container, Grid, Card, Text, Title, Stack, Button, Badge } from '@mantine/core';
 
 export const PricingSection = () => {
   const plans = [
@@ -17,13 +16,13 @@ export const PricingSection = () => {
         '매장 1개',
         '키워드 1개',
         '월 100 크레딧',
-        '플레이스 진단 (월 3회)',
-        '키워드 순위 조회 (월 10회)',
-        '리뷰 분석 (월 1회)',
+        '플레이스 진단',
+        '키워드 순위 조회',
+        '리뷰 분석',
         '대시보드 기본 기능',
       ],
       cta: '무료로 시작하기',
-      ctaVariant: 'outline',
+      ctaVariant: 'filled',
     },
     {
       name: 'Basic',
@@ -36,11 +35,11 @@ export const PricingSection = () => {
         '매장 3개',
         '키워드 10개',
         '월 600 크레딧',
-        '자동 순위 수집 (3개)',
-        '플레이스 진단 (무제한)',
-        '키워드 순위 조회 (무제한)',
-        '리뷰 분석 (제한 내)',
-        '경쟁매장 분석 (제한 내)',
+        '자동 순위 수집 3개',
+        '플레이스 진단',
+        '키워드 순위 조회',
+        '리뷰 분석',
+        '경쟁매장 분석',
       ],
       cta: '출시 알림 받기',
       ctaVariant: 'outline',
@@ -56,12 +55,11 @@ export const PricingSection = () => {
         '매장 4개',
         '키워드 6개',
         '월 1,200 크레딧',
-        '자동 순위 수집 (6개)',
-        '플레이스 진단 (무제한)',
-        '키워드 순위 조회 (무제한)',
-        'AI 답글 생성 (제한 내)',
-        '리뷰 분석 (무제한)',
-        '경쟁매장 분석 (무제한)',
+        '자동 순위 수집 6개',
+        '플레이스 진단',
+        '키워드 순위 조회',
+        '리뷰 분석',
+        '경쟁매장 분석',
       ],
       cta: '출시 알림 받기',
       ctaVariant: 'filled',
@@ -77,9 +75,9 @@ export const PricingSection = () => {
         '매장 10개',
         '키워드 50개',
         '월 3,000 크레딧',
-        '자동 순위 수집 (15개)',
-        '모든 기능 무제한',
-        'AI 답글 생성 (무제한)',
+        '자동 순위 수집 15개',
+        '모든 기능 사용 가능',
+        'AI 답글 생성',
         '우선 고객 지원',
         '전담 매니저 배정',
       ],
@@ -98,7 +96,7 @@ export const PricingSection = () => {
         '키워드 수 협의',
         '크레딧 협의',
         '자동 수집 협의',
-        '모든 기능 무제한',
+        '모든 기능 사용 가능',
         '전담 매니저 배정',
         '맞춤형 솔루션',
         '24시간 우선 지원',
@@ -109,124 +107,127 @@ export const PricingSection = () => {
   ];
 
   return (
-    <section id="pricing" className="py-16 sm:py-20 md:py-24 bg-gradient-to-br from-teal-50/50 via-cyan-50/50 to-emerald-50/50">
-      <Container size="xl" px={{ base: 'md', sm: 'lg', md: 'xl' }}>
-        {/* 섹션 헤더 - 파스텔 그라데이션 */}
-        <Stack gap="lg" align="center" className="text-center mb-12 sm:mb-14 md:mb-16">
-          <Title 
-            order={2}
-            className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold px-4 leading-tight"
-          >
+    <section id="pricing" className="py-12 md:py-16 lg:py-20 bg-gradient-to-br from-teal-50/50 via-cyan-50/50 to-emerald-50/50">
+      <div className="w-full max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
+        {/* 섹션 헤더 */}
+        <div className="text-center mb-10 md:mb-12 lg:mb-16">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold leading-tight mb-4 md:mb-6 px-4">
             <span className="bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400 bg-clip-text text-transparent">
               원하는 방식으로
             </span>
             <br />
             <span className="text-gray-700">플레이스를 관리하세요</span>
-          </Title>
-          <Text className="text-base sm:text-lg md:text-xl text-gray-600 max-w-3xl px-4 leading-relaxed">
+          </h2>
+          <p className="text-sm sm:text-base md:text-lg lg:text-xl text-gray-600 max-w-3xl mx-auto px-4 leading-relaxed">
             모든 플랜에서 100% 정확한 진단과 데이터 기반 분석을 제공합니다
-          </Text>
-        </Stack>
+          </p>
+        </div>
 
-        {/* 플랜 그리드 - 파스텔 스타일 */}
-        <Grid gutter={{ base: 'md', lg: 'lg' }}>
+        {/* 플랜 그리드 */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 md:gap-6">
           {plans.map((plan) => (
-            <Grid.Col key={plan.tier} span={{ base: 12, sm: 6, lg: 4, xl: 2.4 }}>
-                <Card
-                  shadow="md"
-                  padding="lg"
-                  radius="xl"
-                  className={`border-2 h-full flex flex-col transition-all duration-300 hover:shadow-lg hover:-translate-y-1 ${
-                    plan.popular
-                      ? 'border-teal-300 bg-gradient-to-br from-teal-50/50 to-cyan-50/50'
-                      : 'border-gray-200 bg-white'
+            <div
+              key={plan.tier}
+              className={`relative rounded-2xl border-2 p-6 md:p-8 flex flex-col h-full transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${
+                plan.popular
+                  ? 'border-teal-300 bg-gradient-to-br from-teal-50/50 to-cyan-50/50 shadow-lg'
+                  : 'border-gray-200 bg-white shadow-md'
+              }`}
+            >
+              {/* Popular 배지 */}
+              {plan.popular && (
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                  <div className="inline-flex items-center px-3 py-1 bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-xs font-bold rounded-full shadow-md">
+                    인기
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-4 flex-1 flex flex-col">
+                {/* 플랜 헤더 */}
+                <div>
+                  <h3 className="text-xl md:text-2xl font-bold text-gray-800 mb-2">
+                    {plan.name}
+                  </h3>
+                  <p className="text-xs md:text-sm text-gray-500 min-h-[40px]">
+                    {plan.description}
+                  </p>
+                </div>
+
+                {/* 가격 */}
+                <div className="pb-4 border-b border-gray-200">
+                  <div className={`text-3xl md:text-4xl font-bold ${
+                    plan.tier === 'free' 
+                      ? 'bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent' 
+                      : 'text-gray-800'
+                  }`}>
+                    {plan.price}
+                  </div>
+                  <div className="text-xs text-gray-400 mt-1">
+                    {plan.priceNote}
+                  </div>
+                </div>
+
+                {/* 기능 리스트 */}
+                <div className="space-y-2 flex-1">
+                  {plan.features.map((feature, idx) => (
+                    <div key={idx} className="flex items-start gap-2">
+                      <div className={`flex-shrink-0 w-4 h-4 rounded-full flex items-center justify-center mt-0.5 ${
+                        plan.popular 
+                          ? 'bg-gradient-to-br from-teal-200 to-cyan-200' 
+                          : 'bg-gray-100'
+                      }`}>
+                        <Check 
+                          size={10} 
+                          className={plan.popular ? 'text-teal-700' : 'text-gray-600'} 
+                          strokeWidth={3} 
+                        />
+                      </div>
+                      <span className="text-xs md:text-sm text-gray-700 leading-relaxed">
+                        {feature}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* CTA 버튼 */}
+                <Link
+                  href={plan.tier === 'free' ? '/dashboard' : '/signup'}
+                  className={`block text-center px-6 py-3 rounded-xl text-sm md:text-base font-bold transition-all ${
+                    plan.ctaVariant === 'filled'
+                      ? plan.popular
+                        ? 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white shadow-md hover:shadow-lg'
+                        : 'bg-gradient-to-r from-emerald-400 to-cyan-400 hover:from-emerald-500 hover:to-cyan-500 text-white shadow-md hover:shadow-lg'
+                      : 'border-2 border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400'
                   }`}
                 >
-                  <Stack gap="md" className="h-full">
-                    {/* 플랜 헤더 */}
-                    <div>
-                      {plan.popular && (
-                        <Badge 
-                          size="sm" 
-                          radius="xl" 
-                          className="mb-2 bg-gradient-to-r from-emerald-400 to-teal-400 text-white border-0 font-bold px-3 py-1 text-xs"
-                        >
-                          인기
-                        </Badge>
-                      )}
-                    <Title order={3} className="text-xl sm:text-2xl font-bold text-gray-800 mb-2">
-                      {plan.name}
-                    </Title>
-                    <Text size="sm" c="dimmed" className="min-h-[40px] text-sm">
-                      {plan.description}
-                    </Text>
-                  </div>
+                  {plan.cta}
+                </Link>
 
-                  {/* 가격 */}
-                  <div>
-                    <Text className={`text-3xl sm:text-4xl font-bold ${plan.tier === 'free' ? 'bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent' : 'text-gray-800'}`}>
-                      {plan.price}
-                    </Text>
-                    <Text size="xs" c="dimmed" className="text-xs">
-                      {plan.priceNote}
-                    </Text>
-                  </div>
-
-                    {/* 기능 리스트 */}
-                    <Stack gap="xs" className="flex-1">
-                      {plan.features.map((feature, idx) => (
-                        <div key={idx} className="flex items-start gap-2">
-                          <div className={`flex-shrink-0 w-4 h-4 rounded-full ${plan.popular ? 'bg-gradient-to-br from-teal-200 to-cyan-200' : 'bg-gray-100'} flex items-center justify-center mt-0.5`}>
-                            <Check size={10} className={plan.popular ? 'text-teal-700' : 'text-gray-600'} strokeWidth={3} />
-                          </div>
-                          <Text size="xs" className="text-gray-700">{feature}</Text>
-                        </div>
-                      ))}
-                    </Stack>
-
-                    {/* CTA 버튼 - 파스텔 */}
-                    <Button
-                      component={Link}
-                      href={plan.tier === 'free' ? '/dashboard' : '/signup'}
-                      size="md"
-                      radius="xl"
-                      fullWidth
-                      className={
-                        plan.ctaVariant === 'filled'
-                          ? 'bg-gradient-to-r from-emerald-400 to-teal-400 hover:from-emerald-500 hover:to-teal-500 text-white font-bold border-0 shadow-md hover:shadow-lg transition-all'
-                          : plan.tier === 'free'
-                          ? 'bg-gradient-to-r from-emerald-400 to-cyan-400 hover:from-emerald-500 hover:to-cyan-500 text-white font-bold border-0 shadow-md hover:shadow-lg transition-all'
-                          : 'border-2 border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 font-semibold transition-all'
-                      }
-                    >
-                      {plan.cta}
-                    </Button>
-
-                  {plan.tier === 'free' && (
-                    <Text size="xs" c="dimmed" className="text-center">
-                      신용카드 등록 불필요
-                    </Text>
-                  )}
-                </Stack>
-              </Card>
-            </Grid.Col>
+                {plan.tier === 'free' && (
+                  <p className="text-xs text-center text-gray-400">
+                    신용카드 등록 불필요
+                  </p>
+                )}
+              </div>
+            </div>
           ))}
-        </Grid>
+        </div>
 
         {/* 하단 안내 */}
-        <Stack gap="sm" align="center" className="mt-12">
-          <div className="flex items-center gap-2 px-4 py-2 bg-white border-2 border-emerald-200 rounded-full shadow-sm">
-            <Text size="sm" className="text-gray-600">
+        <div className="flex flex-col items-center gap-3 mt-10 md:mt-12">
+          <div className="inline-flex items-center px-4 py-2 bg-white border-2 border-emerald-200 rounded-full shadow-sm">
+            <span className="text-xs md:text-sm text-gray-600">
               모든 플랜에서 14일 환불 보장 | 언제든지 플랜 변경 가능
-            </Text>
+            </span>
           </div>
-          <div className="flex items-center gap-2 px-4 py-2 bg-white border-2 border-teal-200 rounded-full shadow-sm">
-            <Text size="sm" className="font-semibold bg-gradient-to-r from-emerald-500 to-teal-500 bg-clip-text text-transparent">
-              2,847개 매장이 /윕플.을 사용하고 있습니다
-            </Text>
+          <div className="inline-flex items-center px-4 py-2 bg-white border-2 border-teal-200 rounded-full shadow-sm">
+            <span className="text-xs md:text-sm font-semibold bg-gradient-to-r from-emerald-500 to-teal-500 bg-clip-text text-transparent">
+              2,847개 매장이 <span className="font-millenial">/윕플.</span>을 사용하고 있습니다
+            </span>
           </div>
-        </Stack>
-      </Container>
+        </div>
+      </div>
     </section>
   );
 };

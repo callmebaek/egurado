@@ -31,7 +31,7 @@ export const TestimonialsSection = () => {
     },
     {
       title: '데이터가 정확해요',
-      content: '/윕플.을 사용하면서 우리 매장의 문제점을 명확히 파악할 수 있었습니다. 경쟁매장 분석 기능이 특히 유용해요.',
+      content: '윕플을 사용하면서 우리 매장의 문제점을 명확히 파악할 수 있었습니다. 경쟁매장 분석 기능이 특히 유용해요.',
       author: '최OO',
       location: '인천 남동구',
       plan: 'Basic+ 플랜',
@@ -65,7 +65,7 @@ export const TestimonialsSection = () => {
             className="text-4xl sm:text-5xl lg:text-6xl font-bold text-black"
             style={{ lineHeight: '1.1' }}
           >
-            /윕플. 사용자들의 평가
+            <span className="font-millenial">/윕플.</span> 사용자들의 평가
           </Title>
           
           {/* 평점 표시 */}

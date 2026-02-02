@@ -1,14 +1,22 @@
 'use client';
 
 import { ShieldCheck, RefreshCw, Clock, Award } from 'lucide-react';
-import { Container, Grid, Card, Text, Title, Stack } from '@mantine/core';
+
+interface Guarantee {
+  icon: typeof ShieldCheck;
+  title: string;
+  description: string;
+  gradient: string;
+  iconColor: string;
+  hasLogo?: boolean;
+}
 
 export const GuaranteeSection = () => {
-  const guarantees = [
+  const guarantees: Guarantee[] = [
     {
       icon: ShieldCheck,
-      title: '14일 환불 보장',
-      description: '서비스가 만족스럽지 않으시면 14일 이내 전액 환불해드립니다',
+      title: '끊임없이 신규기능 출시',
+      description: '멈추지 않고, 더 편한, 더 좋은 기능들을 개발하고 고객들에게 퍼줄 것을 약속합니다.',
       gradient: 'from-blue-100 to-cyan-100',
       iconColor: 'text-blue-500',
     },
@@ -28,85 +36,89 @@ export const GuaranteeSection = () => {
     },
     {
       icon: Award,
-      title: '데이터 정확도 보장',
-      description: '네이버 플레이스 공식 데이터를 기반으로 100% 정확한 분석을 제공합니다',
+      title: '결제가격 보장',
+      description: '/윕플.은 항상 "지금"이 제일 저렴합니다. 먼저 결제하신 고객들에게는 그 가격으로 계속 제공합니다.',
       gradient: 'from-emerald-100 to-teal-100',
       iconColor: 'text-emerald-500',
+      hasLogo: true,
     },
   ];
 
   return (
-    <section className="py-16 md:py-24 bg-gradient-to-b from-white via-emerald-50/30 to-teal-50/30">
-      <Container size="xl" px="md">
-        {/* 섹션 헤더 - 파스텔 그라데이션 */}
-        <Stack gap="lg" align="center" className="text-center mb-12 md:mb-16">
-          <Title 
-            order={2}
-            className="text-4xl sm:text-5xl lg:text-6xl font-bold"
-            style={{ lineHeight: '1.1' }}
-          >
+    <section className="py-12 md:py-16 lg:py-20 bg-gradient-to-b from-white via-emerald-50/30 to-teal-50/30">
+      <div className="w-full max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
+        {/* 섹션 헤더 */}
+        <div className="text-center mb-10 md:mb-12 lg:mb-16">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold leading-tight mb-4 md:mb-6">
             <span className="bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400 bg-clip-text text-transparent">
               확실한 보장으로
             </span>
             <br />
             <span className="text-gray-700">안심하세요</span>
-          </Title>
-          <Text size="xl" className="text-lg sm:text-xl text-gray-600 max-w-3xl">
-            /윕플.은 데이터 기반의 검증된 서비스를 제공합니다
-          </Text>
-        </Stack>
-
-        {/* 보장 항목 그리드 - 파스텔 */}
-        <Grid gutter={{ base: 'md', md: 'lg' }}>
-          {guarantees.map((guarantee, index) => (
-            <Grid.Col key={index} span={{ base: 12, sm: 6, lg: 3 }}>
-              <Card
-                shadow="md"
-                padding="xl"
-                radius="xl"
-                className="border-2 border-gray-200 h-full hover:shadow-lg hover:-translate-y-1 transition-all duration-300 bg-white"
-              >
-                <Stack gap="md" align="center" className="text-center">
-                  {/* 아이콘 배경 - 파스텔 그라데이션 */}
-                  <div className={`w-16 h-16 bg-gradient-to-br ${guarantee.gradient} rounded-2xl flex items-center justify-center shadow-sm`}>
-                    <guarantee.icon className={`w-8 h-8 ${guarantee.iconColor}`} strokeWidth={2.5} />
-                  </div>
-                  <Text className="text-lg font-bold text-gray-800">
-                    {guarantee.title}
-                  </Text>
-                  <Text size="sm" className="text-gray-600 leading-relaxed">
-                    {guarantee.description}
-                  </Text>
-                </Stack>
-              </Card>
-            </Grid.Col>
-          ))}
-        </Grid>
-
-        {/* 하단 CTA 카드 - 파스텔 */}
-        <div className="mt-16 md:mt-20">
-          <Card
-            shadow="lg"
-            padding="xl"
-            radius="xl"
-            className="bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 border-2 border-emerald-200 max-w-3xl mx-auto text-center"
-          >
-            <Stack gap="md">
-              <div className="w-12 h-12 mx-auto bg-gradient-to-br from-emerald-200 to-teal-200 rounded-full flex items-center justify-center">
-                <ShieldCheck className="w-6 h-6 text-emerald-600" strokeWidth={2.5} />
-              </div>
-              <Title order={3} className="text-2xl md:text-3xl font-bold text-gray-800">
-                100% 안심하고 시작하세요
-              </Title>
-              <Text className="text-gray-600 text-base md:text-lg">
-                만족하지 않으시면 14일 이내 전액 환불해드립니다.
-                <br className="hidden sm:block" />
-                질문이나 문의사항이 있으시면 언제든지 연락주세요.
-              </Text>
-            </Stack>
-          </Card>
+          </h2>
+          <p className="text-base sm:text-lg md:text-xl text-gray-600 max-w-3xl mx-auto">
+            <span className="font-millenial">/윕플.</span>은 데이터 기반의 검증된 서비스를 제공합니다
+          </p>
         </div>
-      </Container>
+
+        {/* 보장 항목 그리드 */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+          {guarantees.map((guarantee, index) => {
+            const IconComponent = guarantee.icon;
+            return (
+              <div
+                key={index}
+                className="border-2 border-gray-200 rounded-2xl p-6 md:p-8 flex flex-col items-center text-center bg-white hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
+              >
+                {/* 아이콘 */}
+                <div className={`w-14 h-14 md:w-16 md:h-16 bg-gradient-to-br ${guarantee.gradient} rounded-2xl flex items-center justify-center shadow-sm mb-4`}>
+                  <IconComponent className={`w-7 h-7 md:w-8 md:h-8 ${guarantee.iconColor}`} strokeWidth={2.5} />
+                </div>
+
+                {/* 제목 */}
+                <h3 className="text-base md:text-lg font-bold text-gray-800 mb-2">
+                  {guarantee.title}
+                </h3>
+
+                {/* 설명 */}
+                <p className="text-sm md:text-base text-gray-600 leading-relaxed">
+                  {guarantee.hasLogo ? (
+                    <>
+                      <span className="font-millenial">/윕플.</span>은 항상 &quot;지금&quot;이 제일 저렴합니다. 먼저 결제하신 고객들에게는 그 가격으로 계속 제공합니다.
+                    </>
+                  ) : (
+                    guarantee.description
+                  )}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* 하단 CTA 카드 */}
+        <div className="mt-12 md:mt-16 lg:mt-20">
+          <div className="bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 border-2 border-emerald-200 rounded-2xl p-8 md:p-10 lg:p-12 max-w-3xl mx-auto text-center shadow-lg">
+            <div className="space-y-4 md:space-y-6">
+              {/* 아이콘 */}
+              <div className="w-12 h-12 md:w-14 md:h-14 mx-auto bg-gradient-to-br from-emerald-200 to-teal-200 rounded-full flex items-center justify-center">
+                <ShieldCheck className="w-6 h-6 md:w-7 md:h-7 text-emerald-600" strokeWidth={2.5} />
+              </div>
+
+              {/* 제목 */}
+              <h3 className="text-2xl sm:text-3xl font-bold text-gray-800">
+                100% 안심하고 시작하세요
+              </h3>
+
+              {/* 설명 */}
+              <p className="text-sm sm:text-base md:text-lg text-gray-600 leading-relaxed">
+                지금 무료로 시작하고, 필요할 때 업그레이드하세요.
+                <br className="hidden sm:block" />
+                언제든지 플랜 변경이 가능하며, 신규 기능이 계속 추가됩니다.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
     </section>
   );
 };

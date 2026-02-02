@@ -7,8 +7,8 @@ export const Footer = () => {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="bg-neutral-900 text-white py-12 md:py-16">
-      <div className="container mx-auto px-4 max-w-7xl">
+    <footer className="bg-neutral-900 text-white py-12 md:py-16 lg:py-20">
+      <div className="w-full max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
           {/* 회사 정보 */}
           <div>
@@ -136,7 +136,7 @@ export const Footer = () => {
         <div className="border-t border-neutral-800 pt-8">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-sm text-neutral-500 text-center md:text-left">
-              © {currentYear} /윕플. All rights reserved.
+              © {currentYear} <span className="font-millenial">/윕플.</span> All rights reserved.
             </p>
             <div className="flex items-center gap-6 text-sm text-neutral-500">
               <a href="#" className="hover:text-white transition-colors">
@@ -155,7 +155,7 @@ export const Footer = () => {
         {/* 사업자 정보 (선택적) */}
         <div className="mt-6 pt-6 border-t border-neutral-800 text-xs text-neutral-600 text-center">
           <p>
-            상호명: /윕플. | 대표자: OOO | 사업자등록번호: 000-00-00000
+            상호명: <span className="font-millenial">/윕플.</span> | 대표자: OOO | 사업자등록번호: 000-00-00000
             <br className="md:hidden" />
             <span className="hidden md:inline"> | </span>
             통신판매업신고번호: 제2024-서울강남-0000호

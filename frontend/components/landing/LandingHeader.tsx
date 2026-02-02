@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Menu, X } from 'lucide-react';
-import { Container, Button, Group } from '@mantine/core';
 
 export const LandingHeader = () => {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -27,7 +26,7 @@ export const LandingHeader = () => {
 
   return (
     <>
-      {/* 메인 헤더 - Cal.com 스타일 */}
+      {/* 메인 헤더 */}
       <header
         className={`fixed top-10 left-0 right-0 z-50 transition-all duration-200 ${
           isScrolled
@@ -35,14 +34,14 @@ export const LandingHeader = () => {
             : 'bg-white'
         }`}
       >
-        <Container size="xl" px="md">
+        <div className="w-full max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
           <div className="flex items-center justify-between h-14 md:h-16">
             {/* 로고 */}
             <Link href="/" className="flex items-center">
               <img
                 src="/whiplace-logo.svg"
                 alt="/윕플."
-                className="h-8 md:h-10 w-auto"
+                className="h-7 md:h-9 w-auto"
               />
             </Link>
 
@@ -69,32 +68,26 @@ export const LandingHeader = () => {
             </nav>
 
             {/* 데스크톱 CTA 버튼 */}
-            <Group gap="xs" className="hidden md:flex">
-              <Button
-                component={Link}
+            <div className="hidden md:flex items-center gap-2">
+              <Link
                 href="/signup"
-                variant="subtle"
-                size="md"
-                radius="xl"
-                className="text-gray-600 hover:text-teal-600 hover:bg-teal-50"
+                className="px-5 py-2.5 text-sm font-medium text-gray-600 hover:text-teal-600 hover:bg-teal-50 rounded-full transition-all"
               >
                 회원가입
-              </Button>
-              <Button
-                component={Link}
+              </Link>
+              <Link
                 href="/dashboard"
-                size="md"
-                radius="xl"
-                className="bg-gradient-to-r from-emerald-400 to-teal-400 hover:from-emerald-500 hover:to-teal-500 text-white font-bold shadow-md hover:shadow-lg transition-all"
+                className="px-5 py-2.5 text-sm font-bold text-white bg-gradient-to-r from-emerald-400 to-teal-400 hover:from-emerald-500 hover:to-teal-500 rounded-full shadow-md hover:shadow-lg transition-all"
               >
                 시작하기
-              </Button>
-            </Group>
+              </Link>
+            </div>
 
             {/* 모바일 메뉴 버튼 */}
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="md:hidden p-2 text-gray-700 hover:text-black hover:bg-gray-50 rounded-lg transition-all"
+              className="md:hidden p-2 text-gray-700 hover:text-black hover:bg-gray-50 rounded-lg transition-all touch-target-minimum"
+              aria-label="메뉴"
             >
               {isMobileMenuOpen ? (
                 <X className="w-6 h-6" />
@@ -103,7 +96,7 @@ export const LandingHeader = () => {
               )}
             </button>
           </div>
-        </Container>
+        </div>
       </header>
 
       {/* 모바일 메뉴 */}
@@ -115,24 +108,24 @@ export const LandingHeader = () => {
             onClick={() => setIsMobileMenuOpen(false)}
           />
 
-          {/* 메뉴 패널 - Cal.com 스타일 */}
-          <div className="absolute top-14 md:top-16 left-4 right-4 bg-white shadow-xl rounded-2xl border border-gray-200 animate-slide-in">
+          {/* 메뉴 패널 - TopBanner(40px) + Header(56px) = 96px */}
+          <div className="absolute top-24 left-4 right-4 bg-white shadow-xl rounded-2xl border border-gray-200 animate-slide-in">
             <nav className="p-4 space-y-1">
               <button
                 onClick={() => scrollToSection('service-intro')}
-                className="block w-full text-left px-4 py-3 text-base font-medium text-gray-700 hover:text-black hover:bg-gray-50 rounded-lg transition-all"
+                className="block w-full text-left px-4 py-3 text-base font-medium text-gray-700 hover:text-black hover:bg-gray-50 rounded-lg transition-all touch-target-minimum"
               >
                 서비스 소개
               </button>
               <button
                 onClick={() => scrollToSection('pricing')}
-                className="block w-full text-left px-4 py-3 text-base font-medium text-gray-700 hover:text-black hover:bg-gray-50 rounded-lg transition-all"
+                className="block w-full text-left px-4 py-3 text-base font-medium text-gray-700 hover:text-black hover:bg-gray-50 rounded-lg transition-all touch-target-minimum"
               >
                 가격
               </button>
               <button
                 onClick={() => scrollToSection('about')}
-                className="block w-full text-left px-4 py-3 text-base font-medium text-gray-700 hover:text-black hover:bg-gray-50 rounded-lg transition-all"
+                className="block w-full text-left px-4 py-3 text-base font-medium text-gray-700 hover:text-black hover:bg-gray-50 rounded-lg transition-all touch-target-minimum"
               >
                 About Us
               </button>
@@ -141,27 +134,20 @@ export const LandingHeader = () => {
 
               {/* 모바일 CTA 버튼 */}
               <div className="flex flex-col gap-2 pt-2">
-                <Button
-                  component={Link}
+                <Link
                   href="/signup"
-                  variant="subtle"
-                  size="md"
-                  radius="xl"
-                  fullWidth
-                  className="text-gray-600 hover:text-teal-600 hover:bg-teal-50"
+                  className="block w-full text-center px-5 py-3 text-base font-medium text-gray-600 hover:text-teal-600 hover:bg-teal-50 rounded-full transition-all touch-target-minimum"
+                  onClick={() => setIsMobileMenuOpen(false)}
                 >
                   회원가입
-                </Button>
-                <Button
-                  component={Link}
+                </Link>
+                <Link
                   href="/dashboard"
-                  size="md"
-                  radius="xl"
-                  fullWidth
-                  className="bg-gradient-to-r from-emerald-400 to-teal-400 hover:from-emerald-500 hover:to-teal-500 text-white font-bold shadow-md"
+                  className="block w-full text-center px-5 py-3 text-base font-bold text-white bg-gradient-to-r from-emerald-400 to-teal-400 hover:from-emerald-500 hover:to-teal-500 rounded-full shadow-md transition-all touch-target-minimum"
+                  onClick={() => setIsMobileMenuOpen(false)}
                 >
                   시작하기
-                </Button>
+                </Link>
               </div>
             </nav>
           </div>

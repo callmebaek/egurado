@@ -328,7 +328,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
         {/* 하단 정보 */}
         <div className="p-4 border-t border-gray-200 text-xs text-gray-500">
-          <p>© 2026 /윕플.</p>
+          <p>© 2026 <span className="font-millenial">/윕플.</span></p>
           <p>Version 1.0.0</p>
         </div>
       </aside>
