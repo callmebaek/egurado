@@ -7,9 +7,9 @@ export const Footer = () => {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="bg-neutral-900 text-white py-16 md:py-20">
+    <footer className="bg-neutral-900 text-white py-12 md:py-16">
       <div className="container mx-auto px-4 max-w-7xl">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-12 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
           {/* 회사 정보 */}
           <div>
             <Link href="/" className="flex items-center mb-4">

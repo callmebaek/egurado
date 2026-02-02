@@ -36,17 +36,16 @@ export const AboutSection = () => {
   ];
 
   return (
-    <section id="about" className="py-16 md:py-24 bg-gradient-to-br from-teal-50/50 via-emerald-50/50 to-cyan-50/50">
-      <Container size="xl" px="md">
-        <Grid gutter={{ base: 'xl', md: 60 }} align="center">
+    <section id="about" className="py-16 sm:py-20 md:py-24 bg-gradient-to-br from-teal-50/50 via-emerald-50/50 to-cyan-50/50">
+      <Container size="xl" px={{ base: 'md', sm: 'lg', md: 'xl' }}>
+        <Grid gutter={{ base: 'xl', md: 48 }} align="center">
           {/* 텍스트 콘텐츠 */}
           <Grid.Col span={{ base: 12, lg: 6 }}>
-            <Stack gap="xl">
+            <Stack gap="lg">
               {/* 제목 - 파스텔 그라데이션 */}
               <Title 
                 order={2}
-                className="text-4xl sm:text-5xl lg:text-6xl font-bold"
-                style={{ lineHeight: '1.1' }}
+                className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold leading-tight"
               >
                 <span className="bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400 bg-clip-text text-transparent">
                   소상공인의 성장을 돕는
@@ -55,14 +54,14 @@ export const AboutSection = () => {
                 <span className="text-gray-700">데이터 파트너</span>
               </Title>
 
-              <Stack gap="lg">
-                <Text size="lg" className="text-base md:text-lg text-gray-600 leading-relaxed">
+              <Stack gap="md">
+                <Text size="lg" className="text-base sm:text-lg text-gray-600 leading-relaxed">
                   /윕플.은 네이버 플레이스 관리가 어려운 소상공인들을 위해 시작되었습니다.
                   복잡한 데이터 분석과 번거로운 관리 작업을 자동화하고,
                   누구나 쉽게 사용할 수 있는 도구를 만들고자 합니다.
                 </Text>
 
-                <Text size="lg" className="text-base md:text-lg text-gray-600 leading-relaxed">
+                <Text size="lg" className="text-base sm:text-lg text-gray-600 leading-relaxed">
                   매일 순위를 확인하고, 리뷰에 답글을 달고, 경쟁매장을 분석하는
                   모든 과정이 이제 자동으로 이루어집니다. 여러분은 오직 장사에만 집중하세요.
                 </Text>

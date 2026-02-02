@@ -109,14 +109,13 @@ export const PricingSection = () => {
   ];
 
   return (
-    <section id="pricing" className="py-12 sm:py-16 md:py-24 bg-gradient-to-br from-teal-50/50 via-cyan-50/50 to-emerald-50/50">
-      <Container size="xl" px={{ base: 'xs', sm: 'md' }}>
+    <section id="pricing" className="py-16 sm:py-20 md:py-24 bg-gradient-to-br from-teal-50/50 via-cyan-50/50 to-emerald-50/50">
+      <Container size="xl" px={{ base: 'md', sm: 'lg', md: 'xl' }}>
         {/* 섹션 헤더 - 파스텔 그라데이션 */}
-        <Stack gap={{ base: 'sm', sm: 'md', md: 'lg' }} align="center" className="text-center mb-8 sm:mb-12 md:mb-16">
+        <Stack gap="lg" align="center" className="text-center mb-12 sm:mb-14 md:mb-16">
           <Title 
             order={2}
-            className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold px-2"
-            style={{ lineHeight: '1.1' }}
+            className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold px-4 leading-tight"
           >
             <span className="bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400 bg-clip-text text-transparent">
               원하는 방식으로
@@ -124,18 +123,18 @@ export const PricingSection = () => {
             <br />
             <span className="text-gray-700">플레이스를 관리하세요</span>
           </Title>
-          <Text className="text-sm sm:text-base md:text-lg lg:text-xl text-gray-600 max-w-3xl px-2">
+          <Text className="text-base sm:text-lg md:text-xl text-gray-600 max-w-3xl px-4 leading-relaxed">
             모든 플랜에서 100% 정확한 진단과 데이터 기반 분석을 제공합니다
           </Text>
         </Stack>
 
         {/* 플랜 그리드 - 파스텔 스타일 */}
-        <Grid gutter={{ base: 'sm', sm: 'md', lg: 'lg' }}>
+        <Grid gutter={{ base: 'md', lg: 'lg' }}>
           {plans.map((plan) => (
             <Grid.Col key={plan.tier} span={{ base: 12, sm: 6, lg: 4, xl: 2.4 }}>
                 <Card
                   shadow="md"
-                  padding={{ base: 'md', sm: 'lg', md: 'xl' }}
+                  padding="lg"
                   radius="xl"
                   className={`border-2 h-full flex flex-col transition-all duration-300 hover:shadow-lg hover:-translate-y-1 ${
                     plan.popular
@@ -143,32 +142,32 @@ export const PricingSection = () => {
                       : 'border-gray-200 bg-white'
                   }`}
                 >
-                  <Stack gap={{ base: 'sm', sm: 'md', md: 'lg' }} className="h-full">
+                  <Stack gap="md" className="h-full">
                     {/* 플랜 헤더 */}
                     <div>
                       {plan.popular && (
                         <Badge 
                           size="sm" 
                           radius="xl" 
-                          className="mb-2 sm:mb-3 bg-gradient-to-r from-emerald-400 to-teal-400 text-white border-0 font-bold px-2 sm:px-3 py-0.5 sm:py-1 text-xs"
+                          className="mb-2 bg-gradient-to-r from-emerald-400 to-teal-400 text-white border-0 font-bold px-3 py-1 text-xs"
                         >
                           인기
                         </Badge>
                       )}
-                    <Title order={3} className="text-xl sm:text-2xl font-bold text-gray-800 mb-1 sm:mb-2">
+                    <Title order={3} className="text-xl sm:text-2xl font-bold text-gray-800 mb-2">
                       {plan.name}
                     </Title>
-                    <Text size="sm" c="dimmed" className="min-h-[32px] sm:min-h-[40px] text-xs sm:text-sm">
+                    <Text size="sm" c="dimmed" className="min-h-[40px] text-sm">
                       {plan.description}
                     </Text>
                   </div>
 
                   {/* 가격 */}
                   <div>
-                    <Text className={`text-2xl sm:text-3xl md:text-4xl font-bold ${plan.tier === 'free' ? 'bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent' : 'text-gray-800'}`}>
+                    <Text className={`text-3xl sm:text-4xl font-bold ${plan.tier === 'free' ? 'bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent' : 'text-gray-800'}`}>
                       {plan.price}
                     </Text>
-                    <Text size="xs" c="dimmed" className="text-[10px] sm:text-xs">
+                    <Text size="xs" c="dimmed" className="text-xs">
                       {plan.priceNote}
                     </Text>
                   </div>

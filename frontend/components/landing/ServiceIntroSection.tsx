@@ -75,15 +75,15 @@ export const ServiceIntroSection = () => {
   ];
 
   return (
-    <section id="service-intro" className="py-12 sm:py-16 md:py-24 lg:py-32 bg-gradient-to-b from-white via-emerald-50/20 to-teal-50/20">
-      <Container size="xl" px={{ base: 'xs', sm: 'md' }}>
+    <section id="service-intro" className="py-16 sm:py-20 md:py-24 bg-gradient-to-b from-white via-emerald-50/20 to-teal-50/20">
+      <Container size="xl" px={{ base: 'md', sm: 'lg', md: 'xl' }}>
         {/* 섹션 헤더 */}
-        <div className="text-center mb-12 sm:mb-16 md:mb-20">
-          <div className="inline-block mb-3 sm:mb-4">
+        <div className="text-center mb-12 sm:mb-14 md:mb-16">
+          <div className="inline-block mb-4">
             <Badge 
-              size="md" 
+              size="lg" 
               radius="xl" 
-              className="bg-gradient-to-r from-emerald-100 to-teal-100 text-emerald-700 border-2 border-emerald-200 px-3 py-1.5 sm:px-4 sm:py-2 font-bold text-xs sm:text-sm"
+              className="bg-gradient-to-r from-emerald-100 to-teal-100 text-emerald-700 border-2 border-emerald-200 px-4 py-2 font-bold text-sm"
             >
               핵심 기능
             </Badge>
@@ -91,17 +91,17 @@ export const ServiceIntroSection = () => {
           
           <Title 
             order={2} 
-            className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-extrabold leading-tight mb-4 sm:mb-6 px-2"
+            className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold leading-tight mb-6 px-4"
           >
             <span className="bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400 bg-clip-text text-transparent">
               /윕플.의 핵심 기능으로
             </span>
             <br />
-            <span className="text-gray-700">매출을 극대화하세요</span>
+            <span className="text-gray-700">하루에 5분만에 플레이스 관리하세요</span>
           </Title>
           
-          <div className="mt-6 sm:mt-8 flex justify-center px-2">
-            <p className="text-sm sm:text-base md:text-lg lg:text-xl text-gray-600 max-w-3xl leading-relaxed text-center">
+          <div className="mt-6 flex justify-center px-4">
+            <p className="text-base sm:text-lg md:text-xl text-gray-600 max-w-3xl leading-relaxed text-center">
               플레이스 관리의 모든 과정을 자동화하고,
               <br />
               데이터로 입증된 전략을 제공합니다
@@ -110,25 +110,25 @@ export const ServiceIntroSection = () => {
         </div>
 
         {/* 서비스 목록 - 지그재그 레이아웃 */}
-        <Stack gap={{ base: 48, sm: 60, md: 80 }}>
+        <Stack gap={{ base: 96, sm: 112, md: 128 }}>
           {services.map((service, index) => {
             const isEven = index % 2 === 0;
             
             return (
               <Grid
                 key={service.title}
-                gutter={{ base: 'md', sm: 'lg', md: 50 }}
-                align="stretch"
+                gutter={{ base: 'xl', md: 48 }}
+                align="center"
               >
                 {/* 텍스트 콘텐츠 */}
                 <Grid.Col 
                   span={{ base: 12, lg: 6 }}
                   order={{ base: 1, lg: isEven ? 1 : 2 }}
                 >
-                  <Stack gap="sm" className="h-full justify-start">
+                  <Stack gap="md" className="h-full justify-center">
                     {/* 아이콘 박스 - 파스텔 */}
-                    <div className={`inline-flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 lg:w-16 lg:h-16 rounded-xl sm:rounded-2xl bg-gradient-to-br ${service.iconBg} shadow-md mb-1 sm:mb-2`}>
-                      <service.icon className={`w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 lg:w-8 lg:h-8 ${service.iconColor}`} strokeWidth={2.5} />
+                    <div className={`inline-flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-xl bg-gradient-to-br ${service.iconBg} shadow-md`}>
+                      <service.icon className={`w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 ${service.iconColor}`} strokeWidth={2.5} />
                     </div>
 
                     {/* NEW 배지 - 파스텔 */}
@@ -146,7 +146,7 @@ export const ServiceIntroSection = () => {
                     {/* 제목 - 파스텔 그라데이션 */}
                     <Title 
                       order={3} 
-                      className="text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-extrabold leading-tight mt-1 sm:mt-2"
+                      className="text-xl sm:text-2xl md:text-3xl font-bold leading-tight"
                     >
                       <span className={`bg-gradient-to-r ${service.gradientFrom} ${service.gradientTo} bg-clip-text text-transparent`}>
                         {service.title}
@@ -154,19 +154,18 @@ export const ServiceIntroSection = () => {
                     </Title>
 
                     {/* 설명 */}
-                    <Text className="text-gray-600 leading-relaxed text-sm sm:text-base md:text-lg">
+                    <Text className="text-gray-600 leading-relaxed text-base sm:text-lg mb-2">
                       {service.description}
                     </Text>
 
                     {/* 기능 목록 */}
-                    <Stack gap="xs" className="mt-2 sm:mt-4">
+                    <Stack gap="sm" className="mt-6">
                       {service.features.map((feature, idx) => (
-                        <div key={idx} className="flex items-start gap-2 sm:gap-3">
-                          <div className={`flex-shrink-0 mt-0.5 sm:mt-1 w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-gradient-to-br ${service.iconBg} flex items-center justify-center`}>
-                            <Check size={10} className={`sm:hidden ${service.iconColor}`} strokeWidth={3} />
-                            <Check size={12} className={`hidden sm:block ${service.iconColor}`} strokeWidth={3} />
+                        <div key={idx} className="flex items-start gap-3">
+                          <div className={`flex-shrink-0 mt-0.5 w-5 h-5 rounded-full bg-gradient-to-br ${service.iconBg} flex items-center justify-center`}>
+                            <Check size={12} className={`${service.iconColor}`} strokeWidth={3} />
                           </div>
-                          <Text className="text-gray-700 leading-relaxed flex-1 text-xs sm:text-sm md:text-base">
+                          <Text className="text-gray-700 leading-relaxed flex-1 text-sm sm:text-base">
                             {feature}
                           </Text>
                         </div>
@@ -175,37 +174,51 @@ export const ServiceIntroSection = () => {
                   </Stack>
                 </Grid.Col>
 
-                {/* 이미지 */}
+                {/* 이미지 - 스크린샷 스타일 */}
                 <Grid.Col 
                   span={{ base: 12, lg: 6 }}
                   order={{ base: 2, lg: isEven ? 2 : 1 }}
                 >
-                  <div className="relative h-full mt-4 lg:mt-0">
-                    {/* 배경 블러 - 파스텔 */}
-                    <div className={`absolute -inset-2 sm:-inset-4 bg-gradient-to-br ${service.gradientFrom} ${service.gradientTo} opacity-20 blur-2xl rounded-2xl sm:rounded-3xl`}></div>
-                    
-                    <Card
-                      shadow="xl"
-                      radius="xl"
-                      padding={0}
-                      className={`relative border-2 ${isEven ? 'border-emerald-200' : 'border-teal-200'} overflow-hidden group hover:scale-105 transition-transform duration-300 h-full`}
-                    >
-                      <div className="relative w-full aspect-[4/3] bg-neutral-100">
-                        <Image
-                          src={service.image}
-                          alt={service.title}
-                          fill
-                          className="object-cover"
-                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 600px"
-                          quality={85}
-                          priority={index === 0}
-                          loading={index === 0 ? undefined : 'lazy'}
-                        />
+                  <div className="relative w-full mt-8 lg:mt-0 flex items-center justify-center">
+                    {/* 이미지 컨테이너 - 풀 사이즈 */}
+                    <div className="relative w-full">
+                      {/* 배경 블러 - 파스텔 */}
+                      <div className={`absolute -inset-3 bg-gradient-to-br ${service.gradientFrom} ${service.gradientTo} opacity-15 blur-2xl rounded-2xl`}></div>
+                      
+                      {/* 스크린샷 스타일 카드 */}
+                      <Card
+                        shadow="2xl"
+                        radius="lg"
+                        padding={0}
+                        className={`relative border-4 border-gray-200 overflow-hidden group hover:scale-105 transition-all duration-300 shadow-[0_8px_30px_rgb(0,0,0,0.12)]`}
+                        style={{
+                          boxShadow: '0 10px 40px rgba(0, 0, 0, 0.15), 0 2px 8px rgba(0, 0, 0, 0.08), inset 0 0 0 1px rgba(255, 255, 255, 0.5)'
+                        }}
+                      >
+                        {/* 상단 바 (브라우저/앱 느낌) */}
+                        <div className="absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-gray-50 to-white border-b border-gray-200 flex items-center px-3 gap-1.5 z-10">
+                          <div className="w-2.5 h-2.5 rounded-full bg-red-400"></div>
+                          <div className="w-2.5 h-2.5 rounded-full bg-yellow-400"></div>
+                          <div className="w-2.5 h-2.5 rounded-full bg-green-400"></div>
+                        </div>
                         
-                        {/* 이미지 오버레이 - 파스텔 */}
-                        <div className={`absolute inset-0 bg-gradient-to-t ${service.gradientFrom} ${service.gradientTo} opacity-0 group-hover:opacity-10 transition-opacity duration-300`}></div>
-                      </div>
-                    </Card>
+                        <div className="relative w-full aspect-[4/3] bg-gradient-to-br from-gray-50 to-gray-100 mt-8">
+                          <Image
+                            src={service.image}
+                            alt={service.title}
+                            fill
+                            className="object-cover"
+                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 600px"
+                            quality={90}
+                            priority={index === 0}
+                            loading={index === 0 ? undefined : 'lazy'}
+                          />
+                          
+                          {/* 이미지 오버레이 - 파스텔 */}
+                          <div className={`absolute inset-0 bg-gradient-to-t ${service.gradientFrom} ${service.gradientTo} opacity-0 group-hover:opacity-5 transition-opacity duration-300`}></div>
+                        </div>
+                      </Card>
+                    </div>
                   </div>
                 </Grid.Col>
               </Grid>
@@ -214,21 +227,21 @@ export const ServiceIntroSection = () => {
         </Stack>
 
         {/* 하단 CTA - 개선된 스타일 */}
-        <div className="mt-12 sm:mt-16 md:mt-20 lg:mt-24">
+        <div className="mt-16 sm:mt-20 md:mt-24">
           <Card 
             shadow="lg" 
-            padding={{ base: 'md', sm: 'lg', md: 'xl' }}
+            padding="xl"
             radius="xl"
             className="bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 border-2 border-emerald-200 max-w-3xl mx-auto text-center"
           >
-            <Stack gap={{ base: 'sm', sm: 'md' }}>
-              <div className="w-10 h-10 sm:w-12 sm:h-12 mx-auto bg-gradient-to-br from-emerald-200 to-teal-200 rounded-full flex items-center justify-center">
-                <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-600" strokeWidth={2.5} />
+            <Stack gap="lg">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 mx-auto bg-gradient-to-br from-emerald-200 to-teal-200 rounded-full flex items-center justify-center">
+                <Sparkles className="w-6 h-6 sm:w-7 sm:h-7 text-emerald-600" strokeWidth={2.5} />
               </div>
-              <Title order={3} className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-800">
+              <Title order={3} className="text-2xl sm:text-3xl font-bold text-gray-800">
                 지금 바로 /윕플.을 시작하세요
               </Title>
-              <Text className="text-gray-600 text-sm sm:text-base md:text-lg leading-relaxed">
+              <Text className="text-gray-600 text-base sm:text-lg leading-relaxed">
                 무료 플랜으로 시작해서 매장 관리의 변화를 경험하세요.
                 <br className="hidden sm:block" />
                 신용카드 등록 없이 3분이면 시작할 수 있습니다.
@@ -238,8 +251,8 @@ export const ServiceIntroSection = () => {
                 href="/dashboard"
                 size="lg"
                 radius="xl"
-                rightSection={<ArrowRight size={18} />}
-                className="bg-gradient-to-r from-emerald-400 to-teal-400 hover:from-emerald-500 hover:to-teal-500 text-white font-bold mx-auto shadow-lg hover:shadow-xl transition-all text-sm sm:text-base w-full sm:w-auto"
+                rightSection={<ArrowRight size={20} />}
+                className="bg-gradient-to-r from-emerald-400 to-teal-400 hover:from-emerald-500 hover:to-teal-500 text-white font-bold mx-auto shadow-lg hover:shadow-xl transition-all text-base sm:text-lg w-full sm:w-auto"
               >
                 무료로 시작하기
               </Button>

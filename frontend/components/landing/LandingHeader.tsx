@@ -29,14 +29,14 @@ export const LandingHeader = () => {
     <>
       {/* 메인 헤더 - Cal.com 스타일 */}
       <header
-        className={`fixed top-12 md:top-10 left-0 right-0 z-50 transition-all duration-200 ${
+        className={`fixed top-10 left-0 right-0 z-50 transition-all duration-200 ${
           isScrolled
             ? 'bg-white/95 backdrop-blur-md shadow-sm'
             : 'bg-white'
         }`}
       >
         <Container size="xl" px="md">
-          <div className="flex items-center justify-between h-16 md:h-20">
+          <div className="flex items-center justify-between h-14 md:h-16">
             {/* 로고 */}
             <Link href="/" className="flex items-center">
               <img
@@ -116,7 +116,7 @@ export const LandingHeader = () => {
           />
 
           {/* 메뉴 패널 - Cal.com 스타일 */}
-          <div className="absolute top-16 md:top-20 left-4 right-4 bg-white shadow-xl rounded-2xl border border-gray-200 animate-slide-in">
+          <div className="absolute top-14 md:top-16 left-4 right-4 bg-white shadow-xl rounded-2xl border border-gray-200 animate-slide-in">
             <nav className="p-4 space-y-1">
               <button
                 onClick={() => scrollToSection('service-intro')}
