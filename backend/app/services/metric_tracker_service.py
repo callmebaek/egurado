@@ -416,12 +416,6 @@ class MetricTrackerService:
             now_kst = datetime.now(KST)
             today = now_kst.date()
             
-            # 🔍 디버그 로깅
-            logger.info(f"[DEBUG] datetime.now(KST) = {now_kst}")
-            logger.info(f"[DEBUG] today = {today}")
-            logger.info(f"[DEBUG] today.isoformat() = {today.isoformat()}")
-            logger.info(f"[DEBUG] collected_at = {now_kst.isoformat()}")
-            
             metric_data = {
                 'tracker_id': tracker_id,
                 'keyword_id': tracker['keyword_id'],
@@ -454,22 +448,14 @@ class MetricTrackerService:
                 .eq('collection_date', today.isoformat())\
                 .execute()
             
-            logger.info(f"[DEBUG] 기존 데이터 조회: collection_date={today.isoformat()}, 결과 개수={len(existing_result.data or [])}")
-            if existing_result.data:
-                logger.info(f"[DEBUG] 기존 데이터: {existing_result.data}")
-            
             if existing_result.data and len(existing_result.data) > 0:
                 # 업데이트
-                logger.info(f"[DEBUG] UPDATE 실행: tracker_id={tracker_id}, collection_date={today.isoformat()}")
-                logger.info(f"[DEBUG] UPDATE 데이터: {metric_data}")
-                
                 result = self.supabase.table('daily_metrics')\
                     .update(metric_data)\
                     .eq('tracker_id', tracker_id)\
                     .eq('collection_date', today.isoformat())\
                     .execute()
                 
-                logger.info(f"[DEBUG] UPDATE 결과: {result.data}")
                 logger.info(
                     f"[Metrics Collect] 업데이트 완료: {tracker_id} - "
                     f"rank={metric_data['rank']}, "
@@ -478,14 +464,10 @@ class MetricTrackerService:
                 )
             else:
                 # 삽입
-                logger.info(f"[DEBUG] INSERT 실행")
-                logger.info(f"[DEBUG] INSERT 데이터: {metric_data}")
-                
                 result = self.supabase.table('daily_metrics')\
                     .insert(metric_data)\
                     .execute()
                 
-                logger.info(f"[DEBUG] INSERT 결과: {result.data}")
                 logger.info(
                     f"[Metrics Collect] 삽입 완료: {tracker_id} - "
                     f"rank={metric_data['rank']}, "
@@ -501,8 +483,6 @@ class MetricTrackerService:
             
             # 방금 삽입/업데이트한 데이터 조회 (id 포함)
             # ✅ collected_at 기준 정렬 추가 (중복 데이터 있어도 최신 것 반환)
-            logger.info(f"[DEBUG] 최종 데이터 조회: tracker_id={tracker_id}, collection_date={today.isoformat()}")
-            
             final_result = self.supabase.table('daily_metrics')\
                 .select('*')\
                 .eq('tracker_id', tracker_id)\
@@ -510,14 +490,10 @@ class MetricTrackerService:
                 .order('collected_at', desc=True)\
                 .execute()
             
-            logger.info(f"[DEBUG] 최종 조회 결과: {final_result.data}")
-            
             if final_result.data and len(final_result.data) > 0:
-                returned_data = final_result.data[0]
-                logger.info(f"[DEBUG] 프론트엔드로 반환: collection_date={returned_data.get('collection_date')}, rank={returned_data.get('rank')}, collected_at={returned_data.get('collected_at')}")
-                return returned_data
+                return final_result.data[0]
             else:
-                logger.warning(f"[DEBUG] 최종 조회 실패! result.data 반환 시도")
+                logger.warning(f"[Metrics Collect] 최종 조회 실패, 삽입/업데이트 결과 반환")
                 return result.data[0] if result.data else metric_data
             
         except Exception as e:
