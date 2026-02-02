@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Search, CheckCircle2, Sparkles } from 'lucide-react';
+import { Search, CheckCircle2, Sparkles, Store as StoreIcon } from 'lucide-react';
 import OnboardingModal from './OnboardingModal';
 import StoreSelector from './StoreSelector';
 import { api } from '@/lib/config';
@@ -174,7 +174,7 @@ export default function StoreRegisterModal({
             onChange={(e) => setStoreName(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && !loading && handleNext()}
             placeholder="예: 스타벅스 강남점"
-            className="w-full h-12 md:h-14 pl-4 pr-12 text-base md:text-lg border-2 border-neutral-300 rounded-button focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 disabled:bg-neutral-100 disabled:cursor-not-allowed transition-all duration-200"
+            className="w-full h-12 md:h-14 pl-4 pr-12 text-base md:text-lg border-2 border-neutral-300 rounded-button focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20 disabled:bg-neutral-100 disabled:cursor-not-allowed transition-all duration-200"
             disabled={loading}
           />
           <Search className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 md:w-6 md:h-6 text-neutral-400" />
@@ -219,7 +219,7 @@ export default function StoreRegisterModal({
             매장을 선택하고 등록하세요
           </h3>
           <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
-            총 <span className="font-bold text-primary-500">{searchResults.length}개</span>의 매장을 찾았습니다.
+            총 <span className="font-bold text-emerald-600">{searchResults.length}개</span>의 매장을 찾았습니다.
           </p>
         </div>
 
@@ -263,9 +263,9 @@ export default function StoreRegisterModal({
       </p>
 
       {selectedStore && (
-        <div className="bg-primary-50 border border-primary-200 rounded-xl p-4 max-w-sm mx-auto">
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 max-w-sm mx-auto">
           <p className="text-xs md:text-sm text-neutral-600 mb-1">등록된 매장</p>
-          <p className="text-base md:text-lg font-bold text-primary-700 leading-tight">
+          <p className="text-base md:text-lg font-bold text-emerald-700 leading-tight">
             {selectedStore.name}
           </p>
         </div>
@@ -292,6 +292,7 @@ export default function StoreRegisterModal({
       isOpen={isOpen}
       onClose={onClose}
       title="매장 등록하기"
+      icon={StoreIcon}
       currentStep={currentStep}
       totalSteps={totalSteps}
       onBack={handleBack}

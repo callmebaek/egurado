@@ -299,7 +299,7 @@ export default function ReviewAnalysisModal({
             key={period}
             className={`cursor-pointer transition-all duration-200 hover:shadow-card-hover ${
               datePeriod === period
-                ? 'border-primary-500 bg-primary-50 ring-2 ring-primary-500/20'
+                ? 'border-emerald-600 bg-emerald-50 ring-2 ring-emerald-600/20'
                 : 'border-neutral-200 hover:border-primary-300'
             }`}
             onClick={() => setDatePeriod(period)}
@@ -315,7 +315,7 @@ export default function ReviewAnalysisModal({
                   </p>
                 </div>
                 {datePeriod === period && (
-                  <div className="flex-shrink-0 w-7 h-7 rounded-full bg-primary-500 flex items-center justify-center">
+                  <div className="flex-shrink-0 w-7 h-7 rounded-full bg-emerald-600 flex items-center justify-center">
                     <CheckCircle2 className="w-4 h-4 text-white" />
                   </div>
                 )}
@@ -345,9 +345,7 @@ export default function ReviewAnalysisModal({
   const renderStep3 = () => (
     <div className="space-y-4 md:space-y-5">
       <div className="text-center py-8 md:py-12">
-        <div className="w-16 h-16 md:w-20 md:h-20 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
-          <Loader2 className="w-8 h-8 md:w-10 md:h-10 text-primary-500 animate-spin" />
-        </div>
+        <Loader2 className="w-12 h-12 md:w-16 md:h-16 text-emerald-600 animate-spin mx-auto mb-4" />
         <h3 className="text-xl md:text-2xl font-bold text-neutral-900 mb-2 leading-tight">
           리뷰를 추출하고 있어요
         </h3>
@@ -451,6 +449,7 @@ export default function ReviewAnalysisModal({
       isOpen={isOpen}
       onClose={handleClose}
       title="리뷰 분석"
+      icon={MessageSquare}
       currentStep={currentStep}
       totalSteps={totalSteps}
       onBack={handleBack}

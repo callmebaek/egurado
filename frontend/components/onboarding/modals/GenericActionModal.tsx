@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ExternalLink, ArrowRight } from 'lucide-react';
+import { ExternalLink, ArrowRight, LucideIcon } from 'lucide-react';
 import OnboardingModal from './OnboardingModal';
 
 interface GenericActionModalProps {
@@ -12,6 +12,7 @@ interface GenericActionModalProps {
   description: string;
   pageUrl?: string;
   pageLabel?: string;
+  icon?: LucideIcon;
 }
 
 export default function GenericActionModal({
@@ -22,6 +23,7 @@ export default function GenericActionModal({
   description,
   pageUrl,
   pageLabel = '해당 페이지로 이동',
+  icon = ArrowRight,
 }: GenericActionModalProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const totalSteps = 2;
@@ -53,10 +55,10 @@ export default function GenericActionModal({
       </div>
 
       {pageUrl && (
-        <div className="p-3 md:p-4 bg-primary-50 border-2 border-primary-500/30 rounded-xl">
+        <div className="p-3 md:p-4 bg-emerald-50 border-2 border-emerald-600/30 rounded-xl">
           <a
             href={pageUrl}
-            className="flex items-center justify-between text-primary-500 hover:text-primary-600 transition-colors"
+            className="flex items-center justify-between text-emerald-600 hover:text-primary-600 transition-colors"
             target="_blank"
             rel="noopener noreferrer"
           >
@@ -109,6 +111,7 @@ export default function GenericActionModal({
       isOpen={isOpen}
       onClose={onClose}
       title={title}
+      icon={icon}
       currentStep={currentStep}
       totalSteps={totalSteps}
       onNext={handleNext}

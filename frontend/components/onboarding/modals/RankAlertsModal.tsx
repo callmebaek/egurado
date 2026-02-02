@@ -292,7 +292,7 @@ export default function RankAlertsModal({ isOpen, onClose, onComplete }: RankAle
       {loadingTrackers ? (
         <div className="flex items-center justify-center py-12">
           <div className="text-center">
-            <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+            <div className="w-12 h-12 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
             <p className="text-sm text-neutral-600">추적 키워드 목록을 불러오는 중...</p>
           </div>
         </div>
@@ -310,7 +310,7 @@ export default function RankAlertsModal({ isOpen, onClose, onComplete }: RankAle
               key={tracker.id}
               className={`cursor-pointer transition-all duration-200 hover:shadow-card-hover ${
                 selectedTracker?.id === tracker.id
-                  ? 'border-primary-500 bg-primary-50 ring-2 ring-primary-500/20'
+                  ? 'border-emerald-600 bg-emerald-50 ring-2 ring-emerald-600/20'
                   : 'border-neutral-200 hover:border-primary-300'
               }`}
               onClick={() => setSelectedTracker(tracker)}
@@ -340,7 +340,7 @@ export default function RankAlertsModal({ isOpen, onClose, onComplete }: RankAle
                     </div>
                   </div>
                   {selectedTracker?.id === tracker.id && (
-                    <div className="flex-shrink-0 w-7 h-7 rounded-full bg-primary-500 flex items-center justify-center">
+                    <div className="flex-shrink-0 w-7 h-7 rounded-full bg-emerald-600 flex items-center justify-center">
                       <CheckCircle2 className="w-4 h-4 text-white" />
                     </div>
                   )}
@@ -393,7 +393,7 @@ export default function RankAlertsModal({ isOpen, onClose, onComplete }: RankAle
           </div>
 
           {notificationEnabled && (
-            <div className="pl-4 border-l-2 border-primary-500 space-y-2">
+            <div className="pl-4 border-l-2 border-emerald-600 space-y-2">
               <p className="text-sm font-bold text-neutral-900 mb-3">알림 방법</p>
               <div className="space-y-2">
                 {[
@@ -405,7 +405,7 @@ export default function RankAlertsModal({ isOpen, onClose, onComplete }: RankAle
                     key={option.value}
                     className={`cursor-pointer transition-all duration-200 hover:shadow-card-hover ${
                       notificationType === option.value
-                        ? 'border-primary-500 bg-primary-50 ring-2 ring-primary-500/20'
+                        ? 'border-emerald-600 bg-emerald-50 ring-2 ring-emerald-600/20'
                         : 'border-neutral-200 hover:border-primary-300'
                     }`}
                     onClick={() => setNotificationType(option.value)}
@@ -417,7 +417,7 @@ export default function RankAlertsModal({ isOpen, onClose, onComplete }: RankAle
                           <p className="text-xs text-neutral-600">{option.desc}</p>
                         </div>
                         {notificationType === option.value && (
-                          <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary-500 flex items-center justify-center">
+                          <div className="flex-shrink-0 w-6 h-6 rounded-full bg-emerald-600 flex items-center justify-center">
                             <CheckCircle2 className="w-4 h-4 text-white" />
                           </div>
                         )}
@@ -469,7 +469,7 @@ export default function RankAlertsModal({ isOpen, onClose, onComplete }: RankAle
           <CardContent className="p-4 md:p-5 space-y-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-primary-100 flex items-center justify-center flex-shrink-0">
-                <TrendingUp className="w-5 h-5 text-primary-500" />
+                <TrendingUp className="w-5 h-5 text-emerald-600" />
               </div>
               <div className="flex-1">
                 <p className="text-xs md:text-sm text-neutral-600 mb-0.5">추적 키워드</p>
@@ -482,7 +482,7 @@ export default function RankAlertsModal({ isOpen, onClose, onComplete }: RankAle
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <Clock className="w-4 h-4 text-primary-500" />
+                  <Clock className="w-4 h-4 text-emerald-600" />
                   <p className="text-xs md:text-sm font-bold text-neutral-900">수집 시간</p>
                 </div>
                 <p className="text-xs md:text-sm text-neutral-600">
@@ -492,7 +492,7 @@ export default function RankAlertsModal({ isOpen, onClose, onComplete }: RankAle
 
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <Bell className="w-4 h-4 text-primary-500" />
+                  <Bell className="w-4 h-4 text-emerald-600" />
                   <p className="text-xs md:text-sm font-bold text-neutral-900">알림 설정</p>
                 </div>
                 <p className="text-xs md:text-sm text-neutral-600">
@@ -538,6 +538,7 @@ export default function RankAlertsModal({ isOpen, onClose, onComplete }: RankAle
       isOpen={isOpen}
       onClose={handleClose}
       title="순위추적 알림 설정하기"
+      icon={Bell}
       currentStep={currentStep}
       totalSteps={totalSteps}
       onBack={handleBack}

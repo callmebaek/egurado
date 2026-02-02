@@ -110,42 +110,42 @@ export const TopMenu = memo(function TopMenu({ onMenuClick }: TopMenuProps) {
   const tierInfo = tierConfig[credits?.tier as keyof typeof tierConfig] || tierConfig.free
   
   return (
-    <header className="h-16 border-b border-gray-200 bg-white flex items-center justify-between px-4 lg:px-6 sticky top-0 z-30">
+    <header className="h-16 border-b border-gray-200 bg-white flex items-center justify-between px-4 lg:px-6 sticky top-0 z-30 w-full overflow-x-hidden">
       {/* 좌측: 햄버거 메뉴 */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4 flex-shrink-0">
         <button
           onClick={onMenuClick}
-          className="lg:hidden p-2 rounded-lg hover:bg-gray-100"
+          className="lg:hidden p-2 rounded-lg hover:bg-gray-100 flex-shrink-0"
         >
           <Menu className="w-5 h-5" />
         </button>
       </div>
 
       {/* 우측: 크레딧 & 프로필 */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
         {/* 크레딧 표시 - Active한 느낌 */}
         {credits && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 md:gap-2 flex-shrink-0">
             {/* 크레딧 - 밝은 색상으로 Active 느낌 */}
-            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 border border-green-200 rounded-lg">
-              <CreditCard className="w-4 h-4 text-green-600" />
-              <span className="text-sm font-bold text-green-700">{credits.total_remaining.toLocaleString()}</span>
+            <div className="flex items-center gap-1 md:gap-1.5 px-2 md:px-3 py-1.5 bg-green-50 border border-green-200 rounded-lg flex-shrink-0">
+              <CreditCard className="w-3 h-3 md:w-4 md:h-4 text-green-600" />
+              <span className="text-xs md:text-sm font-bold text-green-700 whitespace-nowrap">{credits.total_remaining.toLocaleString()}</span>
             </div>
             
             {/* 티어 배지 */}
             <div className={cn(
-              "flex items-center gap-1.5 px-3 py-1.5 text-white rounded-lg font-semibold text-sm",
+              "flex items-center gap-1 md:gap-1.5 px-2 md:px-3 py-1.5 text-white rounded-lg font-semibold text-xs md:text-sm flex-shrink-0",
               tierInfo.color
             )}>
-              <Crown className="w-4 h-4" />
-              <span className="hidden sm:inline">{tierInfo.label}</span>
+              <Crown className="w-3 h-3 md:w-4 md:h-4" />
+              <span className="hidden sm:inline whitespace-nowrap">{tierInfo.label}</span>
             </div>
           </div>
         )}
 
         {/* 알림 */}
         <button
-          className="relative p-2 rounded-lg hover:bg-gray-100"
+          className="relative p-2 rounded-lg hover:bg-gray-100 flex-shrink-0"
         >
           <Bell className="w-5 h-5 text-gray-600" />
           <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full"></span>
@@ -153,9 +153,9 @@ export const TopMenu = memo(function TopMenu({ onMenuClick }: TopMenuProps) {
 
         {/* 프로필 */}
         <button
-          className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-100"
+          className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-100 flex-shrink-0"
         >
-          <div className="w-8 h-8 rounded-full bg-black flex items-center justify-center">
+          <div className="w-8 h-8 rounded-full bg-black flex items-center justify-center flex-shrink-0">
             <User className="w-4 h-4 text-white" />
           </div>
         </button>
@@ -163,7 +163,7 @@ export const TopMenu = memo(function TopMenu({ onMenuClick }: TopMenuProps) {
         {/* 로그아웃 */}
         <button
           onClick={handleLogout}
-          className="p-2 rounded-lg hover:bg-red-50 text-red-600"
+          className="p-2 rounded-lg hover:bg-red-50 text-red-600 flex-shrink-0"
           title="로그아웃"
         >
           <LogOut className="w-5 h-5" />

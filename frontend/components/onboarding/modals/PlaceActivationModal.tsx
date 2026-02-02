@@ -221,60 +221,57 @@ export default function PlaceActivationModal({ isOpen, onClose, onComplete }: Pl
 
   // Step 1: 환영 메시지
   const renderStep1 = () => (
-    <div className="space-y-3 md:space-y-4">
+    <div className="space-y-2">
       <div className="text-center">
-        <div className="w-16 h-16 md:w-20 md:h-20 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <Activity className="w-8 h-8 md:w-10 md:h-10 text-primary-500" />
-        </div>
-        <h3 className="text-xl md:text-2xl font-bold text-neutral-900 mb-2 leading-tight">
+        <h3 className="text-base md:text-lg font-bold text-neutral-900 mb-1 leading-tight">
           플레이스 활성화<br className="md:hidden" /> 확인하기
         </h3>
-        <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
+        <p className="text-[11px] md:text-xs text-neutral-600 leading-snug">
           우리 매장이 활성화된 플레이스라는 것을<br />
           지속적으로 시그널을 만들어야 순위를 올릴 수 있습니다
         </p>
       </div>
 
-      <div className="bg-gradient-to-br from-primary-50 to-blue-50 rounded-xl p-4 md:p-6 border border-primary-200">
-        <div className="space-y-4">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 bg-primary-500 rounded-button flex items-center justify-center flex-shrink-0">
-              <TrendingUp className="w-5 h-5 text-white" />
+      <div className="bg-gradient-to-br from-emerald-50 to-blue-50 rounded-lg p-2.5 md:p-3 border border-primary-200">
+        <div className="space-y-1.5">
+          <div className="flex items-start gap-2">
+            <div className="w-7 h-7 bg-emerald-600 rounded flex items-center justify-center flex-shrink-0">
+              <TrendingUp className="w-3.5 h-3.5 text-white" />
             </div>
             <div>
-              <p className="text-sm md:text-base font-bold text-neutral-900 mb-1">최근 활성화 수준 확인</p>
-              <p className="text-xs md:text-sm text-neutral-600">리뷰, 프로모션, 공지사항 등 5가지 핵심 지표를 확인하세요</p>
+              <p className="text-xs md:text-sm font-bold text-neutral-900 mb-0">최근 활성화 수준 확인</p>
+              <p className="text-[10px] md:text-xs text-neutral-600 leading-snug">리뷰, 프로모션, 공지사항 등 5가지 핵심 지표를 확인하세요</p>
             </div>
           </div>
           
           <div className="border-t border-primary-200" />
           
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 bg-info rounded-button flex items-center justify-center flex-shrink-0">
-              <Activity className="w-5 h-5 text-white" />
+          <div className="flex items-start gap-2">
+            <div className="w-7 h-7 bg-info rounded flex items-center justify-center flex-shrink-0">
+              <Activity className="w-3.5 h-3.5 text-white" />
             </div>
             <div>
-              <p className="text-sm md:text-base font-bold text-neutral-900 mb-1">개선이 필요한 부분 파악</p>
-              <p className="text-xs md:text-sm text-neutral-600">우리 매장에 뭐가 더 필요한지를 수시로 판단하세요</p>
+              <p className="text-xs md:text-sm font-bold text-neutral-900 mb-0">개선이 필요한 부분 파악</p>
+              <p className="text-[10px] md:text-xs text-neutral-600 leading-snug">우리 매장에 뭐가 더 필요한지를 수시로 판단하세요</p>
             </div>
           </div>
           
           <div className="border-t border-primary-200" />
           
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 bg-success rounded-button flex items-center justify-center flex-shrink-0">
-              <CheckCircle2 className="w-5 h-5 text-white" />
+          <div className="flex items-start gap-2">
+            <div className="w-7 h-7 bg-success rounded flex items-center justify-center flex-shrink-0">
+              <CheckCircle2 className="w-3.5 h-3.5 text-white" />
             </div>
             <div>
-              <p className="text-sm md:text-base font-bold text-neutral-900 mb-1">과거 이력 자동 저장</p>
-              <p className="text-xs md:text-sm text-neutral-600">분석 결과는 자동으로 저장되어 변화 추이를 확인할 수 있습니다</p>
+              <p className="text-xs md:text-sm font-bold text-neutral-900 mb-0">과거 이력 자동 저장</p>
+              <p className="text-[10px] md:text-xs text-neutral-600 leading-snug">분석 결과는 자동으로 저장되어 변화 추이를 확인할 수 있습니다</p>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="bg-info-bg rounded-xl p-3 md:p-4 border border-info/30">
-        <p className="text-xs md:text-sm text-neutral-700">
+      <div className="bg-info-bg rounded-lg p-2 md:p-2.5 border border-info/30">
+        <p className="text-[10px] md:text-xs text-neutral-700 leading-snug">
           💡 <strong>TIP:</strong> 정기적으로 활성화 수준을 확인하고 개선 활동을 이어가면 플레이스 순위 상승에 도움이 됩니다!
         </p>
       </div>
@@ -338,7 +335,7 @@ export default function PlaceActivationModal({ isOpen, onClose, onComplete }: Pl
   const renderStep3 = () => (
     <div className="text-center py-8 md:py-12">
       <div className="relative inline-block mb-6">
-        <Loader2 className="w-16 h-16 md:w-20 md:h-20 animate-spin text-primary-500 mx-auto" />
+        <Loader2 className="w-16 h-16 md:w-20 md:h-20 animate-spin text-emerald-600 mx-auto" />
         <Activity className="w-6 h-6 md:w-8 md:h-8 text-primary-400 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
       </div>
       <h3 className="text-xl md:text-2xl font-bold text-neutral-900 mb-3 leading-tight">
@@ -348,7 +345,7 @@ export default function PlaceActivationModal({ isOpen, onClose, onComplete }: Pl
         잠시만 기다려주세요
       </p>
       <div className="w-full max-w-md mx-auto h-2 bg-neutral-200 rounded-full overflow-hidden">
-        <div className="h-full bg-primary-500 animate-pulse" style={{ width: '100%' }} />
+        <div className="h-full bg-emerald-600 animate-pulse" style={{ width: '100%' }} />
       </div>
     </div>
   )
@@ -473,6 +470,7 @@ export default function PlaceActivationModal({ isOpen, onClose, onComplete }: Pl
       isOpen={isOpen}
       onClose={handleClose}
       title="플레이스 활성화 확인하기"
+      icon={TrendingUp}
       currentStep={currentStep}
       totalSteps={totalSteps}
       onBack={handleBack}

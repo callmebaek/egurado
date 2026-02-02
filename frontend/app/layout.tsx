@@ -123,7 +123,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko">
+    <html lang="ko" className="overflow-x-hidden" style={{ maxWidth: '100vw', width: '100%' }} suppressHydrationWarning>
       <head>
         <ColorSchemeScript />
         {/* 추가 SEO 태그 */}
@@ -153,7 +153,9 @@ export default function RootLayout({
         />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${notoSansKR.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${notoSansKR.variable} antialiased overflow-x-hidden`}
+        style={{ maxWidth: '100vw', width: '100%' }}
+        suppressHydrationWarning
       >
         <MantineProvider>
           <AuthProvider>

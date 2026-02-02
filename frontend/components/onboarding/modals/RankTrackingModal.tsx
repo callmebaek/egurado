@@ -3,12 +3,10 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
-  TrendingUp, 
-  Search, 
-  Clock, 
   CheckCircle2,
   Sparkles,
   Loader2,
+  BarChart3,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { api } from '@/lib/config';
@@ -330,9 +328,6 @@ export function RankTrackingModal({ isOpen, onClose, onComplete }: RankTrackingM
   const renderStep1 = () => (
     <div className="space-y-4 md:space-y-5">
       <div className="text-center space-y-2 mb-4 md:mb-5">
-        <div className="w-12 h-12 rounded-full bg-primary-100 flex items-center justify-center mx-auto mb-2">
-          <TrendingUp className="w-6 h-6 text-primary-500" />
-        </div>
         <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
           어떤 매장의 순위를 추적할까요?
         </h3>
@@ -362,9 +357,6 @@ export function RankTrackingModal({ isOpen, onClose, onComplete }: RankTrackingM
   const renderStep2 = () => (
     <div className="space-y-4 md:space-y-5">
       <div className="text-center space-y-2 mb-4 md:mb-5">
-        <div className="w-12 h-12 rounded-full bg-primary-100 flex items-center justify-center mx-auto mb-2">
-          <Search className="w-6 h-6 text-primary-500" />
-        </div>
         <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
           추적할 키워드를 선택해주세요
         </h3>
@@ -378,7 +370,7 @@ export function RankTrackingModal({ isOpen, onClose, onComplete }: RankTrackingM
           <Card
             className={`cursor-pointer transition-all duration-200 hover:shadow-card-hover ${
               !showCustomInput
-                ? 'border-primary-500 bg-primary-50 ring-2 ring-primary-500/20'
+                ? 'border-emerald-600 bg-emerald-50 ring-2 ring-emerald-600/20'
                 : 'border-neutral-200 hover:border-primary-300'
             }`}
             onClick={() => setShowCustomInput(false)}
@@ -397,7 +389,7 @@ export function RankTrackingModal({ isOpen, onClose, onComplete }: RankTrackingM
                   </div>
                 </div>
                 {!showCustomInput && (
-                  <div className="flex-shrink-0 w-7 h-7 rounded-full bg-primary-500 flex items-center justify-center">
+                  <div className="flex-shrink-0 w-7 h-7 rounded-full bg-emerald-600 flex items-center justify-center">
                     <CheckCircle2 className="w-4 h-4 text-white" />
                   </div>
                 )}
@@ -408,7 +400,7 @@ export function RankTrackingModal({ isOpen, onClose, onComplete }: RankTrackingM
           <Card
             className={`cursor-pointer transition-all duration-200 hover:shadow-card-hover ${
               showCustomInput
-                ? 'border-primary-500 bg-primary-50 ring-2 ring-primary-500/20'
+                ? 'border-emerald-600 bg-emerald-50 ring-2 ring-emerald-600/20'
                 : 'border-neutral-200 hover:border-primary-300'
             }`}
             onClick={() => setShowCustomInput(true)}
@@ -427,7 +419,7 @@ export function RankTrackingModal({ isOpen, onClose, onComplete }: RankTrackingM
                   </div>
                 </div>
                 {showCustomInput && (
-                  <div className="flex-shrink-0 w-7 h-7 rounded-full bg-primary-500 flex items-center justify-center">
+                  <div className="flex-shrink-0 w-7 h-7 rounded-full bg-emerald-600 flex items-center justify-center">
                     <CheckCircle2 className="w-4 h-4 text-white" />
                   </div>
                 )}
@@ -440,7 +432,7 @@ export function RankTrackingModal({ isOpen, onClose, onComplete }: RankTrackingM
       {!showCustomInput ? (
         loadingKeywords ? (
           <div className="flex items-center justify-center py-8">
-            <Loader2 className="w-8 h-8 text-primary-500 animate-spin" />
+            <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
           </div>
         ) : keywordOptions.length > 0 ? (
           <Card className="border-neutral-200 shadow-sm">
@@ -452,7 +444,7 @@ export function RankTrackingModal({ isOpen, onClose, onComplete }: RankTrackingM
                     key={index}
                     variant={selectedKeyword === option.keyword ? 'default' : 'outline'}
                     className={`text-xs cursor-pointer transition-colors ${
-                      selectedKeyword === option.keyword ? 'bg-primary-500 text-white' : 'hover:bg-primary-100'
+                      selectedKeyword === option.keyword ? 'bg-emerald-600 text-white' : 'hover:bg-primary-100'
                     }`}
                     onClick={() => setSelectedKeyword(option.keyword)}
                   >
@@ -494,9 +486,6 @@ export function RankTrackingModal({ isOpen, onClose, onComplete }: RankTrackingM
   const renderStep3 = () => (
     <div className="space-y-4 md:space-y-5">
       <div className="text-center space-y-2 mb-4 md:mb-5">
-        <div className="w-12 h-12 rounded-full bg-primary-100 flex items-center justify-center mx-auto mb-2">
-          <Clock className="w-6 h-6 text-primary-500" />
-        </div>
         <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
           하루에 몇 번 순위를 확인할까요?
         </h3>
@@ -515,7 +504,7 @@ export function RankTrackingModal({ isOpen, onClose, onComplete }: RankTrackingM
             key={option.value}
             className={`cursor-pointer transition-all duration-200 hover:shadow-card-hover ${
               updateFrequency === option.value
-                ? 'border-primary-500 bg-primary-50 ring-2 ring-primary-500/20'
+                ? 'border-emerald-600 bg-emerald-50 ring-2 ring-emerald-600/20'
                 : 'border-neutral-200 hover:border-primary-300'
             }`}
             onClick={() => setUpdateFrequency(option.value as any)}
@@ -527,7 +516,7 @@ export function RankTrackingModal({ isOpen, onClose, onComplete }: RankTrackingM
                   <p className="text-xs md:text-sm text-neutral-600">{option.desc}</p>
                 </div>
                 {updateFrequency === option.value && (
-                  <div className="flex-shrink-0 w-7 h-7 rounded-full bg-primary-500 flex items-center justify-center">
+                  <div className="flex-shrink-0 w-7 h-7 rounded-full bg-emerald-600 flex items-center justify-center">
                     <CheckCircle2 className="w-4 h-4 text-white" />
                   </div>
                 )}
@@ -558,9 +547,6 @@ export function RankTrackingModal({ isOpen, onClose, onComplete }: RankTrackingM
     return (
       <div className="space-y-4 md:space-y-5">
         <div className="text-center space-y-2 mb-4 md:mb-5">
-          <div className="w-12 h-12 rounded-full bg-primary-100 flex items-center justify-center mx-auto mb-2">
-            <CheckCircle2 className="w-6 h-6 text-primary-500" />
-          </div>
           <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
             설정을 확인해주세요
           </h3>
@@ -630,7 +616,7 @@ export function RankTrackingModal({ isOpen, onClose, onComplete }: RankTrackingM
           설정한 시간에 자동으로 순위를 수집합니다
         </p>
 
-        <Card className="bg-gradient-to-br from-primary-50 to-indigo-50 border-primary-200 shadow-sm p-4 md:p-5">
+        <Card className="bg-gradient-to-br from-emerald-50 to-indigo-50 border-primary-200 shadow-sm p-4 md:p-5">
           <p className="text-sm md:text-base text-neutral-700 leading-relaxed">
             💡 키워드 순위추적 페이지에서<br />
             실시간 순위와 변화 추이를 확인하세요!
@@ -662,6 +648,7 @@ export function RankTrackingModal({ isOpen, onClose, onComplete }: RankTrackingM
       isOpen={isOpen}
       onClose={handleClose}
       title="플레이스 순위 추적하기"
+      icon={BarChart3}
       currentStep={currentStep}
       totalSteps={totalSteps}
       onBack={handleBack}

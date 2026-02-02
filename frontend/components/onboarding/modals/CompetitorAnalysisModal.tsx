@@ -243,7 +243,7 @@ export default function CompetitorAnalysisModal({
           <Card
             className={`cursor-pointer transition-all duration-200 hover:shadow-card-hover ${
               keywordMode === 'history'
-                ? 'border-primary-500 bg-primary-50 ring-2 ring-primary-500/20'
+                ? 'border-emerald-600 bg-emerald-50 ring-2 ring-emerald-600/20'
                 : 'border-neutral-200 hover:border-primary-300'
             }`}
             onClick={() => setKeywordMode('history')}
@@ -262,7 +262,7 @@ export default function CompetitorAnalysisModal({
                   </div>
                 </div>
                 {keywordMode === 'history' && (
-                  <div className="flex-shrink-0 w-7 h-7 rounded-full bg-primary-500 flex items-center justify-center">
+                  <div className="flex-shrink-0 w-7 h-7 rounded-full bg-emerald-600 flex items-center justify-center">
                     <CheckCircle2 className="w-4 h-4 text-white" />
                   </div>
                 )}
@@ -273,7 +273,7 @@ export default function CompetitorAnalysisModal({
           <Card
             className={`cursor-pointer transition-all duration-200 hover:shadow-card-hover ${
               keywordMode === 'manual'
-                ? 'border-primary-500 bg-primary-50 ring-2 ring-primary-500/20'
+                ? 'border-emerald-600 bg-emerald-50 ring-2 ring-emerald-600/20'
                 : 'border-neutral-200 hover:border-primary-300'
             }`}
             onClick={() => setKeywordMode('manual')}
@@ -292,7 +292,7 @@ export default function CompetitorAnalysisModal({
                   </div>
                 </div>
                 {keywordMode === 'manual' && (
-                  <div className="flex-shrink-0 w-7 h-7 rounded-full bg-primary-500 flex items-center justify-center">
+                  <div className="flex-shrink-0 w-7 h-7 rounded-full bg-emerald-600 flex items-center justify-center">
                     <CheckCircle2 className="w-4 h-4 text-white" />
                   </div>
                 )}
@@ -371,9 +371,6 @@ export default function CompetitorAnalysisModal({
     return (
       <div className="space-y-4 md:space-y-5">
         <div className="text-center space-y-2 mb-4 md:mb-5">
-          <div className="w-16 h-16 md:w-20 md:h-20 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-full flex items-center justify-center mx-auto mb-3">
-            <Users className="w-8 h-8 md:w-10 md:h-10 text-white" />
-          </div>
           <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
             지금 바로 분석을 시작할까요?
           </h3>
@@ -448,6 +445,7 @@ export default function CompetitorAnalysisModal({
       isOpen={isOpen}
       onClose={handleClose}
       title="경쟁매장 분석"
+      icon={Users}
       currentStep={currentStep}
       totalSteps={totalSteps}
       onBack={handleBack}

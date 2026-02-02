@@ -324,9 +324,6 @@ export default function TargetKeywordsModal({
     return (
       <div className="space-y-3 md:space-y-4">
         <div className="text-center space-y-2">
-          <div className="w-12 h-12 md:w-16 md:h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-3">
-            <Target className="w-6 h-6 md:w-8 md:h-8 text-primary-500" />
-          </div>
           <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
             어떤 매장의 타겟 키워드를 찾을까요?
           </h3>
@@ -355,9 +352,6 @@ export default function TargetKeywordsModal({
   const renderStep2 = () => (
     <div className="space-y-3 md:space-y-4">
       <div className="text-center space-y-2">
-        <div className="w-12 h-12 md:w-16 md:h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-3">
-          <MapPin className="w-6 h-6 md:w-8 md:h-8 text-primary-500" />
-        </div>
         <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
           매장 주변 지역명을 알려주세요
         </h3>
@@ -387,9 +381,6 @@ export default function TargetKeywordsModal({
   const renderStep3 = () => (
     <div className="space-y-3 md:space-y-4">
       <div className="text-center space-y-2">
-        <div className="w-12 h-12 md:w-16 md:h-16 bg-warning-bg rounded-full flex items-center justify-center mx-auto mb-3">
-          <Sparkles className="w-6 h-6 md:w-8 md:h-8 text-warning" />
-        </div>
         <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
           근처에 유명한 장소가 있나요?
         </h3>
@@ -413,9 +404,6 @@ export default function TargetKeywordsModal({
   const renderStep4 = () => (
     <div className="space-y-3 md:space-y-4">
       <div className="text-center space-y-2">
-        <div className="w-12 h-12 md:w-16 md:h-16 bg-success-bg rounded-full flex items-center justify-center mx-auto mb-3">
-          <Target className="w-6 h-6 md:w-8 md:h-8 text-success" />
-        </div>
         <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
           어떤 메뉴나 상품을 판매하시나요?
         </h3>
@@ -445,9 +433,6 @@ export default function TargetKeywordsModal({
   const renderStep5 = () => (
     <div className="space-y-3 md:space-y-4">
       <div className="text-center space-y-2">
-        <div className="w-12 h-12 md:w-16 md:h-16 bg-info-bg rounded-full flex items-center justify-center mx-auto mb-3">
-          <Target className="w-6 h-6 md:w-8 md:h-8 text-info" />
-        </div>
         <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
           어떤 업종인가요?
         </h3>
@@ -477,9 +462,6 @@ export default function TargetKeywordsModal({
   const renderStep6 = () => (
     <div className="space-y-3 md:space-y-4">
       <div className="text-center space-y-2">
-        <div className="w-12 h-12 md:w-16 md:h-16 bg-brand-red/10 rounded-full flex items-center justify-center mx-auto mb-3">
-          <Sparkles className="w-6 h-6 md:w-8 md:h-8 text-brand-red" />
-        </div>
         <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
           추가로 강조하고 싶은 특징이 있나요?
         </h3>
@@ -498,7 +480,7 @@ export default function TargetKeywordsModal({
       />
 
       {/* 입력 요약 */}
-      <div className="bg-primary-50 border-2 border-primary-500/30 rounded-xl p-3 md:p-4">
+      <div className="bg-emerald-50 border-2 border-emerald-600/30 rounded-xl p-3 md:p-4">
         <p className="text-sm md:text-base text-neutral-900 font-bold mb-3 leading-tight">
           ✨ 입력 내용 요약
         </p>
@@ -523,7 +505,7 @@ export default function TargetKeywordsModal({
   const renderStep7 = () => (
     <div className="text-center py-8 md:py-12">
       <div className="relative inline-block mb-6">
-        <Loader2 className="w-16 h-16 md:w-20 md:h-20 animate-spin text-primary-500 mx-auto" />
+        <Loader2 className="w-16 h-16 md:w-20 md:h-20 animate-spin text-emerald-600 mx-auto" />
         <Target className="w-6 h-6 md:w-8 md:h-8 text-primary-400 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
       </div>
       <h3 className="text-xl md:text-2xl font-bold text-neutral-900 mb-3 leading-tight">
@@ -552,11 +534,11 @@ export default function TargetKeywordsModal({
           분석 완료! 🎉
         </h3>
         <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
-          타겟 키워드 <span className="font-bold text-primary-500">{totalKeywords}개</span>를 찾았어요!
+          타겟 키워드 <span className="font-bold text-emerald-600">{totalKeywords}개</span>를 찾았어요!
         </p>
       </div>
 
-      <div className="bg-gradient-to-br from-primary-50 to-blue-50 rounded-xl p-4 md:p-6 border-2 border-primary-500/30">
+      <div className="bg-gradient-to-br from-emerald-50 to-blue-50 rounded-xl p-4 md:p-6 border-2 border-emerald-600/30">
         <div className="grid grid-cols-2 gap-4 text-center">
           <div>
             <p className="text-xs md:text-sm font-bold text-neutral-600 mb-1">선택한 매장</p>
@@ -564,7 +546,7 @@ export default function TargetKeywordsModal({
           </div>
           <div>
             <p className="text-xs md:text-sm font-bold text-neutral-600 mb-1">추출된 키워드</p>
-            <p className="text-2xl md:text-3xl font-extrabold text-primary-500">{totalKeywords}개</p>
+            <p className="text-2xl md:text-3xl font-extrabold text-emerald-600">{totalKeywords}개</p>
           </div>
         </div>
       </div>
@@ -645,6 +627,7 @@ export default function TargetKeywordsModal({
       isOpen={isOpen}
       onClose={onClose}
       title="타겟키워드 설정하기"
+      icon={Target}
       currentStep={currentStep}
       totalSteps={totalSteps}
       onBack={handleBack}

@@ -241,7 +241,7 @@ export default function StoreDirectionsModal({ isOpen, onClose, onComplete }: St
 
       {loadingStores ? (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
+          <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
         </div>
       ) : stores.length === 0 ? (
         <Alert variant="warning">
@@ -256,7 +256,7 @@ export default function StoreDirectionsModal({ isOpen, onClose, onComplete }: St
               className={cn(
                 "cursor-pointer transition-all duration-200 hover:shadow-card-hover",
                 selectedStore?.id === store.id
-                  ? "border-primary-500 bg-primary-50 ring-2 ring-primary-500/20"
+                  ? "border-emerald-600 bg-emerald-50 ring-2 ring-emerald-600/20"
                   : "border-neutral-200 hover:border-primary-300"
               )}
               onClick={() => setSelectedStore(store)}
@@ -271,7 +271,7 @@ export default function StoreDirectionsModal({ isOpen, onClose, onComplete }: St
                     />
                   ) : (
                     <div className="w-12 h-12 rounded-lg bg-primary-100 flex items-center justify-center">
-                      <StoreIcon className="w-6 h-6 text-primary-500" />
+                      <StoreIcon className="w-6 h-6 text-emerald-600" />
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
@@ -279,7 +279,7 @@ export default function StoreDirectionsModal({ isOpen, onClose, onComplete }: St
                     <p className="text-xs text-neutral-500">네이버 플레이스</p>
                   </div>
                   {selectedStore?.id === store.id && (
-                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary-500 flex items-center justify-center">
+                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center">
                       <CheckCircle2 className="w-5 h-5 text-white" />
                     </div>
                   )}
@@ -314,7 +314,7 @@ export default function StoreDirectionsModal({ isOpen, onClose, onComplete }: St
       <Card className="bg-neutral-50 border-neutral-200 shadow-sm p-4 md:p-5">
         <CardContent className="p-0 space-y-3">
           <div className="flex items-center gap-2">
-            <MapPin className="w-4 h-4 text-primary-500" />
+            <MapPin className="w-4 h-4 text-emerald-600" />
             <p className="text-sm font-bold text-neutral-900">지역 키워드</p>
           </div>
           <Input
@@ -358,7 +358,7 @@ export default function StoreDirectionsModal({ isOpen, onClose, onComplete }: St
       <Card className="bg-neutral-50 border-neutral-200 shadow-sm p-4 md:p-5">
         <CardContent className="p-0 space-y-3">
           <div className="flex items-center gap-2">
-            <Navigation className="w-4 h-4 text-primary-500" />
+            <Navigation className="w-4 h-4 text-emerald-600" />
             <p className="text-sm font-bold text-neutral-900">랜드마크 키워드</p>
             <Badge variant="secondary" className="text-xs">선택</Badge>
           </div>
@@ -431,7 +431,7 @@ export default function StoreDirectionsModal({ isOpen, onClose, onComplete }: St
       <Card className="bg-neutral-50 border-neutral-200 shadow-sm p-4 md:p-5">
         <CardContent className="p-0 space-y-3">
           <div className="flex items-center gap-2">
-            <Navigation className="w-4 h-4 text-primary-500" />
+            <Navigation className="w-4 h-4 text-emerald-600" />
             <p className="text-sm font-bold text-neutral-900">찾아오는길 설명</p>
           </div>
           <Textarea
@@ -463,10 +463,6 @@ export default function StoreDirectionsModal({ isOpen, onClose, onComplete }: St
   // Step 5: 생성 중
   const renderStep5 = () => (
     <div className="text-center py-8 md:py-10 space-y-4 md:space-y-5">
-      <div className="w-16 h-16 md:w-20 md:h-20 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
-        <Sparkles className="w-8 h-8 md:w-10 md:h-10 text-primary-500" />
-      </div>
-      
       <div>
         <h3 className="text-xl md:text-2xl font-bold text-neutral-900 mb-2 leading-tight">
           완벽한 찾아오는길을 만들고 있어요
@@ -476,7 +472,7 @@ export default function StoreDirectionsModal({ isOpen, onClose, onComplete }: St
         </p>
       </div>
 
-      <Loader2 className="w-12 h-12 md:w-16 md:h-16 animate-spin text-primary-500 mx-auto" />
+      <Loader2 className="w-12 h-12 md:w-16 md:h-16 animate-spin text-emerald-600 mx-auto" />
       
       <p className="text-xs text-neutral-500">
         보통 10~15초 정도 소요됩니다
@@ -566,6 +562,7 @@ export default function StoreDirectionsModal({ isOpen, onClose, onComplete }: St
       isOpen={isOpen}
       onClose={handleClose}
       title="찾아오는길 생성"
+      icon={MapPin}
       currentStep={currentStep}
       totalSteps={totalSteps}
       onBack={handleBack}

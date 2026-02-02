@@ -294,7 +294,7 @@ export default function StoreDescriptionModal({ isOpen, onClose, onComplete }: S
       <Card className="bg-neutral-50 border-neutral-200 shadow-sm">
         <CardContent className="p-4 md:p-5 space-y-3">
           <div className="flex items-center gap-2 mb-2">
-            <MapPin className="w-4 h-4 text-primary-500" />
+            <MapPin className="w-4 h-4 text-emerald-600" />
             <p className="text-sm font-bold text-neutral-900">지역 키워드</p>
           </div>
           <Input
@@ -340,7 +340,7 @@ export default function StoreDescriptionModal({ isOpen, onClose, onComplete }: S
       <Card className="bg-neutral-50 border-neutral-200 shadow-sm">
         <CardContent className="p-4 md:p-5 space-y-3">
           <div className="flex items-center gap-2 mb-2">
-            <MapPin className="w-4 h-4 text-primary-500" />
+            <MapPin className="w-4 h-4 text-emerald-600" />
             <p className="text-sm font-bold text-neutral-900">랜드마크 키워드</p>
             <Badge variant="secondary" className="text-xs">선택</Badge>
           </div>
@@ -411,7 +411,7 @@ export default function StoreDescriptionModal({ isOpen, onClose, onComplete }: S
       <Card className="bg-neutral-50 border-neutral-200 shadow-sm">
         <CardContent className="p-4 md:p-5 space-y-3">
           <div className="flex items-center gap-2 mb-2">
-            <Building2 className="w-4 h-4 text-primary-500" />
+            <Building2 className="w-4 h-4 text-emerald-600" />
             <p className="text-sm font-bold text-neutral-900">업종</p>
           </div>
           <Input
@@ -457,7 +457,7 @@ export default function StoreDescriptionModal({ isOpen, onClose, onComplete }: S
       <Card className="bg-neutral-50 border-neutral-200 shadow-sm">
         <CardContent className="p-4 md:p-5 space-y-3">
           <div className="flex items-center gap-2 mb-2">
-            <Package className="w-4 h-4 text-primary-500" />
+            <Package className="w-4 h-4 text-emerald-600" />
             <p className="text-sm font-bold text-neutral-900">상품/서비스 키워드</p>
             <Badge variant="secondary" className="text-xs">선택</Badge>
           </div>
@@ -528,7 +528,7 @@ export default function StoreDescriptionModal({ isOpen, onClose, onComplete }: S
       <Card className="bg-neutral-50 border-neutral-200 shadow-sm">
         <CardContent className="p-4 md:p-5 space-y-3">
           <div className="flex items-center gap-2 mb-2">
-            <Sparkles className="w-4 h-4 text-primary-500" />
+            <Sparkles className="w-4 h-4 text-emerald-600" />
             <p className="text-sm font-bold text-neutral-900">매장 특색</p>
           </div>
           <Textarea
@@ -564,9 +564,7 @@ export default function StoreDescriptionModal({ isOpen, onClose, onComplete }: S
   const renderStep7 = () => (
     <div className="space-y-4 md:space-y-5">
       <div className="text-center py-8 md:py-12">
-        <div className="w-16 h-16 md:w-20 md:h-20 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
-          <Loader2 className="w-8 h-8 md:w-10 md:h-10 text-primary-500 animate-spin" />
-        </div>
+        <Loader2 className="w-12 h-12 md:w-16 md:h-16 text-emerald-600 animate-spin mx-auto mb-4" />
         <h3 className="text-xl md:text-2xl font-bold text-neutral-900 mb-2 leading-tight">
           AI가 업체소개글을 작성중입니다
         </h3>
@@ -652,6 +650,7 @@ export default function StoreDescriptionModal({ isOpen, onClose, onComplete }: S
       isOpen={isOpen}
       onClose={handleClose}
       title="업체소개글 작성"
+      icon={Sparkles}
       currentStep={currentStep}
       totalSteps={totalSteps}
       onBack={handleBack}

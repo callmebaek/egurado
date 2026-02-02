@@ -7,7 +7,8 @@ import {
   Search, 
   CheckCircle2,
   Sparkles,
-  Loader2
+  Loader2,
+  Key
 } from 'lucide-react';
 import { api } from '@/lib/config';
 import { useRouter } from 'next/navigation';
@@ -159,53 +160,50 @@ export default function MainKeywordsModal({ isOpen, onClose, onComplete }: MainK
 
   // Step 1: 환영 및 설명
   const renderStep1 = () => (
-    <div className="space-y-4 md:space-y-5">
-      <div className="text-center space-y-2 mb-4 md:mb-5">
-        <div className="w-16 h-16 md:w-20 md:h-20 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-full flex items-center justify-center mx-auto mb-3">
-          <Star className="w-8 h-8 md:w-10 md:h-10 text-white" />
-        </div>
+    <div className="space-y-1.5 md:space-y-2">
+      <div className="text-center space-y-1 mb-1.5">
         <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
           대표키워드를 분석해보세요
         </h3>
-        <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
+        <p className="text-[11px] md:text-xs text-neutral-600 leading-snug">
           경쟁 매장들이 어떤 키워드로 노출되는지<br />
           한눈에 파악할 수 있습니다
         </p>
       </div>
 
-      <Card className="bg-neutral-50 border-neutral-200 shadow-sm p-4 md:p-5">
-        <CardContent className="p-0 space-y-3 md:space-y-4">
-          <div className="flex gap-3">
-            <div className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-purple-500 text-white flex items-center justify-center font-bold text-sm flex-shrink-0">
+      <Card className="bg-neutral-50 border-neutral-200 shadow-sm p-2.5 md:p-3">
+        <CardContent className="p-0 space-y-1.5">
+          <div className="flex gap-2">
+            <div className="w-7 h-7 rounded-full bg-purple-500 text-white flex items-center justify-center font-bold text-[11px] flex-shrink-0">
               1
             </div>
             <div className="flex-1">
-              <p className="text-sm md:text-base font-bold text-neutral-900 mb-1">경쟁 상황 파악</p>
-              <p className="text-xs md:text-sm text-neutral-600 leading-relaxed">
+              <p className="text-xs md:text-sm font-bold text-neutral-900 mb-0">경쟁 상황 파악</p>
+              <p className="text-[10px] md:text-xs text-neutral-600 leading-snug">
                 상위 15개 매장이 어떤 키워드로 노출되는지 확인하세요
               </p>
             </div>
           </div>
 
-          <div className="flex gap-3">
-            <div className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-purple-500 text-white flex items-center justify-center font-bold text-sm flex-shrink-0">
+          <div className="flex gap-2">
+            <div className="w-7 h-7 rounded-full bg-purple-500 text-white flex items-center justify-center font-bold text-[11px] flex-shrink-0">
               2
             </div>
             <div className="flex-1">
-              <p className="text-sm md:text-base font-bold text-neutral-900 mb-1">SEO 전략 수립</p>
-              <p className="text-xs md:text-sm text-neutral-600 leading-relaxed">
+              <p className="text-xs md:text-sm font-bold text-neutral-900 mb-0">SEO 전략 수립</p>
+              <p className="text-[10px] md:text-xs text-neutral-600 leading-snug">
                 효과적인 키워드를 발견하고 내 매장에 적용하세요
               </p>
             </div>
           </div>
 
-          <div className="flex gap-3">
-            <div className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-purple-500 text-white flex items-center justify-center font-bold text-sm flex-shrink-0">
+          <div className="flex gap-2">
+            <div className="w-7 h-7 rounded-full bg-purple-500 text-white flex items-center justify-center font-bold text-[11px] flex-shrink-0">
               3
             </div>
             <div className="flex-1">
-              <p className="text-sm md:text-base font-bold text-neutral-900 mb-1">트렌드 분석</p>
-              <p className="text-xs md:text-sm text-neutral-600 leading-relaxed">
+              <p className="text-xs md:text-sm font-bold text-neutral-900 mb-0">트렌드 분석</p>
+              <p className="text-[10px] md:text-xs text-neutral-600 leading-snug">
                 가장 많이 사용되는 대표키워드 트렌드를 파악하세요
               </p>
             </div>
@@ -213,12 +211,12 @@ export default function MainKeywordsModal({ isOpen, onClose, onComplete }: MainK
         </CardContent>
       </Card>
 
-      <Alert variant="info" className="p-3 md:p-4">
-        <Sparkles className="w-4 h-4 text-info-500" />
-        <AlertTitle className="text-sm md:text-base font-bold text-neutral-900">
+      <Alert variant="info" className="p-2 md:p-2.5">
+        <Sparkles className="w-3.5 h-3.5 text-info-500" />
+        <AlertTitle className="text-xs md:text-sm font-bold text-neutral-900">
           💡 Tip
         </AlertTitle>
-        <AlertDescription className="text-xs md:text-sm text-neutral-600">
+        <AlertDescription className="text-[10px] md:text-xs text-neutral-600 leading-snug">
           "강남맛집", "홍대카페" 같은 지역+업종 키워드로 검색하면 가장 정확한 결과를 얻을 수 있어요!
         </AlertDescription>
       </Alert>
@@ -227,8 +225,8 @@ export default function MainKeywordsModal({ isOpen, onClose, onComplete }: MainK
 
   // Step 2: 키워드 입력
   const renderStep2 = () => (
-    <div className="space-y-4 md:space-y-5">
-      <div className="text-center space-y-2 mb-4 md:mb-5">
+    <div className="space-y-2 md:space-y-3">
+      <div className="text-center space-y-2 mb-2 md:mb-3">
         <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
           어떤 키워드를 분석할까요?
         </h3>
@@ -273,7 +271,7 @@ export default function MainKeywordsModal({ isOpen, onClose, onComplete }: MainK
               <Badge
                 key={example}
                 variant="outline"
-                className="cursor-pointer hover:bg-primary-50 hover:border-primary-300 text-xs md:text-sm px-3 py-1"
+                className="cursor-pointer hover:bg-emerald-50 hover:border-primary-300 text-xs md:text-sm px-3 py-1"
                 onClick={() => setKeyword(example)}
               >
                 {example}
@@ -287,7 +285,7 @@ export default function MainKeywordsModal({ isOpen, onClose, onComplete }: MainK
 
   // Step 3: 분석 진행
   const renderStep3 = () => (
-    <div className="text-center py-8 md:py-10 space-y-4 md:space-y-5">
+    <div className="text-center py-4 md:py-5 space-y-2 md:space-y-3">
       <div className="relative inline-block mb-4">
         <Loader2 className="w-16 h-16 md:w-20 md:h-20 animate-spin text-purple-500 mx-auto" />
         <Search className="w-6 h-6 md:w-8 md:h-8 text-purple-400 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
@@ -324,7 +322,7 @@ export default function MainKeywordsModal({ isOpen, onClose, onComplete }: MainK
     if (!result) return null;
 
     return (
-      <div className="space-y-4 md:space-y-5">
+      <div className="space-y-2 md:space-y-3">
         <div className="text-center">
           <div className="w-16 h-16 md:w-20 md:h-20 bg-success-bg rounded-full flex items-center justify-center mx-auto mb-4">
             <CheckCircle2 className="w-8 h-8 md:w-10 md:h-10 text-success" />
@@ -404,6 +402,7 @@ export default function MainKeywordsModal({ isOpen, onClose, onComplete }: MainK
       isOpen={isOpen}
       onClose={handleClose}
       title="대표키워드 분석"
+      icon={Key}
       currentStep={currentStep}
       totalSteps={totalSteps}
       onBack={handleBack}

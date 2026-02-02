@@ -68,12 +68,12 @@ export default function KeywordInput({
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           disabled={isMaxReached}
-          className="flex-1 h-11 md:h-12 px-4 text-sm md:text-base border-2 border-neutral-300 rounded-button focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 disabled:bg-neutral-100 disabled:cursor-not-allowed transition-all duration-200"
+          className="flex-1 h-11 md:h-12 px-4 text-sm md:text-base border-2 border-neutral-300 rounded-button focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20 disabled:bg-neutral-100 disabled:cursor-not-allowed transition-all duration-200"
         />
         <button
           onClick={handleAdd}
           disabled={!input.trim() || isMaxReached}
-          className="px-4 h-11 md:h-12 bg-primary-500 text-white font-bold rounded-button hover:bg-primary-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 active:scale-95 flex items-center gap-1 flex-shrink-0"
+          className="px-4 h-11 md:h-12 bg-emerald-600 text-white font-bold rounded-button hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 active:scale-95 flex items-center gap-1 flex-shrink-0 min-w-[88px]"
         >
           <Plus className="w-4 h-4" />
           <span className="hidden sm:inline">추가</span>
@@ -93,12 +93,12 @@ export default function KeywordInput({
           {keywords.map((keyword, index) => (
             <span
               key={index}
-              className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary-50 text-primary-600 rounded text-xs font-normal border border-primary-100 transition-all duration-200 hover:bg-primary-100"
+              className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded text-xs font-normal border border-emerald-100 transition-all duration-200 hover:bg-emerald-100"
             >
               {keyword}
               <button
                 onClick={() => onRemove(index)}
-                className="p-0.5 hover:bg-primary-200 rounded-full transition-colors flex-shrink-0"
+                className="p-0.5 hover:bg-emerald-200 rounded-full transition-colors flex-shrink-0 min-w-[16px] min-h-[16px]"
                 aria-label={`${keyword} 삭제`}
               >
                 <X className="w-3 h-3" />

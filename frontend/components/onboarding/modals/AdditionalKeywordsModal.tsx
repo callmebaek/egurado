@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import {
-  Lightbulb,
   MapPin,
   Package,
   Building2,
@@ -12,7 +11,7 @@ import {
   Monitor,
   Smartphone,
   Loader2,
-  CheckCircle2,
+  Tag,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { api } from '@/lib/config';
@@ -313,55 +312,41 @@ export default function AdditionalKeywordsModal({ isOpen, onClose, onComplete }:
 
   // Step 1: 환영 메시지
   const renderStep1 = () => (
-    <div className="space-y-4 md:space-y-5">
-      <div className="text-center py-4">
-        <div className="w-20 h-20 bg-gradient-to-br from-yellow-100 to-yellow-200 rounded-full flex items-center justify-center mx-auto mb-4">
-          <Lightbulb className="w-10 h-10 text-yellow-600" />
-        </div>
-        <h3 className="text-xl md:text-2xl font-bold text-neutral-900 mb-3 leading-tight">
-          숨은 알짜 키워드를<br />찾아보세요!
+    <div className="space-y-1">
+      <div className="text-center">
+        <h3 className="text-base md:text-lg font-bold text-neutral-900 mb-0.5 leading-tight">
+          숨은 알짜 키워드를 찾아보세요!
         </h3>
-        <p className="text-sm text-neutral-600 leading-relaxed px-4">
-          우리 고객들은 항상 대형키워드로만 움직이지 않습니다.<br />
-          숨은 알짜키워드를 찾기 위해서 다양한 키워드를 고민하고<br />
-          유의미한 검색량을 찾아야 합니다.
+        <p className="text-[11px] md:text-xs text-neutral-600 leading-tight px-4">
+          지역, 상품, 업종을 조합하여 유의미한 검색량을 찾습니다
         </p>
       </div>
 
-      <div className="space-y-3">
+      <div className="grid grid-cols-3 gap-1">
         <Card className="bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-200 shadow-sm">
-          <CardContent className="p-4 flex gap-3">
-            <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
-              <Sparkles className="w-5 h-5 text-blue-600" />
+          <CardContent className="p-1.5 flex flex-col items-center justify-center gap-1 text-center">
+            <div className="w-6 h-6 rounded-lg bg-blue-100 flex items-center justify-center">
+              <Sparkles className="w-3.5 h-3.5 text-blue-600" />
             </div>
-            <div>
-              <p className="text-sm font-bold text-neutral-900 mb-0.5">키워드 조합으로 기회 발굴</p>
-              <p className="text-xs text-neutral-600">지역, 상품, 업종을 조합하여 숨은 키워드를 찾습니다</p>
-            </div>
+            <p className="text-[11px] md:text-xs font-bold text-neutral-900 leading-tight">키워드 조합</p>
           </CardContent>
         </Card>
         
         <Card className="bg-gradient-to-br from-purple-50 to-indigo-50 border-purple-200 shadow-sm">
-          <CardContent className="p-4 flex gap-3">
-            <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center flex-shrink-0">
-              <Search className="w-5 h-5 text-purple-600" />
+          <CardContent className="p-1.5 flex flex-col items-center justify-center gap-1 text-center">
+            <div className="w-6 h-6 rounded-lg bg-purple-100 flex items-center justify-center">
+              <Search className="w-3.5 h-3.5 text-purple-600" />
             </div>
-            <div>
-              <p className="text-sm font-bold text-neutral-900 mb-0.5">실시간 검색량 확인</p>
-              <p className="text-xs text-neutral-600">네이버 검색광고 API로 정확한 검색량을 조회합니다</p>
-            </div>
+            <p className="text-[11px] md:text-xs font-bold text-neutral-900 leading-tight">검색량 확인</p>
           </CardContent>
         </Card>
         
         <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200 shadow-sm">
-          <CardContent className="p-4 flex gap-3">
-            <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
-              <TrendingUp className="w-5 h-5 text-green-600" />
+          <CardContent className="p-1.5 flex flex-col items-center justify-center gap-1 text-center">
+            <div className="w-6 h-6 rounded-lg bg-green-100 flex items-center justify-center">
+              <TrendingUp className="w-3.5 h-3.5 text-green-600" />
             </div>
-            <div>
-              <p className="text-sm font-bold text-neutral-900 mb-0.5">검색 이력 자동 저장</p>
-              <p className="text-xs text-neutral-600">조회한 키워드는 검색 이력에 자동으로 저장됩니다</p>
-            </div>
+            <p className="text-[11px] md:text-xs font-bold text-neutral-900 leading-tight">자동 저장</p>
           </CardContent>
         </Card>
       </div>
@@ -372,9 +357,6 @@ export default function AdditionalKeywordsModal({ isOpen, onClose, onComplete }:
   const renderStep2 = () => (
     <div className="space-y-4 md:space-y-5">
       <div className="text-center space-y-2 mb-4 md:mb-5">
-        <div className="w-12 h-12 rounded-full bg-primary-100 flex items-center justify-center mx-auto mb-2">
-          <MapPin className="w-6 h-6 text-primary-500" />
-        </div>
         <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
           지역 키워드를 입력해주세요
         </h3>
@@ -411,9 +393,6 @@ export default function AdditionalKeywordsModal({ isOpen, onClose, onComplete }:
   const renderStep3 = () => (
     <div className="space-y-4 md:space-y-5">
       <div className="text-center space-y-2 mb-4 md:mb-5">
-        <div className="w-12 h-12 rounded-full bg-primary-100 flex items-center justify-center mx-auto mb-2">
-          <Package className="w-6 h-6 text-primary-500" />
-        </div>
         <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
           상품/서비스 키워드를 입력해주세요
         </h3>
@@ -450,9 +429,6 @@ export default function AdditionalKeywordsModal({ isOpen, onClose, onComplete }:
   const renderStep4 = () => (
     <div className="space-y-4 md:space-y-5">
       <div className="text-center space-y-2 mb-4 md:mb-5">
-        <div className="w-12 h-12 rounded-full bg-primary-100 flex items-center justify-center mx-auto mb-2">
-          <Building2 className="w-6 h-6 text-primary-500" />
-        </div>
         <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
           업종 키워드를 입력해주세요
         </h3>
@@ -489,9 +465,6 @@ export default function AdditionalKeywordsModal({ isOpen, onClose, onComplete }:
   const renderStep5 = () => (
     <div className="space-y-4 md:space-y-5">
       <div className="text-center space-y-2 mb-4 md:mb-5">
-        <div className="w-12 h-12 rounded-full bg-success-bg flex items-center justify-center mx-auto mb-2">
-          <CheckCircle2 className="w-6 h-6 text-success" />
-        </div>
         <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
           총 {combinations.length}개의<br />키워드 조합이 생성되었어요!
         </h3>
@@ -549,7 +522,7 @@ export default function AdditionalKeywordsModal({ isOpen, onClose, onComplete }:
                   key={index}
                   variant={isSelected ? 'default' : 'outline'}
                   className={`text-xs cursor-pointer transition-colors ${
-                    isSelected ? 'bg-primary-500 text-white' : 'hover:bg-primary-100'
+                    isSelected ? 'bg-emerald-600 text-white' : 'hover:bg-primary-100'
                   }`}
                   onClick={() => toggleKeywordSelection(combo)}
                 >
@@ -581,7 +554,7 @@ export default function AdditionalKeywordsModal({ isOpen, onClose, onComplete }:
   const renderStep7 = () => (
     <div className="space-y-4 md:space-y-5">
       <div className="text-center py-12">
-        <Loader2 className="w-12 h-12 text-primary-500 animate-spin mx-auto mb-4" />
+        <Loader2 className="w-12 h-12 text-emerald-600 animate-spin mx-auto mb-4" />
         <h3 className="text-xl font-bold text-neutral-900 mb-2 leading-tight">
           검색량을 조회하고 있어요
         </h3>
@@ -596,9 +569,6 @@ export default function AdditionalKeywordsModal({ isOpen, onClose, onComplete }:
   const renderStep8 = () => (
     <div className="space-y-4 md:space-y-5">
       <div className="text-center space-y-2 mb-4 md:mb-5">
-        <div className="w-12 h-12 rounded-full bg-success-bg flex items-center justify-center mx-auto mb-2">
-          <CheckCircle2 className="w-6 h-6 text-success" />
-        </div>
         <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
           검색량 조회가 완료되었어요!
         </h3>
@@ -676,6 +646,7 @@ export default function AdditionalKeywordsModal({ isOpen, onClose, onComplete }:
       isOpen={isOpen}
       onClose={handleClose}
       title="추가 키워드 찾기"
+      icon={Tag}
       currentStep={currentStep}
       totalSteps={totalSteps}
       onBack={handleBack}

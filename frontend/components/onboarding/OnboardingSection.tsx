@@ -279,17 +279,17 @@ export default function OnboardingSection({ onStoreRegistered }: OnboardingSecti
       {/* 시작하기 섹션 - TurboTax 스타일 */}
       <div className="bg-white rounded-card border border-neutral-300 shadow-card overflow-hidden mb-6">
         {/* 헤더 - Compact */}
-        <div className="bg-brand-red p-3 md:p-4">
-          <div className="flex items-center justify-between flex-wrap gap-3">
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-white" />
-              <h3 className="text-lg md:text-xl font-bold text-white leading-tight">
+        <div className="bg-gradient-to-r from-emerald-100 to-emerald-200 p-2.5 md:p-3">
+          <div className="flex items-center justify-between flex-wrap gap-3 w-full overflow-x-hidden">
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+              <Sparkles className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+              <h3 className="text-lg md:text-xl font-bold text-emerald-900 leading-tight truncate">
                 {isCollapsed ? '빠른 시작 가이드' : '시작하기'}
               </h3>
             </div>
             <button
               onClick={toggleCollapse}
-              className="px-3 py-1.5 bg-white text-brand-red font-bold rounded-button shadow-button hover:bg-neutral-50 hover:shadow-button-hover active:scale-95 transition-all duration-200 text-xs md:text-sm flex items-center gap-1.5"
+              className="px-3 py-1.5 bg-white text-emerald-600 font-bold rounded-button border border-emerald-200 shadow-sm hover:bg-emerald-50 hover:shadow-md active:scale-95 transition-all duration-200 text-xs md:text-sm flex items-center gap-1.5 min-h-[44px] flex-shrink-0"
             >
               {isCollapsed ? (
                 <>
@@ -308,8 +308,8 @@ export default function OnboardingSection({ onStoreRegistered }: OnboardingSecti
 
         {/* 단계별 카드 */}
         {!isCollapsed && (
-          <div className="p-3 md:p-4 lg:p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+          <div className="p-3 md:p-4 lg:p-6 overflow-x-hidden">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 w-full">
               {ONBOARDING_STEPS.map((step) => {
                 const completedCount = step.actions.filter(
                   (action) => progress[action.key]?.completed

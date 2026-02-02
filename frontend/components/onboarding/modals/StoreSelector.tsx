@@ -34,7 +34,7 @@ export default function StoreSelector({
     return (
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <div className="w-12 h-12 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
           <p className="text-sm text-neutral-600">매장 목록을 불러오는 중...</p>
         </div>
       </div>
@@ -69,10 +69,10 @@ export default function StoreSelector({
             <Card
               key={store.id}
               className={cn(
-                "cursor-pointer transition-all duration-200 hover:shadow-card-hover",
+                "cursor-pointer transition-all duration-200 hover:shadow-card-hover min-h-[88px]",
                 isSelected
-                  ? "border-primary-500 bg-primary-50 ring-2 ring-primary-500/20"
-                  : "border-neutral-200 hover:border-primary-300"
+                  ? "border-emerald-600 bg-emerald-50 ring-2 ring-emerald-600/20"
+                  : "border-neutral-200 hover:border-emerald-300"
               )}
               onClick={() => onSelect(store)}
             >
@@ -91,8 +91,8 @@ export default function StoreSelector({
                       }}
                     />
                   ) : (
-                    <div className="w-12 h-12 rounded-lg bg-primary-100 flex items-center justify-center flex-shrink-0">
-                      <StoreIcon className="w-6 h-6 text-primary-500" />
+                    <div className="w-12 h-12 rounded-lg bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                      <StoreIcon className="w-6 h-6 text-emerald-600" />
                     </div>
                   )}
                   
@@ -108,7 +108,7 @@ export default function StoreSelector({
                   
                   {/* 선택 표시 */}
                   {isSelected && (
-                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary-500 flex items-center justify-center">
+                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center">
                       <CheckCircle2 className="w-5 h-5 text-white" />
                     </div>
                   )}

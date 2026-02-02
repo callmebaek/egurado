@@ -214,84 +214,56 @@ export default function ContactModal({ isOpen, onClose, onComplete }: ContactMod
 
   // Step 1: 환영 및 안내
   const renderStep1 = () => (
-    <div className="space-y-4 md:space-y-5">
-      <div className="text-center space-y-2 mb-4 md:mb-5">
-        <div className="w-16 h-16 md:w-20 md:h-20 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-full flex items-center justify-center mx-auto mb-3">
-          <MessageCircle className="w-8 h-8 md:w-10 md:h-10 text-white" />
-        </div>
-        <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
+    <div className="space-y-0.5">
+      <div className="text-center">
+        <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight mb-0.5">
           윕플에 문의하기
         </h3>
-        <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
-          궁금한 점이나 불편한 점, 개선 아이디어 등<br />
+        <p className="text-[11px] md:text-xs text-neutral-600 leading-tight">
           무엇이든 편하게 말씀해주세요!
         </p>
       </div>
 
-      <Card className="bg-neutral-50 border-neutral-200 shadow-sm p-4 md:p-5">
-        <CardContent className="p-0 space-y-3 md:space-y-4">
-          <p className="text-sm md:text-base font-bold text-neutral-900 mb-3">
-            이런 것들을 문의할 수 있어요
-          </p>
-          
-          <div className="space-y-3">
-            <div className="flex items-start gap-3">
-              <div className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-yellow-400 flex items-center justify-center flex-shrink-0">
-                <Lightbulb className="w-5 h-5 text-white" />
+      <Card className="bg-neutral-50 border-neutral-200 shadow-sm p-1.5">
+        <CardContent className="p-0 space-y-0.5">
+          <div className="grid grid-cols-2 gap-1">
+            <div className="flex items-center gap-1.5 p-1 rounded bg-white">
+              <div className="w-5 h-5 rounded-full bg-yellow-400 flex items-center justify-center flex-shrink-0">
+                <Lightbulb className="w-2.5 h-2.5 text-white" />
               </div>
-              <div className="flex-1">
-                <p className="text-sm md:text-base font-bold text-neutral-900 mb-0.5">💡 기능 제안</p>
-                <p className="text-xs md:text-sm text-neutral-600 leading-relaxed">
-                  "이런 기능이 있으면 좋겠어요!"
-                </p>
-              </div>
+              <p className="text-xs font-bold text-neutral-900 leading-tight">💡 기능 제안</p>
             </div>
 
-            <div className="flex items-start gap-3">
-              <div className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-red-500 flex items-center justify-center flex-shrink-0">
-                <Bug className="w-5 h-5 text-white" />
+            <div className="flex items-center gap-1.5 p-1 rounded bg-white">
+              <div className="w-5 h-5 rounded-full bg-red-500 flex items-center justify-center flex-shrink-0">
+                <Bug className="w-2.5 h-2.5 text-white" />
               </div>
-              <div className="flex-1">
-                <p className="text-sm md:text-base font-bold text-neutral-900 mb-0.5">🐛 버그 리포트</p>
-                <p className="text-xs md:text-sm text-neutral-600 leading-relaxed">
-                  "이 부분이 제대로 작동하지 않아요"
-                </p>
-              </div>
+              <p className="text-xs font-bold text-neutral-900 leading-tight">🐛 버그 리포트</p>
             </div>
 
-            <div className="flex items-start gap-3">
-              <div className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-cyan-500 flex items-center justify-center flex-shrink-0">
-                <MessageSquare className="w-5 h-5 text-white" />
+            <div className="flex items-center gap-1.5 p-1 rounded bg-white">
+              <div className="w-5 h-5 rounded-full bg-cyan-500 flex items-center justify-center flex-shrink-0">
+                <MessageSquare className="w-2.5 h-2.5 text-white" />
               </div>
-              <div className="flex-1">
-                <p className="text-sm md:text-base font-bold text-neutral-900 mb-0.5">💬 일반 문의</p>
-                <p className="text-xs md:text-sm text-neutral-600 leading-relaxed">
-                  "이건 어떻게 사용하나요?"
-                </p>
-              </div>
+              <p className="text-xs font-bold text-neutral-900 leading-tight">💬 일반 문의</p>
             </div>
 
-            <div className="flex items-start gap-3">
-              <div className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
-                <ThumbsUp className="w-5 h-5 text-white" />
+            <div className="flex items-center gap-1.5 p-1 rounded bg-white">
+              <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
+                <ThumbsUp className="w-2.5 h-2.5 text-white" />
               </div>
-              <div className="flex-1">
-                <p className="text-sm md:text-base font-bold text-neutral-900 mb-0.5">👍 칭찬/피드백</p>
-                <p className="text-xs md:text-sm text-neutral-600 leading-relaxed">
-                  "서비스가 정말 좋아요!"
-                </p>
-              </div>
+              <p className="text-xs font-bold text-neutral-900 leading-tight">👍 칭찬/피드백</p>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      <Alert variant="info" className="p-3 md:p-4">
-        <AlertTitle className="text-sm md:text-base font-bold text-neutral-900">
+      <Alert variant="info" className="p-1">
+        <AlertTitle className="text-[11px] md:text-xs font-bold text-neutral-900 leading-tight">
           💌 답변 시간
         </AlertTitle>
-        <AlertDescription className="text-xs md:text-sm text-neutral-600">
-          보통 1-2일 내에 답변 드립니다. 긴급한 경우 이메일로도 연락주세요!
+        <AlertDescription className="text-[10px] text-neutral-600 leading-tight">
+          보통 1-2일 내에 답변 드립니다
         </AlertDescription>
       </Alert>
     </div>
@@ -299,8 +271,8 @@ export default function ContactModal({ isOpen, onClose, onComplete }: ContactMod
 
   // Step 2: 문의 작성
   const renderStep2 = () => (
-    <div className="space-y-4 md:space-y-5">
-      <div className="text-center space-y-2 mb-4 md:mb-5">
+    <div className="space-y-2 md:space-y-3">
+      <div className="text-center space-y-2 mb-2 md:mb-3">
         <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
           무엇을 도와드릴까요?
         </h3>
@@ -349,7 +321,7 @@ export default function ContactModal({ isOpen, onClose, onComplete }: ContactMod
               flex items-center justify-center gap-2 h-12 md:h-14 px-4 
               border-2 border-dashed border-neutral-300 rounded-lg 
               cursor-pointer transition-all duration-200
-              hover:border-primary-400 hover:bg-primary-50/50
+              hover:border-primary-400 hover:bg-emerald-50/50
               ${(loading || uploading) ? 'opacity-50 cursor-not-allowed' : ''}
             `}
           >
@@ -408,8 +380,8 @@ export default function ContactModal({ isOpen, onClose, onComplete }: ContactMod
 
   // Step 3: 완료
   const renderStep3 = () => (
-    <div className="space-y-4 md:space-y-5">
-      <div className="text-center py-6 md:py-8">
+    <div className="space-y-2 md:space-y-3">
+      <div className="text-center py-3 md:py-4">
         <div className="w-16 h-16 md:w-20 md:h-20 bg-success-bg rounded-full flex items-center justify-center mx-auto mb-4">
           <CheckCircle2 className="w-8 h-8 md:w-10 md:h-10 text-success" />
         </div>
@@ -429,7 +401,7 @@ export default function ContactModal({ isOpen, onClose, onComplete }: ContactMod
           </Card>
         )}
 
-        <Card className="bg-gradient-to-br from-primary-50 to-indigo-50 border-primary-200 shadow-sm p-4 md:p-5">
+        <Card className="bg-gradient-to-br from-emerald-50 to-indigo-50 border-primary-200 shadow-sm p-4 md:p-5">
           <p className="text-sm md:text-base text-neutral-700 leading-relaxed">
             💌 이메일이나 대시보드 알림으로<br />
             답변을 받으실 수 있어요
@@ -457,6 +429,7 @@ export default function ContactModal({ isOpen, onClose, onComplete }: ContactMod
       isOpen={isOpen}
       onClose={handleClose}
       title="문의하기"
+      icon={MessageCircle}
       currentStep={currentStep}
       totalSteps={totalSteps}
       onBack={handleBack}

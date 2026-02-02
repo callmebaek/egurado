@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Loader2, TrendingUp, ExternalLink, CheckCircle2, Sparkles } from 'lucide-react';
+import { Loader2, TrendingUp, ExternalLink, CheckCircle2, Sparkles, Search } from 'lucide-react';
 import OnboardingModal from './OnboardingModal';
 import StoreSelector from './StoreSelector';
 import { api } from '@/lib/config';
@@ -189,7 +189,7 @@ export default function PlaceAuditModal({
   const getGradeColor = (grade: string) => {
     switch (grade) {
       case 'S': return 'text-brand-red';
-      case 'A': return 'text-primary-500';
+      case 'A': return 'text-emerald-600';
       case 'B': return 'text-success';
       case 'C': return 'text-warning';
       default: return 'text-error';
@@ -199,7 +199,7 @@ export default function PlaceAuditModal({
   const getGradeBg = (grade: string) => {
     switch (grade) {
       case 'S': return 'bg-gradient-to-br from-red-50 to-pink-50 border-2 border-brand-red/30';
-      case 'A': return 'bg-gradient-to-br from-primary-50 to-blue-50 border-2 border-primary-500/30';
+      case 'A': return 'bg-gradient-to-br from-emerald-50 to-blue-50 border-2 border-emerald-600/30';
       case 'B': return 'bg-gradient-to-br from-success-bg to-green-50 border-2 border-success/30';
       case 'C': return 'bg-gradient-to-br from-warning-bg to-yellow-50 border-2 border-warning/30';
       default: return 'bg-gradient-to-br from-error-bg to-red-50 border-2 border-error/30';
@@ -261,12 +261,12 @@ export default function PlaceAuditModal({
     );
   };
 
-  // Step 2 컨텐츠: 진단 진행 중 - TurboTax 스타일
+  // Step 2 컨텐츠: 진단 진행 중 - Emerald 스타일
   const renderStep2 = () => (
     <div className="text-center py-8 md:py-12">
       <div className="relative inline-block mb-6">
-        <Loader2 className="w-16 h-16 md:w-20 md:h-20 animate-spin text-primary-500 mx-auto" />
-        <TrendingUp className="w-6 h-6 md:w-8 md:h-8 text-primary-400 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+        <Loader2 className="w-16 h-16 md:w-20 md:h-20 animate-spin text-emerald-600 mx-auto" />
+        <TrendingUp className="w-6 h-6 md:w-8 md:h-8 text-emerald-400 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
       </div>
       <h3 className="text-xl md:text-2xl font-bold text-neutral-900 mb-3 leading-tight">
         플레이스 진단 중...
@@ -370,6 +370,7 @@ export default function PlaceAuditModal({
       isOpen={isOpen}
       onClose={onClose}
       title="플레이스 진단하기"
+      icon={Search}
       currentStep={currentStep}
       totalSteps={totalSteps}
       onBack={handleBack}

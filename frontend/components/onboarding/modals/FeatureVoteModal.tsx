@@ -80,7 +80,7 @@ export default function FeatureVoteModal({
             <CardContent className="p-4 md:p-5 space-y-4">
               <div className="flex items-center gap-2 mb-3">
                 <div className="w-8 h-8 rounded-lg bg-primary-100 flex items-center justify-center">
-                  <Sparkles className="w-5 h-5 text-primary-500" />
+                  <Sparkles className="w-5 h-5 text-emerald-600" />
                 </div>
                 <p className="text-sm md:text-base font-bold text-primary-600">윕플레이스의 약속</p>
               </div>
@@ -89,7 +89,7 @@ export default function FeatureVoteModal({
                 <Card className="bg-white border-neutral-200 shadow-sm">
                   <CardContent className="p-3 md:p-4">
                     <div className="flex gap-2">
-                      <div className="w-1.5 h-1.5 rounded-full bg-primary-500 flex-shrink-0 mt-2" />
+                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-600 flex-shrink-0 mt-2" />
                       <p className="text-xs md:text-sm text-neutral-700 leading-relaxed">
                         <strong className="font-bold text-neutral-900">지속적인 검증과 개선</strong> - 모든 기능을 철저히 검증하고 사용자가 편리하게 이용할 수 있도록 끊임없이 개선합니다
                       </p>
@@ -100,7 +100,7 @@ export default function FeatureVoteModal({
                 <Card className="bg-white border-neutral-200 shadow-sm">
                   <CardContent className="p-3 md:p-4">
                     <div className="flex gap-2">
-                      <div className="w-1.5 h-1.5 rounded-full bg-primary-500 flex-shrink-0 mt-2" />
+                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-600 flex-shrink-0 mt-2" />
                       <p className="text-xs md:text-sm text-neutral-700 leading-relaxed">
                         <strong className="font-bold text-neutral-900">새로운 기능 추가</strong> - 안주하지 않고 계속해서 새로운 기능을 개발하여 더 나은 서비스로 발전합니다
                       </p>
@@ -111,7 +111,7 @@ export default function FeatureVoteModal({
                 <Card className="bg-white border-neutral-200 shadow-sm">
                   <CardContent className="p-3 md:p-4">
                     <div className="flex gap-2">
-                      <div className="w-1.5 h-1.5 rounded-full bg-primary-500 flex-shrink-0 mt-2" />
+                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-600 flex-shrink-0 mt-2" />
                       <p className="text-xs md:text-sm text-neutral-700 leading-relaxed">
                         <strong className="font-bold text-neutral-900">사용자 중심 개발</strong> - 여러분의 의견이 개발 우선순위를 결정합니다
                       </p>
@@ -151,7 +151,7 @@ export default function FeatureVoteModal({
         </DialogBody>
 
         <DialogFooter className="p-6 pt-4 border-t border-neutral-200">
-          <div className="flex flex-col-reverse sm:flex-row w-full gap-3">
+          <div className="flex flex-col-reverse sm:flex-row w-full gap-3 sm:justify-end">
             <Button 
               variant="outline"
               onClick={handleClose}

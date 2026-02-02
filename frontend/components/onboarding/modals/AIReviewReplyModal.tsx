@@ -205,12 +205,12 @@ export default function AIReviewReplyModal({
 
   // Step 1: 매장 선택
   const renderStep1 = () => (
-    <div className="space-y-4 md:space-y-5">
-      <div className="text-center space-y-2 mb-4 md:mb-5">
+    <div className="space-y-2 md:space-y-3">
+      <div className="text-center space-y-1.5 mb-2 md:mb-3">
         <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
           어떤 매장의 리뷰에<br />답글을 달까요?
         </h3>
-        <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
+        <p className="text-xs md:text-sm text-neutral-600 leading-relaxed">
           AI가 자동으로 맞춤형 답글을 생성해드립니다
         </p>
       </div>
@@ -234,8 +234,8 @@ export default function AIReviewReplyModal({
 
   // Step 2: 리뷰 개수 선택
   const renderStep2 = () => (
-    <div className="space-y-4 md:space-y-5">
-      <div className="text-center space-y-2 mb-4 md:mb-5">
+    <div className="space-y-2 md:space-y-3">
+      <div className="text-center space-y-1.5 mb-2 md:mb-3">
         <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
           최근 몇 개의 리뷰를<br />검토할까요?
         </h3>
@@ -264,7 +264,7 @@ export default function AIReviewReplyModal({
             key={option.value}
             className={`cursor-pointer transition-all duration-200 hover:shadow-card-hover ${
               reviewLimit === option.value
-                ? 'border-primary-500 bg-primary-50 ring-2 ring-primary-500/20'
+                ? 'border-emerald-600 bg-emerald-50 ring-2 ring-emerald-600/20'
                 : 'border-neutral-200 hover:border-primary-300'
             }`}
             onClick={() => setReviewLimit(option.value)}
@@ -280,7 +280,7 @@ export default function AIReviewReplyModal({
                   </p>
                 </div>
                 {reviewLimit === option.value && (
-                  <div className="flex-shrink-0 w-7 h-7 rounded-full bg-primary-500 flex items-center justify-center">
+                  <div className="flex-shrink-0 w-7 h-7 rounded-full bg-emerald-600 flex items-center justify-center">
                     <CheckCircle2 className="w-4 h-4 text-white" />
                   </div>
                 )}
@@ -301,11 +301,8 @@ export default function AIReviewReplyModal({
 
   // Step 3: 답글 대기 중인 리뷰 개수 표시
   const renderStep3 = () => (
-    <div className="space-y-4 md:space-y-5">
-      <div className="text-center space-y-2 mb-4 md:mb-5">
-        <div className="w-16 h-16 md:w-20 md:h-20 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-full flex items-center justify-center mx-auto mb-3">
-          <MessageSquare className="w-8 h-8 md:w-10 md:h-10 text-white" />
-        </div>
+    <div className="space-y-2 md:space-y-3">
+      <div className="text-center space-y-2 mb-2 md:mb-3">
         <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
           AI로 리뷰답글을<br />생성할까요?
         </h3>
@@ -315,9 +312,9 @@ export default function AIReviewReplyModal({
       </div>
 
       {loadingCount ? (
-        <div className="flex items-center justify-center py-12">
+        <div className="flex items-center justify-center py-6">
           <div className="text-center">
-            <Loader2 className="w-12 h-12 text-primary-500 animate-spin mx-auto mb-3" />
+            <Loader2 className="w-12 h-12 text-emerald-600 animate-spin mx-auto mb-3" />
             <p className="text-sm text-neutral-600">답글 대기 중인 리뷰 확인 중...</p>
           </div>
         </div>
@@ -410,6 +407,7 @@ export default function AIReviewReplyModal({
       isOpen={isOpen}
       onClose={handleClose}
       title="AI 리뷰답글"
+      icon={Sparkles}
       currentStep={currentStep}
       totalSteps={totalSteps}
       onBack={handleBack}
