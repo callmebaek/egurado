@@ -180,9 +180,18 @@ export default function ReviewAnalysisModal({
     try {
       const dateRange = getDateRange();
       
+      // 토큰 가져오기
+      const token = getToken();
+      if (!token) {
+        throw new Error('인증 토큰이 없습니다. 다시 로그인해주세요.');
+      }
+      
       const response = await fetch(api.reviews.extract(), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({
           store_id: selectedStore!.id,
           start_date: dateRange.start_date,
