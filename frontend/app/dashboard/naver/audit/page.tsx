@@ -449,20 +449,20 @@ export default function NaverAuditPage() {
   // 진단 결과가 있으면 결과 화면 표시
   if (placeDetails && selectedStore) {
     return (
-      <div className="w-full max-w-4xl mx-auto p-4 md:p-6 lg:p-8">
+      <div className="w-full max-w-4xl mx-auto p-3 md:p-6 lg:p-8">
         {/* 헤더 */}
-        <div className="mb-6 md:mb-8 flex items-start justify-between gap-4">
-          <div className="flex-1">
-            <h1 className="text-xl md:text-2xl font-bold text-neutral-900 mb-1.5 leading-tight">
+        <div className="mb-4 md:mb-8 flex items-start justify-between gap-3 md:gap-4">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-lg md:text-2xl font-bold text-neutral-900 mb-1 md:mb-1.5 leading-tight">
               플레이스 진단 리포트
             </h1>
-            <p className="text-sm md:text-base text-neutral-600 leading-relaxed mb-2">
+            <p className="text-xs md:text-base text-neutral-600 leading-relaxed mb-1.5 md:mb-2 break-words">
               {selectedStore.name} - 네이버 플레이스 종합 진단
             </p>
             {diagnosisResult && (
-              <div className="flex items-center gap-2 text-xs md:text-sm text-neutral-500">
-                <Calendar className="w-3 h-3 md:w-4 md:h-4" />
-                <span>
+              <div className="flex items-center gap-1.5 md:gap-2 text-[10px] md:text-sm text-neutral-500">
+                <Calendar className="w-3 h-3 md:w-4 md:h-4 flex-shrink-0" />
+                <span className="truncate">
                   진단일: {new Date(diagnosisResult.diagnosis_date).toLocaleDateString('ko-KR', {
                     year: 'numeric',
                     month: 'long',
@@ -475,44 +475,44 @@ export default function NaverAuditPage() {
           <Button
             variant="outline"
             size="sm"
-            className="font-semibold h-9 md:h-10 border-neutral-300 hover:border-primary-400"
+            className="font-semibold h-8 md:h-10 text-xs md:text-sm border-neutral-300 hover:border-primary-400 flex-shrink-0"
             onClick={() => {
               setSelectedStore(null)
               setPlaceDetails(null)
               setDiagnosisResult(null)
             }}
           >
-            <X className="w-4 h-4 mr-2" />
+            <X className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" />
             닫기
           </Button>
         </div>
 
         {/* 종합 요약 */}
         {diagnosisResult && (
-          <Card ref={summaryRef} className="mb-6 md:mb-8 rounded-card border-2 border-primary-500 shadow-card">
-            <CardHeader className="pb-3 px-4 md:px-6 pt-4 md:pt-6">
-              <CardTitle className="text-base md:text-lg font-bold text-neutral-900">
+          <Card ref={summaryRef} className="mb-4 md:mb-8 rounded-card border-2 border-primary-500 shadow-card">
+            <CardHeader className="pb-2 md:pb-3 px-3 md:px-6 pt-3 md:pt-6">
+              <CardTitle className="text-sm md:text-lg font-bold text-neutral-900">
                 📊 종합 요약
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-4 md:p-6 pt-0">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+            <CardContent className="p-3 md:p-6 pt-0">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-6">
                 {/* 좌측: 점수 및 정보 */}
-                <div className="space-y-3 md:space-y-4">
+                <div className="space-y-2 md:space-y-4">
                   {/* 종합 점수 */}
                   <Card className="rounded-lg bg-neutral-50 border-neutral-200">
-                    <CardContent className="p-4 md:p-6">
-                      <p className="text-xs md:text-sm font-semibold text-neutral-600 mb-2">종합 점수</p>
-                      <div className="flex items-baseline gap-2">
-                        <span className={`text-4xl md:text-5xl lg:text-6xl font-black ${getGradeTextColor(diagnosisResult.grade)}`}>
+                    <CardContent className="p-3 md:p-6">
+                      <p className="text-xs md:text-sm font-semibold text-neutral-600 mb-1.5 md:mb-2">종합 점수</p>
+                      <div className="flex items-baseline gap-1.5 md:gap-2">
+                        <span className={`text-3xl md:text-5xl lg:text-6xl font-black ${getGradeTextColor(diagnosisResult.grade)}`}>
                           {diagnosisResult.total_score.toFixed(1)}
                         </span>
-                        <span className="text-lg md:text-xl text-neutral-500">
+                        <span className="text-base md:text-xl text-neutral-500">
                           / {diagnosisResult.max_score}
                         </span>
                       </div>
                       {diagnosisResult.bonus_score > 0 && (
-                        <Badge className="mt-2 md:mt-3 bg-green-500 hover:bg-green-600 text-white">
+                        <Badge className="mt-1.5 md:mt-3 text-xs bg-green-500 hover:bg-green-600 text-white">
                           보너스 +{diagnosisResult.bonus_score}점
                         </Badge>
                       )}
@@ -521,28 +521,28 @@ export default function NaverAuditPage() {
                   
                   {/* 플레이스 정보 */}
                   <Card className="bg-neutral-50 border-neutral-200">
-                    <CardContent className="p-4 md:p-6">
-                      <p className="text-xs md:text-sm font-semibold text-neutral-600 mb-3">플레이스 정보</p>
-                      <div className="space-y-2">
-                        <div className="flex gap-2 text-xs md:text-sm">
-                          <span className="font-semibold text-neutral-700 min-w-[60px] md:min-w-[70px]">매장명:</span>
-                          <span className="text-neutral-900">{placeDetails.name}</span>
+                    <CardContent className="p-3 md:p-6">
+                      <p className="text-xs md:text-sm font-semibold text-neutral-600 mb-2 md:mb-3">플레이스 정보</p>
+                      <div className="space-y-1.5 md:space-y-2">
+                        <div className="flex gap-1.5 md:gap-2 text-xs md:text-sm">
+                          <span className="font-semibold text-neutral-700 min-w-[55px] md:min-w-[70px] flex-shrink-0">매장명:</span>
+                          <span className="text-neutral-900 break-words">{placeDetails.name}</span>
                         </div>
-                        <div className="flex gap-2 text-xs md:text-sm">
-                          <span className="font-semibold text-neutral-700 min-w-[60px] md:min-w-[70px]">카테고리:</span>
+                        <div className="flex gap-1.5 md:gap-2 text-xs md:text-sm">
+                          <span className="font-semibold text-neutral-700 min-w-[55px] md:min-w-[70px] flex-shrink-0">카테고리:</span>
                           <span className="text-neutral-900">{placeDetails.category}</span>
                         </div>
-                        <div className="flex gap-2 text-xs md:text-sm">
-                          <span className="font-semibold text-neutral-700 min-w-[60px] md:min-w-[70px]">주소:</span>
+                        <div className="flex gap-1.5 md:gap-2 text-xs md:text-sm">
+                          <span className="font-semibold text-neutral-700 min-w-[55px] md:min-w-[70px] flex-shrink-0">주소:</span>
                           <span className="text-neutral-900 break-words">{placeDetails.address}</span>
                         </div>
                         <Button
                           variant="outline"
                           size="sm"
-                          className="w-full mt-2 text-xs md:text-sm font-semibold border-neutral-300 hover:border-primary-400"
+                          className="w-full mt-1.5 md:mt-2 h-9 md:h-10 text-xs md:text-sm font-semibold border-neutral-300 hover:border-primary-400"
                           onClick={() => window.open(`https://pcmap.place.naver.com/place/${placeDetails.place_id}`, '_blank')}
                         >
-                          <ExternalLink className="w-3 h-3 md:w-4 md:h-4 mr-1.5" />
+                          <ExternalLink className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-1.5" />
                           네이버에서 보기
                         </Button>
                       </div>
@@ -551,10 +551,10 @@ export default function NaverAuditPage() {
                 </div>
                 
                 {/* 우측: 등급 원형 표시 */}
-                <div className="flex items-center justify-center">
+                <div className="flex items-center justify-center py-4 md:py-0">
                   <div className="text-center">
                     {/* 등급 원형 */}
-                    <div className="relative w-48 h-48 md:w-64 md:h-64 mx-auto mb-4 md:mb-6">
+                    <div className="relative w-40 h-40 md:w-64 md:h-64 mx-auto mb-3 md:mb-6">
                       <svg className="w-full h-full transform -rotate-90">
                         {/* 배경 원 */}
                         <circle
@@ -580,14 +580,14 @@ export default function NaverAuditPage() {
                       </svg>
                       <div className="absolute inset-0 flex items-center justify-center">
                         <div>
-                          <div className={`text-5xl md:text-6xl lg:text-7xl font-black ${getGradeTextColor(diagnosisResult.grade)}`}>
+                          <div className={`text-4xl md:text-6xl lg:text-7xl font-black ${getGradeTextColor(diagnosisResult.grade)}`}>
                             {diagnosisResult.grade}
                           </div>
-                          <div className="text-xs md:text-sm text-neutral-600 font-semibold mt-1">등급</div>
+                          <div className="text-xs md:text-sm text-neutral-600 font-semibold mt-0.5 md:mt-1">등급</div>
                         </div>
                       </div>
                     </div>
-                    <p className="text-sm md:text-base lg:text-lg font-semibold text-neutral-600">
+                    <p className="text-xs md:text-base lg:text-lg font-semibold text-neutral-600">
                       상위 {diagnosisResult.grade === 'S' ? '5%' : 
                             diagnosisResult.grade === 'A' ? '20%' :
                             diagnosisResult.grade === 'B' ? '40%' :
@@ -1367,24 +1367,24 @@ export default function NaverAuditPage() {
 
   // 매장 선택 화면
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 py-6 md:px-6 md:py-8 lg:px-8 lg:py-10">
+    <div className="w-full max-w-6xl mx-auto px-3 py-4 md:px-6 md:py-8 lg:px-8 lg:py-10">
       {/* 헤더 섹션 - 홈페이지 스타일 */}
-      <header className="mb-8 md:mb-10 text-center">
-        <div className="flex items-center justify-center gap-3 mb-3">
-          <div className="w-12 h-12 md:w-14 md:h-14 bg-gradient-to-br from-blue-400 to-cyan-500 rounded-xl flex items-center justify-center shadow-lg">
-            <CheckCircle2 className="w-6 h-6 md:w-7 md:h-7 text-white" />
+      <header className="mb-6 md:mb-10 text-center">
+        <div className="flex items-center justify-center gap-2 md:gap-3 mb-2 md:mb-3">
+          <div className="w-10 h-10 md:w-14 md:h-14 bg-gradient-to-br from-blue-400 to-cyan-500 rounded-xl flex items-center justify-center shadow-lg">
+            <CheckCircle2 className="w-5 h-5 md:w-7 md:h-7 text-white" />
           </div>
-          <h1 className="text-2xl md:text-3xl lg:text-4xl font-extrabold text-neutral-900 leading-tight">
+          <h1 className="text-xl md:text-3xl lg:text-4xl font-extrabold text-neutral-900 leading-tight">
             플레이스 진단
           </h1>
         </div>
-        <p className="text-base md:text-lg text-neutral-600 leading-relaxed max-w-3xl mx-auto mb-4">
+        <p className="text-sm md:text-lg text-neutral-600 leading-relaxed max-w-3xl mx-auto mb-3 md:mb-4 px-2">
           매장의 플레이스 정보를 진단하고<br className="md:hidden" />
           <span className="hidden md:inline"> </span>개선점을 확인하세요
         </p>
         <Badge 
           variant="secondary"
-          className="bg-blue-100 text-blue-700 border-blue-200 px-4 py-2 text-sm font-semibold inline-flex items-center gap-1.5"
+          className="bg-blue-100 text-blue-700 border-blue-200 px-3 py-1.5 md:px-4 md:py-2 text-xs md:text-sm font-semibold inline-flex items-center gap-1 md:gap-1.5"
         >
           💡 30 크레딧
         </Badge>
@@ -1393,20 +1393,20 @@ export default function NaverAuditPage() {
       {/* 매장 목록 */}
       {isLoading ? (
         <Card className="shadow-card">
-          <CardContent className="p-8 md:p-12">
-            <div className="flex items-center justify-center gap-3">
-              <Loader2 className="h-5 w-5 animate-spin text-primary-500" />
-              <p className="text-sm text-neutral-600">등록된 매장을 불러오는 중...</p>
+          <CardContent className="p-6 md:p-12">
+            <div className="flex items-center justify-center gap-2 md:gap-3">
+              <Loader2 className="h-4 w-4 md:h-5 md:w-5 animate-spin text-primary-500" />
+              <p className="text-xs md:text-sm text-neutral-600">등록된 매장을 불러오는 중...</p>
             </div>
           </CardContent>
         </Card>
       ) : isAnalyzing ? (
         <Card className="shadow-card">
-          <CardContent className="p-8 md:p-12 flex flex-col items-center justify-center">
-            <Loader2 className="w-12 h-12 md:w-16 md:h-16 text-primary-500 animate-spin mb-4" />
-            <div className="text-center">
-              <p className="text-base md:text-lg font-semibold text-neutral-900 mb-2">플레이스 진단 중...</p>
-              <p className="text-sm md:text-base text-neutral-600">
+          <CardContent className="p-6 md:p-12 flex flex-col items-center justify-center">
+            <Loader2 className="w-10 h-10 md:w-16 md:h-16 text-primary-500 animate-spin mb-3 md:mb-4" />
+            <div className="text-center px-4">
+              <p className="text-sm md:text-lg font-semibold text-neutral-900 mb-1 md:mb-2">플레이스 진단 중...</p>
+              <p className="text-xs md:text-base text-neutral-600">
                 {selectedStore?.name} 매장의 정보를 가져오고 있습니다.
               </p>
             </div>
@@ -1414,13 +1414,13 @@ export default function NaverAuditPage() {
         </Card>
       ) : stores.length === 0 ? (
         <Card className="shadow-card">
-          <CardContent className="p-8 md:p-12 flex flex-col items-center justify-center">
-            <Store className="w-12 h-12 md:w-16 md:h-16 text-blue-500 mb-4" />
-            <p className="text-sm md:text-base text-neutral-600 mb-4 text-center">
+          <CardContent className="p-6 md:p-12 flex flex-col items-center justify-center">
+            <Store className="w-10 h-10 md:w-16 md:h-16 text-blue-500 mb-3 md:mb-4" />
+            <p className="text-xs md:text-base text-neutral-600 mb-3 md:mb-4 text-center px-4">
               등록된 네이버 플레이스 매장이 없습니다.
             </p>
             <Button
-              className="font-semibold w-full sm:w-auto"
+              className="font-semibold w-full sm:w-auto h-10 md:h-11 text-xs md:text-sm"
               onClick={() => window.location.href = '/dashboard/connect-store'}
             >
               매장 등록하러 가기
@@ -1428,33 +1428,33 @@ export default function NaverAuditPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
           {stores.map((store) => (
             <Card key={store.id} className="rounded-card border-neutral-300 shadow-card hover:shadow-lg transition-all">
-              <CardContent className="p-4">
-                <div className="flex items-start gap-3 mb-4">
+              <CardContent className="p-3 md:p-4">
+                <div className="flex items-start gap-2.5 md:gap-3 mb-3 md:mb-4">
                   {store.thumbnail ? (
                     <img 
                       src={store.thumbnail} 
                       alt={store.name} 
-                      className="w-16 h-16 rounded-lg object-cover flex-shrink-0" 
+                      className="w-14 h-14 md:w-16 md:h-16 rounded-lg object-cover flex-shrink-0" 
                     />
                   ) : (
-                    <div className="w-16 h-16 rounded-lg bg-neutral-200 flex items-center justify-center flex-shrink-0">
-                      <Store className="w-8 h-8 text-neutral-500" />
+                    <div className="w-14 h-14 md:w-16 md:h-16 rounded-lg bg-neutral-200 flex items-center justify-center flex-shrink-0">
+                      <Store className="w-7 h-7 md:w-8 md:h-8 text-neutral-500" />
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-base text-neutral-900 mb-1.5 line-clamp-2 break-words leading-snug">
+                    <h3 className="font-bold text-sm md:text-base text-neutral-900 mb-1 md:mb-1.5 line-clamp-2 break-words leading-snug">
                       {store.name}
                     </h3>
-                    <p className="text-sm text-neutral-600 line-clamp-1 mb-0.5">{store.category}</p>
-                    <p className="text-xs text-neutral-500 line-clamp-2 break-words">{store.address}</p>
+                    <p className="text-xs md:text-sm text-neutral-600 line-clamp-1 mb-0.5">{store.category}</p>
+                    <p className="text-[11px] md:text-xs text-neutral-500 line-clamp-2 break-words">{store.address}</p>
                   </div>
                 </div>
                 <div className="flex flex-col gap-2">
                   <Button
-                    className="w-full font-semibold h-11 text-sm"
+                    className="w-full font-semibold h-10 md:h-11 text-xs md:text-sm"
                     onClick={() => handleStoreSelect(store)}
                     disabled={isAnalyzing}
                   >
@@ -1469,7 +1469,7 @@ export default function NaverAuditPage() {
                   </Button>
                   <Button
                     variant="outline"
-                    className="w-full font-semibold h-11 text-sm border-neutral-300 hover:border-primary-400"
+                    className="w-full font-semibold h-10 md:h-11 text-xs md:text-sm border-neutral-300 hover:border-primary-400"
                     onClick={() => handleViewHistory(store)}
                     disabled={isAnalyzing}
                   >
@@ -1484,15 +1484,15 @@ export default function NaverAuditPage() {
 
       {/* History Modal */}
       <Dialog open={showHistoryModal} onOpenChange={setShowHistoryModal}>
-        <DialogContent>
+        <DialogContent className="max-w-[calc(100vw-32px)] md:max-w-[600px]">
           <DialogHeader>
-            <DialogTitle>과거 진단 기록</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-lg md:text-xl pr-8">과거 진단 기록</DialogTitle>
+            <DialogDescription className="text-xs md:text-sm">
               {selectedStore?.name} - 최근 30개까지 저장됩니다
             </DialogDescription>
           </DialogHeader>
 
-          <div className="px-6 pb-6 space-y-3">
+          <div className="px-4 pb-4 md:px-6 md:pb-6 space-y-3">
             {isLoadingHistory && (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="w-8 h-8 text-primary-500 animate-spin" />
@@ -1512,12 +1512,12 @@ export default function NaverAuditPage() {
                 className="border border-neutral-200 hover:border-primary-400 hover:shadow-md transition-all cursor-pointer"
                 onClick={() => handleViewHistoryDetail(history.id)}
               >
-                <CardContent className="p-4">
+                <CardContent className="p-3 md:p-4">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-wrap items-center gap-2 mb-2">
                         <Calendar className="w-4 h-4 text-neutral-500 flex-shrink-0" />
-                        <p className="font-semibold text-sm text-neutral-900">
+                        <p className="font-semibold text-xs md:text-sm text-neutral-900">
                           {new Date(history.diagnosed_at).toLocaleDateString('ko-KR', {
                             year: 'numeric',
                             month: 'long',
@@ -1531,7 +1531,7 @@ export default function NaverAuditPage() {
                           {history.grade}등급
                         </Badge>
                       </div>
-                      <p className="text-xs text-neutral-600 ml-6">
+                      <p className="text-[10px] md:text-xs text-neutral-600 ml-6">
                         점수: <span className="font-semibold text-neutral-900">{history.total_score}점</span> / {history.max_score}점
                       </p>
                     </div>
