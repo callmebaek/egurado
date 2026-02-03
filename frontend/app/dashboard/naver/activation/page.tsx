@@ -1352,72 +1352,97 @@ export default function ActivationPage() {
 
       {/* AI 업체소개글 생성 모달 */}
       <Dialog open={showDescriptionModal} onOpenChange={setShowDescriptionModal}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold">
-              <Sparkles className="w-5 h-5 inline mr-2" />
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-6 md:p-8">
+          <DialogHeader className="space-y-4 pb-4">
+            <div className="flex items-center justify-center">
+              <div className="w-14 h-14 md:w-16 md:h-16 bg-gradient-to-br from-emerald-400 to-teal-400 rounded-xl flex items-center justify-center shadow-lg">
+                <Sparkles className="w-7 h-7 md:w-8 md:h-8 text-white" />
+              </div>
+            </div>
+            <DialogTitle className="text-xl md:text-2xl font-bold text-center text-neutral-900">
               AI로 완벽한 업체소개글 생성하기
             </DialogTitle>
-            <DialogDescription>
-              SEO 최적화된 업체소개글을 생성합니다. 모든 필드를 입력하면 더 정확한 결과를 얻을 수 있습니다.
+            <DialogDescription className="text-sm md:text-base text-center text-neutral-600">
+              SEO 최적화된 업체소개글을 생성합니다.<br className="md:hidden" />
+              <span className="hidden md:inline"> </span>모든 필드를 입력하면 더 정확한 결과를 얻을 수 있습니다.
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="region">1. 지역 키워드 *</Label>
+          <div className="space-y-5 md:space-y-6 pt-2">
+            <div className="space-y-2">
+              <Label htmlFor="region" className="text-sm md:text-base font-semibold text-neutral-700 flex items-center gap-2">
+                <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-xs font-bold">1</span>
+                지역 키워드 <span className="text-red-500">*</span>
+              </Label>
               <Input
                 id="region"
                 placeholder="예: 합정, 종로, 성수 등"
                 value={regionKeyword}
                 onChange={(e) => setRegionKeyword(e.target.value)}
+                className="h-12 md:h-14 text-base border-2 border-emerald-100 focus:border-teal-400 focus:ring-4 focus:ring-teal-100 rounded-xl transition-all"
               />
-              <p className="text-xs text-neutral-500 mt-1">가장 메인 지역 1개만 입력</p>
+              <p className="text-xs md:text-sm text-neutral-500">가장 메인 지역 1개만 입력</p>
             </div>
 
-            <div>
-              <Label htmlFor="landmarks">2. 랜드마크 키워드</Label>
+            <div className="space-y-2">
+              <Label htmlFor="landmarks" className="text-sm md:text-base font-semibold text-neutral-700 flex items-center gap-2">
+                <span className="w-6 h-6 rounded-full bg-teal-100 text-teal-600 flex items-center justify-center text-xs font-bold">2</span>
+                랜드마크 키워드
+              </Label>
               <Input
                 id="landmarks"
                 placeholder="예: 합정역, 홍대입구역, 성수역 등"
                 value={landmarkKeywords}
                 onChange={(e) => setLandmarkKeywords(e.target.value)}
+                className="h-12 md:h-14 text-base border-2 border-emerald-100 focus:border-teal-400 focus:ring-4 focus:ring-teal-100 rounded-xl transition-all"
               />
-              <p className="text-xs text-neutral-500 mt-1">역, 상권, 건물, 관광지 등 (최대 2개, 쉼표로 구분)</p>
+              <p className="text-xs md:text-sm text-neutral-500">역, 상권, 건물, 관광지 등 (최대 2개, 쉼표로 구분)</p>
             </div>
 
-            <div>
-              <Label htmlFor="business">3. 업종 키워드 *</Label>
+            <div className="space-y-2">
+              <Label htmlFor="business" className="text-sm md:text-base font-semibold text-neutral-700 flex items-center gap-2">
+                <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-xs font-bold">3</span>
+                업종 키워드 <span className="text-red-500">*</span>
+              </Label>
               <Input
                 id="business"
                 placeholder="예: 카페, 식당, 사진관, 헤어샵 등"
                 value={businessTypeKeyword}
                 onChange={(e) => setBusinessTypeKeyword(e.target.value)}
+                className="h-12 md:h-14 text-base border-2 border-emerald-100 focus:border-teal-400 focus:ring-4 focus:ring-teal-100 rounded-xl transition-all"
               />
-              <p className="text-xs text-neutral-500 mt-1">업종 1개만 입력</p>
+              <p className="text-xs md:text-sm text-neutral-500">업종 1개만 입력</p>
             </div>
 
-            <div>
-              <Label htmlFor="products">4. 상품/서비스 키워드</Label>
+            <div className="space-y-2">
+              <Label htmlFor="products" className="text-sm md:text-base font-semibold text-neutral-700 flex items-center gap-2">
+                <span className="w-6 h-6 rounded-full bg-teal-100 text-teal-600 flex items-center justify-center text-xs font-bold">4</span>
+                상품/서비스 키워드
+              </Label>
               <Input
                 id="products"
                 placeholder="예: 칼국수, 보쌈, 커피, 콜드브루 등"
                 value={productKeywords}
                 onChange={(e) => setProductKeywords(e.target.value)}
+                className="h-12 md:h-14 text-base border-2 border-emerald-100 focus:border-teal-400 focus:ring-4 focus:ring-teal-100 rounded-xl transition-all"
               />
-              <p className="text-xs text-neutral-500 mt-1">최대 3개 (쉼표로 구분)</p>
+              <p className="text-xs md:text-sm text-neutral-500">최대 3개 (쉼표로 구분)</p>
             </div>
 
-            <div>
-              <Label htmlFor="features">5. 매장 특색 및 강점 *</Label>
+            <div className="space-y-2">
+              <Label htmlFor="features" className="text-sm md:text-base font-semibold text-neutral-700 flex items-center gap-2">
+                <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-xs font-bold">5</span>
+                매장 특색 및 강점 <span className="text-red-500">*</span>
+              </Label>
               <Textarea
                 id="features"
                 placeholder="예: 저희 매장은 처음 방문하시는 분들도 부담 없이 이용할 수 있도록..."
                 value={storeFeatures}
                 onChange={(e) => setStoreFeatures(e.target.value)}
                 rows={5}
+                className="text-base border-2 border-emerald-100 focus:border-teal-400 focus:ring-4 focus:ring-teal-100 rounded-xl transition-all resize-none"
               />
-              <p className="text-xs text-neutral-500 mt-1">
+              <p className="text-xs md:text-sm text-neutral-500">
                 매장의 특별한 점, 강점, 차별화 포인트를 자유롭게 입력해주세요
               </p>
             </div>
@@ -1425,26 +1450,33 @@ export default function ActivationPage() {
             <Button
               onClick={handleGenerateDescription}
               disabled={isGenerating || !regionKeyword || !businessTypeKeyword || !storeFeatures}
-              className="w-full"
+              className="w-full h-12 md:h-14 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white text-base md:text-lg font-bold rounded-xl shadow-lg hover:shadow-xl transition-all"
             >
               {isGenerating ? (
                 <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  생성 중...
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  AI가 생성 중입니다...
                 </>
               ) : (
                 <>
-                  <Sparkles className="w-4 h-4 mr-2" />
-                  업체소개글 생성하기
+                  <Sparkles className="w-5 h-5 mr-2" />
+                  업체소개글 생성하기 (25 크레딧)
                 </>
               )}
             </Button>
 
             {generatedText && (
-              <div className="mt-4 space-y-2">
+              <div className="mt-6 space-y-4 p-5 md:p-6 bg-gradient-to-br from-emerald-50/80 to-teal-50/80 rounded-2xl border-2 border-emerald-200/50">
                 <div className="flex items-center justify-between">
-                  <Label>생성된 업체소개글</Label>
-                  <Badge variant="outline">{generatedTextCharCount}자</Badge>
+                  <Label className="text-base md:text-lg font-bold text-neutral-900 flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-400 to-teal-400 flex items-center justify-center">
+                      <Sparkles className="w-4 h-4 text-white" />
+                    </div>
+                    생성된 업체소개글
+                  </Label>
+                  <Badge variant="outline" className="bg-white text-emerald-600 border-emerald-300 font-semibold px-3 py-1">
+                    {generatedTextCharCount}자
+                  </Badge>
                 </div>
                 <Textarea
                   value={generatedText}
@@ -1453,16 +1485,15 @@ export default function ActivationPage() {
                     setGeneratedTextCharCount(e.target.value.length)
                   }}
                   rows={10}
-                  className="font-mono text-sm"
+                  className="text-sm md:text-base leading-relaxed border-2 border-emerald-200 focus:border-teal-400 focus:ring-4 focus:ring-teal-100 rounded-xl transition-all bg-white"
                 />
                 <Button
                   variant="outline"
-                  size="sm"
-                  className="w-full"
+                  className="w-full h-11 md:h-12 border-2 border-emerald-300 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-400 text-base font-semibold rounded-xl transition-all"
                   onClick={() => copyToClipboard(generatedText)}
                 >
                   <Copy className="w-4 h-4 mr-2" />
-                  복사하기
+                  클립보드에 복사하기
                 </Button>
               </div>
             )}
@@ -1472,73 +1503,97 @@ export default function ActivationPage() {
 
       {/* AI 찾아오는길 생성 모달 */}
       <Dialog open={showDirectionsModal} onOpenChange={setShowDirectionsModal}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold">
-              <MapPin className="w-5 h-5 inline mr-2" />
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-6 md:p-8">
+          <DialogHeader className="space-y-4 pb-4">
+            <div className="flex items-center justify-center">
+              <div className="w-14 h-14 md:w-16 md:h-16 bg-gradient-to-br from-teal-400 to-cyan-400 rounded-xl flex items-center justify-center shadow-lg">
+                <MapPin className="w-7 h-7 md:w-8 md:h-8 text-white" />
+              </div>
+            </div>
+            <DialogTitle className="text-xl md:text-2xl font-bold text-center text-neutral-900">
               AI로 찾아오는길 생성하기
             </DialogTitle>
-            <DialogDescription>
-              고객이 쉽게 이해할 수 있는 찾아오는길을 생성합니다.
+            <DialogDescription className="text-sm md:text-base text-center text-neutral-600">
+              고객이 쉽게 이해할 수 있는<br className="md:hidden" />
+              <span className="hidden md:inline"> </span>찾아오는길을 생성합니다.
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="dir-region">1. 지역 키워드 *</Label>
+          <div className="space-y-5 md:space-y-6 pt-2">
+            <div className="space-y-2">
+              <Label htmlFor="dir-region" className="text-sm md:text-base font-semibold text-neutral-700 flex items-center gap-2">
+                <span className="w-6 h-6 rounded-full bg-teal-100 text-teal-600 flex items-center justify-center text-xs font-bold">1</span>
+                지역 키워드 <span className="text-red-500">*</span>
+              </Label>
               <Input
                 id="dir-region"
                 placeholder="예: 합정, 종로, 성수 등"
                 value={directionsRegionKeyword}
                 onChange={(e) => setDirectionsRegionKeyword(e.target.value)}
+                className="h-12 md:h-14 text-base border-2 border-teal-100 focus:border-cyan-400 focus:ring-4 focus:ring-cyan-100 rounded-xl transition-all"
               />
             </div>
 
-            <div>
-              <Label htmlFor="dir-landmarks">2. 랜드마크 키워드</Label>
+            <div className="space-y-2">
+              <Label htmlFor="dir-landmarks" className="text-sm md:text-base font-semibold text-neutral-700 flex items-center gap-2">
+                <span className="w-6 h-6 rounded-full bg-cyan-100 text-cyan-600 flex items-center justify-center text-xs font-bold">2</span>
+                랜드마크 키워드
+              </Label>
               <Input
                 id="dir-landmarks"
                 placeholder="예: 합정역, 홍대입구역 등"
                 value={directionsLandmarkKeywords}
                 onChange={(e) => setDirectionsLandmarkKeywords(e.target.value)}
+                className="h-12 md:h-14 text-base border-2 border-teal-100 focus:border-cyan-400 focus:ring-4 focus:ring-cyan-100 rounded-xl transition-all"
               />
-              <p className="text-xs text-neutral-500 mt-1">역, 주요 건물 등 (쉼표로 구분)</p>
+              <p className="text-xs md:text-sm text-neutral-500">역, 주요 건물 등 (쉼표로 구분)</p>
             </div>
 
-            <div>
-              <Label htmlFor="dir-desc">3. 길 안내 설명 *</Label>
+            <div className="space-y-2">
+              <Label htmlFor="dir-desc" className="text-sm md:text-base font-semibold text-neutral-700 flex items-center gap-2">
+                <span className="w-6 h-6 rounded-full bg-teal-100 text-teal-600 flex items-center justify-center text-xs font-bold">3</span>
+                길 안내 설명 <span className="text-red-500">*</span>
+              </Label>
               <Textarea
                 id="dir-desc"
                 placeholder="예: 합정역 3번 출구에서 직진하여 첫 번째 골목 우측..."
                 value={directionsDescription}
                 onChange={(e) => setDirectionsDescription(e.target.value)}
                 rows={5}
+                className="text-base border-2 border-teal-100 focus:border-cyan-400 focus:ring-4 focus:ring-cyan-100 rounded-xl transition-all resize-none"
               />
             </div>
 
             <Button
               onClick={handleGenerateDirections}
               disabled={isGenerating || !directionsRegionKeyword || !directionsDescription}
-              className="w-full"
+              className="w-full h-12 md:h-14 bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white text-base md:text-lg font-bold rounded-xl shadow-lg hover:shadow-xl transition-all"
             >
               {isGenerating ? (
                 <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  생성 중...
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  AI가 생성 중입니다...
                 </>
               ) : (
                 <>
-                  <MapPin className="w-4 h-4 mr-2" />
-                  찾아오는길 생성하기
+                  <MapPin className="w-5 h-5 mr-2" />
+                  찾아오는길 생성하기 (15 크레딧)
                 </>
               )}
             </Button>
 
             {generatedDirectionsText && (
-              <div className="mt-4 space-y-2">
+              <div className="mt-6 space-y-4 p-5 md:p-6 bg-gradient-to-br from-teal-50/80 to-cyan-50/80 rounded-2xl border-2 border-teal-200/50">
                 <div className="flex items-center justify-between">
-                  <Label>생성된 찾아오는길</Label>
-                  <Badge variant="outline">{generatedDirectionsCharCount}자</Badge>
+                  <Label className="text-base md:text-lg font-bold text-neutral-900 flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-400 to-cyan-400 flex items-center justify-center">
+                      <MapPin className="w-4 h-4 text-white" />
+                    </div>
+                    생성된 찾아오는길
+                  </Label>
+                  <Badge variant="outline" className="bg-white text-teal-600 border-teal-300 font-semibold px-3 py-1">
+                    {generatedDirectionsCharCount}자
+                  </Badge>
                 </div>
                 <Textarea
                   value={generatedDirectionsText}
@@ -1547,16 +1602,15 @@ export default function ActivationPage() {
                     setGeneratedDirectionsCharCount(e.target.value.length)
                   }}
                   rows={8}
-                  className="font-mono text-sm"
+                  className="text-sm md:text-base leading-relaxed border-2 border-teal-200 focus:border-cyan-400 focus:ring-4 focus:ring-cyan-100 rounded-xl transition-all bg-white"
                 />
                 <Button
                   variant="outline"
-                  size="sm"
-                  className="w-full"
+                  className="w-full h-11 md:h-12 border-2 border-teal-300 text-teal-700 hover:bg-teal-50 hover:border-teal-400 text-base font-semibold rounded-xl transition-all"
                   onClick={() => copyToClipboard(generatedDirectionsText)}
                 >
                   <Copy className="w-4 h-4 mr-2" />
-                  복사하기
+                  클립보드에 복사하기
                 </Button>
               </div>
             )}
