@@ -47,6 +47,7 @@ npm run dev
 1. http://localhost:3000 접속
 2. Supabase 계정으로 로그인
 3. 매장 등록 (네이버 매장)
+4. **중요**: 로그인 후 페이지를 새로고침하여 인증 토큰이 localStorage에 저장되도록 하세요
 
 #### 5.2 네이버 로그인
 1. https://new.smartplace.naver.com 접속
@@ -120,8 +121,9 @@ vercel --prod
 ### "네이버 로그인 필요"
 → 네이버 스마트플레이스에 로그인하세요
 
-### "매장 목록을 불러올 수 없습니다"
+### "매장 목록을 불러올 수 없습니다" 또는 "401 Unauthorized"
 → 백엔드 서버가 실행 중인지 확인하세요
+→ 웹사이트에 로그인한 후 페이지를 새로고침하세요 (access_token 저장을 위해)
 
 ### CORS 오류
 → backend/app/main.py의 CORS 설정 확인

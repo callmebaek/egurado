@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "네이버 세션 저장",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "네이버 스마트플레이스 로그인 세션을 안전하게 저장합니다",
   "permissions": [
     "cookies",
@@ -11,7 +11,8 @@
   "host_permissions": [
     "https://*.naver.com/*",
     "http://localhost:8000/*",
-    "https://*.vercel.app/*"
+    "https://*.vercel.app/*",
+    "https://api.whiplace.com/*"
   ],
   "action": {
     "default_popup": "popup.html",

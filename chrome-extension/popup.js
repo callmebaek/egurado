@@ -34,6 +34,7 @@ const elements = {
 let currentStores = []
 let selectedStoreId = null
 let userId = null
+let accessToken = null  // 🆕 인증 토큰
 
 // 초기화
 document.addEventListener('DOMContentLoaded', async () => {
@@ -67,13 +68,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 // 사용자 인증 확인
 async function checkAuthentication() {
   try {
-    // Chrome Storage에서 사용자 ID 확인
-    const result = await chrome.storage.local.get(['userId', 'lastUpdated'])
+    // Chrome Storage에서 사용자 ID와 토큰 확인
+    const result = await chrome.storage.local.get(['userId', 'accessToken', 'lastUpdated'])
     
     console.log('📦 Chrome Storage:', result)
     
     if (!result.userId) {
       throw new Error('로그인이 필요합니다')
+    }
+    
+    if (!result.accessToken) {
+      throw new Error('인증 토큰이 없습니다. 웹사이트에 다시 로그인해주세요.')
     }
     
     // 1시간 이상 경과 시 재확인 필요
@@ -83,14 +88,16 @@ async function checkAuthentication() {
     }
     
     userId = result.userId
+    accessToken = result.accessToken  // 🆕 토큰 저장
     console.log('✅ 사용자 인증 확인:', userId)
+    console.log('✅ 토큰 확인:', accessToken ? '토큰 있음' : '토큰 없음')
     
     // 매장 목록 로드
     await loadStores()
     
   } catch (error) {
     console.error('❌ 인증 오류:', error)
-    showError('로그인이 필요합니다. 웹사이트(localhost:3000)에 접속하여 로그인한 후 다시 시도해주세요.')
+    showError(`로그인이 필요합니다. 웹사이트(${CONFIG.FRONTEND_URL})에 접속하여 로그인한 후 다시 시도해주세요.`)
     throw error
   }
 }
@@ -98,9 +105,16 @@ async function checkAuthentication() {
 // 매장 목록 로드
 async function loadStores() {
   try {
-    const response = await fetch(`${CONFIG.API_BASE_URL}/api/v1/stores/?user_id=${userId}`)
+    const response = await fetch(`${CONFIG.API_BASE_URL}/api/v1/stores/`, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`  // 🆕 인증 헤더 추가
+      }
+    })
     
     if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('인증이 만료되었습니다. 웹사이트에 다시 로그인해주세요.')
+      }
       throw new Error('매장 목록을 불러올 수 없습니다')
     }
     
@@ -120,7 +134,7 @@ async function loadStores() {
     currentStores.forEach(store => {
       const option = document.createElement('option')
       option.value = store.id
-      option.textContent = store.store_name || store.name
+      option.textContent = store.name || store.store_name  // 🔧 순서 변경 (StoreResponse는 'name' 필드 사용)
       elements.storeSelect.appendChild(option)
     })
     
@@ -128,7 +142,7 @@ async function loadStores() {
     
   } catch (error) {
     console.error('❌ 매장 로드 오류:', error)
-    showError('매장 목록을 불러오는 중 오류가 발생했습니다.')
+    showError(error.message || '매장 목록을 불러오는 중 오류가 발생했습니다.')
   }
 }
 
