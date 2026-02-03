@@ -283,8 +283,8 @@ export default function ReviewManagementPage() {
   
   // autoStart가 대기 중이고, selectedStoreId와 datePeriod가 설정되면 자동 분석 시작
   useEffect(() => {
-    if (autoStartPendingRef.current && selectedStoreId && stores.length > 0) {
-      console.log("✅ 자동 분석 시작:", { selectedStoreId, datePeriod })
+    if (autoStartPendingRef.current && selectedStoreId && stores.length > 0 && user) {
+      console.log("✅ 자동 분석 시작:", { selectedStoreId, datePeriod, hasUser: !!user })
       autoStartPendingRef.current = false
       
       // 매장 정보 로딩을 위해 약간의 딜레이
@@ -294,7 +294,7 @@ export default function ReviewManagementPage() {
       
       return () => clearTimeout(timer)
     }
-  }, [selectedStoreId, datePeriod, stores])
+  }, [selectedStoreId, datePeriod, stores, user])
   
   // 매장 선택 시 이전 데이터 초기화 및 매장 정보 로드
   useEffect(() => {
@@ -521,6 +521,28 @@ export default function ReviewManagementPage() {
   const handleAnalyze = async () => {
     if (!selectedStoreId) return
     
+    // 사용자 및 토큰 확인 (인증 필수)
+    if (!user) {
+      console.log("⚠️ 사용자 정보 없음")
+      toast({
+        title: "인증 오류",
+        description: "로그인이 필요합니다.",
+        variant: "destructive",
+      })
+      return
+    }
+    
+    const token = getToken()
+    if (!token) {
+      console.log("⚠️ 토큰 없음")
+      toast({
+        title: "인증 오류",
+        description: "로그인이 필요합니다. 다시 로그인해주세요.",
+        variant: "destructive",
+      })
+      return
+    }
+    
     const dateRange = getDateRange()
     console.log("========================================")
     console.log("🔄 하이브리드 리뷰 분석 시작")
@@ -529,6 +551,8 @@ export default function ReviewManagementPage() {
     console.log("📅 시작 날짜:", dateRange.start_date)
     console.log("📅 종료 날짜:", dateRange.end_date)
     console.log("🏪 Store ID:", selectedStoreId)
+    console.log("👤 User ID:", user.id)
+    console.log("🔑 Token:", token ? "있음" : "없음")
     console.log("========================================")
     
     // 분석 시도 플래그 설정
@@ -547,8 +571,6 @@ export default function ReviewManagementPage() {
     setAnalysisProgress(0)
     
     try {
-      // 토큰 가져오기 (인증 필요)
-      const token = await getToken()
       
       // 1단계: 리뷰 추출 (빠름)
       console.log("📥 1단계: 리뷰 추출 중...")
@@ -743,12 +765,12 @@ export default function ReviewManagementPage() {
                   // DB에서 분석된 리뷰 목록 다시 로드 (날짜별로 필터링됨)
                   console.log("📝 리뷰 목록 다시 로드 중 (날짜:", savedDate, ")")
                   try {
-                    const token = await getToken()
+                    const reloadToken = getToken()
                     const reviewsApiUrl = `https://api.whiplace.com/api/v1/reviews/list/${selectedStoreId}?date=${savedDate}`
                     console.log("📝 리뷰 API URL:", reviewsApiUrl)
                     const reviewsResponse = await fetch(reviewsApiUrl, {
                       headers: {
-                        'Authorization': `Bearer ${token}`,
+                        'Authorization': `Bearer ${reloadToken}`,
                         'Content-Type': 'application/json'
                       }
                     })
