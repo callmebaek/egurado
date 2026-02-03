@@ -2123,7 +2123,7 @@ async def generate_description(
                         "text_length": len(generated_text)
                     }
                 )
-                logger.info(f"[Credits] Deducted 5 credits from user {user_id} (transaction: {transaction_id})")
+                logger.info(f"[Credits] Deducted 15 credits from user {user_id} (transaction: {transaction_id})")
             except Exception as credit_error:
                 logger.error(f"[Credits] Failed to deduct credits: {credit_error}")
                 # 크레딧 차감 실패는 기능 사용을 막지 않음 (이미 생성은 완료됨)
@@ -2336,7 +2336,7 @@ SEO 관점에서 최적화하는 로컬 마케팅 전문가입니다.
                         "text_length": len(generated_text)
                     }
                 )
-                logger.info(f"[Credits] Deducted 3 credits from user {user_id} (transaction: {transaction_id})")
+                logger.info(f"[Credits] Deducted 10 credits from user {user_id} (transaction: {transaction_id})")
             except Exception as credit_error:
                 logger.error(f"[Credits] Failed to deduct credits: {credit_error}")
                 # 크레딧 차감 실패는 기능 사용을 막지 않음 (이미 생성은 완료됨)

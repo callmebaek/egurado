@@ -307,6 +307,15 @@ export default function ActivationPage() {
 
   // AI 업체소개글 생성
   const handleGenerateDescription = async () => {
+    if (!selectedStore) {
+      toast({
+        title: '매장 선택 필요',
+        description: '매장을 먼저 선택해주세요.',
+        variant: 'destructive',
+      })
+      return
+    }
+
     if (!regionKeyword || !businessTypeKeyword || !storeFeatures) {
       toast({
         title: '필수 정보 누락',
@@ -331,11 +340,12 @@ export default function ActivationPage() {
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          region: regionKeyword,
-          landmarks,
-          business_type: businessTypeKeyword,
-          products,
-          features: storeFeatures
+          store_id: selectedStore.id,
+          region_keyword: regionKeyword,
+          landmark_keywords: landmarks,
+          business_type_keyword: businessTypeKeyword,
+          product_keywords: products,
+          store_features: storeFeatures
         })
       })
       
@@ -345,8 +355,8 @@ export default function ActivationPage() {
       setGeneratedText(result.generated_text || '')
       setGeneratedTextCharCount(result.generated_text?.length || 0)
 
-      // ✨ 크레딧 실시간 차감 알림 (설명문 생성 25 크레딧)
-      notifyCreditUsed(25, token)
+      // ✨ 크레딧 실시간 차감 알림 (설명문 생성 15 크레딧)
+      notifyCreditUsed(15, token)
       
       toast({
         title: '생성 완료',
@@ -366,6 +376,15 @@ export default function ActivationPage() {
 
   // AI 찾아오는길 생성
   const handleGenerateDirections = async () => {
+    if (!selectedStore) {
+      toast({
+        title: '매장 선택 필요',
+        description: '매장을 먼저 선택해주세요.',
+        variant: 'destructive',
+      })
+      return
+    }
+
     if (!directionsRegionKeyword || !directionsDescription) {
       toast({
         title: '필수 정보 누락',
@@ -389,9 +408,10 @@ export default function ActivationPage() {
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          region: directionsRegionKeyword,
-          landmarks,
-          description: directionsDescription
+          store_id: selectedStore.id,
+          region_keyword: directionsRegionKeyword,
+          landmark_keywords: landmarks,
+          directions_description: directionsDescription
         })
       })
       
@@ -401,8 +421,8 @@ export default function ActivationPage() {
       setGeneratedDirectionsText(result.generated_text || '')
       setGeneratedDirectionsCharCount(result.generated_text?.length || 0)
 
-      // ✨ 크레딧 실시간 차감 알림 (길찾기 생성 15 크레딧)
-      notifyCreditUsed(15, token)
+      // ✨ 크레딧 실시간 차감 알림 (찾아오는길 생성 10 크레딧)
+      notifyCreditUsed(10, token)
       
       toast({
         title: '생성 완료',
@@ -1460,7 +1480,7 @@ export default function ActivationPage() {
               ) : (
                 <>
                   <Sparkles className="w-5 h-5 mr-2" />
-                  업체소개글 생성하기 (25 크레딧)
+                  업체소개글 생성하기 (15 크레딧)
                 </>
               )}
             </Button>
@@ -1577,7 +1597,7 @@ export default function ActivationPage() {
               ) : (
                 <>
                   <MapPin className="w-5 h-5 mr-2" />
-                  찾아오는길 생성하기 (15 크레딧)
+                  찾아오는길 생성하기 (10 크레딧)
                 </>
               )}
             </Button>
