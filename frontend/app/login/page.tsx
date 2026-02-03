@@ -7,7 +7,7 @@ import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Loader2 } from "lucide-react"
+import { Loader2, Mail, Lock, Sparkles, ArrowRight, Check } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { useAuth } from "@/lib/auth-context"
 import { startKakaoLogin, startNaverLogin } from "@/lib/social-login"
@@ -122,40 +122,83 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-white p-4">
-      <div className="w-full max-w-md">
-        <Card className="w-full">
-          <CardHeader className="space-y-1">
-            <div className="flex justify-center mb-6">
-              <Image
-                src="/whiplace-logo.svg"
-                alt="WhiPlace"
-                width={900}
-                height={300}
-                priority
-                className="w-full max-w-xs h-auto"
-              />
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50/30 via-green-50/20 to-teal-50/20 p-4 md:p-6 lg:p-8 relative overflow-hidden">
+      {/* 배경 장식 요소 - 파스텔 톤 */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-20 left-10 w-72 h-72 bg-emerald-200/20 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-20 right-10 w-96 h-96 bg-lime-200/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1000ms' }} />
+        <div className="absolute top-1/2 left-1/3 w-80 h-80 bg-teal-200/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '500ms' }} />
+      </div>
+
+      {/* 2열 레이아웃 컨테이너 */}
+      <div className="w-full max-w-6xl mx-auto relative z-10">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
+          
+          {/* 좌측: 로고 + 명언 + 안심 메시지 */}
+          <div className="space-y-4 lg:space-y-8 text-center lg:-mt-16">
+            {/* 로고 섹션 */}
+            <div className="space-y-4 md:space-y-6">
+              <div className="flex justify-center">
+                <Image
+                  src="/whiplace-logo.svg"
+                  alt="WhiPlace"
+                  width={900}
+                  height={300}
+                  priority
+                  className="w-full max-w-[200px] md:max-w-[280px] h-auto"
+                />
+              </div>
+              
+              {/* 환영 메시지 */}
+              <h1 className="text-xl md:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+                다시 오신 것을 환영합니다
+              </h1>
+
+              {/* 명언 */}
+              <div className="inline-flex items-start gap-2 md:gap-3 justify-center text-left max-w-lg mx-auto">
+                <div className="w-7 h-7 md:w-8 md:h-8 min-w-[28px] md:min-w-[32px] rounded-lg bg-gradient-to-br from-emerald-400 to-teal-400 flex items-center justify-center shadow-md -translate-y-[2px] md:-translate-y-[2px]">
+                  <Sparkles className="w-3.5 h-3.5 md:w-4 md:h-4 text-white" />
+                </div>
+                <p 
+                  className={`text-sm md:text-base text-gray-800 leading-relaxed font-medium transition-opacity duration-500 ${
+                    fadeIn ? 'opacity-100' : 'opacity-0'
+                  }`}
+                >
+                  {currentQuote}
+                </p>
+              </div>
             </div>
-            
-            {/* 명언 */}
-            <div className="text-center px-2 pb-4">
-              <p 
-                className={`text-sm text-gray-500 leading-relaxed transition-opacity duration-500 ${
-                  fadeIn ? 'opacity-100' : 'opacity-0'
-                }`}
-                style={{ 
-                  minHeight: '2.5rem'
-                }}
-              >
-                {currentQuote}
-              </p>
+
+            {/* 안심 메시지 */}
+            <div className="space-y-3 -translate-y-[8px]">
+              <div className="flex items-center justify-center gap-2">
+                <Check size={16} className="text-emerald-600 flex-shrink-0" strokeWidth={3} />
+                <span className="text-sm md:text-base text-gray-700 font-medium">신용카드 등록 불필요</span>
+              </div>
+              <div className="flex items-center justify-center gap-2">
+                <Check size={16} className="text-teal-600 flex-shrink-0" strokeWidth={3} />
+                <span className="text-sm md:text-base text-gray-700 font-medium">간단한 매장 100% 무료</span>
+              </div>
             </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
+          </div>
+
+          {/* 우측: 로그인 카드 */}
+          <div className="lg:mt-0">
+            <Card className="w-full border-2 border-emerald-200/50 shadow-2xl bg-white/95 backdrop-blur-sm">
+              <CardHeader className="space-y-1 pb-4">
+                <CardTitle className="text-xl md:text-2xl font-bold text-center">
+                  로그인
+                </CardTitle>
+                <CardDescription className="text-center text-sm md:text-base">
+                  이메일 또는 소셜 계정으로 로그인하세요
+                </CardDescription>
+              </CardHeader>
+          <CardContent className="space-y-5 md:space-y-6 p-6 md:p-8">
           {/* 이메일 로그인 폼 */}
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4 md:space-y-5">
             <div className="space-y-2">
-              <label htmlFor="email" className="text-sm font-medium">
+              <label htmlFor="email" className="flex items-center gap-2 text-sm md:text-base font-semibold text-gray-700">
+                <Mail className="w-4 h-4 text-emerald-500" />
                 이메일
               </label>
               <Input
@@ -166,17 +209,19 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 disabled={isLoading}
+                className="h-12 md:h-14 text-base border-2 border-emerald-100 focus:border-teal-400 focus:ring-4 focus:ring-teal-100 rounded-xl transition-all"
               />
             </div>
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <label htmlFor="password" className="text-sm font-medium">
+                <label htmlFor="password" className="flex items-center gap-2 text-sm md:text-base font-semibold text-gray-700">
+                  <Lock className="w-4 h-4 text-emerald-500" />
                   비밀번호
                 </label>
                 <Link
                   href="/auth/forgot-password"
-                  className="text-sm text-blue-600 hover:text-blue-800 hover:underline"
+                  className="text-xs md:text-sm text-teal-600 hover:text-teal-700 hover:underline font-medium"
                 >
                   비밀번호를 잊으셨나요?
                 </Link>
@@ -190,21 +235,25 @@ export default function LoginPage() {
                 required
                 disabled={isLoading}
                 minLength={8}
+                className="h-12 md:h-14 text-base border-2 border-emerald-100 focus:border-teal-400 focus:ring-4 focus:ring-teal-100 rounded-xl transition-all"
               />
             </div>
 
             <Button
               type="submit"
-              className="w-full"
+              className="w-full h-12 md:h-14 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white text-base md:text-lg font-bold rounded-xl shadow-lg hover:shadow-xl transition-all"
               disabled={isLoading}
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                   로그인 중...
                 </>
               ) : (
-                "로그인"
+                <>
+                  로그인
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </>
               )}
             </Button>
           </form>
@@ -212,25 +261,25 @@ export default function LoginPage() {
           {/* 구분선 */}
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
+              <span className="w-full border-t-2 border-gray-200" />
             </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-white px-2 text-muted-foreground">
+            <div className="relative flex justify-center text-xs md:text-sm uppercase">
+              <span className="bg-white px-3 md:px-4 text-gray-500 font-semibold">
                 또는
               </span>
             </div>
           </div>
 
           {/* 소셜 로그인 버튼 */}
-          <div className="space-y-2">
+          <div className="space-y-3">
             <Button
               type="button"
               variant="outline"
-              className="w-full bg-[#FEE500] hover:bg-[#FDD835] text-black border-0"
+              className="w-full h-12 md:h-14 bg-[#FEE500] hover:bg-[#FDD835] text-black border-0 text-base md:text-lg font-bold rounded-xl shadow-md hover:shadow-lg transition-all"
               onClick={handleKakaoLogin}
               disabled={isLoading}
             >
-              <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+              <svg className="mr-2 h-5 w-5 md:h-6 md:w-6" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12 3c5.799 0 10.5 3.664 10.5 8.185 0 4.52-4.701 8.184-10.5 8.184a13.5 13.5 0 0 1-1.727-.11l-4.408 2.883c-.501.265-.678.236-.472-.413l.892-3.678c-2.88-1.46-4.785-3.99-4.785-6.866C1.5 6.665 6.201 3 12 3zm5.907 8.06l1.47-1.424a.472.472 0 0 0-.656-.678l-1.928 1.866V9.282a.472.472 0 0 0-.944 0v2.557a.471.471 0 0 0 0 .222V13.5a.472.472 0 0 0 .944 0v-1.363l.427-.413 1.428 2.033a.472.472 0 1 0 .773-.544l-1.514-2.153zm-2.958 1.924h-1.46V9.297a.472.472 0 0 0-.943 0v4.159c0 .26.21.472.471.472h1.932a.472.472 0 1 0 0-.944zm-5.857-1.092l.696-1.707.638 1.707H9.092zm2.523.488l.002-.016a.469.469 0 0 0-.127-.32l-1.046-2.8a.69.69 0 0 0-.627-.474.69.69 0 0 0-.627.474l-1.063 2.839a.469.469 0 0 0 .874.327l.218-.581h1.978l.218.581a.469.469 0 0 0 .874-.327l.002-.016-.002.016.326-.103zm-4.347.613a.472.472 0 0 0 .472-.472V9.297a.472.472 0 1 0-.944 0v2.623H5.577a.472.472 0 1 0 0 .944h2.219c.26 0 .472-.212.472-.472z"/>
               </svg>
               카카오로 시작하기
@@ -239,11 +288,11 @@ export default function LoginPage() {
             <Button
               type="button"
               variant="outline"
-              className="w-full bg-[#03C75A] hover:bg-[#02B350] text-white border-0"
+              className="w-full h-12 md:h-14 bg-[#03C75A] hover:bg-[#02B350] text-white border-0 text-base md:text-lg font-bold rounded-xl shadow-md hover:shadow-lg transition-all"
               onClick={handleNaverLogin}
               disabled={isLoading}
             >
-              <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+              <svg className="mr-2 h-5 w-5 md:h-6 md:w-6" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M16.273 12.845L7.376 0H0v24h7.726V11.156L16.624 24H24V0h-7.727z"/>
               </svg>
               네이버로 시작하기
@@ -251,19 +300,21 @@ export default function LoginPage() {
           </div>
 
           {/* 회원가입 링크 */}
-          <div className="text-center">
-            <p className="text-sm text-muted-foreground">
+          <div className="text-center pt-2">
+            <p className="text-sm md:text-base text-gray-600">
               계정이 없으신가요?{" "}
               <Link
                 href="/signup"
-                className="text-primary hover:underline font-medium"
+                className="text-teal-600 hover:text-teal-700 hover:underline font-bold"
               >
                 회원가입
               </Link>
             </p>
           </div>
         </CardContent>
-      </Card>
+            </Card>
+          </div>
+        </div>
       </div>
     </div>
   )

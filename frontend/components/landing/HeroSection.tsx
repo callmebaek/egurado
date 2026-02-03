@@ -87,7 +87,7 @@ export const HeroSection = () => {
             </div>
 
             {/* 메인 헤드라인 - 타이핑 효과 + 그라데이션 색상 변화 */}
-            <h1 className="text-4xl sm:text-4xl md:text-5xl lg:text-6xl font-bold leading-loose md:leading-relaxed min-h-[280px] sm:min-h-[320px] md:min-h-[400px]">
+            <h1 className="text-4xl sm:text-4xl md:text-5xl lg:text-5xl font-bold leading-loose md:leading-relaxed min-h-[280px] sm:min-h-[320px] md:min-h-[400px]">
               <span className="inline-block animate-gradient-morph bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400 bg-clip-text text-transparent" style={{ backgroundSize: '300% 100%' }}>
                 {typedLines[0]}
                 {currentLineIndex === 0 && !isTypingComplete && <span className="animate-pulse">|</span>}
