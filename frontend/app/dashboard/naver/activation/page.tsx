@@ -257,6 +257,9 @@ export default function ActivationPage() {
       console.log('활성화 분석 성공:', result)
       setActivationData(result.data)
       
+      // ✨ 크레딧 실시간 차감 알림 (활성화 분석: 5 크레딧)
+      notifyCreditUsed(5, token)
+      
       // 과거 이력도 로드
       loadActivationHistories(storeId)
       
