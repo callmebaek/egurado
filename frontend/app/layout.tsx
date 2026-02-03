@@ -70,7 +70,7 @@ export const metadata: Metadata = {
     description: "네이버 플레이스 순위 추적, AI 자동 리뷰 답글, 키워드 분석을 한 곳에서. 자영업자를 위한 올인원 매장 관리 솔루션으로 더 많은 고객을 유치하고 리뷰 관리 시간을 90% 절약하세요.",
     images: [
       {
-        url: "/og-image.png",
+        url: "https://whiplace.com/og-image.png",
         width: 1200,
         height: 630,
         alt: "윕플 - 자영업자 전용 플레이스 관리 에이전트",
@@ -81,7 +81,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "윕플 - 플레이스 리뷰와 플레이스 순위를 가장 쉽게 관리하는 자영업자 전용 에이전트",
     description: "네이버 플레이스 순위 추적, AI 자동 리뷰 답글, 키워드 분석을 한 곳에서. 자영업자를 위한 올인원 매장 관리 솔루션으로 더 많은 고객을 유치하고 리뷰 관리 시간을 90% 절약하세요.",
-    images: ["/og-image.png"],
+    images: ["https://whiplace.com/og-image.png"],
   },
   alternates: {
     canonical: "https://whiplace.com",
