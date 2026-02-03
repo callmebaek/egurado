@@ -2,13 +2,60 @@
 
 import { ArrowRight, Check, Sparkles, TrendingUp, Zap } from 'lucide-react';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export const HeroSection = () => {
   const [email, setEmail] = useState('');
+  
+  // 타이핑 효과 상태
+  const [typedLines, setTypedLines] = useState<string[]>(['', '', '', '']);
+  const [currentLineIndex, setCurrentLineIndex] = useState(0);
+  const [isTypingComplete, setIsTypingComplete] = useState(false);
+  
+  const lines = [
+    '플레이스 리뷰와',
+    '플레이스 순위를',
+    '가장 쉽게 관리하는',
+    '자영업자 전용 에이전트'
+  ];
+
+  // 타이핑 효과 (최초 한번만)
+  useEffect(() => {
+    if (isTypingComplete) return;
+
+    const typeLine = (lineIndex: number) => {
+      if (lineIndex >= lines.length) {
+        setIsTypingComplete(true);
+        return;
+      }
+
+      const line = lines[lineIndex];
+      let charIndex = 0;
+
+      const typeInterval = setInterval(() => {
+        if (charIndex <= line.length) {
+          setTypedLines((prev) => {
+            const newLines = [...prev];
+            newLines[lineIndex] = line.substring(0, charIndex);
+            return newLines;
+          });
+          charIndex++;
+        } else {
+          clearInterval(typeInterval);
+          // 다음 줄로 이동 (짧은 지연)
+          setTimeout(() => {
+            setCurrentLineIndex(lineIndex + 1);
+            typeLine(lineIndex + 1);
+          }, 150);
+        }
+      }, 25); // 타이핑 속도 (25ms - 2배 빠름)
+    };
+
+    typeLine(0);
+  }, []);;
 
   return (
-    <section className="relative bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 pt-28 md:pt-32 lg:pt-40 pb-12 md:pb-16 lg:pb-20 overflow-hidden">
+    <section className="relative bg-gradient-to-br from-gray-50/30 via-blue-50/20 to-teal-50/20 pt-28 md:pt-32 lg:pt-40 pb-12 md:pb-16 lg:pb-20 overflow-hidden">
       {/* 배경 장식 요소 - 파스텔 톤 */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-20 left-10 w-72 h-72 bg-emerald-200/30 rounded-full blur-3xl animate-pulse" />
@@ -39,22 +86,26 @@ export const HeroSection = () => {
               </span>
             </div>
 
-            {/* 메인 헤드라인 - 파스텔 그라데이션 */}
-            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold leading-snug md:leading-tight">
-              <span className="bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400 bg-clip-text text-transparent">
-                플레이스 리뷰와
+            {/* 메인 헤드라인 - 타이핑 효과 + 그라데이션 색상 변화 */}
+            <h1 className="text-4xl sm:text-4xl md:text-5xl lg:text-6xl font-bold leading-loose md:leading-relaxed min-h-[280px] sm:min-h-[320px] md:min-h-[400px]">
+              <span className="inline-block animate-gradient-morph bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400 bg-clip-text text-transparent" style={{ backgroundSize: '300% 100%' }}>
+                {typedLines[0]}
+                {currentLineIndex === 0 && !isTypingComplete && <span className="animate-pulse">|</span>}
               </span>
-              <br />
-              <span className="bg-gradient-to-r from-teal-400 via-cyan-400 to-blue-400 bg-clip-text text-transparent">
-                플레이스 순위를
+              {typedLines[0] && <br />}
+              <span className="inline-block animate-gradient-morph bg-gradient-to-r from-teal-400 via-cyan-400 to-blue-400 bg-clip-text text-transparent" style={{ backgroundSize: '300% 100%', animationDelay: '0.5s' }}>
+                {typedLines[1]}
+                {currentLineIndex === 1 && !isTypingComplete && <span className="animate-pulse">|</span>}
               </span>
-              <br />
-              <span className="text-gray-700">
-                가장 쉽게 관리하는
+              {typedLines[1] && <br />}
+              <span className="inline-block text-gray-700">
+                {typedLines[2]}
+                {currentLineIndex === 2 && !isTypingComplete && <span className="animate-pulse">|</span>}
               </span>
-              <br />
-              <span className="bg-gradient-to-r from-lime-400 to-emerald-400 bg-clip-text text-transparent">
-                자영업자 전용 에이전트
+              {typedLines[2] && <br />}
+              <span className="inline-block animate-gradient-morph bg-gradient-to-r from-lime-400 to-emerald-400 bg-clip-text text-transparent" style={{ backgroundSize: '300% 100%', animationDelay: '1s' }}>
+                {typedLines[3]}
+                {currentLineIndex === 3 && !isTypingComplete && <span className="animate-pulse">|</span>}
               </span>
             </h1>
 
@@ -189,6 +240,28 @@ export const HeroSection = () => {
         }
         .animate-float {
           animation: float 3s ease-in-out infinite;
+        }
+        
+        /* 그라데이션 색상 변화 애니메이션 */
+        @keyframes gradient-morph {
+          0% {
+            background-position: 0% center;
+          }
+          25% {
+            background-position: 50% center;
+          }
+          50% {
+            background-position: 100% center;
+          }
+          75% {
+            background-position: 50% center;
+          }
+          100% {
+            background-position: 0% center;
+          }
+        }
+        .animate-gradient-morph {
+          animation: gradient-morph 4s ease-in-out infinite;
         }
       `}</style>
     </section>
