@@ -17,6 +17,7 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { useToast } from "@/components/ui/use-toast"
 import { API_BASE_URL } from "@/lib/config"
 import { notifyCreditUsed } from "@/lib/credit-utils"
 
@@ -44,6 +45,7 @@ export default function NaverAIReplyPage() {
   const searchParams = useSearchParams()
   const { user, getToken } = useAuth()
   const { stores, hasStores, isLoading: storesLoading } = useStores()
+  const { toast } = useToast()
   
   const [selectedStoreId, setSelectedStoreId] = useState<string>("")
   const [reviewLimit, setReviewLimit] = useState<string>("50")
@@ -501,6 +503,11 @@ export default function NaverAIReplyPage() {
       const data = await response.json()
       
       if (!response.ok) {
+        // 403 에러 (Tier 제한) 명시적 처리
+        if (response.status === 403) {
+          const errorMessage = data.detail || "답글 게시는 Pro 플랜 이상부터 사용 가능합니다."
+          throw new Error(errorMessage)
+        }
         throw new Error(data.detail || "답글 게시 요청 실패")
       }
       
@@ -534,7 +541,19 @@ export default function NaverAIReplyPage() {
       }
       
     } catch (err: any) {
-      setError(err.message || "답글 게시 중 오류가 발생했습니다")
+      const errorMessage = err.message || "답글 게시 중 오류가 발생했습니다"
+      
+      // Tier 제한 에러는 특별한 스타일로 표시
+      if (errorMessage.includes("Pro 플랜") || errorMessage.includes("업그레이드")) {
+        toast({
+          variant: "destructive",
+          title: "🚀 Pro 플랜 전용 기능",
+          description: errorMessage,
+          duration: 7000, // 7초간 표시
+        })
+      } else {
+        setError(errorMessage)
+      }
       
       // 오류 발생 시 포스팅 상태 제거
       setPostingReplyIds(prev => {
