@@ -10,6 +10,7 @@ import { Loader2, Search, Sparkles, Trash2, TrendingUp, Monitor, Smartphone } fr
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/components/ui/use-toast"
 import { api } from "@/lib/config"
 import { notifyCreditUsed } from "@/lib/credit-utils"

@@ -331,102 +331,154 @@ export default function FeatureVotingPage() {
 
   if (loading) {
     return (
-      <div className="w-full max-w-4xl mx-auto p-4 md:p-6 lg:p-8 min-h-screen flex items-center justify-center">
+      <div className="w-full max-w-6xl mx-auto p-4 md:p-6 lg:p-8 min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50/30 via-neutral-50/20 to-slate-50/20">
         <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-12 h-12 md:w-16 md:h-16 animate-spin text-primary-500" />
-          <p className="text-sm md:text-base text-neutral-600">투표 현황을 불러오는 중...</p>
+          <div className="w-16 h-16 md:w-20 md:h-20 bg-gradient-to-br from-neutral-400 to-slate-400 rounded-2xl flex items-center justify-center shadow-lg">
+            <Loader2 className="w-8 h-8 md:w-10 md:h-10 animate-spin text-white" />
+          </div>
+          <p className="text-base md:text-lg font-semibold text-neutral-700">투표 현황을 불러오는 중...</p>
+          <p className="text-sm md:text-base text-neutral-500">잠시만 기다려주세요</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="w-full max-w-4xl mx-auto p-4 md:p-6 lg:p-8 min-h-screen bg-neutral-50">
-      {/* 헤더 - TurboTax Style */}
-      <div className="mb-6 md:mb-8">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <h1 className="text-xl md:text-2xl font-bold text-neutral-900 mb-1.5 leading-tight">
-              추가 기능 요청
-            </h1>
-            <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
-              원하는 기능에 투표하고 개발 우선순위를 결정하세요
-            </p>
+    <div className="w-full max-w-6xl mx-auto p-4 md:p-6 lg:p-8 min-h-screen bg-gradient-to-br from-gray-50/30 via-neutral-50/20 to-slate-50/20">
+      {/* 헤더 */}
+      <div className="mb-8 md:mb-12 text-center">
+        <div className="flex justify-center mb-4 md:mb-6">
+          <div className="w-16 h-16 md:w-20 md:h-20 bg-gradient-to-br from-neutral-400 to-slate-500 rounded-2xl flex items-center justify-center shadow-lg">
+            <Lightbulb className="w-8 h-8 md:w-10 md:h-10 text-white" />
           </div>
+        </div>
+        <h1 className="text-2xl md:text-3xl lg:text-4xl font-extrabold text-neutral-900 mb-3 md:mb-4 leading-tight">
+          추가 기능 요청
+        </h1>
+        <p className="text-sm md:text-base text-neutral-600 leading-relaxed max-w-2xl mx-auto mb-4">
+          원하는 기능에 투표하고 개발 우선순위를 결정하세요
+        </p>
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          <Badge variant="secondary" className="bg-neutral-100 text-neutral-700 border-neutral-300 text-xs md:text-sm px-3 py-1">
+            <TrendingUp className="w-3 h-3 md:w-3.5 md:h-3.5 mr-1" />
+            실시간 투표
+          </Badge>
+          <Badge variant="secondary" className="bg-slate-100 text-slate-700 border-slate-300 text-xs md:text-sm px-3 py-1">
+            <Award className="w-3 h-3 md:w-3.5 md:h-3.5 mr-1" />
+            우선순위 반영
+          </Badge>
+        </div>
+        <div className="mt-6 flex justify-center">
           <Button
             variant="outline"
             onClick={handleGoBack}
-            className="ml-4 h-10 md:h-11"
+            className="h-12 md:h-14 px-6 text-base font-semibold border-2 border-neutral-300 hover:border-neutral-400 hover:bg-neutral-50 rounded-xl transition-all"
           >
-            대시보드로
+            대시보드로 돌아가기
           </Button>
         </div>
       </div>
 
       {/* 투표 완료 알림 */}
       {totalUserVotes > 0 && (
-        <Alert className="mb-6 md:mb-8 bg-success-bg border-success">
-          <CheckCircle2 className="w-5 h-5 text-success" />
-          <AlertTitle className="text-sm md:text-base font-bold text-success-dark">
-            🎉 감사합니다! {totalUserVotes}개 기능에 투표하셨습니다
-          </AlertTitle>
-          <AlertDescription className="text-xs md:text-sm text-success-dark mt-1">
-            투표한 기능의 개발이 완료되면 가장 먼저 알려드릴게요
-          </AlertDescription>
-        </Alert>
+        <div className="mb-6 p-5 md:p-6 bg-gradient-to-r from-emerald-50 to-teal-50 border-2 border-emerald-300 rounded-xl shadow-lg">
+          <div className="flex items-start gap-3 md:gap-4">
+            <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-emerald-400 to-teal-400 rounded-xl flex items-center justify-center shadow-md flex-shrink-0">
+              <CheckCircle2 className="w-5 h-5 md:w-6 md:h-6 text-white" />
+            </div>
+            <div className="flex-1">
+              <p className="text-base md:text-lg font-bold text-emerald-900 mb-1">
+                🎉 감사합니다! {totalUserVotes}개 기능에 투표하셨습니다
+              </p>
+              <p className="text-sm md:text-base text-emerald-700">
+                투표한 기능의 개발이 완료되면 가장 먼저 알려드릴게요
+              </p>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* 안내 */}
-      <Card className="mb-6 md:mb-8 bg-warning-bg border-warning">
-        <CardContent className="p-4 md:p-5">
-          <div className="flex items-start gap-3">
-            <Lightbulb className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <p className="text-sm md:text-base font-bold text-neutral-900 mb-2">투표 참여 안내</p>
-              <ul className="text-xs md:text-sm text-neutral-700 space-y-1 leading-relaxed">
-                <li>• 원하는 기능에 투표하면 해당 기능의 개발 우선순위가 높아집니다</li>
-                <li>• 각 기능당 1번만 투표할 수 있습니다</li>
-                <li>• 투표 결과는 실시간으로 모든 사용자에게 공개됩니다</li>
-              </ul>
-            </div>
+      <div className="mb-6 p-5 md:p-6 bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-dashed border-amber-300 rounded-xl shadow-md">
+        <div className="flex items-start gap-3 md:gap-4">
+          <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-amber-400 to-orange-400 rounded-xl flex items-center justify-center shadow-md flex-shrink-0">
+            <Lightbulb className="w-5 h-5 md:w-6 md:h-6 text-white" />
           </div>
-        </CardContent>
-      </Card>
+          <div className="flex-1">
+            <p className="text-base md:text-lg font-bold text-amber-900 mb-3">💡 투표 참여 안내</p>
+            <ul className="space-y-2 text-sm md:text-base text-amber-800">
+              <li className="flex items-start gap-2">
+                <span className="text-amber-600 font-bold mt-0.5">•</span>
+                <span>원하는 기능에 투표하면 해당 기능의 <strong>개발 우선순위</strong>가 높아집니다</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-amber-600 font-bold mt-0.5">•</span>
+                <span>각 기능당 <strong>1번만 투표</strong>할 수 있습니다</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-amber-600 font-bold mt-0.5">•</span>
+                <span>투표 결과는 <strong>실시간</strong>으로 모든 사용자에게 공개됩니다</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
 
       {/* 카테고리 필터 */}
-      <div className="flex flex-wrap gap-2 mb-6 md:mb-8">
-        <Button
-          onClick={() => setSelectedCategory('all')}
-          variant={selectedCategory === 'all' ? 'default' : 'outline'}
-          className={`h-10 md:h-11 ${selectedCategory === 'all' ? 'bg-primary-500 hover:bg-primary-600 text-white' : ''}`}
-        >
-          전체
-        </Button>
-        <Button
-          onClick={() => setSelectedCategory('naver')}
-          variant={selectedCategory === 'naver' ? 'default' : 'outline'}
-          className={`h-10 md:h-11 ${getCategoryButtonColor('naver', selectedCategory === 'naver')}`}
-        >
-          네이버 플레이스
-        </Button>
-        <Button
-          onClick={() => setSelectedCategory('kakao')}
-          variant={selectedCategory === 'kakao' ? 'default' : 'outline'}
-          className={`h-10 md:h-11 ${getCategoryButtonColor('kakao', selectedCategory === 'kakao')}`}
-        >
-          카카오 비즈니스
-        </Button>
-        <Button
-          onClick={() => setSelectedCategory('google')}
-          variant={selectedCategory === 'google' ? 'default' : 'outline'}
-          className={`h-10 md:h-11 ${getCategoryButtonColor('google', selectedCategory === 'google')}`}
-        >
-          구글 비즈니스 프로필
-        </Button>
+      <div className="mb-8">
+        <h2 className="text-lg md:text-xl font-bold text-neutral-900 mb-4 text-center md:text-left">
+          카테고리별 기능 보기
+        </h2>
+        <div className="flex flex-wrap justify-center md:justify-start gap-3">
+          <Button
+            onClick={() => setSelectedCategory('all')}
+            variant={selectedCategory === 'all' ? 'default' : 'outline'}
+            className={`h-12 md:h-14 px-6 text-base font-semibold rounded-xl shadow-md transition-all ${
+              selectedCategory === 'all' 
+                ? 'bg-gradient-to-r from-neutral-600 to-slate-600 hover:from-neutral-700 hover:to-slate-700 text-white shadow-lg'
+                : 'border-2 border-neutral-300 hover:border-neutral-400 hover:bg-neutral-50'
+            }`}
+          >
+            전체 ({FEATURES.length})
+          </Button>
+          <Button
+            onClick={() => setSelectedCategory('naver')}
+            variant={selectedCategory === 'naver' ? 'default' : 'outline'}
+            className={`h-12 md:h-14 px-6 text-base font-semibold rounded-xl shadow-md transition-all ${
+              selectedCategory === 'naver'
+                ? 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white shadow-lg'
+                : 'border-2 border-neutral-300 hover:border-green-400 hover:bg-green-50'
+            }`}
+          >
+            네이버 플레이스 ({FEATURES.filter(f => f.category === 'naver').length})
+          </Button>
+          <Button
+            onClick={() => setSelectedCategory('kakao')}
+            variant={selectedCategory === 'kakao' ? 'default' : 'outline'}
+            className={`h-12 md:h-14 px-6 text-base font-semibold rounded-xl shadow-md transition-all ${
+              selectedCategory === 'kakao'
+                ? 'bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600 text-white shadow-lg'
+                : 'border-2 border-neutral-300 hover:border-yellow-400 hover:bg-yellow-50'
+            }`}
+          >
+            카카오 비즈니스 ({FEATURES.filter(f => f.category === 'kakao').length})
+          </Button>
+          <Button
+            onClick={() => setSelectedCategory('google')}
+            variant={selectedCategory === 'google' ? 'default' : 'outline'}
+            className={`h-12 md:h-14 px-6 text-base font-semibold rounded-xl shadow-md transition-all ${
+              selectedCategory === 'google'
+                ? 'bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white shadow-lg'
+                : 'border-2 border-neutral-300 hover:border-blue-400 hover:bg-blue-50'
+            }`}
+          >
+            구글 비즈니스 프로필 ({FEATURES.filter(f => f.category === 'google').length})
+          </Button>
+        </div>
       </div>
 
       {/* 기능 목록 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
         {filteredFeatures.map((feature) => {
           const summary = voteSummaries[feature.key];
           const wantCount = summary?.want_count || 0;
@@ -438,64 +490,77 @@ export default function FeatureVotingPage() {
           return (
             <Card
               key={feature.key}
-              className={`rounded-card shadow-card transition-all duration-200 ${
+              className={`p-5 md:p-6 shadow-lg rounded-xl transition-all duration-200 ${
                 userVoted
-                  ? 'bg-primary-50 border-2 border-primary-300'
-                  : 'border-neutral-300 hover:shadow-card-hover hover:border-primary-200'
+                  ? 'bg-gradient-to-br from-neutral-50/80 to-slate-50/80 border-2 border-neutral-300 shadow-xl'
+                  : 'bg-white/95 backdrop-blur-sm border-2 border-neutral-200 hover:shadow-xl hover:border-neutral-300 hover:scale-[1.01]'
               }`}
             >
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between mb-3">
-                  <Badge variant="outline" className={`text-xs ${getCategoryColor(feature.category)}`}>
+              <div className="space-y-4">
+                {/* 헤더 */}
+                <div className="flex items-start justify-between gap-3">
+                  <Badge variant="outline" className={`text-xs md:text-sm font-semibold px-3 py-1 ${getCategoryColor(feature.category)}`}>
                     {getCategoryName(feature.category)}
                   </Badge>
-                  <div className="w-10 h-10 rounded-lg bg-neutral-100 flex items-center justify-center">
-                    {feature.icon}
+                  <div className="flex items-center gap-2">
+                    {userVoted && (
+                      <div className="w-6 h-6 md:w-7 md:h-7 bg-gradient-to-br from-neutral-500 to-slate-600 rounded-lg flex items-center justify-center shadow-md">
+                        <CheckCircle2 className="w-4 h-4 md:w-4.5 md:h-4.5 text-white" />
+                      </div>
+                    )}
+                    <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl bg-gradient-to-br from-neutral-100 to-neutral-200 flex items-center justify-center shadow-md">
+                      <div className="text-neutral-600">
+                        {feature.icon}
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <div className="flex items-start gap-2">
-                  <CardTitle className="text-base md:text-lg font-bold text-neutral-900 leading-tight flex-1">
-                    {feature.name}
-                  </CardTitle>
-                  {userVoted && (
-                    <CheckCircle2 className="w-5 h-5 text-primary-500 flex-shrink-0" />
-                  )}
-                </div>
-                <CardDescription className="text-xs md:text-sm text-neutral-600 leading-relaxed mt-2">
-                  {feature.description}
-                </CardDescription>
-              </CardHeader>
 
-              <CardContent className="pt-0">
+                {/* 제목 & 설명 */}
+                <div>
+                  <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight mb-2">
+                    {feature.name}
+                  </h3>
+                  <p className="text-xs md:text-sm text-neutral-600 leading-relaxed">
+                    {feature.description}
+                  </p>
+                </div>
+
                 {/* 투표 현황 */}
                 {totalVotes > 0 && (
-                  <div className="mb-4">
-                    <div className="flex items-center justify-between mb-2 text-xs text-neutral-600">
-                      <div className="flex items-center gap-1">
-                        <ThumbsUp className="w-3 h-3 text-success" />
-                        <span>{wantCount}명</span>
+                  <div className="p-3 md:p-4 bg-gradient-to-r from-neutral-50 to-neutral-100 rounded-xl border border-neutral-200">
+                    <div className="flex items-center justify-between mb-2 text-xs md:text-sm">
+                      <div className="flex items-center gap-1.5">
+                        <ThumbsUp className="w-3.5 h-3.5 md:w-4 md:h-4 text-emerald-500" />
+                        <span className="font-semibold text-neutral-700">{wantCount}명</span>
                       </div>
-                      <span className="font-bold">{totalVotes}명 참여</span>
-                      <div className="flex items-center gap-1">
-                        <ThumbsDown className="w-3 h-3 text-neutral-400" />
-                        <span>{notNeededCount}명</span>
+                      <Badge variant="secondary" className="bg-neutral-200 text-neutral-700 font-bold">
+                        {totalVotes}명 참여
+                      </Badge>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-semibold text-neutral-700">{notNeededCount}명</span>
+                        <ThumbsDown className="w-3.5 h-3.5 md:w-4 md:h-4 text-neutral-400" />
                       </div>
                     </div>
 
                     {/* 프로그레스 바 */}
-                    <div className="w-full h-2 bg-neutral-200 rounded-full overflow-hidden">
+                    <div className="w-full h-3 bg-neutral-200 rounded-full overflow-hidden shadow-inner">
                       <div
-                        className="h-full bg-gradient-to-r from-success to-green-500 transition-all duration-500"
+                        className="h-full bg-gradient-to-r from-emerald-400 to-teal-500 transition-all duration-500"
                         style={{ width: `${wantPercentage}%` }}
                       />
+                    </div>
+                    <div className="flex justify-between mt-1 text-xs text-neutral-600">
+                      <span>원해요</span>
+                      <span className="font-bold">{wantPercentage.toFixed(0)}%</span>
                     </div>
                   </div>
                 )}
 
                 {/* 투표 버튼 */}
                 {userVoted ? (
-                  <div className="bg-primary-100 border border-primary-300 rounded-lg p-3 text-center">
-                    <p className="text-sm font-bold text-primary-700">
+                  <div className="px-3 py-2 md:px-4 md:py-2.5 bg-gradient-to-r from-neutral-100 to-slate-100 border-2 border-neutral-300 rounded-lg text-center">
+                    <p className="text-xs md:text-sm font-semibold text-neutral-700">
                       {userVoted === 'want' ? '✅ 빨리 만들어주세요 투표함' : '❌ 별로 필요없다고 투표함'}
                     </p>
                   </div>
@@ -504,12 +569,12 @@ export default function FeatureVotingPage() {
                     <Button
                       onClick={() => handleVote(feature.key, 'want')}
                       disabled={votingFeature === feature.key}
-                      className="flex-1 h-11 md:h-10 bg-gradient-to-r from-success to-green-500 hover:from-green-600 hover:to-green-600 text-white font-bold"
+                      className="flex-1 h-12 md:h-14 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white text-base font-bold rounded-xl shadow-lg hover:shadow-xl transition-all"
                     >
                       {votingFeature === feature.key ? (
-                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                        <Loader2 className="w-4 h-4 md:w-5 md:h-5 animate-spin mr-2" />
                       ) : (
-                        <ThumbsUp className="w-4 h-4 mr-2" />
+                        <ThumbsUp className="w-4 h-4 md:w-5 md:h-5 mr-2" />
                       )}
                       빨리 만들어주세요
                     </Button>
@@ -517,30 +582,34 @@ export default function FeatureVotingPage() {
                       onClick={() => handleVote(feature.key, 'not_needed')}
                       disabled={votingFeature === feature.key}
                       variant="outline"
-                      className="h-11 md:h-10 w-11 md:w-10 p-0 border-neutral-300"
+                      className="h-12 md:h-14 w-12 md:w-14 p-0 border-2 border-neutral-300 hover:border-neutral-400 hover:bg-neutral-50 rounded-xl transition-all"
                     >
                       {votingFeature === feature.key ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <Loader2 className="w-4 h-4 md:w-5 md:h-5 animate-spin" />
                       ) : (
-                        <ThumbsDown className="w-4 h-4" />
+                        <ThumbsDown className="w-4 h-4 md:w-5 md:h-5" />
                       )}
                     </Button>
                   </div>
                 )}
-              </CardContent>
+              </div>
             </Card>
           );
         })}
       </div>
 
       {/* Footer */}
-      <Card className="mt-6 md:mt-8 bg-neutral-100 border-neutral-200">
-        <CardContent className="p-4 text-center">
-          <p className="text-xs text-neutral-600">
-            💡 더 추가하고 싶은 기능이 있나요? "윕플로 문의하기"를 통해 알려주세요!
+      <div className="mt-8 p-5 md:p-6 bg-gradient-to-r from-cyan-50 to-blue-50 border-2 border-dashed border-cyan-300 rounded-xl shadow-md text-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-12 h-12 md:w-14 md:h-14 bg-gradient-to-br from-cyan-400 to-blue-400 rounded-xl flex items-center justify-center shadow-md">
+            <MessageSquare className="w-6 h-6 md:w-7 md:h-7 text-white" />
+          </div>
+          <p className="text-sm md:text-base text-cyan-900 font-semibold max-w-2xl">
+            💡 더 추가하고 싶은 기능이 있나요?<br/>
+            <span className="font-bold">"윕플로 문의하기"</span>를 통해 알려주세요!
           </p>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }
