@@ -374,8 +374,8 @@ async def post_reply(
         place_id = store.get("place_id")
         store_user_id = store.get("user_id")
         
-        # 권한 확인
-        if store_user_id != current_user["id"]:
+        # 권한 확인 (UUID 타입 불일치 방지)
+        if str(store_user_id) != str(current_user["id"]):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="해당 매장에 접근할 권한이 없습니다"

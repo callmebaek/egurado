@@ -18,7 +18,6 @@ import { Textarea } from "@/components/ui/textarea"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { API_BASE_URL } from "@/lib/config"
-import { notifyCreditUsed } from "@/lib/credit-utils"
 
 interface Review {
   naver_review_id: string
@@ -315,8 +314,7 @@ export default function NaverAIReplyPage() {
         [review.naver_review_id]: data.reply_text
       }))
 
-      // ✨ 크레딧 실시간 차감 알림 (AI 답변 생성 20 크레딧)
-      notifyCreditUsed(20, token)
+      // 백엔드에서 1 크레딧 차감 완료 (실시간 알림 제거 - 백엔드 차감 후 자동 반영)
       
     } catch (err: any) {
       setError(err.message || "AI 답글 생성 중 오류가 발생했습니다")
@@ -523,8 +521,7 @@ export default function NaverAIReplyPage() {
           }
         }))
 
-        // ✨ 크레딧 실시간 차감 알림 (AI 답변 게시 15 크레딧)
-        notifyCreditUsed(15, token)
+        // 백엔드에서 2 크레딧 차감 완료 (실시간 알림 제거 - 백엔드 차감 후 자동 반영)
         
         // 상태 폴링 시작
         pollQueueStatus(review.naver_review_id, data.job_id)
