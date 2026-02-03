@@ -27,19 +27,15 @@ export const Footer = () => {
             <div className="space-y-2 text-sm text-neutral-400">
               <div className="flex items-center gap-2">
                 <Mail className="w-4 h-4" />
-                <a href="mailto:support@whiplace.com" className="hover:text-white transition-colors">
-                  support@whiplace.com
-                </a>
+                <span>추후 등록예정</span>
               </div>
               <div className="flex items-center gap-2">
                 <Phone className="w-4 h-4" />
-                <a href="tel:02-1234-5678" className="hover:text-white transition-colors">
-                  02-1234-5678
-                </a>
+                <span>추후 등록예정</span>
               </div>
               <div className="flex items-start gap-2">
                 <MapPin className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                <span>서울특별시 강남구 테헤란로</span>
+                <span>서울특별시 중랑구 면목천로 6길 22</span>
               </div>
             </div>
           </div>
@@ -153,13 +149,18 @@ export const Footer = () => {
         </div>
 
         {/* 사업자 정보 (선택적) */}
-        <div className="mt-6 pt-6 border-t border-neutral-800 text-xs text-neutral-600 text-center">
-          <p>
-            상호명: <span className="font-millenial">/윕플.</span> | 대표자: OOO | 사업자등록번호: 000-00-00000
-            <br className="md:hidden" />
-            <span className="hidden md:inline"> | </span>
-            통신판매업신고번호: 제2024-서울강남-0000호
-          </p>
+        <div className="mt-6 pt-6 border-t border-neutral-800 text-xs text-neutral-600">
+          <div className="max-w-4xl mx-auto space-y-1">
+            <p className="text-center md:text-left">
+              상호명: 주식회사 노느니 (<span className="font-millenial">/윕플.</span>) | 대표자: 백성민 | 사업자등록번호: 612-86-03312
+            </p>
+            <p className="text-center md:text-left">
+              통신판매업신고번호: 베타테스트 후 등록예정 | 주소: 서울특별시 중랑구 면목천로 6길 22
+            </p>
+            <p className="text-center md:text-left">
+              전화번호: 추후 등록예정 | 이메일: 추후 등록예정
+            </p>
+          </div>
         </div>
       </div>
     </footer>
