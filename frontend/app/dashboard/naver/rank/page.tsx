@@ -752,94 +752,85 @@ export default function NaverRankPage() {
         {/* 순위 결과 섹션 */}
         {rankResult && (
           <section>
-            <Card className="rounded-xl border-2 border-neutral-300 shadow-lg overflow-hidden">
-              <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b-2 border-blue-200 pb-4 px-5 md:px-6 pt-5 md:pt-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 md:w-12 md:h-12 bg-blue-500 rounded-xl flex items-center justify-center shadow-md">
-                    <TrendingUp className="w-5 h-5 md:w-6 md:h-6 text-white" />
+            <Card className="rounded-xl border-2 border-neutral-200 shadow-md overflow-hidden">
+              <CardHeader className="bg-neutral-50 border-b border-neutral-200 pb-3 px-4 md:px-5 pt-4 md:pt-5">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 md:w-9 md:h-9 bg-neutral-700 rounded-lg flex items-center justify-center">
+                    <TrendingUp className="w-4 h-4 md:w-5 md:h-5 text-white" />
                   </div>
-                  <CardTitle className="text-xl md:text-2xl font-bold text-neutral-900">
+                  <CardTitle className="text-lg md:text-xl font-bold text-neutral-900">
                     순위 결과
                   </CardTitle>
                 </div>
               </CardHeader>
-              <CardContent className="p-5 md:p-6">
+              <CardContent className="p-4 md:p-5">
                 {rankResult.found && rankResult.rank ? (
-                  <div className="space-y-5 md:space-y-6">
-                  {/* 순위 및 리뷰 정보 */}
-                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-300 rounded-xl p-5 md:p-6 shadow-md">
-                    <div className="flex flex-col gap-5">
-                      {/* 메인 순위 표시 */}
-                      <div className="flex items-center justify-between gap-4">
-                        <div className="flex items-center gap-4 md:gap-5">
-                          {/* 순위 */}
-                          <div className="relative">
-                            <div className="w-20 h-20 md:w-24 md:h-24 bg-green-500 rounded-2xl flex items-center justify-center shadow-lg">
-                              <div className="text-center">
-                                <div className="text-3xl md:text-4xl font-extrabold text-white leading-none">
-                                  {rankResult.rank}
-                                </div>
-                                <div className="text-xs md:text-sm text-white/90 font-semibold mt-0.5">
-                                  위
-                                </div>
+                  <div className="space-y-4 md:space-y-5">
+                  {/* 순위 및 리뷰 정보 - 컴팩트 버전 */}
+                  <div className="bg-white border-2 border-neutral-200 rounded-xl p-4 md:p-5 shadow-sm">
+                    <div className="flex items-center justify-between gap-4 flex-wrap">
+                      {/* 왼쪽: 순위 + 매장 정보 */}
+                      <div className="flex items-center gap-3 md:gap-4 flex-1 min-w-0">
+                        {/* 순위 (축소) */}
+                        <div className="relative flex-shrink-0">
+                          <div className="w-14 h-14 md:w-16 md:h-16 bg-green-500 rounded-xl flex items-center justify-center shadow-md">
+                            <div className="text-center">
+                              <div className="text-2xl md:text-3xl font-extrabold text-white leading-none">
+                                {rankResult.rank}
+                              </div>
+                              <div className="text-[10px] md:text-xs text-white/90 font-semibold">
+                                위
                               </div>
                             </div>
-                            {/* 순위 변동 배지 */}
-                            {rankResult.rank_change !== null && rankResult.rank_change !== 0 && (
-                              <div className={`absolute -top-2 -right-2 px-2 py-1 rounded-full shadow-md flex items-center gap-1 ${
-                                rankResult.rank_change > 0 ? 'bg-blue-500' : 'bg-red-500'
-                              }`}>
-                                {rankResult.rank_change > 0 ? (
-                                  <TrendingUp className="w-3 h-3 text-white" />
-                                ) : (
-                                  <TrendingDown className="w-3 h-3 text-white" />
-                                )}
-                                <span className="font-bold text-xs text-white">
-                                  {Math.abs(rankResult.rank_change)}
-                                </span>
-                              </div>
-                            )}
                           </div>
-                          
-                          {/* 매장 정보 */}
-                          <div className="flex-1 min-w-0">
-                            <p className="font-bold text-base md:text-lg text-neutral-900 mb-1 line-clamp-2 leading-tight">
-                              {selectedStore?.name}
-                            </p>
-                            <p className="text-sm md:text-base text-neutral-600">
-                              {rankResult.total_count 
-                                ? `전체 ${rankResult.total_count}개 중` 
-                                : `상위 ${rankResult.total_results}개 중`}
-                            </p>
-                          </div>
+                          {/* 순위 변동 배지 */}
+                          {rankResult.rank_change !== null && rankResult.rank_change !== 0 && (
+                            <div className={`absolute -top-1.5 -right-1.5 px-1.5 py-0.5 rounded-full shadow-sm flex items-center gap-0.5 ${
+                              rankResult.rank_change > 0 ? 'bg-blue-500' : 'bg-red-500'
+                            }`}>
+                              {rankResult.rank_change > 0 ? (
+                                <TrendingUp className="w-2.5 h-2.5 text-white" />
+                              ) : (
+                                <TrendingDown className="w-2.5 h-2.5 text-white" />
+                              )}
+                              <span className="font-bold text-[10px] text-white">
+                                {Math.abs(rankResult.rank_change)}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* 매장 정보 */}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-base md:text-lg text-neutral-900 mb-0.5 line-clamp-1 leading-tight">
+                            {selectedStore?.name}
+                          </p>
+                          <p className="text-xs md:text-sm text-neutral-500">
+                            {rankResult.total_count 
+                              ? `전체 ${rankResult.total_count}개 중` 
+                              : `상위 ${rankResult.total_results}개 중`}
+                          </p>
                         </div>
                       </div>
 
-                      {/* 리뷰 통계 */}
-                      <div className="grid grid-cols-2 gap-3 md:gap-4">
+                      {/* 오른쪽: 리뷰 통계 (인라인) */}
+                      <div className="flex items-center gap-4 md:gap-6">
                         {/* 방문자 리뷰 */}
-                        <div className="bg-white border-2 border-blue-200 rounded-xl p-3 md:p-4">
-                          <div className="flex items-center gap-2 mb-2">
-                            <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                              <span className="text-lg">👤</span>
-                            </div>
-                            <p className="text-xs md:text-sm text-neutral-600 font-medium">방문자 리뷰</p>
-                          </div>
-                          <p className="text-xl md:text-2xl font-bold text-blue-600">
-                            {(rankResult.visitor_review_count || 0).toLocaleString()}<span className="text-base text-neutral-500">개</span>
+                        <div className="text-center">
+                          <p className="text-[10px] md:text-xs text-neutral-500 mb-0.5 font-medium">방문자</p>
+                          <p className="text-base md:text-lg font-bold text-neutral-900">
+                            {(rankResult.visitor_review_count || 0).toLocaleString()}
                           </p>
                         </div>
 
+                        {/* 구분선 */}
+                        <div className="w-px h-8 bg-neutral-200"></div>
+
                         {/* 블로그 리뷰 */}
-                        <div className="bg-white border-2 border-purple-200 rounded-xl p-3 md:p-4">
-                          <div className="flex items-center gap-2 mb-2">
-                            <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-                              <span className="text-lg">📝</span>
-                            </div>
-                            <p className="text-xs md:text-sm text-neutral-600 font-medium">블로그 리뷰</p>
-                          </div>
-                          <p className="text-xl md:text-2xl font-bold text-purple-600">
-                            {(rankResult.blog_review_count || 0).toLocaleString()}<span className="text-base text-neutral-500">개</span>
+                        <div className="text-center">
+                          <p className="text-[10px] md:text-xs text-neutral-500 mb-0.5 font-medium">블로그</p>
+                          <p className="text-base md:text-lg font-bold text-neutral-900">
+                            {(rankResult.blog_review_count || 0).toLocaleString()}
                           </p>
                         </div>
                       </div>
@@ -848,46 +839,44 @@ export default function NaverRankPage() {
 
                   {/* 검색 결과 목록 */}
                   <div>
-                    <div className="flex items-center justify-between mb-4 md:mb-5">
-                      <h3 className="text-lg md:text-xl font-bold text-neutral-900 flex items-center gap-2">
-                        <Search className="w-5 h-5 md:w-6 md:h-6 text-blue-600" />
+                    <div className="flex items-center justify-between mb-3 md:mb-4">
+                      <h3 className="text-base md:text-lg font-bold text-neutral-900 flex items-center gap-2">
+                        <Search className="w-4 h-4 md:w-5 md:h-5 text-neutral-600" />
                         검색 결과
                       </h3>
-                      <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-blue-200 px-3 py-1.5 text-sm font-semibold">
-                        {rankResult.search_results.length}개 확인
+                      <Badge variant="secondary" className="bg-neutral-100 text-neutral-700 border-neutral-200 px-2.5 py-1 text-xs font-semibold">
+                        {rankResult.search_results.length}개
                       </Badge>
                     </div>
-                    <div className="space-y-3 md:space-y-4 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
+                    <div className="space-y-2 md:space-y-2.5 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
                       {rankResult.search_results.map((result, index) => (
                         <div
                           key={result.place_id}
-                          className={`p-4 md:p-5 rounded-xl border-2 transition-all duration-200 ${
+                          className={`p-3 md:p-3.5 rounded-lg border transition-all duration-200 ${
                             result.place_id === selectedStore?.place_id
-                              ? 'bg-gradient-to-br from-green-50 to-emerald-50 border-green-400 shadow-md'
-                              : 'bg-white border-neutral-200 hover:border-blue-300 hover:shadow-md'
+                              ? 'bg-green-50 border-green-500 shadow-sm'
+                              : 'bg-white border-neutral-200 hover:border-neutral-300 hover:shadow-sm'
                           }`}
                         >
-                          <div className="flex items-start gap-3 md:gap-4">
-                            {/* 순위 Badge */}
+                          <div className="flex items-start gap-2.5 md:gap-3">
+                            {/* 순위 번호 (작게) */}
                             <div 
-                              className={`flex items-center justify-center w-12 h-12 md:w-14 md:h-14 rounded-xl font-extrabold text-base md:text-lg flex-shrink-0 shadow-sm ${
+                              className={`flex items-center justify-center w-8 h-8 md:w-9 md:h-9 rounded-lg font-bold text-sm md:text-base flex-shrink-0 ${
                                 result.place_id === selectedStore?.place_id 
                                   ? 'bg-green-500 text-white' 
-                                  : index < 3
-                                  ? 'bg-yellow-100 text-yellow-800 border-2 border-yellow-300'
-                                  : 'bg-neutral-100 text-neutral-700'
+                                  : 'bg-neutral-100 text-neutral-600'
                               }`}
                             >
                               {index + 1}
                             </div>
 
-                            {/* 썸네일 */}
+                            {/* 썸네일 (작게) */}
                             {result.thumbnail ? (
-                              <div className="relative w-14 h-14 md:w-16 md:h-16 flex-shrink-0">
+                              <div className="relative w-11 h-11 md:w-12 md:h-12 flex-shrink-0">
                                 <img
                                   src={result.thumbnail}
                                   alt={result.name}
-                                  className="w-14 h-14 md:w-16 md:h-16 rounded-xl object-cover ring-2 ring-neutral-200"
+                                  className="w-11 h-11 md:w-12 md:h-12 rounded-lg object-cover ring-1 ring-neutral-200"
                                   loading="lazy"
                                   onError={(e) => {
                                     e.currentTarget.style.display = 'none'
@@ -895,46 +884,37 @@ export default function NaverRankPage() {
                                 />
                               </div>
                             ) : (
-                              <div className="w-14 h-14 md:w-16 md:h-16 bg-neutral-200 rounded-xl flex items-center justify-center flex-shrink-0">
-                                <MapPin className="w-6 h-6 md:w-8 md:h-8 text-neutral-400" />
+                              <div className="w-11 h-11 md:w-12 md:h-12 bg-neutral-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                <MapPin className="w-5 h-5 md:w-6 md:h-6 text-neutral-400" />
                               </div>
                             )}
 
                             {/* 매장 정보 */}
                             <div className="flex-1 min-w-0">
-                              {/* 상단: 매장명 + 내 매장 Badge */}
-                              <div className="flex items-start justify-between gap-2 mb-2">
-                                <p className="font-bold text-base md:text-lg text-neutral-900 line-clamp-2 leading-tight flex-1">
+                              {/* 매장명 + 내 매장 표시 */}
+                              <div className="flex items-start justify-between gap-2 mb-1">
+                                <p className="font-bold text-sm md:text-base text-neutral-900 line-clamp-1 leading-tight flex-1">
                                   {result.name}
+                                  {result.place_id === selectedStore?.place_id && (
+                                    <span className="ml-2 text-xs font-semibold text-green-600">✓ 내 매장</span>
+                                  )}
                                 </p>
-                                {result.place_id === selectedStore?.place_id && (
-                                  <Badge className="bg-green-500 text-white border-green-500 flex-shrink-0 text-xs px-2.5 py-1 font-semibold shadow-sm">
-                                    ✓ 내 매장
-                                  </Badge>
-                                )}
                               </div>
                               
-                              <p className="text-xs md:text-sm text-neutral-600 bg-neutral-100 inline-block px-2.5 py-1 rounded-lg mb-2 font-medium">
+                              <p className="text-[11px] md:text-xs text-neutral-500 mb-1 font-medium">
                                 {result.category}
                               </p>
                               
-                              <div className="flex items-start gap-2 mb-2">
-                                <MapPin className="w-4 h-4 md:w-4.5 md:h-4.5 text-neutral-400 mt-0.5 flex-shrink-0" />
-                                <p className="text-xs md:text-sm text-neutral-600 line-clamp-2 leading-relaxed flex-1">
-                                  {result.address}
-                                </p>
-                              </div>
-                              
                               {/* 평점 및 리뷰 */}
                               {result.review_count && result.review_count > 0 && (
-                                <div className="flex items-center gap-2 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-1.5 w-fit">
-                                  <Star className="w-4 h-4 fill-yellow-500 text-yellow-500 flex-shrink-0" />
+                                <div className="flex items-center gap-1.5">
+                                  <Star className="w-3 h-3 md:w-3.5 md:h-3.5 fill-yellow-500 text-yellow-500 flex-shrink-0" />
                                   {result.rating && typeof result.rating === 'number' && result.rating > 0 && (
-                                    <span className="text-sm font-bold text-neutral-900">
+                                    <span className="text-xs md:text-sm font-bold text-neutral-900">
                                       {result.rating.toFixed(1)}
                                     </span>
                                   )}
-                                  <span className="text-xs text-neutral-600">
+                                  <span className="text-[11px] md:text-xs text-neutral-500">
                                     리뷰 {typeof result.review_count === 'number' ? result.review_count.toLocaleString() : result.review_count}
                                   </span>
                                 </div>
@@ -947,28 +927,28 @@ export default function NaverRankPage() {
                   </div>
                 </div>
               ) : (
-                <div className="bg-gradient-to-br from-orange-50 to-red-50 border-2 border-orange-300 rounded-xl p-8 md:p-10 shadow-md">
-                  <div className="flex flex-col items-center gap-5 max-w-lg mx-auto">
+                <div className="bg-white border-2 border-neutral-200 rounded-xl p-6 md:p-8 shadow-sm">
+                  <div className="flex flex-col items-center gap-4 max-w-lg mx-auto">
                     {/* 아이콘 */}
-                    <div className="w-20 h-20 md:w-24 md:h-24 bg-orange-100 rounded-2xl flex items-center justify-center shadow-lg">
-                      <span className="text-4xl md:text-5xl">🔍</span>
+                    <div className="w-16 h-16 md:w-18 md:h-18 bg-neutral-100 rounded-xl flex items-center justify-center">
+                      <span className="text-3xl md:text-4xl">🔍</span>
                     </div>
                     
                     {/* 메인 메시지 */}
-                    <div className="text-center space-y-3">
-                      <h3 className="text-2xl md:text-3xl font-extrabold text-neutral-900">
+                    <div className="text-center space-y-2">
+                      <h3 className="text-xl md:text-2xl font-bold text-neutral-900">
                         300위 밖
                       </h3>
-                      <p className="text-base md:text-lg text-neutral-700 leading-relaxed">
+                      <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
                         상위 300개 내에서 매장을 찾을 수 없습니다
                       </p>
                     </div>
                     
                     {/* 통계 정보 */}
-                    <div className="w-full bg-white border-2 border-orange-200 rounded-xl p-4 md:p-5">
+                    <div className="w-full bg-neutral-50 border border-neutral-200 rounded-lg p-3 md:p-4">
                       <div className="flex items-center justify-center gap-2">
-                        <span className="text-2xl">📊</span>
-                        <p className="text-sm md:text-base text-neutral-700 font-medium">
+                        <span className="text-lg">📊</span>
+                        <p className="text-xs md:text-sm text-neutral-700 font-medium">
                           {rankResult.total_count 
                             ? `전체 ${rankResult.total_count}개 중 300개 확인됨` 
                             : `총 ${rankResult.total_results}개 확인됨`}
@@ -977,16 +957,16 @@ export default function NaverRankPage() {
                     </div>
                     
                     {/* 제안 */}
-                    <div className="w-full bg-blue-50 border-2 border-blue-200 rounded-xl p-4 md:p-5">
-                      <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <span className="text-xl">💡</span>
+                    <div className="w-full bg-neutral-50 border border-neutral-200 rounded-lg p-3 md:p-4">
+                      <div className="flex items-start gap-2.5">
+                        <div className="w-8 h-8 bg-neutral-200 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <span className="text-base">💡</span>
                         </div>
                         <div>
-                          <p className="text-sm md:text-base font-bold text-blue-900 mb-1">
+                          <p className="text-xs md:text-sm font-bold text-neutral-900 mb-1">
                             검색 팁
                           </p>
-                          <p className="text-xs md:text-sm text-blue-700 leading-relaxed">
+                          <p className="text-xs text-neutral-600 leading-relaxed">
                             더 구체적인 지역명이나 업종을 포함한 키워드로 다시 시도해보세요.<br />
                             예: "강남 카페" → "강남역 카페" 또는 "강남 디저트 카페"
                           </p>
