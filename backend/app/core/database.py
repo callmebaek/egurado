@@ -30,6 +30,8 @@ def get_supabase_client() -> Client:
                 "SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set in environment variables"
             )
         
+        # Python Supabase SDK는 기본적으로 stateless (세션 저장 안 함)
+        # JavaScript SDK와 달리 서버에서 세션을 저장하지 않으므로 멀티 유저 안전
         _supabase_client = create_client(supabase_url, supabase_key)
     
     return _supabase_client

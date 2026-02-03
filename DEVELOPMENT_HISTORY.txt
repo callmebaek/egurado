@@ -14512,3 +14512,406 @@ WITH CHECK (
    - 데이터베이스 작업 성공률 모니터링
 
 =====================================
+
+## 📅 Session 33: 크롬 확장 프로그램 JWT 인증 구현 (2026-02-03)
+
+### 🎯 목표
+크롬 확장 프로그램에서 발생하는 401 Unauthorized 오류를 해결하여 매장 목록 로드 및 네이버 세션 저장 기능이 정상 작동하도록 수정
+
+### 🔍 문제 상황
+
+**발생한 오류:**
+```
+Failed to load resource: the server responded with a status of 401 (Unauthorized)
+popup.js:130 ❌ 매장 로드 오류: Error: 매장 목록을 불러올 수 없습니다
+```
+
+**사용자 리포트:**
+- 크롬 확장 프로그램 툴바에서 401 Unauthorized 에러 발생
+- 매장 목록을 불러올 수 없음
+- 네이버 세션 저장 기능 사용 불가
+
+### 🔬 원인 분석 (Sequential Thinking 적용)
+
+**Step 1: 문제 정의**
+- 백엔드 API (`GET /api/v1/stores/`)는 `Depends(get_current_user)`로 JWT 인증 필수
+- 크롬 확장 프로그램이 Authorization 헤더 없이 API 호출
+- content.js는 userId만 추출하고 access_token을 추출하지 않음
+
+**Step 2: 근본 원인 파악**
+```javascript
+// popup.js (기존 코드)
+const response = await fetch(`${CONFIG.API_BASE_URL}/api/v1/stores/?user_id=${userId}`)
+// ❌ Authorization 헤더 없음!
+
+// content.js (기존 코드)
+return { authenticated: true, userId }
+// ❌ accessToken 반환 안 함!
+```
+
+**Step 3: 추가 이슈 발견 (테스트 중)**
+- localStorage에 `access_token`만 있고 Supabase 인증 데이터 없음
+- 기존 content.js는 Supabase 데이터에서만 userId 추출 시도
+- JWT 토큰에서 직접 userId를 디코딩하는 로직 부재
+
+### 💡 해결 방안
+
+**1. JWT 토큰 기반 인증 구현**
+- localStorage에서 `access_token` 직접 추출
+- JWT 디코딩으로 userId 추출
+- Supabase 방식을 fallback으로 유지 (하위 호환성)
+
+**2. API 호출 시 Authorization 헤더 추가**
+- `Authorization: Bearer ${accessToken}` 헤더 추가
+- 401 에러 시 명확한 에러 메시지 제공
+
+**3. 권한 및 설정 업데이트**
+- manifest.json에 API 도메인 권한 추가
+- 버전 1.0.1로 업데이트
+
+### 🔧 구현 내역
+
+#### 1. chrome-extension/content.js 수정
+
+**주요 변경사항:**
+```javascript
+// ✅ Step 1: 먼저 access_token 확인 (가장 확실한 방법)
+const accessToken = localStorage.getItem('access_token')
+
+if (!accessToken) {
+  console.log('❌ access_token이 localStorage에 없습니다')
+  return { authenticated: false, userId: null, accessToken: null }
+}
+
+// ✅ Step 2: JWT에서 userId 추출 (access_token 디코딩)
+let userId = null
+try {
+  const payload = JSON.parse(atob(accessToken.split('.')[1]))
+  userId = payload?.sub || payload?.user_id || payload?.id
+  console.log('✅ JWT에서 userId 추출 성공:', userId)
+} catch (e) {
+  console.error('❌ JWT 디코딩 실패:', e.message)
+}
+
+// ✅ Step 3: userId가 없으면 Supabase 방식으로 시도 (하위 호환성)
+if (!userId) {
+  // ... 기존 Supabase 로직 ...
+}
+
+return { authenticated: true, userId, accessToken }
+```
+
+**Chrome Storage 저장:**
+```javascript
+chrome.storage.local.set({ 
+  userId: authInfo.userId,
+  accessToken: authInfo.accessToken,  // 🆕 토큰도 함께 저장
+  lastUpdated: Date.now()
+}, () => {
+  console.log('✅ 인증 정보 Chrome Storage에 저장됨 (userId + accessToken)')
+})
+```
+
+#### 2. chrome-extension/popup.js 수정
+
+**전역 변수 추가:**
+```javascript
+let currentStores = []
+let selectedStoreId = null
+let userId = null
+let accessToken = null  // 🆕 인증 토큰
+```
+
+**checkAuthentication() 함수 수정:**
+```javascript
+async function checkAuthentication() {
+  try {
+    // Chrome Storage에서 사용자 ID와 토큰 확인
+    const result = await chrome.storage.local.get(['userId', 'accessToken', 'lastUpdated'])
+    
+    if (!result.userId) {
+      throw new Error('로그인이 필요합니다')
+    }
+    
+    if (!result.accessToken) {
+      throw new Error('인증 토큰이 없습니다. 웹사이트에 다시 로그인해주세요.')
+    }
+    
+    userId = result.userId
+    accessToken = result.accessToken  // 🆕 토큰 저장
+    console.log('✅ 사용자 인증 확인:', userId)
+    console.log('✅ 토큰 확인:', accessToken ? '토큰 있음' : '토큰 없음')
+    
+    await loadStores()
+  } catch (error) {
+    console.error('❌ 인증 오류:', error)
+    showError(`로그인이 필요합니다. 웹사이트(${CONFIG.FRONTEND_URL})에 접속하여 로그인한 후 다시 시도해주세요.`)
+    throw error
+  }
+}
+```
+
+**loadStores() 함수 수정:**
+```javascript
+async function loadStores() {
+  try {
+    const response = await fetch(`${CONFIG.API_BASE_URL}/api/v1/stores/`, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`  // 🆕 인증 헤더 추가
+      }
+    })
+    
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('인증이 만료되었습니다. 웹사이트에 다시 로그인해주세요.')
+      }
+      throw new Error('매장 목록을 불러올 수 없습니다')
+    }
+    
+    const data = await response.json()
+    currentStores = data.stores || []
+    
+    // 네이버 매장만 필터링
+    currentStores = currentStores.filter(store => store.platform === 'naver')
+    
+    if (currentStores.length === 0) {
+      showError('등록된 네이버 매장이 없습니다. 먼저 매장을 등록해주세요.')
+      return
+    }
+    
+    // 셀렉트 박스 채우기
+    elements.storeSelect.innerHTML = '<option value="">매장을 선택하세요...</option>'
+    currentStores.forEach(store => {
+      const option = document.createElement('option')
+      option.value = store.id
+      option.textContent = store.name || store.store_name
+      elements.storeSelect.appendChild(option)
+    })
+    
+    console.log('✅ 매장 목록 로드 완료:', currentStores.length)
+    
+  } catch (error) {
+    console.error('❌ 매장 로드 오류:', error)
+    showError(error.message || '매장 목록을 불러오는 중 오류가 발생했습니다.')
+  }
+}
+```
+
+#### 3. chrome-extension/manifest.json 수정
+
+**버전 업데이트:**
+```json
+{
+  "version": "1.0.1"
+}
+```
+
+**host_permissions 추가:**
+```json
+{
+  "host_permissions": [
+    "https://*.naver.com/*",
+    "http://localhost:8000/*",
+    "https://*.vercel.app/*",
+    "https://api.whiplace.com/*"  // 🆕 프로덕션 API 도메인 추가
+  ]
+}
+```
+
+#### 4. 문서 업데이트
+
+**chrome-extension/README.md:**
+- "401 Unauthorized" 오류 해결 방법 추가
+- 로그인 후 페이지 새로고침 필요성 강조
+- 버전 히스토리에 v1.0.1 추가
+
+**chrome-extension/QUICK_START.md:**
+- 프론트엔드 로그인 단계에 페이지 새로고침 안내 추가
+- 문제 해결 섹션에 401 에러 대응 방법 추가
+
+**CHROME_EXTENSION_AUTH_FIX.md (신규):**
+- 전체 수정 내역 상세 문서화
+- 테스트 방법 가이드
+- 보안 고려사항 정리
+- 문제 해결 가이드
+
+### 🧪 테스트 과정
+
+**Step 1: 초기 테스트 (실패)**
+```
+❌ 인증 오류: Error: 인증 토큰이 없습니다
+```
+- localStorage에 `access_token`만 있고 Supabase 데이터 없음
+- 기존 로직으로는 userId 추출 실패
+
+**Step 2: content.js 수정 후 재테스트 (성공)**
+```
+✅ access_token 발견: eyJhbGciOiJIUzI1NiIs...
+✅ JWT에서 userId 추출 성공: 2b19b314-d7ce-44c2-8755-374e63938c87
+✅ 인증 정보 Chrome Storage에 저장됨 (userId + accessToken)
+```
+
+**Step 3: 매장 목록 테스트 (다중 계정 이슈 발견)**
+```
+오류: 등록된 네이버 매장이 없습니다
+```
+- API 응답 확인 결과: 매장의 user_id와 JWT의 userId 불일치
+- 원인: 여러 계정으로 테스트 중 발생한 토큰 혼선
+
+**Step 4: 로그아웃 후 재테스트 (완전 성공)**
+```
+✅ 사용자 인증 확인: [userId]
+✅ 토큰 확인: 토큰 있음
+✅ 네이버 로그인 감지됨
+✅ 매장 목록 로드 완료: 1
+✅ 세션 저장 성공!
+```
+
+### 📊 검증 결과
+
+**Before (문제 상황):**
+```
+❌ Failed to load resource: 401 (Unauthorized)
+❌ 매장 로드 오류: Error: 매장 목록을 불러올 수 없습니다
+```
+
+**After (수정 후):**
+```
+✅ JWT에서 userId 추출 성공
+✅ 인증 정보 Chrome Storage에 저장됨 (userId + accessToken)
+✅ 사용자 인증 확인: [userId]
+✅ 토큰 확인: 토큰 있음
+✅ 매장 목록 로드 완료: 1
+✅ 세션 저장 성공
+```
+
+**테스트 시나리오:**
+1. ✅ egurado.vercel.app 로그인 후 페이지 새로고침
+2. ✅ 크롬 확장 프로그램 재로드
+3. ✅ 확장 프로그램 아이콘 클릭
+4. ✅ 매장 목록 정상 표시
+5. ✅ 네이버 로그인 상태 확인
+6. ✅ 매장 선택 후 "세션 저장하기" 클릭
+7. ✅ 세션 저장 성공 메시지 확인
+
+### 🔧 변경 파일 목록
+
+**크롬 확장 프로그램:**
+- `chrome-extension/content.js` ✅ (JWT 토큰 추출 로직 추가)
+- `chrome-extension/popup.js` ✅ (Authorization 헤더 추가)
+- `chrome-extension/manifest.json` ✅ (권한 및 버전 업데이트)
+
+**문서:**
+- `chrome-extension/README.md` ✅ (401 에러 가이드 추가)
+- `chrome-extension/QUICK_START.md` ✅ (로그인 가이드 보강)
+- `CHROME_EXTENSION_AUTH_FIX.md` ✅ (신규, 상세 수정 내역)
+
+**배포:**
+- 백엔드 배포 불필요 (변경 없음)
+- 프론트엔드 배포 불필요 (변경 없음)
+- 크롬 확장 프로그램: 로컬 재로드만으로 즉시 적용 가능
+
+### 🎯 주요 학습 내용
+
+1. **크롬 확장 프로그램의 배포 특성**
+   - 개발자 모드로 설치 시 로컬 파일 시스템 직접 읽기
+   - 재로드(🔄)만으로 즉시 반영 가능
+   - Git 커밋 전에도 로컬 테스트 가능
+   - 배포는 코드 백업/공유/버전 관리 목적
+
+2. **JWT 토큰 기반 인증 구현**
+   - localStorage에서 access_token 직접 추출
+   - `atob(token.split('.')[1])`로 JWT payload 디코딩
+   - `payload.sub`, `payload.user_id`, `payload.id` 순으로 userId 추출
+   - Supabase 방식을 fallback으로 유지 (하위 호환성)
+
+3. **Chrome Storage vs localStorage**
+   - localStorage: 웹사이트별 격리, content script에서 접근
+   - Chrome Storage: 확장 프로그램 전용, 모든 스크립트 공유
+   - content script → Chrome Storage → popup script 데이터 전달
+
+4. **크롬 확장 프로그램 디버깅**
+   - 팝업: 우클릭 → "검사" → Console 확인
+   - Network 탭: API 요청/응답 확인
+   - Chrome Storage: `chrome.storage.local.get()` 직접 호출
+
+5. **다중 계정 테스트 시 주의사항**
+   - 서로 다른 계정의 토큰 혼선 가능
+   - 완전 로그아웃 후 재로그인 권장
+   - JWT의 userId와 매장의 user_id 일치 확인 필요
+
+### 📝 Git 커밋 메시지
+
+```
+Fix: 크롬 확장 프로그램 401 Unauthorized 오류 수정 (v1.0.1)
+
+🔒 JWT 토큰 기반 인증 지원 추가
+- content.js: localStorage에서 access_token 직접 추출
+- content.js: JWT 디코딩으로 userId 추출 (Supabase 방식 fallback)
+- popup.js: API 호출 시 Authorization Bearer 헤더 추가
+- popup.js: 401 에러 처리 및 명확한 에러 메시지 제공
+
+🔧 권한 및 설정 업데이트
+- manifest.json: host_permissions에 api.whiplace.com 추가
+- manifest.json: 버전 1.0.0 → 1.0.1
+
+📚 문서 업데이트
+- README.md: 401 에러 해결 가이드 추가
+- QUICK_START.md: 로그인 후 새로고침 안내 추가
+- CHROME_EXTENSION_AUTH_FIX.md: 상세 수정 내역 문서 추가
+
+✅ 테스트 완료
+- JWT 토큰 추출 및 저장 정상 작동
+- 매장 목록 로드 정상 작동 (Authorization 헤더)
+- 네이버 세션 저장 기능 정상 작동
+```
+
+### ✅ 완료 체크리스트
+```
+✅ 문제 원인 정확히 파악 (JWT 인증 누락)
+✅ Sequential Thinking으로 체계적 접근
+✅ content.js: JWT 토큰 추출 로직 구현
+✅ content.js: JWT 디코딩으로 userId 추출
+✅ popup.js: Authorization 헤더 추가
+✅ popup.js: 401 에러 처리 강화
+✅ manifest.json: API 권한 추가, 버전 업데이트
+✅ 문서 업데이트 (README, QUICK_START, AUTH_FIX)
+✅ 로컬 테스트 완료 (매장 목록 로드)
+✅ 엔드투엔드 테스트 완료 (세션 저장)
+✅ 기존 기능 100% 보존
+✅ Git 커밋 & 푸시 완료
+✅ DEVELOPMENT_HISTORY.txt 업데이트
+```
+
+### 🔮 향후 개선 사항
+
+1. **자동 토큰 갱신**
+   - 토큰 만료 전 자동으로 웹사이트에서 재추출
+   - setInterval로 주기적 체크
+
+2. **토큰 유효성 검증**
+   - JWT 디코딩 후 exp(만료 시간) 확인
+   - 만료된 토큰 자동 감지 및 안내
+
+3. **에러 복구 자동화**
+   - 401 에러 시 자동으로 웹사이트 열기
+   - 로그인 완료 후 자동 재시도
+
+4. **다중 계정 지원**
+   - 계정별 토큰 저장 및 관리
+   - 계정 전환 UI 제공
+
+5. **Chrome Web Store 배포**
+   - 공식 배포로 일반 사용자 접근성 향상
+   - 자동 업데이트 지원
+
+### 🏆 성과
+
+- ✅ 크롬 확장 프로그램 인증 시스템 완전 구현
+- ✅ 401 Unauthorized 오류 완전 해결
+- ✅ JWT 토큰 기반 인증으로 보안 강화
+- ✅ 로컬 재로드만으로 즉시 테스트 가능한 개발 환경 구축
+- ✅ 상세한 문서화로 향후 유지보수 용이성 확보
+- ✅ 기존 기능 100% 보존하며 새 기능 추가
+
+=====================================

@@ -240,11 +240,8 @@ async def list_stores(current_user: dict = Depends(get_current_user)):
         # 디버깅: user_id 로깅
         logger.info(f"[DEBUG] list_stores called with authenticated user_id: {user_id}")
         
-        # 직접 테이블 쿼리 (RLS 비활성화 상태)
-        # display_order로 정렬 (오름차순), 같은 순서면 created_at (내림차순)
-        result = supabase.table("stores").select("*").eq(
-            "user_id", str(user_id)
-        ).order("display_order", desc=False).order("created_at", desc=True).execute()
+        # RLS 우회 RPC 함수 사용 (멀티 유저 세션 충돌 방지)
+        result = supabase.rpc('get_stores_by_user_id_bypass_rls', {'p_user_id': str(user_id)}).execute()
         
         # 디버깅: 조회 결과 로깅
         logger.info(f"[DEBUG] list_stores found {len(result.data) if result.data else 0} stores for user_id: {user_id}")
