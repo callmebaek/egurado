@@ -388,12 +388,16 @@ async def post_reply(
             )
         
         # 🆕 Tier 체크 (Pro 이상만 답글 게시 가능)
+        logger.info(f"[Tier Check] Querying profile for user_id: {current_user['id']}")
         user_profile = supabase.table("profiles").select("subscription_tier").eq(
             "id", current_user["id"]
         ).execute()
         
+        logger.info(f"[Tier Check] Profile query result: {user_profile.data}")
+        
         if user_profile.data and len(user_profile.data) > 0:
             user_tier = user_profile.data[0].get("subscription_tier", "free").lower()
+            logger.info(f"[Tier Check] User {user_id} retrieved tier: {user_tier}")
             if user_tier in ["free", "basic"]:
                 logger.warning(f"[Tier Restriction] User {user_id} (tier: {user_tier}) attempted to post reply")
                 raise HTTPException(
@@ -401,6 +405,8 @@ async def post_reply(
                     detail="답글 게시는 Pro 플랜 이상부터 사용 가능합니다. 플랜을 업그레이드해주세요."
                 )
             logger.info(f"[Tier Check] User {user_id} tier: {user_tier} - allowed")
+        else:
+            logger.warning(f"[Tier Check] No profile data found for user {user_id}, defaulting to free")
         
         # 🆕 크레딧 체크 (Feature Flag 확인)
         if settings.CREDIT_SYSTEM_ENABLED and settings.CREDIT_CHECK_STRICT:
