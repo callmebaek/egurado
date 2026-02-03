@@ -14292,3 +14292,223 @@ docker-compose logs --tail=50 egurado-api
 ```
 
 =====================================
+
+## 2026-02-03: 키워드 순위추적 UPDATE 실패 이슈 해결 (RLS 정책 추가)
+
+### 📋 문제 상황
+**사용자 리포트:**
+- 키워드 순위추적에서 "전체수집" 또는 "지금수집" 클릭 시 현재 실제 순위가 반영되지 않음
+- 플레이스 순위조회 페이지에서는 정확한 순위가 표시되는데, 키워드 순위추적 매장 카드에는 이전 순위가 그대로 표시됨
+- 어제(2026-02-02)는 정상 작동했으나, 오늘(2026-02-03) 재발생
+
+**구체적 증상:**
+- 백엔드: 정확한 순위 값(rank=48) 호출 성공
+- 데이터베이스: 업데이트 실패 (rank=65로 유지)
+- 프론트엔드: 데이터베이스의 구 데이터(rank=65) 표시
+
+### 🔍 근본 원인 분석 과정
+
+**1단계: 백엔드 로그 확인**
+```
+INFO: httpx - HTTP Request: PATCH https://bwpswxeyisagamzpvznv.supabase.co/rest/v1/daily_metrics?tracker_id=eq.4f471192-81bd-4f46-8f67-05c85f15f8d2&collection_date=eq.2026-02-03 "HTTP/2 200 OK"
+INFO: app.services.metric_tracker_service - [Metrics Collect] 업데이트 완료: 4f471192-81bd-4f46-8f67-05c85f15f8d2 - rank=48, visitor=3732, blog=1244
+```
+- PATCH 요청 성공 (200 OK)
+- "업데이트 완료" 로그 출력
+- 하지만 실제로는 0 rows updated 발생
+
+**2단계: 데이터베이스 직접 조회**
+```sql
+SELECT * FROM daily_metrics 
+WHERE tracker_id = '4f471192-81bd-4f46-8f67-05c85f15f8d2' 
+AND collection_date = '2026-02-03';
+
+결과:
+- rank: 65 (업데이트 안 됨!)
+- visitor_review_count: 3732 (정상)
+- blog_review_count: 1244 (정상)
+- collected_at: 2026-02-03 11:23 KST (오전 자동 수집 시간)
+```
+
+**3단계: UPDATE 테스트**
+```sql
+-- ID로 직접 UPDATE → 성공!
+UPDATE daily_metrics SET rank = 48 WHERE id = '5cb7a6c5-39cd-4809-8041-51bdeb908a46';
+✅ 성공 (1 row updated)
+
+-- WHERE 조건으로 UPDATE → 실패!
+UPDATE daily_metrics SET rank = 65 
+WHERE tracker_id = '...' AND collection_date = '2026-02-03';
+❌ 실패 (0 rows returned)
+```
+
+**4단계: RLS 정책 확인**
+```sql
+SELECT policyname, cmd FROM pg_policies WHERE tablename = 'daily_metrics';
+
+결과:
+- "Users can view own daily metrics" - SELECT ✅
+- "Allow insert daily metrics" - INSERT ✅
+- UPDATE 정책 없음 ❌
+```
+
+### 💡 근본 원인
+
+**daily_metrics 테이블에 UPDATE RLS 정책이 없었음**
+
+```python
+# backend/app/services/metric_tracker_service.py
+# service_role_key를 사용하지만, RLS 정책 부족으로 UPDATE 실패
+result = self.supabase.table('daily_metrics')\
+    .update(metric_data)\
+    .eq('tracker_id', tracker_id)\
+    .eq('collection_date', today.isoformat())\
+    .execute()
+
+# result.data = [] (0 rows updated)
+# 하지만 HTTP 200 OK 반환 → 백엔드는 성공으로 판단
+```
+
+**왜 어제는 성공했는가?**
+- 날짜가 바뀌면 → 첫 수집 → INSERT → 성공 ✅ (INSERT 정책 있음)
+- 같은 날 재수집 → UPDATE 시도 → 실패 ❌ (UPDATE 정책 없음)
+- `UNIQUE(tracker_id, collection_date)` 제약으로 같은 날은 UPDATE만 가능
+- KST(한국시간) 기준 자정(00:00)에 날짜 변경
+
+### ✅ 해결 방법
+
+**1. RLS UPDATE 정책 추가**
+```sql
+-- supabase/migrations/049_add_daily_metrics_update_policy.sql
+CREATE POLICY "Users can update own daily metrics" 
+ON daily_metrics 
+FOR UPDATE 
+USING (
+  EXISTS (
+    SELECT 1 FROM metric_trackers 
+    WHERE metric_trackers.id = daily_metrics.tracker_id 
+    AND metric_trackers.user_id = auth.uid()
+  )
+)
+WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM metric_trackers 
+    WHERE metric_trackers.id = daily_metrics.tracker_id 
+    AND metric_trackers.user_id = auth.uid()
+  )
+);
+```
+
+**2. 즉시 적용**
+- Supabase SQL Editor에서 정책 직접 실행
+- 즉시 프로덕션 DB에 적용
+- 정상 작동 확인
+
+**3. Migration 파일 생성**
+- `supabase/migrations/049_add_daily_metrics_update_policy.sql` 생성
+- 향후 DB 재구축 시 자동 적용
+- Git 저장소에 기록
+
+### 📊 검증 결과
+
+**테스트 시나리오:**
+1. 키워드 순위추적 페이지 접속
+2. "혜화도담 / 대학로맛집" 카드에서 "지금 수집" 클릭
+3. 결과 확인
+
+**Before:**
+- rank: 65 (업데이트 안 됨)
+- collected_at: 2026-02-03 11:23 KST
+
+**After:**
+- rank: 48 ✅ (정상 업데이트)
+- collected_at: 2026-02-03 15:37 KST ✅ (현재 시간)
+- visitor_review_count: 3732 ✅
+- blog_review_count: 1244 ✅
+
+### 🔧 변경 사항
+
+**데이터베이스:**
+- `supabase/migrations/049_add_daily_metrics_update_policy.sql` 추가
+- daily_metrics 테이블 UPDATE RLS 정책 추가
+
+**백엔드:**
+- 변경 없음 (코드는 원래 정상이었음)
+
+**프론트엔드:**
+- 변경 없음
+
+**배포:**
+- 백엔드 배포 불필요 (DB 정책만 추가)
+- 프론트엔드 배포 불필요
+
+### 🎯 주요 학습 내용
+
+1. **Supabase RLS 정책의 중요성**
+   - service_role_key를 사용해도 RLS 정책이 없으면 작동 안 함
+   - SELECT, INSERT, UPDATE, DELETE 각각 별도 정책 필요
+
+2. **Supabase REST API의 특성**
+   - UPDATE 실패 시에도 HTTP 200 OK 반환
+   - `result.data = []`로 0 rows updated 표시
+   - 백엔드에서 `result.data` 확인 필요
+
+3. **날짜별 데이터 관리**
+   - `UNIQUE(tracker_id, collection_date)` 제약
+   - 첫 수집: INSERT, 재수집: UPDATE
+   - KST 기준 자정(00:00)에 날짜 변경
+
+4. **디버깅 방법론**
+   - 백엔드 로그 → 데이터베이스 직접 조회 → RLS 정책 확인
+   - ID로 UPDATE vs WHERE로 UPDATE 비교 테스트
+   - 단계별 원인 분리 및 검증
+
+### 📝 코드 변경 내역
+
+```sql
+-- supabase/migrations/049_add_daily_metrics_update_policy.sql (NEW)
+CREATE POLICY "Users can update own daily metrics" 
+ON daily_metrics FOR UPDATE 
+USING (
+  EXISTS (
+    SELECT 1 FROM metric_trackers 
+    WHERE metric_trackers.id = daily_metrics.tracker_id 
+    AND metric_trackers.user_id = auth.uid()
+  )
+)
+WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM metric_trackers 
+    WHERE metric_trackers.id = daily_metrics.tracker_id 
+    AND metric_trackers.user_id = auth.uid()
+  )
+);
+```
+
+### ✅ 완료 체크리스트
+```
+✅ 문제 원인 정확히 파악 (RLS UPDATE 정책 부족)
+✅ RLS UPDATE 정책 추가
+✅ 프로덕션 DB에 즉시 적용
+✅ 정상 작동 검증 (rank 48로 업데이트 확인)
+✅ Migration 파일 생성 (049_add_daily_metrics_update_policy.sql)
+✅ 기존 기능 100% 보존
+✅ 추가 배포 불필요 확인
+✅ 향후 재발 방지 (Migration 파일로 기록)
+```
+
+### 🔮 향후 고려사항
+
+1. **백엔드 로깅 개선**
+   - `result.data`를 확인하여 실제 업데이트된 row 수 로깅
+   - 0 rows updated 시 명시적 경고 로그 추가
+
+2. **다른 테이블 점검**
+   - UPDATE 정책이 필요한 다른 테이블 확인
+   - 모든 CRUD 작업에 대한 RLS 정책 검증
+
+3. **모니터링 강화**
+   - UPDATE 실패 시 알림 시스템 구축
+   - 데이터베이스 작업 성공률 모니터링
+
+=====================================

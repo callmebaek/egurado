@@ -25,20 +25,27 @@ const notoSansKR = Noto_Sans_KR({
 // SEO 최적화된 메타데이터
 export const metadata: Metadata = {
   title: {
-    default: "위플레이스 - 네이버 플레이스 & 구글 비즈니스 통합 관리",
-    template: "%s | 위플레이스"
+    default: "윕플 - 플레이스 리뷰와 플레이스 순위를 가장 쉽게 관리하는 자영업자 전용 에이전트",
+    template: "%s | 윕플"
   },
-  description: "네이버 플레이스와 구글 비즈니스 프로필을 한 곳에서 관리하세요. AI 리뷰 답글, 키워드 순위 추적, 자동화된 매장 관리 솔루션.",
+  description: "네이버 플레이스 순위 추적, AI 자동 리뷰 답글, 키워드 분석을 한 곳에서. 자영업자를 위한 올인원 매장 관리 솔루션으로 더 많은 고객을 유치하고 리뷰 관리 시간을 90% 절약하세요.",
   keywords: [
     "네이버 플레이스",
+    "플레이스 순위",
+    "플레이스 리뷰",
     "구글 비즈니스",
     "매장 관리",
     "리뷰 관리",
+    "AI 리뷰 답글",
     "AI 답글",
     "키워드 순위",
+    "키워드 순위 추적",
+    "키워드 분석",
     "로컬 비즈니스",
     "자영업자",
-    "매장 마케팅"
+    "매장 마케팅",
+    "윕플",
+    "whiplace"
   ],
   authors: [{ name: "Whiplace Team" }],
   creator: "Whiplace",
@@ -57,27 +64,27 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "ko_KR",
-    url: "https://egurado.com",
-    siteName: "위플레이스",
-    title: "위플레이스 - 네이버 플레이스 & 구글 비즈니스 통합 관리",
-    description: "네이버 플레이스와 구글 비즈니스 프로필을 한 곳에서 관리하세요.",
+    url: "https://whiplace.com",
+    siteName: "윕플",
+    title: "윕플 - 플레이스 리뷰와 플레이스 순위를 가장 쉽게 관리하는 자영업자 전용 에이전트",
+    description: "네이버 플레이스 순위 추적, AI 자동 리뷰 답글, 키워드 분석을 한 곳에서. 자영업자를 위한 올인원 매장 관리 솔루션으로 더 많은 고객을 유치하고 리뷰 관리 시간을 90% 절약하세요.",
     images: [
       {
-        url: "/og-image.png",
+        url: "/whiplace-logo.svg",
         width: 1200,
         height: 630,
-        alt: "위플레이스 - 매장 관리 솔루션",
+        alt: "윕플 - 자영업자 전용 플레이스 관리 에이전트",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "위플레이스 - 네이버 플레이스 & 구글 비즈니스 통합 관리",
-    description: "네이버 플레이스와 구글 비즈니스 프로필을 한 곳에서 관리하세요.",
-    images: ["/og-image.png"],
+    title: "윕플 - 플레이스 리뷰와 플레이스 순위를 가장 쉽게 관리하는 자영업자 전용 에이전트",
+    description: "네이버 플레이스 순위 추적, AI 자동 리뷰 답글, 키워드 분석을 한 곳에서. 자영업자를 위한 올인원 매장 관리 솔루션으로 더 많은 고객을 유치하고 리뷰 관리 시간을 90% 절약하세요.",
+    images: ["/whiplace-logo.svg"],
   },
   alternates: {
-    canonical: "https://egurado.com",
+    canonical: "https://whiplace.com",
   },
   verification: {
     google: "your-google-verification-code",
