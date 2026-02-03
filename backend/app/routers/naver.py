@@ -1962,7 +1962,7 @@ async def generate_description(
             check_result = await credit_service.check_sufficient_credits(
                 user_id=user_id,
                 feature="business_description",
-                required_credits=15
+                required_credits=5
             )
             
             if not check_result.sufficient:
@@ -2116,14 +2116,14 @@ async def generate_description(
                 transaction_id = await credit_service.deduct_credits(
                     user_id=user_id,
                     feature="business_description",
-                    credits_amount=15,
+                    credits_amount=5,
                     metadata={
                         "store_id": request.store_id,
                         "store_name": store.get("store_name"),
                         "text_length": len(generated_text)
                     }
                 )
-                logger.info(f"[Credits] Deducted 15 credits from user {user_id} (transaction: {transaction_id})")
+                logger.info(f"[Credits] Deducted 5 credits from user {user_id} (transaction: {transaction_id})")
             except Exception as credit_error:
                 logger.error(f"[Credits] Failed to deduct credits: {credit_error}")
                 # 크레딧 차감 실패는 기능 사용을 막지 않음 (이미 생성은 완료됨)
@@ -2183,7 +2183,7 @@ async def generate_directions(
             check_result = await credit_service.check_sufficient_credits(
                 user_id=user_id,
                 feature="directions",
-                required_credits=10
+                required_credits=3
             )
             
             if not check_result.sufficient:
@@ -2329,14 +2329,14 @@ SEO 관점에서 최적화하는 로컬 마케팅 전문가입니다.
                 transaction_id = await credit_service.deduct_credits(
                     user_id=user_id,
                     feature="directions",
-                    credits_amount=10,
+                    credits_amount=3,
                     metadata={
                         "store_id": request.store_id,
                         "store_name": store.get("store_name"),
                         "text_length": len(generated_text)
                     }
                 )
-                logger.info(f"[Credits] Deducted 10 credits from user {user_id} (transaction: {transaction_id})")
+                logger.info(f"[Credits] Deducted 3 credits from user {user_id} (transaction: {transaction_id})")
             except Exception as credit_error:
                 logger.error(f"[Credits] Failed to deduct credits: {credit_error}")
                 # 크레딧 차감 실패는 기능 사용을 막지 않음 (이미 생성은 완료됨)
