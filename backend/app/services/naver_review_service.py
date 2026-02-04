@@ -13,7 +13,7 @@ import re
 from typing import List, Dict, Optional, Any
 from datetime import datetime, timedelta
 from playwright.async_api import Page
-from app.core.proxy import get_rotating_proxy
+from app.core.proxy import get_proxy
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +44,7 @@ class NaverReviewService:
             "Referer": "https://pcmap.place.naver.com/",
         }
         
-        self.proxies = get_rotating_proxy()
+        self.proxy = get_proxy()  # 프록시 URL 문자열 또는 None
     
     async def get_visitor_reviews(
         self, 
@@ -122,7 +122,13 @@ class NaverReviewService:
         
         try:
             logger.info(f"방문자 리뷰 조회 시작: place_id={place_id}, size={size}, after={after[:20] if after else 'None'}...")
-            async with httpx.AsyncClient(timeout=self.TIMEOUT, proxies=self.proxies) as client:
+            
+            # 프록시 조건부 설정
+            client_kwargs = {"timeout": self.TIMEOUT}
+            if self.proxy:
+                client_kwargs["proxy"] = self.proxy
+            
+            async with httpx.AsyncClient(**client_kwargs) as client:
                 payload = {"query": query, "variables": variables}
                 logger.debug(f"GraphQL 요청: {payload}")
                 print(f"[DEBUG] GraphQL variables: {variables}", flush=True)
@@ -273,7 +279,12 @@ class NaverReviewService:
             logger.info(f"[블로그 리뷰] 모바일 API 사용: place_id={place_id}, page={page}")
         
         try:
-            async with httpx.AsyncClient(timeout=self.TIMEOUT, proxies=self.proxies) as client:
+            # 프록시 조건부 설정
+            client_kwargs = {"timeout": self.TIMEOUT}
+            if self.proxy:
+                client_kwargs["proxy"] = self.proxy
+            
+            async with httpx.AsyncClient(**client_kwargs) as client:
                 response = await client.post(
                     api_url,
                     json=[{
@@ -842,7 +853,12 @@ class NaverReviewService:
                     # 여전히 매장명이 없으면 place_id 그대로 사용 (실패할 확률 높음)
                     search_query = place_id
             
-            async with httpx.AsyncClient(timeout=self.TIMEOUT, proxies=self.proxies) as client:
+            # 프록시 조건부 설정
+            client_kwargs = {"timeout": self.TIMEOUT}
+            if self.proxy:
+                client_kwargs["proxy"] = self.proxy
+            
+            async with httpx.AsyncClient(**client_kwargs) as client:
                 response = await client.post(
                     self.GRAPHQL_URL,
                     json={
@@ -987,7 +1003,12 @@ class NaverReviewService:
             cutoff_date = datetime.now(timezone.utc) - timedelta(days=target_days)
             found_old_enough = False
             
-            async with httpx.AsyncClient(timeout=10.0, proxies=self.proxies) as client:
+            # 프록시 조건부 설정
+            client_kwargs = {"timeout": 10.0}
+            if self.proxy:
+                client_kwargs["proxy"] = self.proxy
+            
+            async with httpx.AsyncClient(**client_kwargs) as client:
                 for page in range(max_pages):
                     start = page * 30 + 1  # 네이버는 1, 31, 61, 91... 형태로 페이징
                     url = f"https://search.naver.com/search.naver?ssc=tab.blog.all&query={query}&sm=tab_opt&nso=so:dd,p:all&start={start}"
@@ -1401,7 +1422,12 @@ class NaverReviewService:
             
             logger.info(f"[블로그 필터링] PostView URL 변환: {blog_url} → {postview_url}")
             
-            async with httpx.AsyncClient(timeout=5.0, proxies=self.proxies) as client:
+            # 프록시 조건부 설정
+            client_kwargs = {"timeout": 5.0}
+            if self.proxy:
+                client_kwargs["proxy"] = self.proxy
+            
+            async with httpx.AsyncClient(**client_kwargs) as client:
                 # PostView URL로 직접 실제 컨텐츠 가져오기
                 response = await client.get(postview_url, headers=self.headers, follow_redirects=True)
                 

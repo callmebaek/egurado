@@ -8,7 +8,7 @@ import json
 from typing import Dict, Optional, List, Any
 import re
 from bs4 import BeautifulSoup
-from app.core.proxy import get_rotating_proxy
+from app.core.proxy import get_proxy
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ class NaverPlaceDetailsService:
             "Referer": "https://m.place.naver.com/",
         }
         self.timeout = 20.0
-        self.proxies = get_rotating_proxy()
+        self.proxy = get_proxy()  # 프록시 URL 문자열 또는 None
         
     async def get_place_details_via_search(self, place_name: str, place_id: str) -> Dict[str, Any]:
         """
@@ -107,7 +107,12 @@ class NaverPlaceDetailsService:
         }
         
         try:
-            async with httpx.AsyncClient(timeout=self.timeout, proxies=self.proxies) as client:
+            # 프록시 조건부 설정
+            client_kwargs = {"timeout": self.timeout}
+            if self.proxy:
+                client_kwargs["proxy"] = self.proxy
+            
+            async with httpx.AsyncClient(**client_kwargs) as client:
                 response = await client.post(
                     self.api_url,
                     json=payload,
@@ -168,7 +173,12 @@ class NaverPlaceDetailsService:
         url = f"https://m.place.naver.com/place/{place_id}/home"
         
         try:
-            async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True, proxies=self.proxies) as client:
+            # 프록시 조건부 설정
+            client_kwargs = {"timeout": self.timeout, "follow_redirects": True}
+            if self.proxy:
+                client_kwargs["proxy"] = self.proxy
+            
+            async with httpx.AsyncClient(**client_kwargs) as client:
                 response = await client.get(url, headers={
                     "User-Agent": self.base_headers["User-Agent"]
                 })
