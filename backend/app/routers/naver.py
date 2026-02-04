@@ -1660,6 +1660,76 @@ async def analyze_single_competitor(place_id: str, rank: int = 0, store_name: st
         )
 
 
+@router.post("/competitor/analyze-batch")
+async def analyze_competitors_batch(request: dict):
+    """
+    배치 경쟁매장 분석 (성능 최적화용)
+    
+    여러 매장을 병렬로 분석하여 성능을 개선합니다.
+    
+    Args:
+        request: {
+            "stores": [
+                {"place_id": "...", "rank": 1, "name": "..."},
+                {"place_id": "...", "rank": 2, "name": "..."},
+                ...
+            ]
+        }
+        
+    Returns:
+        분석된 매장 목록
+    """
+    try:
+        stores = request.get("stores", [])
+        
+        if not stores:
+            raise HTTPException(
+                status_code=400,
+                detail="분석할 매장 목록이 비어있습니다."
+            )
+        
+        logger.info(f"[경쟁매장] 배치 분석 시작: {len(stores)}개 매장")
+        
+        # 병렬 분석 실행
+        async def analyze_one(store_data):
+            try:
+                result = await competitor_analysis_service.analyze_competitor(
+                    place_id=store_data.get("place_id"),
+                    rank=store_data.get("rank", 0),
+                    store_name=store_data.get("name")
+                )
+                return result
+            except Exception as e:
+                logger.error(f"[경쟁매장] 배치 내 단일 분석 실패: {store_data.get('place_id')}, {str(e)}")
+                return None
+        
+        # asyncio.gather로 병렬 처리
+        results = await asyncio.gather(*[analyze_one(store) for store in stores])
+        
+        # None 제거 (실패한 매장)
+        successful_results = [r for r in results if r is not None]
+        
+        logger.info(f"[경쟁매장] 배치 분석 완료: {len(successful_results)}/{len(stores)}개 성공")
+        
+        return {
+            "status": "success",
+            "total_requested": len(stores),
+            "total_analyzed": len(successful_results),
+            "results": successful_results
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        logger.error(f"[경쟁매장] 배치 분석 실패: {str(e)}\n{error_trace}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"배치 분석 중 오류가 발생했습니다: {str(e)}"
+        )
+
+
 # ============================================
 # 진단 히스토리 API
 # ============================================

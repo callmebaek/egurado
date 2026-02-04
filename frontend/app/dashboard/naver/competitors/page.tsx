@@ -371,12 +371,11 @@ export default function CompetitorsPage() {
     }
     
     setLoadingAnalysis(true)
-    setAnalysisProgress({ current: 0, total: stores.length + 1 })
+    setAnalysisProgress({ current: 0, total: stores.length })
     
     try {
+      // ==================== 1단계: 우리 매장 분석 ====================
       const myStoreUrl = `${api.baseUrl}/api/v1/naver/competitor/analyze-single/${selectedStore.place_id}?rank=0&store_name=${encodeURIComponent(selectedStore.store_name)}`
-      
-      setAnalysisProgress({ current: 1, total: stores.length + 1 })
       
       const myStoreResponse = await fetch(myStoreUrl)
       
@@ -388,29 +387,53 @@ export default function CompetitorsPage() {
       const myStoreData = await myStoreResponse.json()
       const myStore = myStoreData.result
       
+      // ==================== 2단계: 경쟁매장 배치 분석 ====================
       const analyzed: CompetitorStore[] = []
+      const batchSize = 5  // 5개씩 배치 처리
+      const totalBatches = Math.ceil(stores.length / batchSize)
       
-      for (let i = 0; i < stores.length; i++) {
-        const store = stores[i]
-        setAnalysisProgress({ current: i + 2, total: stores.length + 1 })
+      for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
+        const batchStart = batchIndex * batchSize
+        const batchEnd = Math.min(batchStart + batchSize, stores.length)
+        const batchStores = stores.slice(batchStart, batchEnd)
+        
+        // 배치 API 호출
+        const batchRequest = batchStores.map(store => ({
+          place_id: store.place_id,
+          rank: store.rank,
+          name: store.name
+        }))
         
         try {
-          const competitorUrl = `${api.baseUrl}/api/v1/naver/competitor/analyze-single/${store.place_id}?rank=${store.rank}&store_name=${encodeURIComponent(store.name)}`
+          const batchResponse = await fetch(`${api.baseUrl}/api/v1/naver/competitor/analyze-batch`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ stores: batchRequest })
+          })
           
-          const response = await fetch(competitorUrl)
-          
-          if (response.ok) {
-            const data = await response.json()
-            analyzed.push(data.result)
+          if (batchResponse.ok) {
+            const batchData = await batchResponse.json()
+            const batchResults = batchData.results || []
+            
+            analyzed.push(...batchResults)
             setAnalyzedStores([...analyzed])
+            
+            // Progress 업데이트
+            setAnalysisProgress({ current: analyzed.length, total: stores.length })
+          } else {
+            console.error(`배치 ${batchIndex + 1} 분석 실패`)
           }
         } catch (error) {
-          console.error(`${store.name} 분석 실패:`, error)
+          console.error(`배치 ${batchIndex + 1} 분석 에러:`, error)
         }
         
-        await new Promise(resolve => setTimeout(resolve, 1000))
+        // 다음 배치 전 잠시 대기 (서버 부하 방지)
+        if (batchIndex < totalBatches - 1) {
+          await new Promise(resolve => setTimeout(resolve, 500))
+        }
       }
       
+      // ==================== 3단계: 비교 분석 ====================
       const token = await getToken()
       if (!token) {
         throw new Error("인증 토큰이 없습니다")
@@ -728,15 +751,24 @@ export default function CompetitorsPage() {
             <Alert className="mb-6 bg-blue-50 border-primary">
               <Loader2 className="w-5 h-5 animate-spin text-primary" />
               <AlertTitle className="text-primary font-semibold">
-                경쟁매장 분석 중... ({analysisProgress.current}/{analysisProgress.total})
+                {analysisProgress.current === 0 ? (
+                  "우리 매장 분석 중..."
+                ) : (
+                  `경쟁매장 분석 중... (${analysisProgress.current}/${analysisProgress.total})`
+                )}
               </AlertTitle>
               <AlertDescription>
                 <div className="mt-2 w-full bg-neutral-200 rounded-full h-2 overflow-hidden">
                   <div 
                     className="bg-primary h-full transition-all duration-300 ease-out"
-                    style={{ width: `${(analysisProgress.current / analysisProgress.total) * 100}%` }}
+                    style={{ width: analysisProgress.total > 0 ? `${(analysisProgress.current / analysisProgress.total) * 100}%` : '0%' }}
                   />
                 </div>
+                {analysisProgress.current > 0 && (
+                  <p className="text-xs text-neutral-600 mt-2">
+                    {selectedStore?.store_name} 매장과 비교할 경쟁매장을 분석하고 있습니다
+                  </p>
+                )}
               </AlertDescription>
             </Alert>
           )}

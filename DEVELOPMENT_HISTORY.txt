@@ -14915,3 +14915,270 @@ Fix: 크롬 확장 프로그램 401 Unauthorized 오류 수정 (v1.0.1)
 - ✅ 기존 기능 100% 보존하며 새 기능 추가
 
 =====================================
+
+
+## 📅 2026-02-04: Smartproxy 통합 프로젝트 (네이버 API 차단 예방)
+
+### 🎯 프로젝트 목표
+
+네이버의 비공식 API 사용으로 인한 **IP 차단 위험 예방**을 위해 프록시 서비스 도입
+
+### 📋 작업 내용
+
+#### 1. 네이버 API 현황 분석
+- **공식 API**: 1개 (검색광고 API)
+- **비공식 API**: 4개 (검색, 순위, 리뷰, 매장정보)
+- **차단 위험**: 사용자 증가 시 요청량 증가로 차단 가능성 존재
+
+#### 2. 프록시 서비스 조사 및 선정
+- **조사 대상**: Smartproxy, Bright Data, Oxylabs, SOAX
+- **최종 선택**: Smartproxy
+  - 이유: 한국 IP 지원, Pay-as-you-go 방식, 합리적 가격
+  - 요금: 10GB $10 충전
+
+#### 3. 코드 통합 작업
+
+##### 3.1 프록시 헬퍼 모듈 생성
+```
+backend/app/core/proxy.py (신규 생성)
+```
+- `get_proxy()`: 환경변수에서 프록시 URL 가져오기
+- 프록시 활성화/비활성화 로깅
+
+##### 3.2 서비스 파일 수정 (5개)
+1. `backend/app/services/naver_search_api_unofficial.py` (2개 AsyncClient)
+2. `backend/app/services/naver_rank_api_unofficial.py` (2개 AsyncClient)
+3. `backend/app/services/naver_place_details_service.py` (2개 AsyncClient)
+4. `backend/app/services/naver_review_service.py` (5개 AsyncClient)
+
+**수정 패턴:**
+```python
+# 프록시 조건부 설정
+client_kwargs = {"timeout": self.timeout}
+if self.proxy:
+    client_kwargs["proxy"] = self.proxy
+
+async with httpx.AsyncClient(**client_kwargs) as client:
+    # API 호출
+```
+
+#### 4. 프록시 설정 및 테스트
+
+##### 4.1 첫 번째 시도 실패
+- **서버**: proxy.smartproxy.net (글로벌)
+- **결과**: HTTP 612 에러 (네이버 차단)
+- **원인**: 글로벌 서버의 한국 IP가 이미 차단됨
+
+##### 4.2 두 번째 시도 성공 ✅
+- **서버**: as.smartproxy.net (아시아)
+- **설정**: 
+  ```
+  국가: South Korea
+  시간: 5분 Sticky Session
+  포트: 3120
+  ```
+- **결과**: 정상 작동 확인
+  - 프록시 IP: 58.124.70.77 (수원, SK Broadband)
+  - 네이버 API 200 OK
+  - 검색 결과 정상 반환
+
+##### 4.3 속도 성능 분석
+```
+프록시 없이: 평균 495ms
+프록시 사용: 평균 1676ms (3.4배 느림)
+```
+
+**속도 저하 원인:**
+- 추가 네트워크 경로 (EC2 → Smartproxy → 네이버)
+- 프록시 인증 오버헤드
+- IP 로테이션 처리
+
+**포트 테스트 결과:**
+- 3120: 작동 ✅
+- 7000, 8000, 7001, 8001, 3128, 10000, 10001: 모두 실패 ❌
+- 결론: as.smartproxy.net에서는 3120 포트만 사용 가능
+
+#### 5. 배포 및 검증
+
+##### 5.1 환경변수 설정
+```bash
+# EC2 /backend/.env
+PROXY_URL=http://smart-wdovb9wcd101_area-KR_life-5_session-DaOLZ9DzS:YVUIoFPqFp9AXZyJ@as.smartproxy.net:3120
+```
+
+##### 5.2 배포 프로세스
+1. GitHub에 코드 커밋 & 푸시
+2. EC2에서 git pull
+3. Docker 완전 rebuild (--no-cache)
+4. 프록시 활성화 확인
+
+##### 5.3 실제 서비스 테스트
+- ✅ 순위 체크: 정상 작동
+- ✅ 매장 검색: 정상 작동
+- ✅ 리뷰 조회: 정상 작동
+- ✅ Smartproxy 대시보드: 트래픽 사용량 증가 확인
+
+### 🎯 주요 발견사항
+
+#### 1. 프록시 서버 위치의 중요성
+- 글로벌 서버(proxy.smartproxy.net): 차단됨 ❌
+- 아시아 서버(as.smartproxy.net): 정상 작동 ✅
+- **교훈**: 지역 타겟팅이 매우 중요함
+
+#### 2. 성능 vs 안정성 Trade-off
+- **성능 저하**: 3.4배 느려짐 (495ms → 1676ms)
+- **안정성 확보**: 네이버 차단 위험 회피
+- **딜레마**: 사용자 경험 vs 서비스 연속성
+
+#### 3. httpx 프록시 사용법
+- ❌ 잘못된 방법: `proxies={"http://": url, "https://": url}`
+- ✅ 올바른 방법: `proxy="http://user:pass@host:port"`
+- `httpx`는 `requests`와 다른 프록시 형식 사용
+
+### 📊 비용 분석
+
+#### Smartproxy 요금
+- **충전**: $10 (10GB)
+- **예상 사용량**: 
+  - API 요청 1회: 약 5-10KB
+  - 1GB = 약 100,000-200,000 요청
+  - 10GB = 약 1-2백만 요청
+- **월간 예상**: 사용자 수에 따라 다름
+
+### ⚠️ 현재 이슈 및 고려사항
+
+#### 1. 속도 저하 문제
+- 현재 3.4배 느림 (495ms → 1676ms)
+- 사용자 경험에 부정적 영향
+- **대안 검토 필요**:
+  - 옵션 A: 프록시 비활성화 (차단 시 재활성화)
+  - 옵션 B: 선택적 프록시 (20%만 사용)
+  - 옵션 C: 현재 상태 유지 (느린 속도 감수)
+
+#### 2. Fallback 로직 미구현
+- 프록시 잔액 소진 시 서비스 중단 위험
+- 자동 fallback 로직 필요
+- **향후 구현 필요**
+
+#### 3. 모니터링 시스템 부재
+- 프록시 사용량 모니터링 필요
+- 차단 감지 알림 시스템 필요
+- 비용 추적 필요
+
+### 📁 생성된 파일
+
+#### 코드 파일
+1. `backend/app/core/proxy.py` - 프록시 헬퍼 모듈
+
+#### 테스트 스크립트 (로컬)
+1. `test_smartproxy.py` - 프록시 기본 테스트
+2. `test_proxy_speed.py` - 속도 비교 테스트
+3. `test_all_ports.py` - 전체 포트 테스트
+
+### 🔧 Git 커밋 내역
+
+```bash
+feat: httpx 프록시 통합 (Phase 1 - 테스트용)
+- proxy.py 단순화 (문자열 반환)
+- naver_search_api_unofficial.py 프록시 조건부 적용
+- httpx.AsyncClient proxy 파라미터 형식 준수
+
+fix: 나머지 3개 파일 httpx 프록시 통합 완료
+- naver_rank_api_unofficial.py (2개 AsyncClient 수정)
+- naver_place_details_service.py (2개 AsyncClient 수정)
+- naver_review_service.py (5개 AsyncClient 수정)
+- 모든 파일 get_proxy() 사용으로 통일
+```
+
+### 🎓 얻은 교훈
+
+#### 1. 프록시 도입의 현실
+- **장점**: 차단 위험 예방, IP 분산
+- **단점**: 속도 저하, 비용 발생, 복잡도 증가
+- **결론**: 실제 필요성과 비용 효과 분석 필수
+
+#### 2. 지역 서버의 중요성
+- 글로벌 프록시 ≠ 지역 우회
+- 타겟 국가의 프록시 서버 선택 중요
+- 아시아 서버가 한국 IP로 네이버 접근 시 효과적
+
+#### 3. 성능 테스트의 중요성
+- 도입 전 속도 측정 필수
+- 사용자 경험 영향 평가
+- Trade-off 분석 후 의사결정
+
+### 📈 향후 계획
+
+#### 단기 (1-2주)
+1. **속도 vs 안정성 선택**
+   - 프록시 비활성화 vs 선택적 사용 결정
+   - 사용자 피드백 모니터링
+
+2. **모니터링 시스템 구축**
+   - 네이버 차단 감지
+   - 에러율 추적
+   - 프록시 사용량 모니터링
+
+#### 중기 (1-2개월)
+1. **Fallback 로직 구현**
+   - 프록시 실패 시 자동 재시도
+   - 잔액 소진 대응
+
+2. **선택적 프록시 구현**
+   - 20% 랜덤 또는 시간대별
+   - 속도 vs 안정성 균형
+
+#### 장기 (3-6개월)
+1. **대안 프록시 평가**
+   - Bright Data, Oxylabs 비교
+   - 더 빠른 서비스 탐색
+
+2. **자체 IP 풀 구축**
+   - AWS/GCP 한국 리전 활용
+   - 비용 효율성 분석
+
+### 🏆 최종 성과
+
+#### 기술적 성과
+- ✅ 프록시 통합 코드 완성 (5개 서비스 파일, 11개 AsyncClient)
+- ✅ httpx 프록시 사용법 마스터
+- ✅ 실제 서비스에 적용 및 검증 완료
+- ✅ Smartproxy 아시아 서버로 네이버 API 정상 작동 확인
+
+#### 전략적 성과
+- ✅ 네이버 차단 위험 대응 방안 확보
+- ✅ 프록시 사용의 현실적 한계 파악 (속도 저하)
+- ✅ 향후 확장 가능한 구조 구축
+- ✅ 상세한 문서화로 유지보수 용이성 확보
+
+#### 비즈니스 성과
+- ⏸️ **현재 보류**: 속도 저하로 인한 사용자 경험 고려
+- 🎯 **차단 대응 준비**: 필요 시 즉시 활성화 가능 (5분)
+- 💰 **비용 관리**: $10 충전, 사용량 모니터링 필요
+
+### 📝 참고 문서
+
+#### Smartproxy 설정
+```
+Server: as.smartproxy.net
+Port: 3120
+Username: smart-wdovb9wcd101_area-KR_life-5_session-DaOLZ9DzS
+Password: YVUIoFPqFp9AXZyJ
+Region: South Korea
+Session: 5분 Sticky
+```
+
+#### 테스트 결과
+```
+기본 속도: 495ms
+프록시 속도: 1676ms (3.4배 증가)
+성공률: 100%
+작동 포트: 3120만 작동
+```
+
+### 🔗 관련 리소스
+- Smartproxy 대시보드: https://dashboard.smartproxy.com/
+- httpx 문서: https://www.python-httpx.org/advanced/#http-proxying
+- 네이버 Place API: https://api.place.naver.com/graphql
+
+=====================================

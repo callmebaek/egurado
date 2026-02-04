@@ -319,37 +319,49 @@ class NaverCompetitorAnalysisService:
         gaps = {
             "diagnosis_score": {
                 "my_value": my_score,
+                "competitor_avg": round(avg_diagnosis_score_top20, 1),  # 프론트엔드 호환성
                 "competitor_avg_top5": round(avg_diagnosis_score_top5, 1),
                 "competitor_avg_top20": round(avg_diagnosis_score_top20, 1),
+                "gap": round(my_score - avg_diagnosis_score_top20, 1),  # 프론트엔드 호환성
                 "gap_top5": round(my_score - avg_diagnosis_score_top5, 1),
                 "gap_top20": round(my_score - avg_diagnosis_score_top20, 1),
+                "status": "good" if my_score >= avg_diagnosis_score_top20 else "bad",  # 프론트엔드 호환성
                 "status_top5": "good" if my_score >= avg_diagnosis_score_top5 else "bad",
                 "status_top20": "good" if my_score >= avg_diagnosis_score_top20 else "bad",
             },
             "visitor_reviews_7d_avg": {
                 "my_value": my_visitor_reviews,
+                "competitor_avg": round(avg_visitor_reviews_7d_top20, 1),  # 프론트엔드 호환성
                 "competitor_avg_top5": round(avg_visitor_reviews_7d_top5, 1),
                 "competitor_avg_top20": round(avg_visitor_reviews_7d_top20, 1),
+                "gap": round(my_visitor_reviews - avg_visitor_reviews_7d_top20, 1),  # 프론트엔드 호환성
                 "gap_top5": round(my_visitor_reviews - avg_visitor_reviews_7d_top5, 1),
                 "gap_top20": round(my_visitor_reviews - avg_visitor_reviews_7d_top20, 1),
+                "status": "good" if my_visitor_reviews >= avg_visitor_reviews_7d_top20 else "bad",  # 프론트엔드 호환성
                 "status_top5": "good" if my_visitor_reviews >= avg_visitor_reviews_7d_top5 else "bad",
                 "status_top20": "good" if my_visitor_reviews >= avg_visitor_reviews_7d_top20 else "bad",
             },
             "blog_reviews_7d_avg": {
                 "my_value": my_blog_reviews,
+                "competitor_avg": round(avg_blog_reviews_7d_top20, 1),  # 프론트엔드 호환성
                 "competitor_avg_top5": round(avg_blog_reviews_7d_top5, 1),
                 "competitor_avg_top20": round(avg_blog_reviews_7d_top20, 1),
+                "gap": round(my_blog_reviews - avg_blog_reviews_7d_top20, 1),  # 프론트엔드 호환성
                 "gap_top5": round(my_blog_reviews - avg_blog_reviews_7d_top5, 1),
                 "gap_top20": round(my_blog_reviews - avg_blog_reviews_7d_top20, 1),
+                "status": "good" if my_blog_reviews >= avg_blog_reviews_7d_top20 else "bad",  # 프론트엔드 호환성
                 "status_top5": "good" if my_blog_reviews >= avg_blog_reviews_7d_top5 else "bad",
                 "status_top20": "good" if my_blog_reviews >= avg_blog_reviews_7d_top20 else "bad",
             },
             "announcements_7d": {
                 "my_value": my_announcements,
+                "competitor_avg": round(avg_announcements_7d_top20, 1),  # 프론트엔드 호환성
                 "competitor_avg_top5": round(avg_announcements_7d_top5, 1),
                 "competitor_avg_top20": round(avg_announcements_7d_top20, 1),
+                "gap": round(my_announcements - avg_announcements_7d_top20, 1),  # 프론트엔드 호환성
                 "gap_top5": round(my_announcements - avg_announcements_7d_top5, 1),
                 "gap_top20": round(my_announcements - avg_announcements_7d_top20, 1),
+                "status": "good" if my_announcements >= avg_announcements_7d_top20 else "bad",  # 프론트엔드 호환성
                 "status_top5": "good" if my_announcements >= avg_announcements_7d_top5 else "bad",
                 "status_top20": "good" if my_announcements >= avg_announcements_7d_top20 else "bad",
             },
