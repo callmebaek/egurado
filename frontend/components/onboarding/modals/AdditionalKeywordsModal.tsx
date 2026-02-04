@@ -367,18 +367,12 @@ export default function AdditionalKeywordsModal({ isOpen, onClose, onComplete }:
 
       <KeywordInput
         keywords={locationKeywords}
-        onChange={setLocationKeywords}
+        onAdd={(keyword) => setLocationKeywords([...locationKeywords, keyword])}
+        onRemove={(index) => setLocationKeywords(locationKeywords.filter((_, i) => i !== index))}
         placeholder="예: 강남, 홍대, 명동"
         label="지역 키워드"
-        icon={<MapPin className="w-4 h-4" />}
+        helperText="💡 Tip: 동 단위보다는 큰 지역명이 좋아요 (예: 역삼동 → 강남)"
       />
-
-      <Alert variant="info">
-        <AlertTitle>💡 입력 팁</AlertTitle>
-        <AlertDescription className="text-xs md:text-sm">
-          동 단위보다는 큰 지역명이 좋아요 (예: 역삼동 → 강남)
-        </AlertDescription>
-      </Alert>
 
       {error && (
         <Alert variant="destructive">
@@ -403,18 +397,12 @@ export default function AdditionalKeywordsModal({ isOpen, onClose, onComplete }:
 
       <KeywordInput
         keywords={productKeywords}
-        onChange={setProductKeywords}
+        onAdd={(keyword) => setProductKeywords([...productKeywords, keyword])}
+        onRemove={(index) => setProductKeywords(productKeywords.filter((_, i) => i !== index))}
         placeholder="예: 커피, 파스타, 디저트"
         label="상품/서비스 키워드"
-        icon={<Package className="w-4 h-4" />}
+        helperText="💡 Tip: 구체적인 상품명이 좋아요 (예: 음식 → 파스타)"
       />
-
-      <Alert variant="info">
-        <AlertTitle>💡 입력 팁</AlertTitle>
-        <AlertDescription className="text-xs md:text-sm">
-          구체적인 상품명이 좋아요 (예: 음식 → 파스타)
-        </AlertDescription>
-      </Alert>
 
       {error && (
         <Alert variant="destructive">
@@ -439,18 +427,12 @@ export default function AdditionalKeywordsModal({ isOpen, onClose, onComplete }:
 
       <KeywordInput
         keywords={industryKeywords}
-        onChange={setIndustryKeywords}
+        onAdd={(keyword) => setIndustryKeywords([...industryKeywords, keyword])}
+        onRemove={(index) => setIndustryKeywords(industryKeywords.filter((_, i) => i !== index))}
         placeholder="예: 맛집, 카페, 레스토랑"
         label="업종 키워드"
-        icon={<Building2 className="w-4 h-4" />}
+        helperText="💡 Tip: 고객이 검색할 만한 업종명을 입력하세요"
       />
-
-      <Alert variant="info">
-        <AlertTitle>💡 입력 팁</AlertTitle>
-        <AlertDescription className="text-xs md:text-sm">
-          고객이 검색할 만한 업종명을 입력하세요
-        </AlertDescription>
-      </Alert>
 
       {error && (
         <Alert variant="destructive">
