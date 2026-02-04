@@ -283,7 +283,7 @@ export default function AdditionalKeywordsModal({ isOpen, onClose, onComplete }:
     if (currentStep === 8) {
       if (onComplete) onComplete();
       handleClose();
-      router.push('/dashboard/naver/keyword-search-volume');
+      router.push('/dashboard/naver/keywords');
       return;
     }
   };
