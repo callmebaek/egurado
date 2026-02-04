@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from typing import List, Dict, Optional, Any
 from uuid import UUID
 import logging
+import asyncio
 
 from app.services.naver_auth import store_naver_cookies
 from app.services.naver_search_new import search_service_new as search_service
