@@ -99,14 +99,17 @@ class MetricTrackerService:
         
         🚀 성능 최적화: 단일 쿼리로 모든 daily_metrics를 한 번에 조회하여
         N+1 쿼리 문제 해결 (N*3회 → 2회 쿼리로 감소)
+        
+        ✅ RLS 우회: 멀티 유저 세션 충돌 방지를 위해 RPC 함수 사용
         """
         try:
-            # 1️⃣ 모든 trackers 조회
-            result = self.supabase.table('metric_trackers')\
-                .select('*, stores(store_name, platform), keywords(keyword)')\
-                .eq('user_id', user_id)\
-                .order('created_at', desc=True)\
-                .execute()
+            # 1️⃣ 모든 trackers 조회 (RLS 우회 RPC 함수 사용)
+            logger.info(f"[Trackers Get All] RPC 함수 호출: user_id={user_id}")
+            result = self.supabase.rpc('get_metric_trackers_by_user_id_bypass_rls', {
+                'p_user_id': str(user_id)
+            }).execute()
+            
+            logger.info(f"[Trackers Get All] RPC 결과: {len(result.data) if result.data else 0}개 tracker")
             
             if not result.data:
                 return []
@@ -152,13 +155,16 @@ class MetricTrackerService:
                 tracker = {**item}
                 tracker_id = item['id']
                 
-                # stores와 keywords 정보 평탄화
-                if 'stores' in item and item['stores']:
-                    tracker['store_name'] = item['stores'].get('store_name', '')
-                    tracker['platform'] = item['stores'].get('platform', 'naver')
+                # RPC 함수는 이미 store_name, platform, keyword를 포함하므로 평탄화 불필요
+                # 하지만 하위 호환성을 위해 기존 형식도 유지
+                if 'store_name' not in tracker:
+                    if 'stores' in item and item['stores']:
+                        tracker['store_name'] = item['stores'].get('store_name', '')
+                        tracker['platform'] = item['stores'].get('platform', 'naver')
                 
-                if 'keywords' in item and item['keywords']:
-                    tracker['keyword'] = item['keywords'].get('keyword', '')
+                if 'keyword' not in tracker:
+                    if 'keywords' in item and item['keywords']:
+                        tracker['keyword'] = item['keywords'].get('keyword', '')
                 
                 # 해당 tracker의 metrics 가져오기
                 tracker_metrics = metrics_by_tracker.get(tracker_id, [])
