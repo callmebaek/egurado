@@ -279,61 +279,78 @@ class NaverTargetKeywordService:
         combinations: List[Dict[str, Any]]
     ) -> List[Dict[str, Any]]:
         """
-        키워드 검색량 조회 (배치 처리)
+        키워드 검색량 조회 (배치 처리 - 병렬 처리로 성능 최적화)
         네이버 API는 한 번에 최대 5개까지 조회 가능
         """
         results = []
         keywords = [combo["keyword"] for combo in combinations]
         
-        # 5개씩 배치 처리
+        # 5개씩 배치 준비
         batch_size = 5
+        batches = []
         for i in range(0, len(keywords), batch_size):
             batch_keywords = keywords[i:i+batch_size]
-            
+            batches.append(batch_keywords)
+        
+        logger.info(f"[타겟 키워드] 총 {len(batches)}개 배치를 병렬 처리합니다")
+        
+        # ⚡ 성능 최적화: 모든 배치를 병렬로 처리
+        async def fetch_batch(batch_keywords):
             try:
-                # 검색량 API 호출
-                result = self.keyword_service.get_keyword_search_volume(batch_keywords)
-                
-                if result.get("status") == "success":
-                    keyword_list = result.get("data", {}).get("keywordList", [])
-                    
-                    # 각 키워드별로 검색량 매핑
-                    for keyword_data in keyword_list:
-                        keyword = keyword_data.get("relKeyword")
-                        
-                        # 원본 조합 정보 찾기
-                        combo_info = next(
-                            (c for c in combinations if c["keyword"] == keyword),
-                            None
-                        )
-                        
-                        if combo_info:
-                            # PC + Mobile 검색량 합산
-                            pc_volume = keyword_data.get("monthlyPcQcCnt", 0)
-                            mobile_volume = keyword_data.get("monthlyMobileQcCnt", 0)
-                            
-                            # '<10' 같은 문자열 처리
-                            if isinstance(pc_volume, str):
-                                pc_volume = 5 if '<' in pc_volume else 0
-                            if isinstance(mobile_volume, str):
-                                mobile_volume = 5 if '<' in mobile_volume else 0
-                            
-                            total_volume = pc_volume + mobile_volume
-                            
-                            results.append({
-                                "keyword": keyword,
-                                "type": combo_info["type"],
-                                "components": combo_info["components"],
-                                "monthly_pc_qc_cnt": pc_volume,
-                                "monthly_mobile_qc_cnt": mobile_volume,
-                                "total_volume": total_volume,
-                                "comp_idx": keyword_data.get("compIdx", "-"),
-                                "raw_data": keyword_data
-                            })
-                
+                # 비동기 API 호출
+                result = await self.keyword_service.get_keyword_search_volume_async(batch_keywords)
+                return result
             except Exception as e:
                 logger.error(f"[타겟 키워드] 배치 검색량 조회 실패: {str(e)}")
+                return {"status": "error"}
+        
+        # 모든 배치를 동시에 처리
+        batch_results = await asyncio.gather(*[fetch_batch(batch) for batch in batches], return_exceptions=True)
+        
+        # 결과 처리
+        for batch_result in batch_results:
+            if isinstance(batch_result, Exception):
+                logger.error(f"[타겟 키워드] 배치 처리 중 예외: {batch_result}")
                 continue
+                
+            if batch_result.get("status") == "success":
+                keyword_list = batch_result.get("data", {}).get("keywordList", [])
+                
+                # 각 키워드별로 검색량 매핑
+                for keyword_data in keyword_list:
+                    keyword = keyword_data.get("relKeyword")
+                    
+                    # 원본 조합 정보 찾기
+                    combo_info = next(
+                        (c for c in combinations if c["keyword"] == keyword),
+                        None
+                    )
+                    
+                    if combo_info:
+                        # PC + Mobile 검색량 합산
+                        pc_volume = keyword_data.get("monthlyPcQcCnt", 0)
+                        mobile_volume = keyword_data.get("monthlyMobileQcCnt", 0)
+                        
+                        # '<10' 같은 문자열 처리
+                        if isinstance(pc_volume, str):
+                            pc_volume = 5 if '<' in pc_volume else 0
+                        if isinstance(mobile_volume, str):
+                            mobile_volume = 5 if '<' in mobile_volume else 0
+                        
+                        total_volume = pc_volume + mobile_volume
+                        
+                        results.append({
+                            "keyword": keyword,
+                            "type": combo_info["type"],
+                            "components": combo_info["components"],
+                            "monthly_pc_qc_cnt": pc_volume,
+                            "monthly_mobile_qc_cnt": mobile_volume,
+                            "total_volume": total_volume,
+                            "comp_idx": keyword_data.get("compIdx", "-"),
+                            "raw_data": keyword_data
+                        })
+        
+        logger.info(f"[타겟 키워드] 병렬 처리 완료: {len(results)}개 키워드 조회")
         
         return results
     

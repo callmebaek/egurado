@@ -7,6 +7,7 @@ import hashlib
 import hmac
 import base64
 import requests
+import httpx
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 from app.core.database import get_supabase_client
@@ -128,6 +129,87 @@ class NaverKeywordSearchVolumeService:
         except requests.exceptions.RequestException as e:
             error_msg = f"API 호출 실패: {str(e)}"
             print(f"[검색량 서비스] 예외 발생: {error_msg}")
+            return {
+                "status": "error",
+                "message": error_msg
+            }
+    
+    async def get_keyword_search_volume_async(self, keywords: List[str]) -> Dict[str, Any]:
+        """
+        키워드 검색량 조회 (비동기 버전)
+        
+        Args:
+            keywords: 조회할 키워드 리스트 (최대 5개)
+            
+        Returns:
+            검색량 데이터
+        """
+        print(f"[검색량 서비스 ASYNC] 원본 키워드: {keywords}")
+        
+        # 띄어쓰기 제거
+        cleaned_keywords = [kw.replace(" ", "") for kw in keywords]
+        print(f"[검색량 서비스 ASYNC] 정제된 키워드: {cleaned_keywords}")
+        
+        if not self.client_id or not self.client_secret:
+            error_msg = "네이버 검색도구 API 인증 정보가 설정되지 않았습니다."
+            print(f"[검색량 서비스 ASYNC] 에러: {error_msg}")
+            return {
+                "status": "error",
+                "message": error_msg
+            }
+        
+        if len(cleaned_keywords) > 5:
+            return {
+                "status": "error",
+                "message": "한 번에 최대 5개의 키워드만 조회할 수 있습니다."
+            }
+        
+        timestamp = str(int(datetime.now().timestamp() * 1000))
+        method = "GET"
+        uri = "/keywordstool"
+        
+        signature = self._generate_signature(timestamp, method, uri)
+        
+        headers = {
+            "X-Timestamp": timestamp,
+            "X-API-KEY": self.client_id,
+            "X-Customer": self.customer_id,
+            "X-Signature": signature,
+            "Content-Type": "application/json"
+        }
+        
+        params = {
+            "hintKeywords": ",".join(cleaned_keywords),
+            "showDetail": "1"
+        }
+        
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.get(
+                    f"{self.BASE_URL}{uri}",
+                    headers=headers,
+                    params=params
+                )
+                
+                print(f"[검색량 서비스 ASYNC] 응답 상태 코드: {response.status_code}")
+                
+                response.raise_for_status()
+                
+                result_data = response.json()
+                
+                result_data["_keyword_mapping"] = {
+                    cleaned: original 
+                    for cleaned, original in zip(cleaned_keywords, keywords)
+                }
+                
+                return {
+                    "status": "success",
+                    "data": result_data
+                }
+                
+        except Exception as e:
+            error_msg = f"API 호출 실패: {str(e)}"
+            print(f"[검색량 서비스 ASYNC] 예외 발생: {error_msg}")
             return {
                 "status": "error",
                 "message": error_msg
