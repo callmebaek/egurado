@@ -16,8 +16,8 @@ from app.core.database import get_supabase_client
 class NaverKeywordSearchVolumeService:
     """네이버 검색도구 API 서비스"""
     
-    # 네이버 검색광고 API 기본 URL
-    BASE_URL = "https://api.naver.com"
+    # 네이버 검색광고 API 기본 URL (2024년 변경됨)
+    BASE_URL = "https://api.searchad.naver.com"
     
     def __init__(self):
         """서비스 초기화"""
@@ -184,7 +184,7 @@ class NaverKeywordSearchVolumeService:
         }
         
         try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
+            async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
                 response = await client.get(
                     f"{self.BASE_URL}{uri}",
                     headers=headers,
