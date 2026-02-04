@@ -160,11 +160,29 @@ class NaverTargetKeywordService:
     async def _get_store_info(self, store_id: str) -> Optional[Dict[str, Any]]:
         """매장 정보 조회"""
         try:
+            logger.info(f"[타겟 키워드] 매장 정보 조회 시도: store_id={store_id}, type={type(store_id)}")
             supabase = get_supabase_client()
-            result = supabase.table("stores").select("*").eq("id", store_id).single().execute()
-            return result.data if result.data else None
+            
+            # .single() 대신 .execute() 사용하여 에러 방지
+            result = supabase.table("stores").select("*").eq("id", store_id).execute()
+            
+            logger.info(f"[타겟 키워드] Supabase 응답: data_count={len(result.data) if result.data else 0}")
+            
+            if not result.data or len(result.data) == 0:
+                logger.warning(f"[타겟 키워드] 매장 {store_id}를 DB에서 찾을 수 없음")
+                return None
+            
+            if len(result.data) > 1:
+                logger.warning(f"[타겟 키워드] 매장 {store_id}가 여러 개 존재: {len(result.data)}개 (첫 번째 사용)")
+            
+            store_data = result.data[0]
+            logger.info(f"[타겟 키워드] 매장 정보 조회 성공: name={store_data.get('name')}, place_id={store_data.get('place_id')}")
+            return store_data
+            
         except Exception as e:
             logger.error(f"[타겟 키워드] 매장 정보 조회 실패: {str(e)}")
+            import traceback
+            logger.error(f"[타겟 키워드] Traceback:\n{traceback.format_exc()}")
             return None
     
     def _generate_keyword_combinations(
