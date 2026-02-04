@@ -387,49 +387,37 @@ export default function CompetitorsPage() {
       const myStoreData = await myStoreResponse.json()
       const myStore = myStoreData.result
       
-      // ==================== 2단계: 경쟁매장 배치 분석 ====================
+      // ==================== 2단계: 경쟁매장 개별 분석 (⚡ 성능 최적화) ====================
       const analyzed: CompetitorStore[] = []
-      const batchSize = 5  // 5개씩 배치 처리
-      const totalBatches = Math.ceil(stores.length / batchSize)
       
-      for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
-        const batchStart = batchIndex * batchSize
-        const batchEnd = Math.min(batchStart + batchSize, stores.length)
-        const batchStores = stores.slice(batchStart, batchEnd)
+      // 1개씩 순차 분석 (실시간 업데이트)
+      for (let i = 0; i < stores.length; i++) {
+        const store = stores[i]
         
-        // 배치 API 호출
-        const batchRequest = batchStores.map(store => ({
-          place_id: store.place_id,
-          rank: store.rank,
-          name: store.name
-        }))
+        // Progress 업데이트 (분석 시작 전)
+        setAnalysisProgress({ current: i, total: stores.length })
         
         try {
-          const batchResponse = await fetch(`${api.baseUrl}/api/v1/naver/competitor/analyze-batch`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ stores: batchRequest })
-          })
+          const competitorUrl = `${api.baseUrl}/api/v1/naver/competitor/analyze-single/${store.place_id}?rank=${store.rank}&store_name=${encodeURIComponent(store.name)}`
+          const response = await fetch(competitorUrl)
           
-          if (batchResponse.ok) {
-            const batchData = await batchResponse.json()
-            const batchResults = batchData.results || []
+          if (response.ok) {
+            const data = await response.json()
+            analyzed.push(data.result)
+            setAnalyzedStores([...analyzed])  // 실시간 업데이트
             
-            analyzed.push(...batchResults)
-            setAnalyzedStores([...analyzed])
-            
-            // Progress 업데이트
-            setAnalysisProgress({ current: analyzed.length, total: stores.length })
+            // Progress 업데이트 (분석 완료 후)
+            setAnalysisProgress({ current: i + 1, total: stores.length })
           } else {
-            console.error(`배치 ${batchIndex + 1} 분석 실패`)
+            console.error(`${store.name} 분석 실패: ${response.status}`)
           }
         } catch (error) {
-          console.error(`배치 ${batchIndex + 1} 분석 에러:`, error)
+          console.error(`${store.name} 분석 에러:`, error)
         }
         
-        // 다음 배치 전 잠시 대기 (서버 부하 방지)
-        if (batchIndex < totalBatches - 1) {
-          await new Promise(resolve => setTimeout(resolve, 500))
+        // ⚡ 성능 최적화: 대기 시간 단축 (1초 → 0.1초)
+        if (i < stores.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 100))
         }
       }
       

@@ -90,22 +90,38 @@ class NaverCompetitorAnalysisService:
             logger.info(f"[경쟁분석-DEBUG] Step 2: diagnosis_engine.diagnose 호출")
             diagnosis_result = diagnosis_engine.diagnose(place_data)
             
-            # 7일간 리뷰 통계 추출 (정확한 데이터 수집 - API 직접 호출)
-            logger.info(f"[경쟁분석-DEBUG] Step 3: 방문자 리뷰 통계 계산 (API 직접 호출)")
-            visitor_reviews_7d = await self._calculate_visitor_reviews_accurate(
-                place_id,
-                place_data.get("visitor_review_count", 0)
-            )
-            logger.info(f"[경쟁분석-DEBUG] Step 4: 블로그 리뷰 통계 계산 (HTML 파싱)")
-            blog_reviews_7d = await self._calculate_blog_reviews_accurate(
-                place_id,
-                store_name or place_data.get("name", ""),
-                place_data.get("road_address", ""),
-                place_data.get("blog_review_count", 0)
+            # ⚡ 성능 최적화: 리뷰 통계 + 검색량을 병렬 처리
+            logger.info(f"[경쟁분석-PERF] Step 3-5: 병렬 처리 시작 (방문자 리뷰 + 블로그 리뷰 + 검색량)")
+            visitor_reviews_7d, blog_reviews_7d, store_search_volume = await asyncio.gather(
+                self._calculate_visitor_reviews_accurate(
+                    place_id,
+                    place_data.get("visitor_review_count", 0)
+                ),
+                self._calculate_blog_reviews_accurate(
+                    place_id,
+                    store_name or place_data.get("name", ""),
+                    place_data.get("road_address", ""),
+                    place_data.get("blog_review_count", 0)
+                ),
+                self._get_store_search_volume(place_data.get("name", "")),
+                return_exceptions=True  # 하나 실패해도 다른 것들은 계속 진행
             )
             
-            # 공지 통계
-            logger.info(f"[경쟁분석-DEBUG] Step 5: 공지 통계 계산")
+            # 예외 처리: 병렬 처리 중 에러 발생 시 기본값 사용
+            if isinstance(visitor_reviews_7d, Exception):
+                logger.error(f"[경쟁분석-PERF] 방문자 리뷰 계산 실패: {visitor_reviews_7d}")
+                visitor_reviews_7d = 0.0
+            if isinstance(blog_reviews_7d, Exception):
+                logger.error(f"[경쟁분석-PERF] 블로그 리뷰 계산 실패: {blog_reviews_7d}")
+                blog_reviews_7d = 0.0
+            if isinstance(store_search_volume, Exception):
+                logger.error(f"[경쟁분석-PERF] 검색량 조회 실패: {store_search_volume}")
+                store_search_volume = 0
+            
+            logger.info(f"[경쟁분석-PERF] 병렬 처리 완료: visitor_7d={visitor_reviews_7d}, blog_7d={blog_reviews_7d}, search_vol={store_search_volume}")
+            
+            # 공지 통계 (동기 함수이므로 병렬 처리 불가)
+            logger.info(f"[경쟁분석-DEBUG] Step 6: 공지 통계 계산")
             recent_announcements = self._count_recent_announcements(
                 place_data.get("announcements") or [],
                 days=7
@@ -140,9 +156,6 @@ class NaverCompetitorAnalysisService:
             
             # 네이버 예약 여부 확인
             has_naver_booking = place_data.get("has_reservation", False) or place_data.get("booking_available", False)
-            
-            # 매장명 검색량 조회 (음절별 로직)
-            store_search_volume = await self._get_store_search_volume(place_data.get("name", ""))
             
             # 결과 조합
             result = {
@@ -650,7 +663,7 @@ class NaverCompetitorAnalysisService:
             # API 직접 호출하여 최근 리뷰 가져오기 (플레이스 활성화와 동일)
             all_reviews = []
             cursor = None
-            max_pages = 5  # 경쟁사 분석은 최대 100개(20*5)만 필요
+            max_pages = 3  # ⚡ 성능 최적화: 50개씩 3페이지 = 최대 150개
             now = datetime.now(timezone.utc)
             oldest_needed_days = 7  # 7일치만 필요
             should_stop = False
@@ -660,7 +673,7 @@ class NaverCompetitorAnalysisService:
             for page in range(max_pages):
                 reviews_data = await self.review_service.get_visitor_reviews(
                     place_id=place_id,
-                    size=20,
+                    size=50,  # ⚡ 성능 최적화: 20 → 50 (API 호출 횟수 감소)
                     after=cursor,
                     sort="recent"
                 )
