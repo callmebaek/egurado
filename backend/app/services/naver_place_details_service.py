@@ -8,6 +8,7 @@ import json
 from typing import Dict, Optional, List, Any
 import re
 from bs4 import BeautifulSoup
+from app.core.proxy import get_rotating_proxy
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +29,7 @@ class NaverPlaceDetailsService:
             "Referer": "https://m.place.naver.com/",
         }
         self.timeout = 20.0
+        self.proxies = get_rotating_proxy()
         
     async def get_place_details_via_search(self, place_name: str, place_id: str) -> Dict[str, Any]:
         """
@@ -105,7 +107,7 @@ class NaverPlaceDetailsService:
         }
         
         try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
+            async with httpx.AsyncClient(timeout=self.timeout, proxies=self.proxies) as client:
                 response = await client.post(
                     self.api_url,
                     json=payload,
@@ -166,7 +168,7 @@ class NaverPlaceDetailsService:
         url = f"https://m.place.naver.com/place/{place_id}/home"
         
         try:
-            async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True) as client:
+            async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True, proxies=self.proxies) as client:
                 response = await client.get(url, headers={
                     "User-Agent": self.base_headers["User-Agent"]
                 })

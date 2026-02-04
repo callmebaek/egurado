@@ -12,6 +12,7 @@ import httpx
 import json
 from typing import Dict, List, Optional
 import asyncio
+from app.core.proxy import get_rotating_proxy
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +44,7 @@ class NaverRankNewAPIService:
         }
         
         self.timeout = 15.0
+        self.proxies = get_rotating_proxy()
         
     async def check_rank(
         self, 
@@ -269,7 +271,7 @@ class NaverRankNewAPIService:
                     "query": graphql_query
                 }
                 
-                async with httpx.AsyncClient(timeout=self.timeout) as client:
+                async with httpx.AsyncClient(timeout=self.timeout, proxies=self.proxies) as client:
                     response = await client.post(
                         self.api_url,
                         json=payload,
@@ -393,7 +395,7 @@ class NaverRankNewAPIService:
             
             logger.info(f"[신API Rank] GraphQL 요청 payload (Places Search): {payload}")
             
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
+            async with httpx.AsyncClient(timeout=self.timeout, proxies=self.proxies) as client:
                 response = await client.post(
                     self.api_url,
                     json=payload,

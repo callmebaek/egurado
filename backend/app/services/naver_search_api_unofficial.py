@@ -13,6 +13,7 @@ import json
 from typing import List, Dict, Optional
 import asyncio
 import random
+from app.core.proxy import get_rotating_proxy
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +45,7 @@ class NaverPlaceNewAPIService:
         }
         
         self.timeout = 15.0
+        self.proxies = get_rotating_proxy()
         
     async def search_stores(self, query: str, max_results: int = 100) -> List[Dict[str, str]]:
         """
@@ -78,7 +80,7 @@ class NaverPlaceNewAPIService:
                 "query": graphql_query
             }
             
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
+            async with httpx.AsyncClient(timeout=self.timeout, proxies=self.proxies) as client:
                 response = await client.post(
                     self.api_url,
                     json=payload,
@@ -239,7 +241,7 @@ class NaverPlaceNewAPIService:
                 "Connection": "keep-alive",
             }
             
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
+            async with httpx.AsyncClient(timeout=self.timeout, proxies=self.proxies) as client:
                 response = await client.get(search_url, headers=headers, follow_redirects=True)
                 response.raise_for_status()
                 html = response.text
