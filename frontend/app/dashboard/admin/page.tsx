@@ -75,9 +75,11 @@ interface UserInfo {
   subscription_tier: string
   created_at: string
   last_login?: string
-  total_credits_used?: number
   monthly_credits?: number
   manual_credits?: number
+  monthly_used?: number
+  total_remaining?: number
+  total_credits_used?: number
 }
 
 type TabType = 'notifications' | 'tickets' | 'users'
@@ -686,14 +688,17 @@ export default function AdminPage() {
           {/* 회원 리스트 */}
           <Card className="overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full min-w-[1200px]">
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="text-left py-3 px-4 font-semibold text-sm text-gray-700">이메일</th>
                     <th className="text-left py-3 px-4 font-semibold text-sm text-gray-700">이름</th>
                     <th className="text-center py-3 px-4 font-semibold text-sm text-gray-700">Tier</th>
                     <th className="text-center py-3 px-4 font-semibold text-sm text-gray-700">가입일</th>
-                    <th className="text-center py-3 px-4 font-semibold text-sm text-gray-700">크레딧</th>
+                    <th className="text-center py-3 px-4 font-semibold text-sm text-blue-700">월간</th>
+                    <th className="text-center py-3 px-4 font-semibold text-sm text-purple-700">수동</th>
+                    <th className="text-center py-3 px-4 font-semibold text-sm text-red-700">사용</th>
+                    <th className="text-center py-3 px-4 font-semibold text-sm text-green-700">잔여</th>
                     <th className="text-center py-3 px-4 font-semibold text-sm text-gray-700">액션</th>
                   </tr>
                 </thead>
@@ -707,9 +712,24 @@ export default function AdminPage() {
                         {new Date(user.created_at).toLocaleDateString('ko-KR')}
                       </td>
                       <td className="py-3 px-4 text-center text-sm">
-                        {user.monthly_credits !== undefined ? (
-                          <span className="font-semibold">{user.monthly_credits + (user.manual_credits || 0)}</span>
-                        ) : '-'}
+                        <span className="font-semibold text-blue-600">
+                          {user.monthly_credits !== undefined ? user.monthly_credits.toLocaleString() : '-'}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-center text-sm">
+                        <span className="font-semibold text-purple-600">
+                          {user.manual_credits !== undefined ? user.manual_credits.toLocaleString() : '-'}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-center text-sm">
+                        <span className="font-semibold text-red-600">
+                          {user.monthly_used !== undefined ? user.monthly_used.toLocaleString() : '-'}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-center text-sm">
+                        <span className="font-semibold text-green-600">
+                          {user.total_remaining !== undefined ? user.total_remaining.toLocaleString() : '-'}
+                        </span>
                       </td>
                       <td className="py-3 px-4 text-center">
                         <Button
