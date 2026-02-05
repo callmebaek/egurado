@@ -751,6 +751,7 @@ export default function AdminPage() {
                 <option value="update">업데이트</option>
                 <option value="marketing">마케팅</option>
                 <option value="system">시스템</option>
+                <option value="system">시스템</option>
               </select>
             </div>
 

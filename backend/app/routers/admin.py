@@ -253,7 +253,7 @@ async def create_notification(
     user=Depends(get_current_user)
 ):
     """
-    알림 생성 (관리자 전용)
+    알림 생성 (관리자 전용) - 전체 사용자에게 표시되는 전역 알림
     """
     try:
         supabase = get_supabase_client()
@@ -262,7 +262,9 @@ async def create_notification(
             "type": notification.type,
             "title": notification.title,
             "content": notification.content,
-            "link": notification.link
+            "link": notification.link,
+            "is_global": True,  # 전역 알림 (모든 사용자에게 표시)
+            "user_id": None  # NULL = 전역 알림
         }).execute()
         
         if not result.data:
@@ -275,9 +277,11 @@ async def create_notification(
         
     except Exception as e:
         logger.error(f"Failed to create notification: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to create notification"
+            detail=f"Failed to create notification: {str(e)}"
         )
 
 
@@ -391,11 +395,11 @@ async def get_all_tickets(
                 id=str(t["id"]),
                 user_id=str(t["user_id"]),
                 user_email=t.get("profiles", {}).get("email", "Unknown"),
-                type=t.get("category", "기타"),
+                type=t.get("type", "other"),  # 수정: category → type
                 title=t["title"],
                 content=t["content"],
                 status=t["status"],
-                answer=t.get("admin_answer"),
+                answer=t.get("answer"),  # 수정: admin_answer → answer
                 answered_at=t.get("answered_at"),
                 answered_by=str(t["answered_by"]) if t.get("answered_by") else None,
                 created_at=t["created_at"],
@@ -431,10 +435,10 @@ async def answer_ticket(
         
         # 티켓 업데이트
         result = supabase.table("support_tickets").update({
-            "admin_answer": answer_request.answer,
+            "answer": answer_request.answer,  # 수정: admin_answer → answer
             "status": "answered",
             "answered_at": datetime.utcnow().isoformat(),
-            "answered_by": user.id,
+            "answered_by": user["id"],  # 수정: user.id → user["id"]
             "updated_at": datetime.utcnow().isoformat()
         }).eq("id", ticket_id).execute()
         
