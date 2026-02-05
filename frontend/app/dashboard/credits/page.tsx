@@ -50,26 +50,33 @@ const FEATURE_NAME_MAP: Record<string, string> = {
   'rank_tracking': '키워드 순위 추적',
   
   // 분석 관련
+  'main_keyword_analysis': '대표키워드 분석',
   'keyword_analysis': '대표키워드 분석',
+  'place_diagnosis': '플레이스 진단',
+  'place_activation': '플레이스 활성화',
   'place_diagnosis_detail': '플레이스 진단 (상세)',
   'place_diagnosis_simple': '플레이스 진단 (간편)',
   'competitor_analysis': '경쟁사 분석',
+  'review_analysis': '리뷰 분석',
   'review_analysis_full': '리뷰 분석 (전체)',
   'review_analysis_sample': '리뷰 분석 (샘플)',
+  'target_keyword_extraction': '타겟키워드 추출',
   'target_keywords': '타겟키워드 추출',
   
   // AI 관련
   'ai_reply_generate': 'AI 답글 생성',
   'ai_reply_post': 'AI 답글 게시',
+  'business_description': '사업자 설명 생성',
   'ai_description': '사업자 설명 생성',
+  'directions': '찾아오는 길 생성',
   'ai_directions': '찾아오는 길 생성',
   
   // 검색량 관련
-  'search_volume': '키워드 검색량 조회',
   'keyword_search_volume': '키워드 검색량 조회',
+  'search_volume': '키워드 검색량 조회',
   
   // 시스템 관련
-  'deduct': '크레딧 차감',
+  'deduct': '크레딧 사용',
   'charge': '크레딧 충전',
   'refund': '크레딧 환불',
   'reset': '월간 크레딧 리셋',
@@ -80,8 +87,8 @@ const FEATURE_NAME_MAP: Record<string, string> = {
 const FEATURE_COSTS = [
   { name: '키워드 순위 조회', cost: 5, icon: '📊', description: '키워드 1개당 순위 조회' },
   { name: '대표키워드 분석', cost: 10, icon: '⭐', description: '검색어 1개 분석 (상위 15개 매장)' },
-  { name: '플레이스 진단 (상세)', cost: 10, icon: '🏥', description: '매장 1개 종합 진단' },
-  { name: '플레이스 진단 (간편)', cost: 5, icon: '🏥', description: '매장 1개 빠른 진단' },
+  { name: '플레이스 진단', cost: 5, icon: '🏥', description: '매장 1개 종합 진단' },
+  { name: '플레이스 활성화', cost: 10, icon: '⚡', description: '매장 1개 활성화 분석' },
   { name: '경쟁사 분석', cost: 30, icon: '🎯', description: '경쟁사 1개 심층 분석' },
   { name: '리뷰 분석 (전체)', cost: 30, icon: '💬', description: '매장 1개 전체 리뷰 분석' },
   { name: '리뷰 분석 (샘플)', cost: 10, icon: '💬', description: '매장 1개 샘플 리뷰 분석' },

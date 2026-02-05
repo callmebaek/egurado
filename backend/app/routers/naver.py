@@ -1274,13 +1274,13 @@ async def get_place_details(
             credit_check = await credit_service.check_sufficient_credits(
                 user_id=user_id,
                 feature="place_diagnosis",
-                required_credits=10
+                required_credits=5
             )
             if not credit_check.sufficient:
-                logger.warning(f"[플레이스 진단] 크레딧 부족: user_id={user_id}, required=10, available={credit_check.current_credits}")
+                logger.warning(f"[플레이스 진단] 크레딧 부족: user_id={user_id}, required=5, available={credit_check.current_credits}")
                 raise HTTPException(
                     status_code=402,
-                    detail=f"크레딧이 부족합니다. (필요: 10 크레딧, 보유: {credit_check.current_credits} 크레딧)"
+                    detail=f"크레딧이 부족합니다. (필요: 5 크레딧, 보유: {credit_check.current_credits} 크레딧)"
                 )
         
         # 완전 진단 서비스 사용
@@ -1318,7 +1318,7 @@ async def get_place_details(
                 transaction_id = await credit_service.deduct_credits(
                     user_id=user_id,
                     feature="place_diagnosis",
-                    credits_amount=10,
+                    credits_amount=5,
                     metadata={
                         "place_id": place_id,
                         "store_name": details.get("name", "Unknown"),
@@ -1326,7 +1326,7 @@ async def get_place_details(
                         "score": diagnosis_result["total_score"]
                     }
                 )
-                logger.info(f"[Credits] Deducted 10 credits from user {user_id} (transaction: {transaction_id})")
+                logger.info(f"[Credits] Deducted 5 credits from user {user_id} (transaction: {transaction_id})")
             except Exception as credit_error:
                 logger.error(f"[Credits] Failed to deduct credits: {credit_error}")
         
@@ -1918,8 +1918,8 @@ async def get_activation_info(
         if settings.CREDIT_SYSTEM_ENABLED and settings.CREDIT_CHECK_STRICT:
             check_result = await credit_service.check_sufficient_credits(
                 user_id=user_id,
-                feature="place_diagnosis",
-                required_credits=5
+                feature="place_activation",
+                required_credits=10
             )
             
             if not check_result.sufficient:
@@ -1947,15 +1947,15 @@ async def get_activation_info(
             try:
                 transaction_id = await credit_service.deduct_credits(
                     user_id=user_id,
-                    feature="place_diagnosis",
-                    credits_amount=5,
+                    feature="place_activation",
+                    credits_amount=10,
                     metadata={
                         "store_id": store_id,
                         "place_id": place_id,
                         "store_name": store_name
                     }
                 )
-                logger.info(f"[Credits] Deducted 5 credits from user {user_id} (transaction: {transaction_id})")
+                logger.info(f"[Credits] Deducted 10 credits from user {user_id} (transaction: {transaction_id})")
             except Exception as credit_error:
                 logger.error(f"[Credits] Failed to deduct credits: {credit_error}")
                 # 크레딧 차감 실패는 기능 사용을 막지 않음 (이미 조회는 완료됨)
