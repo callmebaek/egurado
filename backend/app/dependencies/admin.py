@@ -11,7 +11,7 @@ async def require_god_tier(user = Depends(get_current_user)):
     God Tier 권한 확인
     
     Args:
-        user: 현재 로그인한 사용자
+        user: 현재 로그인한 사용자 (딕셔너리)
         
     Returns:
         user: God Tier 사용자
@@ -25,18 +25,18 @@ async def require_god_tier(user = Depends(get_current_user)):
             detail="Not authenticated"
         )
     
-    # subscription_tier 확인
-    user_tier = getattr(user, 'subscription_tier', None)
+    # subscription_tier 확인 (user는 딕셔너리)
+    user_tier = user.get('subscription_tier')
     if not user_tier:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="This endpoint requires God tier access"
+            detail="This endpoint requires God tier access. No tier found."
         )
     
     if user_tier.lower() != 'god':
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="This endpoint requires God tier access"
+            detail=f"This endpoint requires God tier access. Current tier: {user_tier}"
         )
     
     return user
