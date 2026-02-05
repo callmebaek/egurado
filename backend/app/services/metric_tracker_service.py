@@ -483,7 +483,7 @@ class MetricTrackerService:
             
             # tracker의 last_collected_at 업데이트
             self.supabase.table('metric_trackers')\
-                .update({'last_collected_at': datetime.now().isoformat()})\
+                .update({'last_collected_at': now_kst.isoformat()})\
                 .eq('id', tracker_id)\
                 .execute()
             

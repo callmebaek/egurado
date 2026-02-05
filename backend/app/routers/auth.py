@@ -16,8 +16,11 @@ from ..models.schemas import (
     NaverLoginRequest,
     OnboardingRequest,
     Profile,
+    ProfileUpdate,
     ForgotPasswordRequest,
     ResetPasswordRequest,
+    ChangePasswordRequest,
+    DeleteAccountRequest,
 )
 from ..services.auth_service import (
     hash_password,
@@ -529,6 +532,182 @@ async def get_me(current_user: dict = Depends(get_current_user)):
     현재 로그인한 사용자 정보 조회
     """
     return Profile(**current_user)
+
+
+@router.put("/profile", response_model=Profile)
+async def update_profile(
+    profile_update: ProfileUpdate,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    사용자 프로필 업데이트
+    """
+    supabase = get_supabase_client()
+    user_id = current_user["id"]
+    
+    try:
+        # 업데이트할 데이터 준비
+        update_data = {}
+        if profile_update.display_name is not None:
+            update_data["display_name"] = profile_update.display_name
+        if profile_update.phone_number is not None:
+            update_data["phone_number"] = profile_update.phone_number
+        if profile_update.profile_image_url is not None:
+            update_data["profile_image_url"] = profile_update.profile_image_url
+        
+        if not update_data:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="업데이트할 항목이 없습니다."
+            )
+        
+        update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+        
+        # profiles 테이블 업데이트
+        result = supabase.table("profiles").update(update_data) \
+            .eq("id", user_id) \
+            .execute()
+        
+        if not result.data or len(result.data) == 0:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="사용자를 찾을 수 없습니다."
+            )
+        
+        return Profile(**result.data[0])
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[ERROR] Profile update failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"프로필 업데이트 실패: {str(e)}"
+        )
+
+
+@router.post("/change-password")
+async def change_password(
+    request: ChangePasswordRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    비밀번호 변경 (로그인 상태)
+    """
+    supabase = get_supabase_client()
+    user_id = current_user["id"]
+    
+    try:
+        # 현재 비밀번호 확인 (이메일 로그인 사용자만 가능)
+        auth_provider = current_user.get("auth_provider", "email")
+        
+        if auth_provider != "email":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="소셜 로그인으로 가입한 계정은 비밀번호 변경이 불가능합니다."
+            )
+        
+        # Supabase Auth에서 현재 비밀번호 확인
+        email = current_user.get("email")
+        try:
+            login_check = supabase.auth.sign_in_with_password({
+                "email": email,
+                "password": request.current_password
+            })
+            if not login_check.user:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="현재 비밀번호가 올바르지 않습니다."
+                )
+        except Exception:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="현재 비밀번호가 올바르지 않습니다."
+            )
+        
+        # 새 비밀번호로 업데이트
+        result = supabase.auth.update_user({
+            "password": request.new_password
+        })
+        
+        if not result.user:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="비밀번호 변경에 실패했습니다."
+            )
+        
+        return {
+            "message": "비밀번호가 성공적으로 변경되었습니다.",
+            "success": True
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[ERROR] Password change failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"비밀번호 변경 실패: {str(e)}"
+        )
+
+
+@router.delete("/delete-account")
+async def delete_account(
+    request: DeleteAccountRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    계정 삭제
+    """
+    supabase = get_supabase_client()
+    user_id = current_user["id"]
+    
+    try:
+        # 확인 문자 체크
+        if request.confirmation.lower() != "delete":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="확인 문자가 올바르지 않습니다. 'delete'를 입력해주세요."
+            )
+        
+        # 이메일 로그인 사용자만 비밀번호 확인
+        auth_provider = current_user.get("auth_provider", "email")
+        
+        if auth_provider == "email":
+            # 비밀번호 확인
+            email = current_user.get("email")
+            try:
+                login_check = supabase.auth.sign_in_with_password({
+                    "email": email,
+                    "password": request.password
+                })
+                if not login_check.user:
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="비밀번호가 올바르지 않습니다."
+                    )
+            except Exception:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="비밀번호가 올바르지 않습니다."
+                )
+        
+        # Supabase Auth에서 사용자 삭제 (profiles, stores, reviews 등은 CASCADE로 자동 삭제)
+        result = supabase.auth.admin.delete_user(user_id)
+        
+        return {
+            "message": "계정이 성공적으로 삭제되었습니다.",
+            "success": True
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[ERROR] Account deletion failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"계정 삭제 실패: {str(e)}"
+        )
 
 
 @router.post("/forgot-password")

@@ -111,6 +111,18 @@ class ResetPasswordRequest(BaseModel):
     new_password: str
 
 
+class ChangePasswordRequest(BaseModel):
+    """Change password request (authenticated user)"""
+    current_password: str
+    new_password: str = Field(min_length=8, max_length=100)
+
+
+class DeleteAccountRequest(BaseModel):
+    """Delete account request"""
+    password: str
+    confirmation: str = Field(min_length=1)
+
+
 # ============================================
 # Store Schemas
 # ============================================

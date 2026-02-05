@@ -106,6 +106,12 @@ from app.routers.credits import router as credits_router
 from app.routers.subscriptions import router as subscriptions_router
 from app.routers.payments import router as payments_router
 
+# New Dashboard Feature Routers (2026-02-04)
+from app.routers.notifications import router as notifications_router
+from app.routers.support import router as support_router
+from app.routers.admin import router as admin_router
+from app.routers.user_settings import router as user_settings_router
+
 # 라우터 등록
 app.include_router(auth_router, prefix="/api/v1", tags=["Auth"])
 app.include_router(stores_router, prefix="/api/v1/stores", tags=["Stores"])
@@ -128,3 +134,8 @@ app.include_router(credits_router, tags=["Credits"])
 app.include_router(subscriptions_router, tags=["Subscriptions"])
 app.include_router(payments_router, tags=["Payments"])
 
+# New Dashboard Feature Routers (2026-02-04)
+app.include_router(notifications_router)
+app.include_router(support_router)
+app.include_router(admin_router)
+app.include_router(user_settings_router)
