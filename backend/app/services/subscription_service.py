@@ -21,15 +21,16 @@ class SubscriptionService:
     
     async def get_user_subscription(self, user_id: UUID) -> Optional[Subscription]:
         """
-        사용자의 현재 구독 조회
+        사용자의 현재 구독 조회 (Tier별 할당량 정보 포함)
         
         Args:
             user_id: 사용자 ID
             
         Returns:
-            Subscription: 구독 정보
+            Subscription: 구독 정보 (월 크레딧, 최대 매장/키워드/자동수집 수 포함)
         """
         try:
+            # 1. 구독 정보 조회
             response = self.supabase.table("subscriptions")\
                 .select("*")\
                 .eq("user_id", str(user_id))\
@@ -39,12 +40,57 @@ class SubscriptionService:
                 .execute()
             
             if not response.data:
+                # 구독이 없으면 profiles에서 tier를 가져와서 기본 정보 반환
+                profile_response = self.supabase.table("profiles")\
+                    .select("subscription_tier")\
+                    .eq("id", str(user_id))\
+                    .single()\
+                    .execute()
+                
+                if profile_response.data:
+                    tier = profile_response.data.get("subscription_tier", "free")
+                    
+                    # Tier별 할당량 조회
+                    quota_response = self.supabase.rpc("get_tier_quotas", {"p_tier": tier}).execute()
+                    quotas = quota_response.data if quota_response.data else {}
+                    
+                    # 기본 구독 정보 생성 (활성 구독 없는 경우)
+                    now = datetime.utcnow()
+                    return Subscription(
+                        id=UUID("00000000-0000-0000-0000-000000000000"),
+                        user_id=user_id,
+                        tier=tier,
+                        status="active",
+                        started_at=now,
+                        created_at=now,
+                        updated_at=now,
+                        monthly_credits=quotas.get("monthly_credits", 100),
+                        max_stores=quotas.get("max_stores", 1),
+                        max_keywords=quotas.get("max_keywords", 1),
+                        max_auto_collection=quotas.get("max_auto_collection", 0)
+                    )
+                
                 return None
             
-            return Subscription(**response.data[0])
+            subscription_data = response.data[0]
+            tier = subscription_data.get("tier", "free")
+            
+            # 2. Tier별 할당량 조회 (get_tier_quotas 함수 호출)
+            quota_response = self.supabase.rpc("get_tier_quotas", {"p_tier": tier}).execute()
+            quotas = quota_response.data if quota_response.data else {}
+            
+            # 3. 구독 정보에 할당량 추가
+            subscription_data["monthly_credits"] = quotas.get("monthly_credits", 100)
+            subscription_data["max_stores"] = quotas.get("max_stores", 1)
+            subscription_data["max_keywords"] = quotas.get("max_keywords", 1)
+            subscription_data["max_auto_collection"] = quotas.get("max_auto_collection", 0)
+            
+            return Subscription(**subscription_data)
             
         except Exception as e:
             logger.error(f"Failed to get subscription: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
             return None
     
     async def create_subscription(

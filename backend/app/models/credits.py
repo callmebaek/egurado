@@ -130,6 +130,12 @@ class Subscription(BaseModel):
     metadata: dict = Field(default_factory=dict)
     created_at: datetime
     updated_at: datetime
+    
+    # Tier별 할당량 정보 (프론트엔드 호환성)
+    monthly_credits: int = 0
+    max_stores: int = 0
+    max_keywords: int = 0
+    max_auto_collection: int = 0
 
     class Config:
         from_attributes = True
