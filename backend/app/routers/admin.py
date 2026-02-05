@@ -62,6 +62,13 @@ async def get_users(
         users_data = result_data.get("users", [])
         total_count = result_data.get("total_count", 0)
         
+        # 디버깅: 실제 반환 데이터 확인
+        logger.info(f"=== Admin Users List Debug ===")
+        logger.info(f"Result data: {result_data}")
+        logger.info(f"Users count: {len(users_data)}")
+        if users_data:
+            logger.info(f"First user sample: {users_data[0]}")
+        
         # 응답 생성
         users = [
             UserInfoResponse(
