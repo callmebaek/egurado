@@ -383,55 +383,61 @@ class NaverTargetKeywordService:
         return sorted_keywords[:limit]
     
     async def _get_place_ranks(self, place_id: str, top_keywords: List[Dict[str, Any]]) -> Dict[str, Dict[str, int]]:
-        """각 타겟 키워드별 플레이스 순위 및 전체 업체수 조회"""
+        """각 타겟 키워드별 플레이스 순위 및 전체 업체수 조회 (안전한 병렬 처리)"""
         rank_data = {}
         
         try:
             from app.services.naver_rank_api_unofficial import NaverRankNewAPIService
             rank_service = NaverRankNewAPIService()
             
-            for keyword_data in top_keywords:
-                keyword = keyword_data["keyword"]
-                try:
-                    # 순위 조회 (check_rank 메소드 사용)
-                    result = await rank_service.check_rank(keyword, place_id)
-                    
-                    if result and result.get("found"):
-                        rank = result.get("rank")
-                        total_count = result.get("total_count", 0)
-                        if rank is not None:
-                            rank_data[keyword] = {
-                                "rank": rank,
-                                "total_count": total_count
-                            }
-                            logger.info(f"[순위 조회] {keyword}: {rank}위 / 전체 {total_count}개")
-                        else:
-                            rank_data[keyword] = {
-                                "rank": 0,
-                                "total_count": total_count
-                            }
-                            logger.warning(f"[순위 조회] {keyword}: 순위 없음 / 전체 {total_count}개")
-                    else:
-                        total_count = result.get("total_count", 0) if result else 0
-                        rank_data[keyword] = {
-                            "rank": 0,
-                            "total_count": total_count
-                        }
-                        logger.warning(f"[순위 조회] {keyword}: 매장 발견 안됨 / 전체 {total_count}개")
-                        
-                except Exception as e:
-                    logger.error(f"[순위 조회] {keyword} 실패: {str(e)}")
-                    import traceback
-                    logger.error(traceback.format_exc())
-                    rank_data[keyword] = {
-                        "rank": 0,
-                        "total_count": 0
-                    }
-                
-                # 과부하 방지를 위한 짧은 대기
-                await asyncio.sleep(0.3)
+            # 동시 실행 제한 (최대 3개)
+            semaphore = asyncio.Semaphore(3)
             
-            logger.info(f"[순위 조회] 완료: {len(rank_data)}개 키워드")
+            async def check_single_rank(keyword_data):
+                keyword = keyword_data["keyword"]
+                async with semaphore:  # 동시 3개 제한
+                    try:
+                        # 개별 키워드 타임아웃 30초
+                        result = await asyncio.wait_for(
+                            rank_service.check_rank(keyword, place_id),
+                            timeout=30
+                        )
+                        
+                        if result and result.get("found"):
+                            rank = result.get("rank")
+                            total_count = result.get("total_count", 0)
+                            logger.info(f"[순위 조회] {keyword}: {rank if rank is not None else 0}위 / 전체 {total_count}개")
+                            return (keyword, {
+                                "rank": rank if rank is not None else 0,
+                                "total_count": total_count
+                            })
+                        else:
+                            total_count = result.get("total_count", 0) if result else 0
+                            logger.warning(f"[순위 조회] {keyword}: 매장 발견 안됨 / 전체 {total_count}개")
+                            return (keyword, {"rank": 0, "total_count": total_count})
+                            
+                    except asyncio.TimeoutError:
+                        logger.warning(f"[순위 조회] {keyword}: 타임아웃 (30초 초과)")
+                        return (keyword, {"rank": 0, "total_count": 0})
+                    except Exception as e:
+                        logger.error(f"[순위 조회] {keyword} 실패: {str(e)}")
+                        return (keyword, {"rank": 0, "total_count": 0})
+            
+            # 병렬 처리 (에러 발생 시에도 계속)
+            results = await asyncio.gather(
+                *[check_single_rank(kw) for kw in top_keywords],
+                return_exceptions=True  # 에러 발생 시에도 계속
+            )
+            
+            # 결과를 딕셔너리로 변환
+            for res in results:
+                if not isinstance(res, Exception):  # 에러가 아닌 경우만 처리
+                    keyword, data = res
+                    rank_data[keyword] = data
+                else:
+                    logger.error(f"[순위 조회] 병렬 처리 중 예외 발생: {res}")
+            
+            logger.info(f"[순위 조회] 완료: {len(rank_data)}개 키워드 (병렬 처리)")
             return rank_data
             
         except Exception as e:
