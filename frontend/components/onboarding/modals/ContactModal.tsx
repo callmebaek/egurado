@@ -3,16 +3,12 @@
 import { useState } from 'react';
 import { 
   MessageCircle, 
-  Send, 
   CheckCircle2,
-  Upload,
-  X,
   Lightbulb,
   Bug,
   MessageSquare,
   ThumbsUp
 } from 'lucide-react';
-import { api } from '@/lib/config';
 import { useAuth } from '@/lib/auth-context';
 import OnboardingModal from './OnboardingModal';
 import { Textarea } from '@/components/ui/textarea';
@@ -27,21 +23,13 @@ interface ContactModalProps {
   onComplete?: () => void;
 }
 
-interface AttachmentInfo {
-  name: string;
-  url: string;
-  size: number;
-  type: string;
-}
-
 export default function ContactModal({ isOpen, onClose, onComplete }: ContactModalProps) {
   const { user, getToken } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
+  const [category, setCategory] = useState<'feature' | 'bug' | 'payment' | 'other'>('other');
+  const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
-  const [files, setFiles] = useState<File[]>([]);
-  const [attachments, setAttachments] = useState<AttachmentInfo[]>([]);
   const [loading, setLoading] = useState(false);
-  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const [messageId, setMessageId] = useState('');
 
@@ -49,9 +37,9 @@ export default function ContactModal({ isOpen, onClose, onComplete }: ContactMod
 
   const handleClose = () => {
     setCurrentStep(1);
+    setCategory('other');
+    setTitle('');
     setMessage('');
-    setFiles([]);
-    setAttachments([]);
     setError('');
     setMessageId('');
     onClose();
@@ -64,9 +52,15 @@ export default function ContactModal({ isOpen, onClose, onComplete }: ContactMod
   };
 
   const handleNext = () => {
-    if (currentStep === 2 && !message.trim()) {
-      setError('문의 내용을 입력해주세요.');
-      return;
+    if (currentStep === 2) {
+      if (!title.trim()) {
+        setError('제목을 입력해주세요.');
+        return;
+      }
+      if (!message.trim()) {
+        setError('문의 내용을 입력해주세요.');
+        return;
+      }
     }
     setError('');
     
@@ -79,107 +73,27 @@ export default function ContactModal({ isOpen, onClose, onComplete }: ContactMod
     }
   };
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFiles = event.target.files;
-    if (!selectedFiles) {
-      setFiles([]);
-      return;
-    }
-
-    const fileArray = Array.from(selectedFiles);
-
-    // 최대 3개 제한
-    if (fileArray.length > 3) {
-      setError('파일은 최대 3개까지 첨부할 수 있습니다.');
-      return;
-    }
-
-    // 각 파일 크기 체크 (10MB)
-    const maxSize = 10 * 1024 * 1024; // 10MB
-    for (const file of fileArray) {
-      if (file.size > maxSize) {
-        setError(`파일 크기는 최대 10MB까지 가능합니다. (${file.name})`);
-        return;
-      }
-    }
-
-    setFiles(fileArray);
-    setError('');
-  };
-
-  const uploadFiles = async (): Promise<AttachmentInfo[]> => {
-    if (files.length === 0) return [];
-
-    setUploading(true);
-    const uploadedAttachments: AttachmentInfo[] = [];
-
-    try {
-      const token = getToken();
-      if (!token) {
-        throw new Error('로그인이 필요합니다.');
-      }
-
-      for (const file of files) {
-        // FormData로 파일 전송
-        const formData = new FormData();
-        formData.append('file', file);
-
-        const response = await fetch(api.contact.uploadFile(), {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-          body: formData
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.detail || '파일 업로드 실패');
-        }
-
-        const data = await response.json();
-        
-        uploadedAttachments.push({
-          name: data.name,
-          url: data.url,
-          size: data.size,
-          type: data.type
-        });
-      }
-
-      return uploadedAttachments;
-    } catch (err) {
-      console.error('파일 업로드 오류:', err);
-      throw err;
-    } finally {
-      setUploading(false);
-    }
-  };
-
   const handleSubmit = async () => {
     setLoading(true);
     setError('');
 
     try {
-      // 1. 파일 업로드
-      const uploadedAttachments = await uploadFiles();
-      setAttachments(uploadedAttachments);
-
-      // 2. 문의사항 제출
       const token = getToken();
       if (!token) {
         throw new Error('로그인이 필요합니다.');
       }
 
-      const response = await fetch(api.contact.submit(), {
+      // 새로운 support tickets API로 전송
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/support/tickets`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          message: message.trim(),
-          attachments: uploadedAttachments
+          type: category,
+          title: title.trim(),
+          content: message.trim()
         })
       });
 
@@ -189,7 +103,7 @@ export default function ContactModal({ isOpen, onClose, onComplete }: ContactMod
       }
 
       const data = await response.json();
-      setMessageId(data.message_id);
+      setMessageId(data.id);
       setCurrentStep(3); // 완료 단계로 이동
 
     } catch (err) {
@@ -200,213 +114,213 @@ export default function ContactModal({ isOpen, onClose, onComplete }: ContactMod
     }
   };
 
-  const removeFile = (index: number) => {
-    setFiles(files.filter((_, i) => i !== index));
-  };
-
-  const formatFileSize = (bytes: number): string => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
-  };
-
-  // Step 1: 환영 및 안내
+  // Step 1: 카테고리 선택
   const renderStep1 = () => (
-    <div className="space-y-0.5">
+    <div className="space-y-3 md:space-y-4">
       <div className="text-center">
-        <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight mb-0.5">
+        <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight mb-1">
           윕플에 문의하기
         </h3>
-        <p className="text-[11px] md:text-xs text-neutral-600 leading-tight">
-          무엇이든 편하게 말씀해주세요!
+        <p className="text-xs md:text-sm text-neutral-600 leading-tight">
+          무엇을 도와드릴까요?
         </p>
       </div>
 
-      <Card className="bg-neutral-50 border-neutral-200 shadow-sm p-1.5">
-        <CardContent className="p-0 space-y-0.5">
-          <div className="grid grid-cols-2 gap-1">
-            <div className="flex items-center gap-1.5 p-1 rounded bg-white">
-              <div className="w-5 h-5 rounded-full bg-yellow-400 flex items-center justify-center flex-shrink-0">
-                <Lightbulb className="w-2.5 h-2.5 text-white" />
-              </div>
-              <p className="text-xs font-bold text-neutral-900 leading-tight">💡 기능 제안</p>
+      <div className="space-y-2">
+        <label className="text-sm font-bold text-neutral-900">
+          문의 유형 선택 <span className="text-error">*</span>
+        </label>
+        
+        <div className="grid grid-cols-1 gap-2">
+          <button
+            type="button"
+            onClick={() => setCategory('feature')}
+            className={`flex items-center gap-3 p-3 rounded-lg border-2 transition-all duration-200 ${
+              category === 'feature' 
+                ? 'border-yellow-400 bg-yellow-50' 
+                : 'border-neutral-200 bg-white hover:border-yellow-300'
+            }`}
+          >
+            <div className="w-8 h-8 rounded-full bg-yellow-400 flex items-center justify-center flex-shrink-0">
+              <Lightbulb className="w-4 h-4 text-white" />
             </div>
-
-            <div className="flex items-center gap-1.5 p-1 rounded bg-white">
-              <div className="w-5 h-5 rounded-full bg-red-500 flex items-center justify-center flex-shrink-0">
-                <Bug className="w-2.5 h-2.5 text-white" />
-              </div>
-              <p className="text-xs font-bold text-neutral-900 leading-tight">🐛 버그 리포트</p>
+            <div className="text-left flex-1">
+              <p className="text-sm font-bold text-neutral-900">💡 기능 제안</p>
+              <p className="text-xs text-neutral-600">새로운 기능이나 개선 아이디어</p>
             </div>
+          </button>
 
-            <div className="flex items-center gap-1.5 p-1 rounded bg-white">
-              <div className="w-5 h-5 rounded-full bg-cyan-500 flex items-center justify-center flex-shrink-0">
-                <MessageSquare className="w-2.5 h-2.5 text-white" />
-              </div>
-              <p className="text-xs font-bold text-neutral-900 leading-tight">💬 일반 문의</p>
+          <button
+            type="button"
+            onClick={() => setCategory('bug')}
+            className={`flex items-center gap-3 p-3 rounded-lg border-2 transition-all duration-200 ${
+              category === 'bug' 
+                ? 'border-red-500 bg-red-50' 
+                : 'border-neutral-200 bg-white hover:border-red-400'
+            }`}
+          >
+            <div className="w-8 h-8 rounded-full bg-red-500 flex items-center justify-center flex-shrink-0">
+              <Bug className="w-4 h-4 text-white" />
             </div>
-
-            <div className="flex items-center gap-1.5 p-1 rounded bg-white">
-              <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
-                <ThumbsUp className="w-2.5 h-2.5 text-white" />
-              </div>
-              <p className="text-xs font-bold text-neutral-900 leading-tight">👍 칭찬/피드백</p>
+            <div className="text-left flex-1">
+              <p className="text-sm font-bold text-neutral-900">🐛 버그 리포트</p>
+              <p className="text-xs text-neutral-600">오류나 문제 발생 신고</p>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </button>
 
-      <Alert variant="info" className="p-1">
-        <AlertTitle className="text-[11px] md:text-xs font-bold text-neutral-900 leading-tight">
+          <button
+            type="button"
+            onClick={() => setCategory('payment')}
+            className={`flex items-center gap-3 p-3 rounded-lg border-2 transition-all duration-200 ${
+              category === 'payment' 
+                ? 'border-blue-500 bg-blue-50' 
+                : 'border-neutral-200 bg-white hover:border-blue-400'
+            }`}
+          >
+            <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0">
+              <MessageSquare className="w-4 h-4 text-white" />
+            </div>
+            <div className="text-left flex-1">
+              <p className="text-sm font-bold text-neutral-900">💳 결제 문의</p>
+              <p className="text-xs text-neutral-600">요금제, 결제, 환불 관련</p>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setCategory('other')}
+            className={`flex items-center gap-3 p-3 rounded-lg border-2 transition-all duration-200 ${
+              category === 'other' 
+                ? 'border-green-500 bg-green-50' 
+                : 'border-neutral-200 bg-white hover:border-green-400'
+            }`}
+          >
+            <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
+              <ThumbsUp className="w-4 h-4 text-white" />
+            </div>
+            <div className="text-left flex-1">
+              <p className="text-sm font-bold text-neutral-900">💬 기타 문의</p>
+              <p className="text-xs text-neutral-600">일반 문의, 칭찬, 피드백</p>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      <Alert variant="info" className="p-3">
+        <AlertTitle className="text-xs md:text-sm font-bold text-neutral-900">
           💌 답변 시간
         </AlertTitle>
-        <AlertDescription className="text-[10px] text-neutral-600 leading-tight">
-          보통 1-2일 내에 답변 드립니다
+        <AlertDescription className="text-xs text-neutral-600">
+          보통 1-2일 내에 답변 드립니다. 답변은 대시보드 알림에서 확인하실 수 있습니다.
         </AlertDescription>
       </Alert>
     </div>
   );
 
   // Step 2: 문의 작성
-  const renderStep2 = () => (
-    <div className="space-y-2 md:space-y-3">
-      <div className="text-center space-y-2 mb-2 md:mb-3">
-        <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
-          무엇을 도와드릴까요?
-        </h3>
-        <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
-          자세히 적어주실수록 더 정확한 답변을 드릴 수 있어요
-        </p>
-      </div>
+  const renderStep2 = () => {
+    const getCategoryLabel = () => {
+      switch (category) {
+        case 'feature': return '💡 기능 제안';
+        case 'bug': return '🐛 버그 리포트';
+        case 'payment': return '💳 결제 문의';
+        case 'other': return '💬 기타 문의';
+      }
+    };
 
-      <div className="space-y-2">
-        <label className="text-sm font-bold text-neutral-900">
-          문의 내용 <span className="text-error">*</span>
-        </label>
-        <Textarea
-          placeholder="예: 리뷰 분석 기능에서 날짜 필터가 작동하지 않아요. 어제부터 이 문제가 발생했습니다."
-          value={message}
-          onChange={(e) => {
-            setMessage(e.target.value);
-            setError('');
-          }}
-          rows={6}
-          className={`resize-none text-sm md:text-base ${error && !message.trim() ? 'border-error' : ''}`}
-        />
-      </div>
-
-      <div className="space-y-2">
-        <label className="text-sm font-bold text-neutral-900">
-          파일 첨부 (선택사항)
-        </label>
-        <p className="text-xs md:text-sm text-neutral-600 mb-2">
-          스크린샷이나 관련 파일을 첨부하면 더 빠르게 해결할 수 있어요 (최대 3개, 각 10MB)
-        </p>
-        
-        <div className="relative">
-          <input
-            type="file"
-            multiple
-            accept="image/*,.pdf,.doc,.docx,.txt"
-            onChange={handleFileChange}
-            className="hidden"
-            id="file-upload"
-            disabled={loading || uploading}
-          />
-          <label
-            htmlFor="file-upload"
-            className={`
-              flex items-center justify-center gap-2 h-12 md:h-14 px-4 
-              border-2 border-dashed border-neutral-300 rounded-lg 
-              cursor-pointer transition-all duration-200
-              hover:border-primary-400 hover:bg-emerald-50/50
-              ${(loading || uploading) ? 'opacity-50 cursor-not-allowed' : ''}
-            `}
-          >
-            <Upload className="w-5 h-5 text-neutral-500" />
-            <span className="text-sm md:text-base text-neutral-600">
-              파일 선택 ({files.length}/3)
-            </span>
-          </label>
+    return (
+      <div className="space-y-3 md:space-y-4">
+        <div className="text-center space-y-1">
+          <Badge variant="secondary" className="mb-2">
+            {getCategoryLabel()}
+          </Badge>
+          <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
+            무엇을 도와드릴까요?
+          </h3>
+          <p className="text-xs md:text-sm text-neutral-600 leading-relaxed">
+            자세히 적어주실수록 더 정확한 답변을 드릴 수 있어요
+          </p>
         </div>
+
+        <div className="space-y-2">
+          <label className="text-sm font-bold text-neutral-900">
+            제목 <span className="text-error">*</span>
+          </label>
+          <input
+            type="text"
+            placeholder="예: 리뷰 분석 기능이 작동하지 않아요"
+            value={title}
+            onChange={(e) => {
+              setTitle(e.target.value);
+              setError('');
+            }}
+            className={`w-full h-12 px-4 border-2 rounded-lg text-sm md:text-base ${
+              error && !title.trim() ? 'border-error' : 'border-neutral-300'
+            } focus:border-primary-500 focus:outline-none`}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-sm font-bold text-neutral-900">
+            문의 내용 <span className="text-error">*</span>
+          </label>
+          <Textarea
+            placeholder="예: 어제부터 리뷰 분석 페이지에서 날짜 필터를 선택해도 결과가 변경되지 않습니다. 크롬 브라우저를 사용하고 있습니다."
+            value={message}
+            onChange={(e) => {
+              setMessage(e.target.value);
+              setError('');
+            }}
+            rows={8}
+            className={`resize-none text-sm md:text-base ${error && !message.trim() ? 'border-error' : ''}`}
+          />
+        </div>
+
+        {error && (
+          <Alert variant="destructive">
+            <AlertTitle>오류</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
       </div>
-
-      {/* 선택된 파일 목록 */}
-      {files.length > 0 && (
-        <Card className="border-neutral-200 shadow-sm">
-          <CardContent className="p-3 md:p-4 space-y-2">
-            <p className="text-xs md:text-sm font-bold text-neutral-900">
-              첨부 파일 ({files.length}/3)
-            </p>
-            <div className="space-y-2">
-              {files.map((file, index) => (
-                <div 
-                  key={index}
-                  className="flex items-center justify-between gap-2 p-2 bg-neutral-50 rounded-lg"
-                >
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <p className="text-xs md:text-sm font-medium text-neutral-900 truncate">
-                      {file.name}
-                    </p>
-                    <Badge variant="secondary" className="text-xs flex-shrink-0">
-                      {formatFileSize(file.size)}
-                    </Badge>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => removeFile(index)}
-                    className="flex-shrink-0 p-1 hover:bg-error-bg rounded transition-colors"
-                    disabled={loading || uploading}
-                  >
-                    <X className="w-4 h-4 text-error" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {error && (
-        <Alert variant="destructive">
-          <AlertTitle>오류</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-    </div>
-  );
+    );
+  };
 
   // Step 3: 완료
   const renderStep3 = () => (
-    <div className="space-y-2 md:space-y-3">
-      <div className="text-center py-3 md:py-4">
+    <div className="space-y-3 md:space-y-4">
+      <div className="text-center py-4 md:py-6">
         <div className="w-16 h-16 md:w-20 md:h-20 bg-success-bg rounded-full flex items-center justify-center mx-auto mb-4">
           <CheckCircle2 className="w-8 h-8 md:w-10 md:h-10 text-success" />
         </div>
         <h3 className="text-xl md:text-2xl font-bold text-neutral-900 mb-2 leading-tight">
           문의가 전달되었어요!
         </h3>
-        <p className="text-sm text-neutral-600 leading-relaxed mb-4">
+        <p className="text-sm md:text-base text-neutral-600 leading-relaxed mb-4">
           소중한 의견 감사합니다.<br />
           빠른 시일 내에 답변 드리겠습니다.
         </p>
 
-        {attachments.length > 0 && (
-          <Card className="bg-neutral-50 border-neutral-200 shadow-sm p-3 md:p-4 mb-4">
-            <p className="text-xs md:text-sm text-neutral-600">
-              📎 {attachments.length}개 파일 첨부됨
-            </p>
-          </Card>
-        )}
-
-        <Card className="bg-gradient-to-br from-emerald-50 to-indigo-50 border-primary-200 shadow-sm p-4 md:p-5">
-          <p className="text-sm md:text-base text-neutral-700 leading-relaxed">
-            💌 이메일이나 대시보드 알림으로<br />
-            답변을 받으실 수 있어요
+        <Card className="bg-gradient-to-br from-emerald-50 to-indigo-50 border-primary-200 shadow-sm p-4 md:p-5 mb-4">
+          <p className="text-sm md:text-base text-neutral-700 leading-relaxed font-medium">
+            💌 답변 확인 방법
+          </p>
+          <p className="text-xs md:text-sm text-neutral-600 mt-2">
+            대시보드 → 문의하기 페이지에서<br />
+            답변을 확인하실 수 있습니다
           </p>
         </Card>
+
+        <Button
+          onClick={() => {
+            handleClose();
+            window.location.href = '/dashboard/support';
+          }}
+          variant="outline"
+          className="w-full"
+        >
+          문의내역 보러가기
+        </Button>
       </div>
     </div>
   );
@@ -435,14 +349,14 @@ export default function ContactModal({ isOpen, onClose, onComplete }: ContactMod
       onBack={handleBack}
       onNext={handleNext}
       nextButtonText={
-        currentStep === 1 ? '문의하기' : 
-        currentStep === 2 ? (uploading ? '파일 업로드 중...' : loading ? '전송 중...' : '문의 전송') : 
+        currentStep === 1 ? '다음' : 
+        currentStep === 2 ? (loading ? '전송 중...' : '문의 전송') : 
         '확인'
       }
       nextButtonDisabled={
-        (currentStep === 2 && (!message.trim() || loading || uploading))
+        (currentStep === 2 && (!title.trim() || !message.trim() || loading))
       }
-      showBackButton={currentStep === 2 && !loading && !uploading}
+      showBackButton={currentStep === 2 && !loading}
     >
       {renderCurrentStep()}
     </OnboardingModal>
