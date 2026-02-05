@@ -373,9 +373,9 @@ async def get_all_tickets(
     try:
         supabase = get_supabase_client()
         
-        # 쿼리 시작: support_tickets와 profiles 조인하여 user_email 가져오기
+        # 쿼리 시작: support_tickets 조회 (user_email은 별도 조회)
         query = supabase.table("support_tickets") \
-            .select("*, profiles!support_tickets_user_id_fkey(email)", count="exact")
+            .select("*", count="exact")
         
         # 상태 필터
         if status_filter:
@@ -389,17 +389,30 @@ async def get_all_tickets(
         tickets_data = result.data or []
         total_count = result.count or 0
         
+        # user_id별로 이메일 조회 (배치 처리)
+        user_ids = list(set([t["user_id"] for t in tickets_data]))
+        user_emails = {}
+        
+        if user_ids:
+            profiles_result = supabase.table("profiles") \
+                .select("id, email") \
+                .in_("id", user_ids) \
+                .execute()
+            
+            for profile in profiles_result.data or []:
+                user_emails[profile["id"]] = profile["email"]
+        
         # 응답 생성
         tickets = [
             TicketResponse(
                 id=str(t["id"]),
                 user_id=str(t["user_id"]),
-                user_email=t.get("profiles", {}).get("email", "Unknown"),
-                type=t.get("type", "other"),  # 수정: category → type
+                user_email=user_emails.get(t["user_id"], "Unknown"),
+                type=t.get("type", "other"),
                 title=t["title"],
                 content=t["content"],
                 status=t["status"],
-                answer=t.get("answer"),  # 수정: admin_answer → answer
+                answer=t.get("answer"),
                 answered_at=t.get("answered_at"),
                 answered_by=str(t["answered_by"]) if t.get("answered_by") else None,
                 created_at=t["created_at"],

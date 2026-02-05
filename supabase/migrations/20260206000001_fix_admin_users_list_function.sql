@@ -1,7 +1,7 @@
 -- =====================================================
--- Add get_admin_users_list Function
+-- Fix get_admin_users_list Function
 -- Created: 2026-02-06
--- Description: Admin 페이지에서 회원 목록 조회를 위한 stored procedure
+-- Description: p.status 컬럼 제거 (profiles 테이블에 없음)
 -- =====================================================
 
 CREATE OR REPLACE FUNCTION public.get_admin_users_list(
@@ -29,7 +29,7 @@ BEGIN
       p.email,
       p.display_name,
       p.subscription_tier as tier,
-      'active' as status,  -- 수정: p.status 제거, 하드코딩
+      'active' as status,  -- 하드코딩 (profiles 테이블에 status 컬럼 없음)
       p.created_at,
       p.last_sign_in_at,
       COALESCE(uc.monthly_credits, 0) as monthly_credits,
@@ -76,8 +76,4 @@ BEGIN
 END;
 $$;
 
--- 권한 부여
-GRANT EXECUTE ON FUNCTION public.get_admin_users_list(text, text, integer, integer) TO service_role;
-GRANT EXECUTE ON FUNCTION public.get_admin_users_list(text, text, integer, integer) TO authenticated;
-
-COMMENT ON FUNCTION public.get_admin_users_list IS 'Admin 페이지에서 회원 목록 및 크레딧 정보 조회 (God Tier 전용)';
+COMMENT ON FUNCTION public.get_admin_users_list IS 'Admin 페이지에서 회원 목록 및 크레딧 정보 조회 (God Tier 전용) - status 컬럼 제거';
