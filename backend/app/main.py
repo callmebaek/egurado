@@ -83,6 +83,22 @@ async def health_check():
     }
 
 
+@app.get("/api/v1/system/proxy-status")
+async def proxy_status():
+    """
+    프록시 상태 실시간 모니터링
+    
+    브라우저에서 https://api.whiplace.com/api/v1/system/proxy-status 로 접속하여 확인 가능
+    
+    Returns:
+        - proxy: 프록시 설정 및 활성 상태
+        - stats: 요청 통계 (프록시/직접 성공률)
+        - recent_requests: 최근 50건의 요청 이력
+    """
+    from app.core.proxy import get_proxy_status
+    return get_proxy_status()
+
+
 # 라우터 등록
 # 라우터 import
 from app.routers.auth import router as auth_router

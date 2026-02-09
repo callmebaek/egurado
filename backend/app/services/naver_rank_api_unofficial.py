@@ -201,71 +201,125 @@ class NaverRankNewAPIService:
         self, keyword: str, max_results: int, coord_x: str = None, coord_y: str = None
     ) -> tuple[List[Dict], int]:
         """
-        🛡️ 프록시 → 직접 연결 자동 폴백이 포함된 검색
+        🛡️ 페이지별 프록시 → 직접 연결 자동 폴백이 포함된 검색
         
-        1차: 프록시 경유 (설정된 경우)
-        2차: 직접 연결 (프록시 실패 또는 미설정 시)
+        각 페이지마다 개별적으로 폴백 처리:
+        - 프록시로 성공한 페이지는 결과 유지
+        - 프록시 실패한 페이지만 직접 연결로 재시도
+        - 프록시 실패 시 남은 페이지도 직접 연결로 전환 (불필요한 재시도 방지)
         
         Returns:
             (검색 결과 리스트, 전체 업체수)
         """
+        from app.core.proxy import record_request
+        
         proxy_url = get_proxy()
+        use_proxy = bool(proxy_url)
         
-        # 1차: 프록시 경유 시도
-        if proxy_url:
-            logger.info(f"[신API Rank] 1차 시도: 프록시 경유")
-            try:
-                results, total = await self._search_places(keyword, max_results, coord_x, coord_y, proxy_url=proxy_url)
-                if results:
-                    report_proxy_success()
-                    logger.info(f"[신API Rank] ✅ 프록시 경유 성공: {len(results)}개 결과")
-                    return (results, total)
-                else:
-                    # 결과가 비어있으면 실패로 간주
-                    report_proxy_failure("빈 결과 반환")
-                    logger.warning("[신API Rank] ⚠️ 프록시 경유 빈 결과 → 직접 연결 시도")
-            except Exception as e:
-                report_proxy_failure(str(e))
-                logger.warning(f"[신API Rank] ⚠️ 프록시 경유 실패: {str(e)} → 직접 연결 시도")
-        
-        # 2차: 직접 연결 시도
-        logger.info(f"[신API Rank] 2차 시도: 직접 연결 (프록시 없음)")
-        try:
-            results, total = await self._search_places(keyword, max_results, coord_x, coord_y, proxy_url=None)
-            if results:
-                logger.info(f"[신API Rank] ✅ 직접 연결 성공: {len(results)}개 결과")
-                return (results, total)
-            else:
-                logger.error("[신API Rank] ❌ 직접 연결도 빈 결과")
-                return ([], 0)
-        except Exception as e:
-            logger.error(f"[신API Rank] ❌ 직접 연결도 실패: {str(e)}")
-            return ([], 0)
-    
-    async def _search_places(
-        self, keyword: str, max_results: int, 
-        coord_x: str = None, coord_y: str = None,
-        proxy_url: str = None
-    ) -> tuple[List[Dict], int]:
-        """GraphQL로 매장 검색 (페이지네이션 지원)
-        
-        Args:
-            keyword: 검색 키워드
-            max_results: 최대 검색 개수
-            coord_x: 검색 기준 경도 (없으면 기본값: 강남역 근처)
-            coord_y: 검색 기준 위도 (없으면 기본값: 강남역 근처)
-            proxy_url: 프록시 URL (None이면 직접 연결)
-        
-        Returns:
-            (검색 결과 리스트, 전체 업체수)
-        """
-        # 좌표 기본값 설정 (강남역 근처)
         search_x = coord_x if coord_x else "127.0276"
         search_y = coord_y if coord_y else "37.4979"
         
-        connection_type = "프록시" if proxy_url else "직접"
-        logger.info(f"[신API Rank] 검색 위치: x={search_x}, y={search_y}, 연결: {connection_type}")
+        if use_proxy:
+            logger.info(f"[신API Rank] 프록시 모드 시작 (페이지별 폴백 활성)")
+        else:
+            logger.info(f"[신API Rank] 직접 연결 모드 (프록시 미설정 또는 비활성)")
         
+        logger.info(f"[신API Rank] 검색 위치: x={search_x}, y={search_y}")
+        
+        all_stores = []
+        total_count = 0
+        page_size = 100
+        proxy_page_successes = 0
+        direct_page_successes = 0
+        page_num = 0
+        
+        for start_idx in range(1, max_results + 1, page_size):
+            remaining = max_results - len(all_stores)
+            if remaining <= 0:
+                break
+            
+            current_display = min(remaining, page_size)
+            page_num += 1
+            page_data = None
+            
+            # --- 프록시 시도 ---
+            if use_proxy and proxy_url:
+                try:
+                    logger.info(f"[신API Rank] 페이지{page_num} 요청: start={start_idx}, display={current_display}, 연결=프록시")
+                    page_data = await self._fetch_single_page(
+                        keyword, start_idx, current_display, search_x, search_y, proxy_url
+                    )
+                    proxy_page_successes += 1
+                    record_request("proxy", True, page=page_num)
+                    logger.info(f"[신API Rank] 페이지{page_num} 프록시 성공")
+                except Exception as e:
+                    record_request("proxy", False, page=page_num, error=str(e))
+                    logger.warning(f"[신API Rank] 페이지{page_num} 프록시 실패: {str(e)[:80]} → 이 페이지부터 직접 연결")
+                    use_proxy = False  # 남은 페이지도 직접 연결로 전환
+            
+            # --- 직접 연결 폴백 (프록시 실패 또는 미설정) ---
+            if page_data is None:
+                try:
+                    logger.info(f"[신API Rank] 페이지{page_num} 요청: start={start_idx}, display={current_display}, 연결=직접")
+                    page_data = await self._fetch_single_page(
+                        keyword, start_idx, current_display, search_x, search_y, None
+                    )
+                    direct_page_successes += 1
+                    record_request("direct", True, page=page_num)
+                    logger.info(f"[신API Rank] 페이지{page_num} 직접 연결 성공")
+                except Exception as e:
+                    record_request("direct", False, page=page_num, error=str(e))
+                    logger.error(f"[신API Rank] 페이지{page_num} 직접 연결도 실패: {str(e)[:80]}")
+                    break  # 직접 연결도 실패하면 중단
+            
+            # --- 데이터 추출 ---
+            if start_idx == 1:
+                total_count = page_data.get("data", {}).get("places", {}).get("total", 0)
+                logger.info(f"[신API Rank] 전체 업체수: {total_count}개")
+            
+            items = page_data.get("data", {}).get("places", {}).get("items", [])
+            if not items:
+                logger.info(f"[신API Rank] 더 이상 결과 없음 (start={start_idx})")
+                break
+            
+            for item in items:
+                all_stores.append(self._parse_store_item(item))
+            
+            logger.info(f"[신API Rank] 누적 결과: {len(all_stores)}개")
+        
+        # --- 프록시 상태 보고 ---
+        if proxy_page_successes > 0:
+            report_proxy_success()
+        if proxy_page_successes == 0 and proxy_url:
+            report_proxy_failure("모든 페이지에서 프록시 실패")
+        
+        logger.info(
+            f"[신API Rank] 검색 완료: 총 {len(all_stores)}개, "
+            f"프록시 성공={proxy_page_successes}페이지, 직접 성공={direct_page_successes}페이지"
+        )
+        
+        return (all_stores, total_count)
+    
+    async def _fetch_single_page(
+        self, keyword: str, start: int, display: int,
+        x: str, y: str, proxy_url: str = None
+    ) -> dict:
+        """GraphQL 단일 페이지 요청
+        
+        Args:
+            keyword: 검색 키워드
+            start: 시작 인덱스
+            display: 요청 개수
+            x: 경도
+            y: 위도
+            proxy_url: 프록시 URL (None이면 직접 연결)
+            
+        Returns:
+            GraphQL API 응답 JSON
+            
+        Raises:
+            Exception: 요청 실패 시 (호출자가 폴백 처리)
+        """
         graphql_query = """
         query getPlacesList($input: PlacesInput) {
             places(input: $input) {
@@ -287,114 +341,80 @@ class NaverRankNewAPIService:
         }
         """
         
-        all_stores = []
-        total_count = 0
-        page_size = 100  # API 최대 제한
-        
-        # 페이지네이션으로 여러 번 요청
-        for start_idx in range(1, max_results + 1, page_size):
-            # 남은 개수 계산
-            remaining = max_results - len(all_stores)
-            if remaining <= 0:
-                break
-            
-            current_display = min(remaining, page_size)
-            
-            logger.info(f"[신API Rank] 페이지 요청: start={start_idx}, display={current_display}, 연결={connection_type}")
-            
-            variables = {
-                "input": {
-                    "query": keyword,
-                    "start": start_idx,
-                    "display": current_display,
-                    "deviceType": "mobile",
-                    "x": search_x,
-                    "y": search_y
-                }
+        variables = {
+            "input": {
+                "query": keyword,
+                "start": start,
+                "display": display,
+                "deviceType": "mobile",
+                "x": x,
+                "y": y
             }
-            
-            payload = {
-                "operationName": "getPlacesList",
-                "variables": variables,
-                "query": graphql_query
-            }
-            
-            # 프록시 조건부 설정
-            client_kwargs = {"timeout": self.timeout}
-            if proxy_url:
-                client_kwargs["proxy"] = proxy_url
-            
-            async with httpx.AsyncClient(**client_kwargs) as client:
-                response = await client.post(
-                    self.api_url,
-                    json=payload,
-                    headers=self.base_headers,
-                    follow_redirects=True
-                )
-                response.raise_for_status()
-                data = response.json()
-            
-            # 전체 업체수 추출 (첫 페이지에서만)
-            if start_idx == 1:
-                total_count = data.get("data", {}).get("places", {}).get("total", 0)
-                logger.info(f"[신API Rank] 전체 업체수: {total_count}개")
-            
-            # 파싱
-            items = data.get("data", {}).get("places", {}).get("items", [])
-            
-            # 결과가 없으면 중단
-            if not items:
-                logger.info(f"[신API Rank] 더 이상 결과 없음 (start={start_idx})")
-                break
-            
-            # 파싱
-            for item in items:
-                # 숫자 파싱 헬퍼 함수
-                def parse_int(value):
-                    """쉼표가 포함된 문자열을 정수로 변환"""
-                    if value is None:
-                        return 0
-                    if isinstance(value, int):
-                        return value
-                    try:
-                        return int(str(value).replace(',', ''))
-                    except (ValueError, AttributeError):
-                        return 0
-                
-                def parse_rating(value):
-                    """평점을 float로 변환, 없으면 None"""
-                    if value is None or value == "" or value == "None":
-                        return None
-                    try:
-                        rating = float(value)
-                        return rating if rating > 0 else None
-                    except (ValueError, TypeError):
-                        return None
-                
-                visitor_count = parse_int(item.get("visitorReviewCount"))
-                blog_count = parse_int(item.get("blogCafeReviewCount"))
-                rating = parse_rating(item.get("visitorReviewScore"))
-                
-                store = {
-                    "place_id": str(item.get("id", "")),
-                    "name": item.get("name", ""),
-                    "category": item.get("category", ""),
-                    "address": item.get("address", ""),
-                    "road_address": item.get("roadAddress", ""),
-                    "phone": "",
-                    "rating": rating,  # None 또는 float
-                    "review_count": str(visitor_count),
-                    "blog_review_count": str(blog_count),
-                    "visitor_review_count": visitor_count,
-                    "thumbnail": item.get("imageUrl", ""),
-                    "x": str(item.get("x", "")),
-                    "y": str(item.get("y", ""))
-                }
-                all_stores.append(store)
-            
-            logger.info(f"[신API Rank] 누적 결과: {len(all_stores)}개")
+        }
         
-        return (all_stores, total_count)
+        payload = {
+            "operationName": "getPlacesList",
+            "variables": variables,
+            "query": graphql_query
+        }
+        
+        # 프록시 사용 시 타임아웃 여유 있게
+        timeout = 20.0 if proxy_url else self.timeout
+        client_kwargs = {"timeout": timeout}
+        if proxy_url:
+            client_kwargs["proxy"] = proxy_url
+        
+        async with httpx.AsyncClient(**client_kwargs) as client:
+            response = await client.post(
+                self.api_url,
+                json=payload,
+                headers=self.base_headers,
+                follow_redirects=True
+            )
+            response.raise_for_status()
+            return response.json()
+    
+    @staticmethod
+    def _parse_store_item(item: dict) -> dict:
+        """GraphQL 응답의 매장 항목을 표준 형식으로 변환"""
+        def parse_int(value):
+            if value is None:
+                return 0
+            if isinstance(value, int):
+                return value
+            try:
+                return int(str(value).replace(',', ''))
+            except (ValueError, AttributeError):
+                return 0
+        
+        def parse_rating(value):
+            if value is None or value == "" or value == "None":
+                return None
+            try:
+                rating = float(value)
+                return rating if rating > 0 else None
+            except (ValueError, TypeError):
+                return None
+        
+        visitor_count = parse_int(item.get("visitorReviewCount"))
+        blog_count = parse_int(item.get("blogCafeReviewCount"))
+        rating = parse_rating(item.get("visitorReviewScore"))
+        
+        return {
+            "place_id": str(item.get("id", "")),
+            "name": item.get("name", ""),
+            "category": item.get("category", ""),
+            "address": item.get("address", ""),
+            "road_address": item.get("roadAddress", ""),
+            "phone": "",
+            "rating": rating,
+            "review_count": str(visitor_count),
+            "blog_review_count": str(blog_count),
+            "visitor_review_count": visitor_count,
+            "thumbnail": item.get("imageUrl", ""),
+            "x": str(item.get("x", "")),
+            "y": str(item.get("y", ""))
+        }
     
     async def _get_place_detail(self, place_id: str) -> Dict:
         """특정 매장의 상세 정보 가져오기 (리뷰수, 저장수 등)
