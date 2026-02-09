@@ -135,6 +135,7 @@ export const api = {
       const queryString = params.toString()
       return api.url(`/api/v1/metrics/trackers/${trackerId}/metrics${queryString ? `?${queryString}` : ''}`)
     },
+    competitors: () => api.url('/api/v1/metrics/competitors'),
   },
   
   /**

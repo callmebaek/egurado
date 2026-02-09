@@ -26,7 +26,9 @@ import {
   Phone,
   MessageCircle,
   Sparkles,
-  Search
+  Search,
+  Users,
+  MapPin
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -144,6 +146,27 @@ export default function MetricsTrackerPage() {
     }
   }>({})
   const [isSavingSettings, setIsSavingSettings] = useState(false)
+
+  // 경쟁매장 보기 모달
+  const [showCompetitorDialog, setShowCompetitorDialog] = useState(false)
+  const [competitorKeyword, setCompetitorKeyword] = useState("")
+  const [competitorStoreId, setCompetitorStoreId] = useState("")
+  const [competitorMyRank, setCompetitorMyRank] = useState<number | null>(null)
+  const [competitorTotalCount, setCompetitorTotalCount] = useState(0)
+  const [competitors, setCompetitors] = useState<{
+    rank: number
+    place_id: string
+    name: string
+    category: string
+    address: string
+    road_address: string
+    rating: number | null
+    visitor_review_count: number
+    blog_review_count: number
+    thumbnail: string
+    is_my_store: boolean
+  }[]>([])
+  const [loadingCompetitors, setLoadingCompetitors] = useState(false)
 
   // 주기별 기본 수집 시간 설정
   const getDefaultUpdateTimes = (frequency: 'daily_once' | 'daily_twice' | 'daily_thrice'): number[] => {
@@ -599,6 +622,59 @@ export default function MetricsTrackerPage() {
     }
   }
 
+  // 경쟁매장 보기
+  const handleViewCompetitors = async (tracker: MetricTracker) => {
+    setCompetitorKeyword(tracker.keyword)
+    setCompetitorStoreId(tracker.store_id)
+    setCompetitors([])
+    setCompetitorMyRank(null)
+    setCompetitorTotalCount(0)
+    setShowCompetitorDialog(true)
+    setLoadingCompetitors(true)
+
+    try {
+      const token = getToken()
+      if (!token) return
+
+      const response = await fetch(api.metrics.competitors(), {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          keyword: tracker.keyword,
+          store_id: tracker.store_id
+        })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setCompetitors(data.competitors || [])
+        setCompetitorMyRank(data.my_rank)
+        setCompetitorTotalCount(data.total_count || 0)
+        
+        // 크레딧 사용 알림
+        notifyCreditUsed(5, token)
+      } else {
+        const errorData = await response.json().catch(() => ({}))
+        toast({
+          title: "조회 실패",
+          description: errorData.detail || "경쟁매장 조회 중 오류가 발생했습니다",
+          variant: "destructive"
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "조회 실패",
+        description: "경쟁매장 조회 중 오류가 발생했습니다",
+        variant: "destructive"
+      })
+    } finally {
+      setLoadingCompetitors(false)
+    }
+  }
+
   // 삭제 (🚀 state에서만 제거로 최적화)
   const handleDelete = async (trackerId: string, keyword: string) => {
     if (!confirm(`"${keyword}" 추적을 삭제하시겠습니까?`)) return
@@ -916,18 +992,25 @@ export default function MetricsTrackerPage() {
                             </div>
                           </div>
 
-                          {/* 지표 + 삭제 버튼 */}
-                          <div className="flex items-center gap-1.5 flex-shrink-0">
+                          {/* 지표 + 경쟁매장 + 삭제 버튼 */}
+                          <div className="flex items-center gap-1 flex-shrink-0">
                             <button
                               onClick={() => handleViewMetrics(tracker)}
-                              className="p-2 rounded-button bg-primary-100 text-primary-600 hover:bg-primary-200 hover:shadow-sm active:scale-95 transition-all duration-200 min-w-[44px] min-h-[44px] flex items-center justify-center"
+                              className="p-2 rounded-button bg-primary-100 text-primary-600 hover:bg-primary-200 hover:shadow-sm active:scale-95 transition-all duration-200 min-w-[40px] min-h-[40px] flex items-center justify-center"
                               title="지표 보기"
                             >
                               <Eye className="w-4 h-4" />
                             </button>
                             <button
+                              onClick={() => handleViewCompetitors(tracker)}
+                              className="p-2 rounded-button bg-amber-100 text-amber-700 hover:bg-amber-200 hover:shadow-sm active:scale-95 transition-all duration-200 min-w-[40px] min-h-[40px] flex items-center justify-center"
+                              title="경쟁매장 보기"
+                            >
+                              <Users className="w-4 h-4" />
+                            </button>
+                            <button
                               onClick={() => handleDelete(tracker.id, tracker.keyword)}
-                              className="p-2 rounded-button bg-red-100 text-red-600 hover:bg-red-200 hover:shadow-sm active:scale-95 transition-all duration-200 min-w-[44px] min-h-[44px] flex items-center justify-center"
+                              className="p-2 rounded-button bg-red-100 text-red-600 hover:bg-red-200 hover:shadow-sm active:scale-95 transition-all duration-200 min-w-[40px] min-h-[40px] flex items-center justify-center"
                               title="삭제"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -1590,6 +1673,126 @@ export default function MetricsTrackerPage() {
                 '저장'
               )}
             </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* 경쟁매장 보기 모달 - 모바일 완벽 반응형 */}
+      <Dialog open={showCompetitorDialog} onOpenChange={setShowCompetitorDialog}>
+        <DialogContent className="w-[calc(100vw-24px)] sm:w-full sm:max-w-2xl lg:max-w-3xl max-h-[calc(100vh-24px)] p-0 rounded-modal shadow-modal flex flex-col overflow-hidden">
+          <DialogHeader className="p-4 md:p-6 pb-3 md:pb-4 flex-shrink-0 border-b border-neutral-200">
+            <DialogTitle className="text-lg md:text-xl font-bold text-neutral-900 flex items-center gap-2">
+              <Users className="w-5 h-5 text-amber-600" />
+              경쟁매장 순위
+            </DialogTitle>
+            <DialogDescription className="text-xs md:text-sm text-neutral-500 mt-1">
+              &quot;{competitorKeyword}&quot; 키워드 검색 결과 (최대 300위)
+              {competitorTotalCount > 0 && (
+                <span className="ml-2 text-neutral-400">
+                  전체 {competitorTotalCount.toLocaleString()}개 업체
+                </span>
+              )}
+            </DialogDescription>
+            {competitorMyRank && (
+              <div className="mt-2 inline-flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-button px-3 py-1.5">
+                <Sparkles className="w-4 h-4 text-emerald-600" />
+                <span className="text-sm font-bold text-emerald-700">
+                  내 매장 순위: {competitorMyRank}위
+                </span>
+              </div>
+            )}
+          </DialogHeader>
+          
+          <div className="flex-1 overflow-y-auto p-3 md:p-4">
+            {loadingCompetitors ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <Loader2 className="w-8 h-8 text-amber-600 animate-spin mb-3" />
+                <p className="text-sm text-neutral-500 font-medium">경쟁매장 순위를 불러오는 중...</p>
+                <p className="text-xs text-neutral-400 mt-1">300위까지 조회 중이며, 약 10~20초 소요됩니다</p>
+              </div>
+            ) : competitors.length > 0 ? (
+              <div className="space-y-1.5 md:space-y-2">
+                {competitors.map((comp) => (
+                  <div
+                    key={`${comp.rank}-${comp.place_id}`}
+                    className={`flex items-center gap-2 md:gap-3 p-2.5 md:p-3 rounded-button border transition-all duration-200 ${
+                      comp.is_my_store 
+                        ? 'bg-emerald-50 border-emerald-300 shadow-sm ring-1 ring-emerald-200' 
+                        : 'bg-white border-neutral-200 hover:bg-neutral-50'
+                    }`}
+                  >
+                    {/* 순위 */}
+                    <div className={`flex-shrink-0 w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center font-bold text-sm ${
+                      comp.rank <= 3 
+                        ? 'bg-amber-100 text-amber-700' 
+                        : comp.rank <= 10 
+                          ? 'bg-blue-100 text-blue-700' 
+                          : 'bg-neutral-100 text-neutral-600'
+                    }`}>
+                      {comp.rank}
+                    </div>
+
+                    {/* 썸네일 */}
+                    {comp.thumbnail ? (
+                      <img
+                        src={comp.thumbnail}
+                        alt={comp.name}
+                        className="w-10 h-10 md:w-12 md:h-12 rounded-lg object-cover flex-shrink-0"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+                      />
+                    ) : (
+                      <div className="w-10 h-10 md:w-12 md:h-12 rounded-lg bg-neutral-100 flex items-center justify-center flex-shrink-0">
+                        <MapPin className="w-4 h-4 text-neutral-400" />
+                      </div>
+                    )}
+
+                    {/* 매장 정보 */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        <span className={`font-bold text-sm md:text-base truncate ${
+                          comp.is_my_store ? 'text-emerald-700' : 'text-neutral-900'
+                        }`}>
+                          {comp.name}
+                        </span>
+                        {comp.is_my_store && (
+                          <span className="flex-shrink-0 text-[10px] md:text-xs font-bold bg-emerald-600 text-white px-1.5 py-0.5 rounded-full">
+                            내 매장
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs text-neutral-500 truncate mb-0.5">
+                        {comp.category && <span>{comp.category}</span>}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-neutral-600">
+                        {comp.rating && (
+                          <span className="flex items-center gap-0.5">
+                            <span className="text-amber-500">★</span>
+                            <span className="font-medium">{comp.rating.toFixed(1)}</span>
+                          </span>
+                        )}
+                        <span className="flex items-center gap-0.5">
+                          <MessageSquare className="w-3 h-3 text-neutral-400" />
+                          <span className="font-medium">{comp.visitor_review_count.toLocaleString()}</span>
+                        </span>
+                        <span className="flex items-center gap-0.5">
+                          <FileText className="w-3 h-3 text-neutral-400" />
+                          <span className="font-medium">{comp.blog_review_count.toLocaleString()}</span>
+                        </span>
+                      </div>
+                      {/* 주소 - PC에서만 표시 */}
+                      <div className="hidden md:block text-xs text-neutral-400 truncate mt-0.5">
+                        {comp.road_address || comp.address}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-12">
+                <Users className="w-10 h-10 text-neutral-300 mb-3" />
+                <p className="text-sm text-neutral-500">검색 결과가 없습니다</p>
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>

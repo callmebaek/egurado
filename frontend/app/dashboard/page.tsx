@@ -31,10 +31,20 @@ import {
   Edit3,
   RefreshCw,
   TrendingUp,
-  TrendingDown
+  TrendingDown,
+  Eye,
+  Users
 } from "lucide-react"
 import Link from "next/link"
 import OnboardingSection from "@/components/onboarding/OnboardingSection"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { useToast } from "@/components/ui/use-toast"
 import {
   DndContext,
   closestCenter,
@@ -162,6 +172,8 @@ function SortableStoreTrackerCard({
   isReordering,
   onRefreshTracker,
   onRefreshAllTrackers,
+  onViewMetrics,
+  onViewCompetitors,
   isRefreshing
 }: { 
   storeGroup: StoreTrackerGroup
@@ -169,6 +181,8 @@ function SortableStoreTrackerCard({
   isReordering: boolean
   onRefreshTracker: (trackerId: string) => Promise<void>
   onRefreshAllTrackers: (storeId: string) => Promise<void>
+  onViewMetrics: (tracker: MetricTracker) => void
+  onViewCompetitors: (tracker: MetricTracker) => void
   isRefreshing: Set<string>
 }) {
   const {
@@ -374,19 +388,35 @@ function SortableStoreTrackerCard({
                         </div>
                       )}
                       
-                    {/* 키워드별 새로고침 버튼 - 모바일 최적화 */}
-                    <button
-                      onClick={() => onRefreshTracker(tracker.id)}
-                      disabled={isRefreshing.has(tracker.id)}
-                      className={`p-2 rounded-button transition-all duration-200 flex-shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center ${
-                        isRefreshing.has(tracker.id)
-                          ? 'bg-neutral-100 text-neutral-400 cursor-not-allowed'
-                          : 'bg-emerald-100 text-emerald-600 hover:bg-emerald-200 hover:shadow-sm active:scale-95'
-                      }`}
-                      title="이 키워드 순위를 지금 수집합니다"
-                    >
-                      <RefreshCw className={`w-4 h-4 ${isRefreshing.has(tracker.id) ? 'animate-spin' : ''}`} />
-                    </button>
+                    {/* 지표 + 경쟁매장 + 새로고침 버튼 */}
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => onViewMetrics(tracker)}
+                        className="p-1.5 md:p-2 rounded-button bg-primary-100 text-primary-600 hover:bg-primary-200 hover:shadow-sm active:scale-95 transition-all duration-200 min-w-[36px] min-h-[36px] md:min-w-[40px] md:min-h-[40px] flex items-center justify-center"
+                        title="지표 보기"
+                      >
+                        <Eye className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                      </button>
+                      <button
+                        onClick={() => onViewCompetitors(tracker)}
+                        className="p-1.5 md:p-2 rounded-button bg-amber-100 text-amber-700 hover:bg-amber-200 hover:shadow-sm active:scale-95 transition-all duration-200 min-w-[36px] min-h-[36px] md:min-w-[40px] md:min-h-[40px] flex items-center justify-center"
+                        title="경쟁매장 보기"
+                      >
+                        <Users className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                      </button>
+                      <button
+                        onClick={() => onRefreshTracker(tracker.id)}
+                        disabled={isRefreshing.has(tracker.id)}
+                        className={`p-1.5 md:p-2 rounded-button transition-all duration-200 flex-shrink-0 min-w-[36px] min-h-[36px] md:min-w-[40px] md:min-h-[40px] flex items-center justify-center ${
+                          isRefreshing.has(tracker.id)
+                            ? 'bg-neutral-100 text-neutral-400 cursor-not-allowed'
+                            : 'bg-emerald-100 text-emerald-600 hover:bg-emerald-200 hover:shadow-sm active:scale-95'
+                        }`}
+                        title="이 키워드 순위를 지금 수집합니다"
+                      >
+                        <RefreshCw className={`w-3.5 h-3.5 md:w-4 md:h-4 ${isRefreshing.has(tracker.id) ? 'animate-spin' : ''}`} />
+                      </button>
+                    </div>
                     </div>
                   </div>
                 )
@@ -423,9 +453,38 @@ function SortableStoreTrackerCard({
   )
 }
 
+// DailyMetric interface for metrics modal
+interface DailyMetric {
+  id: string
+  collection_date: string
+  rank: number | null
+  visitor_review_count: number
+  blog_review_count: number
+  save_count: number
+  collected_at: string
+  keyword?: string
+  store_name?: string
+}
+
+// CompetitorStore interface for competitor modal
+interface CompetitorStore {
+  rank: number
+  place_id: string
+  name: string
+  category: string
+  address: string
+  road_address: string
+  rating: number | null
+  visitor_review_count: number
+  blog_review_count: number
+  thumbnail: string
+  is_my_store: boolean
+}
+
 // Force redeploy v2 - Review Analysis Modal (2026-01-29 02:40)
 export default function DashboardPage() {
   const { user, getToken, loading: authLoading } = useAuth()
+  const { toast } = useToast()
   
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [stores, setStores] = useState<Store[]>([])
@@ -436,6 +495,20 @@ export default function DashboardPage() {
   const [isRefreshing, setIsRefreshing] = useState<Set<string>>(new Set())
   const [latestDiagnosis, setLatestDiagnosis] = useState<LatestDiagnosis | null>(null)
   const [latestActivation, setLatestActivation] = useState<LatestActivation | null>(null)
+  
+  // 지표 보기 모달
+  const [showMetricsDialog, setShowMetricsDialog] = useState(false)
+  const [selectedTracker, setSelectedTracker] = useState<MetricTracker | null>(null)
+  const [metrics, setMetrics] = useState<DailyMetric[]>([])
+  const [loadingMetrics, setLoadingMetrics] = useState(false)
+
+  // 경쟁매장 보기 모달
+  const [showCompetitorDialog, setShowCompetitorDialog] = useState(false)
+  const [competitorKeyword, setCompetitorKeyword] = useState("")
+  const [competitorMyRank, setCompetitorMyRank] = useState<number | null>(null)
+  const [competitorTotalCount, setCompetitorTotalCount] = useState(0)
+  const [competitors, setCompetitors] = useState<CompetitorStore[]>([])
+  const [loadingCompetitors, setLoadingCompetitors] = useState(false)
   
   // 🆕 실제 크레딧 정보 (Credits API)
   const [credits, setCredits] = useState<{
@@ -539,6 +612,93 @@ export default function DashboardPage() {
       }
     } catch (error) {
       console.log('[Credits] 크레딧 리로드 실패:', error)
+    }
+  }
+
+  // 지표 보기 핸들러
+  const handleViewMetrics = async (tracker: MetricTracker) => {
+    setSelectedTracker(tracker)
+    setMetrics([])
+    setShowMetricsDialog(true)
+    setLoadingMetrics(true)
+
+    try {
+      const token = getToken()
+      if (!token) return
+
+      // tracker의 실제 tracker ID로 metrics 조회
+      // tracker 목록에서 해당 tracker의 id를 찾아야 함
+      const response = await fetch(api.metrics.getMetrics(tracker.id), {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setMetrics(data.metrics || [])
+      } else {
+        toast({
+          title: "조회 실패",
+          description: "지표 데이터를 불러오는데 실패했습니다",
+          variant: "destructive"
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "조회 실패",
+        description: "지표 데이터를 불러오는데 실패했습니다",
+        variant: "destructive"
+      })
+    } finally {
+      setLoadingMetrics(false)
+    }
+  }
+
+  // 경쟁매장 보기 핸들러
+  const handleViewCompetitors = async (tracker: MetricTracker) => {
+    setCompetitorKeyword(tracker.keyword)
+    setCompetitors([])
+    setCompetitorMyRank(null)
+    setCompetitorTotalCount(0)
+    setShowCompetitorDialog(true)
+    setLoadingCompetitors(true)
+
+    try {
+      const token = getToken()
+      if (!token) return
+
+      const response = await fetch(api.metrics.competitors(), {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          keyword: tracker.keyword,
+          store_id: tracker.store_id
+        })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setCompetitors(data.competitors || [])
+        setCompetitorMyRank(data.my_rank)
+        setCompetitorTotalCount(data.total_count || 0)
+      } else {
+        const errorData = await response.json().catch(() => ({}))
+        toast({
+          title: "조회 실패",
+          description: errorData.detail || "경쟁매장 조회 중 오류가 발생했습니다",
+          variant: "destructive"
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "조회 실패",
+        description: "경쟁매장 조회 중 오류가 발생했습니다",
+        variant: "destructive"
+      })
+    } finally {
+      setLoadingCompetitors(false)
     }
   }
 
@@ -1501,6 +1661,8 @@ export default function DashboardPage() {
                       isReordering={isReordering}
                       onRefreshTracker={handleRefreshTracker}
                       onRefreshAllTrackers={handleRefreshAllTrackers}
+                      onViewMetrics={handleViewMetrics}
+                      onViewCompetitors={handleViewCompetitors}
                       isRefreshing={isRefreshing}
                     />
                   ))}
@@ -1631,6 +1793,230 @@ export default function DashboardPage() {
           )}
         </div>
       </div>
+
+      {/* 지표 보기 모달 - 대시보드용 */}
+      <Dialog open={showMetricsDialog} onOpenChange={setShowMetricsDialog}>
+        <DialogContent className="w-[calc(100vw-24px)] sm:w-full sm:max-w-2xl lg:max-w-3xl max-h-[calc(100vh-24px)] p-0 rounded-modal shadow-modal flex flex-col overflow-hidden">
+          <DialogHeader className="p-4 md:p-6 pb-3 md:pb-4 flex-shrink-0 border-b border-neutral-200">
+            <DialogTitle className="text-lg md:text-xl font-bold text-neutral-900 flex items-center gap-2">
+              <BarChart3 className="w-5 h-5 text-primary-600" />
+              지표 추이
+            </DialogTitle>
+            <DialogDescription className="text-xs md:text-sm text-neutral-500 mt-1">
+              {selectedTracker?.store_name && (
+                <span className="font-medium">{selectedTracker.store_name} · </span>
+              )}
+              &quot;{selectedTracker?.keyword}&quot; 키워드의 일별 지표 변화
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex-1 overflow-y-auto p-3 md:p-4">
+            {loadingMetrics ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <Loader2 className="w-8 h-8 text-primary-600 animate-spin mb-3" />
+                <p className="text-sm text-neutral-500">지표 데이터 불러오는 중...</p>
+              </div>
+            ) : metrics.length > 0 ? (
+              <>
+                {/* 모바일: 카드 레이아웃 */}
+                <div className="md:hidden space-y-2">
+                  {metrics.map((metric, idx) => (
+                    <div key={metric.id || idx} className="bg-white border border-neutral-200 rounded-button p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-bold text-neutral-900">
+                          {new Date(metric.collection_date).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
+                        </span>
+                        <span className={`text-lg font-bold ${
+                          metric.rank && metric.rank <= 10 ? 'text-emerald-600' : 
+                          metric.rank && metric.rank <= 50 ? 'text-blue-600' : 'text-neutral-600'
+                        }`}>
+                          {metric.rank ? `${metric.rank}위` : '300위 밖'}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 text-xs">
+                        <div className="text-center bg-neutral-50 rounded px-2 py-1.5">
+                          <div className="text-neutral-500">방문자</div>
+                          <div className="font-bold text-neutral-900">{metric.visitor_review_count?.toLocaleString() || '0'}</div>
+                        </div>
+                        <div className="text-center bg-neutral-50 rounded px-2 py-1.5">
+                          <div className="text-neutral-500">블로그</div>
+                          <div className="font-bold text-neutral-900">{metric.blog_review_count?.toLocaleString() || '0'}</div>
+                        </div>
+                        <div className="text-center bg-neutral-50 rounded px-2 py-1.5">
+                          <div className="text-neutral-500">저장수</div>
+                          <div className="font-bold text-neutral-900">{metric.save_count?.toLocaleString() || '0'}</div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                
+                {/* PC: 테이블 레이아웃 */}
+                <div className="hidden md:block">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-neutral-200">
+                        <th className="text-left py-2 px-3 font-bold text-neutral-600">날짜</th>
+                        <th className="text-center py-2 px-3 font-bold text-neutral-600">순위</th>
+                        <th className="text-center py-2 px-3 font-bold text-neutral-600">방문자리뷰</th>
+                        <th className="text-center py-2 px-3 font-bold text-neutral-600">블로그리뷰</th>
+                        <th className="text-center py-2 px-3 font-bold text-neutral-600">저장수</th>
+                        <th className="text-right py-2 px-3 font-bold text-neutral-600">수집시간</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {metrics.map((metric, idx) => (
+                        <tr key={metric.id || idx} className="border-b border-neutral-100 hover:bg-neutral-50">
+                          <td className="py-2.5 px-3 font-medium">
+                            {new Date(metric.collection_date).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
+                          </td>
+                          <td className={`py-2.5 px-3 text-center font-bold ${
+                            metric.rank && metric.rank <= 10 ? 'text-emerald-600' : 
+                            metric.rank && metric.rank <= 50 ? 'text-blue-600' : 'text-neutral-600'
+                          }`}>
+                            {metric.rank ? `${metric.rank}위` : '300위 밖'}
+                          </td>
+                          <td className="py-2.5 px-3 text-center">{metric.visitor_review_count?.toLocaleString() || '0'}</td>
+                          <td className="py-2.5 px-3 text-center">{metric.blog_review_count?.toLocaleString() || '0'}</td>
+                          <td className="py-2.5 px-3 text-center">{metric.save_count?.toLocaleString() || '0'}</td>
+                          <td className="py-2.5 px-3 text-right text-neutral-500 text-xs">
+                            {new Date(metric.collected_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-12">
+                <BarChart3 className="w-10 h-10 text-neutral-300 mb-3" />
+                <p className="text-sm text-neutral-500">아직 수집된 지표가 없습니다</p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* 경쟁매장 보기 모달 - 대시보드용 */}
+      <Dialog open={showCompetitorDialog} onOpenChange={setShowCompetitorDialog}>
+        <DialogContent className="w-[calc(100vw-24px)] sm:w-full sm:max-w-2xl lg:max-w-3xl max-h-[calc(100vh-24px)] p-0 rounded-modal shadow-modal flex flex-col overflow-hidden">
+          <DialogHeader className="p-4 md:p-6 pb-3 md:pb-4 flex-shrink-0 border-b border-neutral-200">
+            <DialogTitle className="text-lg md:text-xl font-bold text-neutral-900 flex items-center gap-2">
+              <Users className="w-5 h-5 text-amber-600" />
+              경쟁매장 순위
+            </DialogTitle>
+            <DialogDescription className="text-xs md:text-sm text-neutral-500 mt-1">
+              &quot;{competitorKeyword}&quot; 키워드 검색 결과 (최대 300위)
+              {competitorTotalCount > 0 && (
+                <span className="ml-2 text-neutral-400">
+                  전체 {competitorTotalCount.toLocaleString()}개 업체
+                </span>
+              )}
+            </DialogDescription>
+            {competitorMyRank && (
+              <div className="mt-2 inline-flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-button px-3 py-1.5">
+                <Sparkles className="w-4 h-4 text-emerald-600" />
+                <span className="text-sm font-bold text-emerald-700">
+                  내 매장 순위: {competitorMyRank}위
+                </span>
+              </div>
+            )}
+          </DialogHeader>
+          
+          <div className="flex-1 overflow-y-auto p-3 md:p-4">
+            {loadingCompetitors ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <Loader2 className="w-8 h-8 text-amber-600 animate-spin mb-3" />
+                <p className="text-sm text-neutral-500 font-medium">경쟁매장 순위를 불러오는 중...</p>
+                <p className="text-xs text-neutral-400 mt-1">300위까지 조회 중이며, 약 10~20초 소요됩니다</p>
+              </div>
+            ) : competitors.length > 0 ? (
+              <div className="space-y-1.5 md:space-y-2">
+                {competitors.map((comp) => (
+                  <div
+                    key={`${comp.rank}-${comp.place_id}`}
+                    className={`flex items-center gap-2 md:gap-3 p-2.5 md:p-3 rounded-button border transition-all duration-200 ${
+                      comp.is_my_store 
+                        ? 'bg-emerald-50 border-emerald-300 shadow-sm ring-1 ring-emerald-200' 
+                        : 'bg-white border-neutral-200 hover:bg-neutral-50'
+                    }`}
+                  >
+                    {/* 순위 */}
+                    <div className={`flex-shrink-0 w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center font-bold text-sm ${
+                      comp.rank <= 3 
+                        ? 'bg-amber-100 text-amber-700' 
+                        : comp.rank <= 10 
+                          ? 'bg-blue-100 text-blue-700' 
+                          : 'bg-neutral-100 text-neutral-600'
+                    }`}>
+                      {comp.rank}
+                    </div>
+
+                    {/* 썸네일 */}
+                    {comp.thumbnail ? (
+                      <img
+                        src={comp.thumbnail}
+                        alt={comp.name}
+                        className="w-10 h-10 md:w-12 md:h-12 rounded-lg object-cover flex-shrink-0"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+                      />
+                    ) : (
+                      <div className="w-10 h-10 md:w-12 md:h-12 rounded-lg bg-neutral-100 flex items-center justify-center flex-shrink-0">
+                        <MapPin className="w-4 h-4 text-neutral-400" />
+                      </div>
+                    )}
+
+                    {/* 매장 정보 */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        <span className={`font-bold text-sm md:text-base truncate ${
+                          comp.is_my_store ? 'text-emerald-700' : 'text-neutral-900'
+                        }`}>
+                          {comp.name}
+                        </span>
+                        {comp.is_my_store && (
+                          <span className="flex-shrink-0 text-[10px] md:text-xs font-bold bg-emerald-600 text-white px-1.5 py-0.5 rounded-full">
+                            내 매장
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs text-neutral-500 truncate mb-0.5">
+                        {comp.category && <span>{comp.category}</span>}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-neutral-600">
+                        {comp.rating && (
+                          <span className="flex items-center gap-0.5">
+                            <span className="text-amber-500">★</span>
+                            <span className="font-medium">{comp.rating.toFixed(1)}</span>
+                          </span>
+                        )}
+                        <span className="flex items-center gap-0.5">
+                          <MessageSquare className="w-3 h-3 text-neutral-400" />
+                          <span className="font-medium">{comp.visitor_review_count.toLocaleString()}</span>
+                        </span>
+                        <span className="flex items-center gap-0.5">
+                          <FileText className="w-3 h-3 text-neutral-400" />
+                          <span className="font-medium">{comp.blog_review_count.toLocaleString()}</span>
+                        </span>
+                      </div>
+                      {/* 주소 - PC에서만 표시 */}
+                      <div className="hidden md:block text-xs text-neutral-400 truncate mt-0.5">
+                        {comp.road_address || comp.address}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-12">
+                <Users className="w-10 h-10 text-neutral-300 mb-3" />
+                <p className="text-sm text-neutral-500">검색 결과가 없습니다</p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

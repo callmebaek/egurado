@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException, status, Depends
 from typing import List, Optional
 from uuid import UUID
 from datetime import date
+from pydantic import BaseModel
 import logging
 
 from app.models.schemas import (
@@ -23,6 +24,31 @@ from app.services.metric_tracker_service import metric_tracker_service
 from app.routers.auth import get_current_user
 from app.services.credit_service import credit_service
 from app.core.config import settings
+
+
+# 경쟁매장 조회 요청/응답 모델
+class CompetitorRequest(BaseModel):
+    keyword: str
+    store_id: str  # 내 매장 store_id (place_id 조회용)
+
+class CompetitorStore(BaseModel):
+    rank: int
+    place_id: str
+    name: str
+    category: str
+    address: str
+    road_address: str
+    rating: Optional[float] = None
+    visitor_review_count: int = 0
+    blog_review_count: int = 0
+    thumbnail: str = ""
+    is_my_store: bool = False
+
+class CompetitorResponse(BaseModel):
+    keyword: str
+    my_rank: Optional[int] = None
+    total_count: int = 0
+    competitors: List[CompetitorStore] = []
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -353,4 +379,136 @@ async def get_tracker_metrics(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="지표 조회 중 오류가 발생했습니다"
+        )
+
+
+@router.post("/competitors", response_model=CompetitorResponse)
+async def get_competitors(
+    request: CompetitorRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    특정 키워드의 경쟁매장 순위 조회 (300위까지)
+    
+    네이버 GraphQL API를 통해 해당 키워드로 검색되는
+    모든 매장(최대 300개)의 순위와 상세 정보를 반환합니다.
+    
+    - **keyword**: 검색 키워드
+    - **store_id**: 내 매장 ID (강조 표시용)
+    
+    크레딧: 5 크레딧 소모
+    """
+    user_id = UUID(current_user["id"])
+    
+    try:
+        from app.core.database import get_supabase_client
+        supabase = get_supabase_client()
+        
+        # 매장 정보 조회 (place_id, 좌표 필요)
+        store_result = supabase.table("stores").select(
+            "id, place_id, store_name, x, y"
+        ).eq("id", request.store_id).single().execute()
+        
+        if not store_result.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="매장을 찾을 수 없습니다."
+            )
+        
+        store_data = store_result.data
+        my_place_id = store_data["place_id"]
+        
+        logger.info(f"[Competitors] 경쟁매장 조회: keyword={request.keyword}, store={store_data['store_name']}")
+        
+        # 🆕 크레딧 체크
+        if settings.CREDIT_SYSTEM_ENABLED and settings.CREDIT_CHECK_STRICT:
+            check_result = await credit_service.check_sufficient_credits(
+                user_id=user_id,
+                feature="rank_check",
+                required_credits=5
+            )
+            if not check_result.sufficient:
+                raise HTTPException(
+                    status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                    detail="크레딧이 부족합니다. 크레딧을 충전하거나 플랜을 업그레이드해주세요."
+                )
+        
+        # GraphQL API로 300위까지 검색
+        from app.services.naver_rank_api_unofficial import rank_service_api_unofficial
+        
+        rank_result = await rank_service_api_unofficial.check_rank(
+            keyword=request.keyword,
+            target_place_id=my_place_id,
+            max_results=300,
+            store_name=store_data.get("store_name"),
+            coord_x=store_data.get("x"),
+            coord_y=store_data.get("y")
+        )
+        
+        # 검색 결과를 경쟁매장 리스트로 변환
+        competitors = []
+        my_rank = rank_result.get("rank")
+        search_results = rank_result.get("search_results", [])
+        
+        for idx, store in enumerate(search_results, start=1):
+            place_id = store.get("place_id", "")
+            visitor_count = store.get("visitor_review_count", 0)
+            if isinstance(visitor_count, str):
+                visitor_count = int(visitor_count.replace(",", "")) if visitor_count else 0
+            
+            blog_count = store.get("blog_review_count", 0)
+            if isinstance(blog_count, str):
+                blog_count = int(blog_count.replace(",", "")) if blog_count else 0
+            
+            competitors.append(CompetitorStore(
+                rank=idx,
+                place_id=place_id,
+                name=store.get("name", ""),
+                category=store.get("category", ""),
+                address=store.get("address", ""),
+                road_address=store.get("road_address", ""),
+                rating=store.get("rating"),
+                visitor_review_count=visitor_count,
+                blog_review_count=blog_count,
+                thumbnail=store.get("thumbnail", ""),
+                is_my_store=(place_id == my_place_id)
+            ))
+        
+        # 전체 업체수
+        total_count = rank_result.get("total_count", 0)
+        if isinstance(total_count, str):
+            total_count = int(total_count.replace(",", "")) if total_count else 0
+        
+        logger.info(f"[Competitors] 결과: my_rank={my_rank}, competitors={len(competitors)}, total={total_count}")
+        
+        # 🆕 크레딧 차감
+        if settings.CREDIT_SYSTEM_ENABLED and settings.CREDIT_AUTO_DEDUCT:
+            try:
+                await credit_service.deduct_credits(
+                    user_id=user_id,
+                    feature="rank_check",
+                    credits_amount=5,
+                    metadata={
+                        "action": "competitor_view",
+                        "keyword": request.keyword,
+                        "store_name": store_data.get("store_name", "")
+                    }
+                )
+            except Exception as credit_error:
+                logger.error(f"[Credits] Failed to deduct credits: {credit_error}")
+        
+        return CompetitorResponse(
+            keyword=request.keyword,
+            my_rank=my_rank,
+            total_count=total_count,
+            competitors=competitors
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[Competitors] 경쟁매장 조회 오류: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"경쟁매장 조회 중 오류가 발생했습니다: {str(e)}"
         )
