@@ -13,7 +13,7 @@ import re
 from typing import List, Dict, Optional, Any
 from datetime import datetime, timedelta
 from playwright.async_api import Page
-from app.core.proxy import get_proxy
+from app.core.proxy import get_proxy, report_proxy_success, report_proxy_failure
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +44,7 @@ class NaverReviewService:
             "Referer": "https://pcmap.place.naver.com/",
         }
         
-        self.proxy = get_proxy()  # 프록시 URL 문자열 또는 None
+        # 프록시는 요청 시점에 동적으로 가져옴 (상태 기반 자동 폴백)
     
     async def get_visitor_reviews(
         self, 
@@ -125,8 +125,9 @@ class NaverReviewService:
             
             # 프록시 조건부 설정
             client_kwargs = {"timeout": self.TIMEOUT}
-            if self.proxy:
-                client_kwargs["proxy"] = self.proxy
+            proxy_url = get_proxy()
+            if proxy_url:
+                client_kwargs["proxy"] = proxy_url
             
             async with httpx.AsyncClient(**client_kwargs) as client:
                 payload = {"query": query, "variables": variables}
@@ -281,8 +282,9 @@ class NaverReviewService:
         try:
             # 프록시 조건부 설정
             client_kwargs = {"timeout": self.TIMEOUT}
-            if self.proxy:
-                client_kwargs["proxy"] = self.proxy
+            proxy_url = get_proxy()
+            if proxy_url:
+                client_kwargs["proxy"] = proxy_url
             
             async with httpx.AsyncClient(**client_kwargs) as client:
                 response = await client.post(
@@ -855,8 +857,9 @@ class NaverReviewService:
             
             # 프록시 조건부 설정
             client_kwargs = {"timeout": self.TIMEOUT}
-            if self.proxy:
-                client_kwargs["proxy"] = self.proxy
+            proxy_url = get_proxy()
+            if proxy_url:
+                client_kwargs["proxy"] = proxy_url
             
             async with httpx.AsyncClient(**client_kwargs) as client:
                 response = await client.post(
@@ -1005,8 +1008,9 @@ class NaverReviewService:
             
             # 프록시 조건부 설정
             client_kwargs = {"timeout": 10.0}
-            if self.proxy:
-                client_kwargs["proxy"] = self.proxy
+            proxy_url = get_proxy()
+            if proxy_url:
+                client_kwargs["proxy"] = proxy_url
             
             async with httpx.AsyncClient(**client_kwargs) as client:
                 for page in range(max_pages):
@@ -1424,8 +1428,9 @@ class NaverReviewService:
             
             # 프록시 조건부 설정
             client_kwargs = {"timeout": 5.0}
-            if self.proxy:
-                client_kwargs["proxy"] = self.proxy
+            proxy_url = get_proxy()
+            if proxy_url:
+                client_kwargs["proxy"] = proxy_url
             
             async with httpx.AsyncClient(**client_kwargs) as client:
                 # PostView URL로 직접 실제 컨텐츠 가져오기

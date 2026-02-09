@@ -13,7 +13,7 @@ import json
 from typing import List, Dict, Optional
 import asyncio
 import random
-from app.core.proxy import get_proxy
+from app.core.proxy import get_proxy, report_proxy_success, report_proxy_failure
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +45,7 @@ class NaverPlaceNewAPIService:
         }
         
         self.timeout = 15.0
-        self.proxy = get_proxy()  # 프록시 URL 문자열 또는 None
+        # 프록시는 요청 시점에 동적으로 가져옴 (상태 기반 자동 폴백)
         
     async def search_stores(self, query: str, max_results: int = 100) -> List[Dict[str, str]]:
         """
@@ -82,8 +82,9 @@ class NaverPlaceNewAPIService:
             
             # 프록시 조건부 설정
             client_kwargs = {"timeout": self.timeout}
-            if self.proxy:
-                client_kwargs["proxy"] = self.proxy
+            proxy_url = get_proxy()
+            if proxy_url:
+                client_kwargs["proxy"] = proxy_url
             
             async with httpx.AsyncClient(**client_kwargs) as client:
                 response = await client.post(
@@ -248,8 +249,9 @@ class NaverPlaceNewAPIService:
             
             # 프록시 조건부 설정
             client_kwargs = {"timeout": self.timeout}
-            if self.proxy:
-                client_kwargs["proxy"] = self.proxy
+            proxy_url = get_proxy()
+            if proxy_url:
+                client_kwargs["proxy"] = proxy_url
             
             async with httpx.AsyncClient(**client_kwargs) as client:
                 response = await client.get(search_url, headers=headers, follow_redirects=True)
