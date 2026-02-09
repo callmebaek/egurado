@@ -162,7 +162,7 @@ class NaverRankNewAPIService:
                             "save_count": 0
                         }
                 except Exception as e:
-                    logger.error(f"[신API Rank] ❌ 매장 정보 조회 실패: {str(e)}", exc_info=True)
+                    logger.error(f"[신API Rank] ❌ 매장 정보 조회 실패: {str(e)}")
                     target_store_data = {
                         "place_id": target_place_id,
                         "visitor_review_count": 0,
@@ -285,66 +285,66 @@ class NaverRankNewAPIService:
                     )
                     response.raise_for_status()
                     data = response.json()
+                
+                # 전체 업체수 추출 (첫 페이지에서만)
+                if start_idx == 1:
+                    total_count = data.get("data", {}).get("places", {}).get("total", 0)
+                    logger.info(f"[신API Rank] 전체 업체수: {total_count}개")
+                
+                # 파싱
+                items = data.get("data", {}).get("places", {}).get("items", [])
+                
+                # 결과가 없으면 중단
+                if not items:
+                    logger.info(f"[신API Rank] 더 이상 결과 없음 (start={start_idx})")
+                    break
+                
+                # 파싱
+                for item in items:
+                    # 숫자 파싱 헬퍼 함수
+                    def parse_int(value):
+                        """쉼표가 포함된 문자열을 정수로 변환"""
+                        if value is None:
+                            return 0
+                        if isinstance(value, int):
+                            return value
+                        try:
+                            return int(str(value).replace(',', ''))
+                        except (ValueError, AttributeError):
+                            return 0
                     
-                    # 전체 업체수 추출 (첫 페이지에서만)
-                    if start_idx == 1:
-                        total_count = data.get("data", {}).get("places", {}).get("total", 0)
-                        logger.info(f"[신API Rank] 전체 업체수: {total_count}개")
+                    def parse_rating(value):
+                        """평점을 float로 변환, 없으면 None"""
+                        if value is None or value == "" or value == "None":
+                            return None
+                        try:
+                            rating = float(value)
+                            return rating if rating > 0 else None
+                        except (ValueError, TypeError):
+                            return None
                     
-                    # 파싱
-                    items = data.get("data", {}).get("places", {}).get("items", [])
+                    visitor_count = parse_int(item.get("visitorReviewCount"))
+                    blog_count = parse_int(item.get("blogCafeReviewCount"))
+                    rating = parse_rating(item.get("visitorReviewScore"))
                     
-                    # 결과가 없으면 중단
-                    if not items:
-                        logger.info(f"[신API Rank] 더 이상 결과 없음 (start={start_idx})")
-                        break
-                    
-                    # 파싱
-                    for item in items:
-                        # 숫자 파싱 헬퍼 함수
-                        def parse_int(value):
-                            """쉼표가 포함된 문자열을 정수로 변환"""
-                            if value is None:
-                                return 0
-                            if isinstance(value, int):
-                                return value
-                            try:
-                                return int(str(value).replace(',', ''))
-                            except (ValueError, AttributeError):
-                                return 0
-                        
-                        def parse_rating(value):
-                            """평점을 float로 변환, 없으면 None"""
-                            if value is None or value == "" or value == "None":
-                                return None
-                            try:
-                                rating = float(value)
-                                return rating if rating > 0 else None
-                            except (ValueError, TypeError):
-                                return None
-                        
-                        visitor_count = parse_int(item.get("visitorReviewCount"))
-                        blog_count = parse_int(item.get("blogCafeReviewCount"))
-                        rating = parse_rating(item.get("visitorReviewScore"))
-                        
-                        store = {
-                            "place_id": str(item.get("id", "")),
-                            "name": item.get("name", ""),
-                            "category": item.get("category", ""),
-                            "address": item.get("address", ""),
-                            "road_address": item.get("roadAddress", ""),
-                            "phone": "",
-                            "rating": rating,  # None 또는 float
-                            "review_count": str(visitor_count),
-                            "blog_review_count": str(blog_count),
-                            "visitor_review_count": visitor_count,
-                            "thumbnail": item.get("imageUrl", ""),
-                            "x": str(item.get("x", "")),
-                            "y": str(item.get("y", ""))
-                        }
-                        all_stores.append(store)
-                    
-                    logger.info(f"[신API Rank] 누적 결과: {len(all_stores)}개")
+                    store = {
+                        "place_id": str(item.get("id", "")),
+                        "name": item.get("name", ""),
+                        "category": item.get("category", ""),
+                        "address": item.get("address", ""),
+                        "road_address": item.get("roadAddress", ""),
+                        "phone": "",
+                        "rating": rating,  # None 또는 float
+                        "review_count": str(visitor_count),
+                        "blog_review_count": str(blog_count),
+                        "visitor_review_count": visitor_count,
+                        "thumbnail": item.get("imageUrl", ""),
+                        "x": str(item.get("x", "")),
+                        "y": str(item.get("y", ""))
+                    }
+                    all_stores.append(store)
+                
+                logger.info(f"[신API Rank] 누적 결과: {len(all_stores)}개")
             
             return (all_stores, total_count)
                 
@@ -441,7 +441,7 @@ class NaverRankNewAPIService:
                 return result
                 
         except Exception as e:
-            logger.error(f"[신API Rank] ❌ 상세 정보 조회 오류: {str(e)}", exc_info=True)
+            logger.error(f"[신API Rank] ❌ 상세 정보 조회 오류: {str(e)}")
             return {
                 "visitor_review_count": 0,
                 "blog_review_count": 0,
