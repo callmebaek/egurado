@@ -33,15 +33,15 @@ class CompetitorRequest(BaseModel):
 
 class CompetitorStore(BaseModel):
     rank: int
-    place_id: str
-    name: str
-    category: str
-    address: str
-    road_address: str
+    place_id: Optional[str] = ""
+    name: Optional[str] = ""
+    category: Optional[str] = ""
+    address: Optional[str] = ""
+    road_address: Optional[str] = ""
     rating: Optional[float] = None
-    visitor_review_count: int = 0
-    blog_review_count: int = 0
-    thumbnail: str = ""
+    visitor_review_count: Optional[int] = 0
+    blog_review_count: Optional[int] = 0
+    thumbnail: Optional[str] = ""
     is_my_store: bool = False
 
 class CompetitorResponse(BaseModel):
@@ -404,9 +404,9 @@ async def get_competitors(
         from app.core.database import get_supabase_client
         supabase = get_supabase_client()
         
-        # 매장 정보 조회 (place_id, 좌표 필요)
+        # 매장 정보 조회 (place_id 필요)
         store_result = supabase.table("stores").select(
-            "id, place_id, store_name, x, y"
+            "id, place_id, store_name"
         ).eq("id", request.store_id).single().execute()
         
         if not store_result.data:
@@ -440,9 +440,7 @@ async def get_competitors(
             keyword=request.keyword,
             target_place_id=my_place_id,
             max_results=300,
-            store_name=store_data.get("store_name"),
-            coord_x=store_data.get("x"),
-            coord_y=store_data.get("y")
+            store_name=store_data.get("store_name")
         )
         
         # 검색 결과를 경쟁매장 리스트로 변환
