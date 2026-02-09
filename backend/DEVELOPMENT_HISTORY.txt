@@ -4,61 +4,61 @@
 
 ---
 
-## ?�� JWT ?�증 ?�일 �?매장 조회 문제 ?�결 (2026-01-20)
+## ?�� JWT ?�증 ?�일 �?매장 조회 문제 ?�결 (2026-01-20)
 
-### ?�� 발생??문제
+### ?�� 발생??문제
 
 #### 증상
-- test@example.com 계정?�로 로그?????��? ?�이지?�서 ?�록??매장(21�????�시?��? ?�음
-- ?�레?�스 진단: 매장 목록 ?�시 ????n- ??매장 ?�록: 기존 매장 목록 ?�시 ????n- 경쟁??분석: 매장명이 "매장�??�음"?�로 ?�시??n
-#### 발생 ?�점
-- 카카???�이�??�셜 로그??구현 �?배포 직후
+- test@example.com 계정?�로 로그?????��? ?�이지?�서 ?�록??매장(21�????�시?��? ?�음
+- ?�레?�스 진단: 매장 목록 ?�시 ????n- ??매장 ?�록: 기존 매장 목록 ?�시 ????n- 경쟁??분석: 매장명이 "매장�??�음"?�로 ?�시??n
+#### 발생 ?�점
+- 카카???�이�??�셜 로그??구현 �?배포 직후
 
 ---
 
-### ?�� 문제 ?�인 분석
+### ?�� 문제 ?�인 분석
 
-#### 1. ?�이?�베?�스 ?�태 ?�인
+#### 1. ?�이?�베?�스 ?�태 ?�인
 ```python
-# backend/debug_test_account_issue.py ?�행 결과
-??test@example.com 계정 존재 ?�인
+# backend/debug_test_account_issue.py ?�행 결과
+??test@example.com 계정 존재 ?�인
    User ID: b7920ac7-db67-45a0-8486-25ef2930367b
    
-???�이?�베?�스??21�?매장 ?�상 존재
-   - ?�사?�마?�보?? ?�아카페, ?�인?�사진�? ??..
+???�이?�베?�스??21�?매장 ?�상 존재
+   - ?�사?�마?�보?? ?�아카페, ?�인?�사진�? ??..
 ```
 
-#### 2. ?�증 방식 불일�?**문제???�심:**
-- 백엔?? JWT ?�큰 기반 ?�증 ?�용 (Service Role Key�?RLS ?�회)
-- ?�론?�엔??(?��? ?�이지): `supabase.auth.getSession()` / `supabase.auth.getUser()` ?�용
-- 결과: JWT ?�큰??`user_id`?� Supabase Auth???�션??불일�?
-**불일치�? 발생???�이지??**
-1. `frontend/app/dashboard/naver/reviews/page.tsx` - ???�상 (?��? useAuth ?�용)
-2. `frontend/app/dashboard/naver/rank/page.tsx` - ??`supabase.auth.getUser()` ?�용
-3. `frontend/app/dashboard/naver/competitors/page.tsx` - ??`supabase.auth.getUser()` ?�용
-4. `frontend/app/dashboard/naver/audit/page.tsx` - ??`supabase.auth.getSession()` ?�용
-5. `frontend/app/dashboard/connect-store/page.tsx` - ??`supabase.auth.getSession()` ?�용
+#### 2. ?�증 방식 불일�?**문제???�심:**
+- 백엔?? JWT ?�큰 기반 ?�증 ?�용 (Service Role Key�?RLS ?�회)
+- ?�론?�엔??(?��? ?�이지): `supabase.auth.getSession()` / `supabase.auth.getUser()` ?�용
+- 결과: JWT ?�큰??`user_id`?� Supabase Auth???�션??불일�?
+**불일치�? 발생???�이지??**
+1. `frontend/app/dashboard/naver/reviews/page.tsx` - ???�상 (?��? useAuth ?�용)
+2. `frontend/app/dashboard/naver/rank/page.tsx` - ??`supabase.auth.getUser()` ?�용
+3. `frontend/app/dashboard/naver/competitors/page.tsx` - ??`supabase.auth.getUser()` ?�용
+4. `frontend/app/dashboard/naver/audit/page.tsx` - ??`supabase.auth.getSession()` ?�용
+5. `frontend/app/dashboard/connect-store/page.tsx` - ??`supabase.auth.getSession()` ?�용
 
-#### 3. 추�? 문제: ?�드�?불일�?- 백엔??API ?�답: `name` ?�드 ?�용
-- 경쟁??분석 ?�이지: `store_name` ?�드 기�?
-- 결과: 매장명이 `undefined`가 ?�어 "매장�??�음" ?�시
+#### 3. 추�? 문제: ?�드�?불일�?- 백엔??API ?�답: `name` ?�드 ?�용
+- 경쟁??분석 ?�이지: `store_name` ?�드 기�?
+- 결과: 매장명이 `undefined`가 ?�어 "매장�??�음" ?�시
 
 ---
 
-### ???�결 방법
+### ???�결 방법
 
-#### 1. ?�론?�엔???�증 ?�일 (?�심 ?�결�?
+#### 1. ?�론?�엔???�증 ?�일 (?�심 ?�결�?
 
-**변�???**
+**변�???**
 ```typescript
-// ??문제가 ?�던 코드
+// ??문제가 ?�던 코드
 const { data: { session } } = await supabase.auth.getSession()
 const userId = session?.user?.id
 ```
 
-**변�???**
+**변�???**
 ```typescript
-// ???�정??코드
+// ???�정??코드
 import { useAuth } from "@/lib/auth-context"
 
 export default function Page() {
@@ -67,69 +67,259 @@ export default function Page() {
 }
 ```
 
-#### 2. ?�정???�일 목록
-- `frontend/app/dashboard/naver/reviews/page.tsx` - useAuth ??추�?
-- `frontend/app/dashboard/naver/rank/page.tsx` - useAuth ??추�?, supabase.auth.getUser() 5�??�거
-- `frontend/app/dashboard/naver/competitors/page.tsx` - useAuth ??추�?, ?�드�?매핑 추�?
-- `frontend/app/dashboard/naver/audit/page.tsx` - useAuth ??추�?, supabase.auth.getSession() ?�거
-- `frontend/app/dashboard/connect-store/page.tsx` - useAuth ??추�?, supabase.auth.getSession() ?�거
+#### 2. ?�정???�일 목록
+- `frontend/app/dashboard/naver/reviews/page.tsx` - useAuth ??추�?
+- `frontend/app/dashboard/naver/rank/page.tsx` - useAuth ??추�?, supabase.auth.getUser() 5�??�거
+- `frontend/app/dashboard/naver/competitors/page.tsx` - useAuth ??추�?, ?�드�?매핑 추�?
+- `frontend/app/dashboard/naver/audit/page.tsx` - useAuth ??추�?, supabase.auth.getSession() ?�거
+- `frontend/app/dashboard/connect-store/page.tsx` - useAuth ??추�?, supabase.auth.getSession() ?�거
 
 ---
 
-### ?�� ?�스??�?검�?
-#### ?�로?�션 ?�스??결과 (test@example.com)
+### ?�� ?�스??�?검�?
+#### ?�로?�션 ?�스??결과 (test@example.com)
 
-| ?�이지 | ?�정 ??| ?�정 ??|
+| ?�이지 | ?�정 ??| ?�정 ??|
 |--------|---------|---------|
-| ?�이�??�레?�스 ?�위 | ??매장 ?�음 | ??21�?매장 |
-| 리뷰 관�?| ??매장 ?�음 | ??21�?매장 |
-| 경쟁??분석 | ??매장�??�음 | ??21�?매장 |
-| ?�레?�스 진단 | ??매장 ?�음 | ??21�?매장 |
-| ??매장 ?�록 | ??매장 ?�음 | ??21�?매장 |
+| ?�이�??�레?�스 ?�위 | ??매장 ?�음 | ??21�?매장 |
+| 리뷰 관�?| ??매장 ?�음 | ??21�?매장 |
+| 경쟁??분석 | ??매장�??�음 | ??21�?매장 |
+| ?�레?�스 진단 | ??매장 ?�음 | ??21�?매장 |
+| ??매장 ?�록 | ??매장 ?�음 | ??21�?매장 |
 
-#### ?�셜 로그???�스??- ??카카??로그?? ?�규 가?? ?�보?? 매장 ?�록/조회 ?�상
-- ???�이�?로그?? ?�규 가?? ?�보?? 매장 ?�록/조회 ?�상
+#### ?�셜 로그???�스??- ??카카??로그?? ?�규 가?? ?�보?? 매장 ?�록/조회 ?�상
+- ???�이�?로그?? ?�규 가?? ?�보?? 매장 ?�록/조회 ?�상
 
 ---
 
-### ?�� ?�성??문서
-- `FIX_AUTH_STORES_ISSUE.md` - 문제 ?�황 �??�결 방법 ?�세 문서
-- `VERIFICATION_CHECKLIST.md` - ?�스???�나리오 �??�버�?가?�드
-- `supabase/migrations/008_fix_rls_for_jwt_auth.sql` - RLS ?�책 문서??
+### ?�� ?�성??문서
+- `FIX_AUTH_STORES_ISSUE.md` - 문제 ?�황 �??�결 방법 ?�세 문서
+- `VERIFICATION_CHECKLIST.md` - ?�스???�나리오 �??�버�?가?�드
+- `supabase/migrations/008_fix_rls_for_jwt_auth.sql` - RLS ?�책 문서??
 ---
 
-### ?�� 배운 ??
-#### 1. ?�증 방식 ?�일??중요??- ?�체 ?�플리�??�션?�서 ?�나???�증 방식�??�용
-- `useAuth` 같�? ?�역 ?�으�??�증 ?�태 관�?- 모든 ?�이지?�서 ?��???user.id ?�용
+### ?�� 배운 ??
+#### 1. ?�증 방식 ?�일??중요??- ?�체 ?�플리�??�션?�서 ?�나???�증 방식�??�용
+- `useAuth` 같�? ?�역 ?�으�??�증 ?�태 관�?- 모든 ?�이지?�서 ?��???user.id ?�용
 
-#### 2. API ?�답�??�론?�엔??기�?�?매칭
-- 백엔?��? ?�론?�엔??�??�드�??��????��?
-- API ?�답 ?�키�?명확?�게 문서??- ?�드�?변�???매핑 ?�이??추�?
+#### 2. API ?�답�??�론?�엔??기�?�?매칭
+- 백엔?��? ?�론?�엔??�??�드�??��????��?
+- API ?�답 ?�키�?명확?�게 문서??- ?�드�?변�???매핑 ?�이??추�?
 
-#### 3. Service Role Key?� RLS??관�?- Service Role Key??모든 RLS ?�책???�회
-- 민감???�이??조회??백엔??API�??�해?�만 ?�행
-- ?�론?�엔?�는 ?�기 ?�용 ?�는 ?�한??권한�?부??
+#### 3. Service Role Key?� RLS??관�?- Service Role Key??모든 RLS ?�책???�회
+- 민감???�이??조회??백엔??API�??�해?�만 ?�행
+- ?�론?�엔?�는 ?�기 ?�용 ?�는 ?�한??권한�?부??
 ---
 
 ### ??최종 결과
 
-#### ?�정 ?�료
+#### ?�정 ?�료
 ```
-frontend/app/dashboard/naver/reviews/page.tsx        ??frontend/app/dashboard/naver/rank/page.tsx           ??frontend/app/dashboard/naver/competitors/page.tsx    ??frontend/app/dashboard/naver/audit/page.tsx          ??frontend/app/dashboard/connect-store/page.tsx        ??supabase/migrations/008_fix_rls_for_jwt_auth.sql    ??FIX_AUTH_STORES_ISSUE.md                             ??(?�규)
-VERIFICATION_CHECKLIST.md                            ??(?�규)
+frontend/app/dashboard/naver/reviews/page.tsx        ??frontend/app/dashboard/naver/rank/page.tsx           ??frontend/app/dashboard/naver/competitors/page.tsx    ??frontend/app/dashboard/naver/audit/page.tsx          ??frontend/app/dashboard/connect-store/page.tsx        ??supabase/migrations/008_fix_rls_for_jwt_auth.sql    ??FIX_AUTH_STORES_ISSUE.md                             ??(?�규)
+VERIFICATION_CHECKLIST.md                            ??(?�규)
 ```
 
-#### 보장 ?�항
-- ??모든 로그??방식?�서 ?��????�증 처리
-- ???�이??무결???��? (모든 ?��? ?�보 �?매장 ?�이???�상)
-- ???�셜 로그??기능 ?�전 ?�환
-- ???�후 ?�규 ?�이지 추�? ??명확??가?�드?�인 ?�공
+#### 보장 ?�항
+- ??모든 로그??방식?�서 ?��????�증 처리
+- ???�이??무결???��? (모든 ?��? ?�보 �?매장 ?�이???�상)
+- ???�셜 로그??기능 ?�전 ?�환
+- ???�후 ?�규 ?�이지 추�? ??명확??가?�드?�인 ?�공
 
 ---
 
-**?�성??** 2026-01-20  
-**?�업 ?�간:** ??4?�간  
-**커밋 ?�수:** 3?? 
-**배포 ?�수:** 2?? 
-**?�스???�료:** ??
+**?�성??** 2026-01-20  
+**?�업 ?�간:** ??4?�간  
+**커밋 ?�수:** 3?? 
+**배포 ?�수:** 2?? 
+**?�스???�료:** ??
+=====================================
+
+
+=====================================
+
+---
+
+## 카카오 비즈 앱 로그인 전환 및 DB 외래키 수정 (2026-02-10)
+
+### 발생한 문제
+
+#### 증상
+- 카카오 로그인을 테스트 앱("whiplace-Test")에서 정식 비즈 앱("whiplace")으로 전환 시 로그인 실패
+- 프론트엔드에서 카카오 인증 코드(code)는 정상 수신하지만, 백엔드에서 토큰 교환 실패
+- 에러 메시지: "카카오 인증에 실패했습니다" (HTTP 400)
+- 이후 토큰 교환 성공 후에도 "프로필 생성 중 오류가 발생했습니다" (HTTP 500) 추가 발생
+
+#### 발생 시점
+- 카카오 개발자 콘솔에서 테스트 앱 → 비즈 앱 전환 작업 중
+
+---
+
+### 문제 원인 분석
+
+#### 문제 1: Docker 컨테이너 환경변수 미반영 (핵심 원인)
+
+**근본 원인:**
+- EC2 백엔드가 Docker 컨테이너로 실행 중
+- `.env` 파일을 수정해도 Docker 컨테이너에는 자동 반영되지 않음
+- 컨테이너 생성 시 `-e` 플래그로 하드코딩된 환경변수를 계속 사용
+
+**Docker 컨테이너 내부 환경변수 (잘못된 값):**
+```
+KAKAO_REST_API_KEY=57b6b41809db3f1afe5cec5643500656    ← 테스트 앱 키
+KAKAO_REDIRECT_URI=https://whiplace.com/auth/callback/kakao  ← www 누락
+KAKAO_CLIENT_SECRET=z4YmDre3n4sW1rSAtMb7EQt9lEilYHtH   ← 테스트 앱 시크릿
+```
+
+**올바른 값 (.env 파일에는 설정되어 있었음):**
+```
+KAKAO_REST_API_KEY=23a16753e4f7f0b2351c47875259b1e4    ← 비즈 앱 REST API Key
+KAKAO_REDIRECT_URI=https://www.whiplace.com/auth/callback/kakao  ← www 포함
+KAKAO_CLIENT_SECRET=spR10L3XZAQgKKFtwhigXE720tR7WYFz   ← 비즈 앱 시크릿
+```
+
+#### 문제 2: DB 외래키 제약조건 충돌
+
+**근본 원인:**
+- `user_credits` 테이블이 `auth.users(id)`를 외래키로 참조
+- 소셜 로그인(카카오/네이버)은 `uuid.uuid4()`로 UUID를 직접 생성하여 `profiles`에 INSERT
+- `profiles` INSERT 트리거 → `user_credits` INSERT 시도 → `auth.users`에 해당 UUID 없음 → 외래키 위반
+
+**에러 메시지:**
+```
+insert or update on table "user_credits" violates foreign key constraint "user_credits_user_id_fkey"
+Key (user_id)=(7d205d78-...) is not present in table "users"
+```
+
+**트리거 체인:**
+1. `profiles` INSERT (성공 - FK 이미 migration 007에서 제거됨)
+2. 트리거 `init_new_user_credits` 실행 → `user_credits` INSERT 시도
+3. `user_credits.user_id REFERENCES auth.users(id)` → 외래키 위반 발생!
+
+---
+
+### 해결 방법
+
+#### 1. Docker 컨테이너 재생성 (--env-file 사용)
+
+```bash
+# 기존 컨테이너 중지 및 삭제
+docker stop egurado-api
+docker rm egurado-api
+
+# .env 파일을 읽어서 새 컨테이너 생성
+docker run -d \
+  --name egurado-api \
+  --env-file /home/ubuntu/egurado/backend/.env \
+  -p 8000:8000 \
+  --restart unless-stopped \
+  backend_egurado-api
+```
+
+**핵심:** `--env-file` 옵션으로 `.env` 파일을 직접 읽도록 변경. 향후 `.env` 수정 시 컨테이너 재생성만 하면 반영됨.
+
+#### 2. DB 외래키 제약조건 수정
+
+**변경 전:** `auth.users(id)` 참조
+**변경 후:** `profiles(id)` 참조
+
+```sql
+-- 안전성 확인 (orphan 데이터 체크)
+-- feature_votes 테이블에서 347건 고아 데이터 발견 → 삭제 처리
+
+-- 외래키 변경 (11개 테이블)
+ALTER TABLE user_credits DROP CONSTRAINT IF EXISTS user_credits_user_id_fkey;
+ALTER TABLE user_credits ADD CONSTRAINT user_credits_user_id_fkey 
+    FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE;
+
+-- subscriptions, credit_transactions, payments, support_tickets,
+-- user_notification_settings, login_history, feature_votes,
+-- diagnosis_history, activation_history, target_keywords_history
+-- 모두 동일하게 profiles(id) 참조로 변경
+```
+
+**수정된 테이블 목록 (11개):**
+1. `user_credits` - 크레딧 잔액
+2. `subscriptions` - 구독 정보
+3. `credit_transactions` - 크레딧 거래 내역
+4. `payments` - 결제 정보
+5. `support_tickets` - 고객 지원 티켓
+6. `user_notification_settings` - 알림 설정
+7. `login_history` - 로그인 이력
+8. `feature_votes` - 기능 투표
+9. `diagnosis_history` - 진단 이력
+10. `activation_history` - 활성화 이력
+11. `target_keywords_history` - 키워드 이력
+
+---
+
+### Vercel 환경변수 업데이트
+
+프론트엔드(Vercel)에서도 비즈 앱 키로 변경:
+- `NEXT_PUBLIC_KAKAO_JS_KEY` → 비즈 앱 JavaScript Key (00abd2fc...)
+- `NEXT_PUBLIC_KAKAO_REDIRECT_URI` → `https://www.whiplace.com/auth/callback/kakao`
+
+---
+
+### 테스트 및 검증
+
+#### 안전성 검증 (마이그레이션 전)
+```sql
+-- orphan 데이터 확인: user_credits, subscriptions, credit_transactions → 0건
+-- feature_votes → 347건 (정리 후 마이그레이션 진행)
+```
+
+#### 프로덕션 테스트 결과
+
+| 항목 | 수정 전 | 수정 후 |
+|------|---------|---------|
+| 카카오 로그인 (비즈 앱) | ❌ 인증 실패 | ✅ 정상 로그인 |
+| 기존 이메일 로그인 | ✅ 정상 | ✅ 정상 (영향 없음) |
+| 기존 소셜 로그인 유저 | ✅ 정상 | ✅ 정상 (영향 없음) |
+| 신규 카카오 가입 | ❌ 프로필 생성 실패 | ✅ 정상 가입 |
+
+---
+
+### 배운 점
+
+#### 1. Docker 컨테이너와 환경변수
+- `.env` 파일 수정 ≠ Docker 컨테이너 환경변수 반영
+- `docker run -e`로 설정된 환경변수는 컨테이너 재생성 전까지 변경 불가
+- **권장:** `--env-file` 옵션으로 `.env` 파일을 직접 참조하도록 설정
+- 환경변수 변경 시 반드시 `docker exec env | grep KEY` 로 실제 적용 값 확인
+
+#### 2. 외래키 참조 대상 선택
+- 소셜 로그인 사용 시 `auth.users`가 아닌 `profiles` 테이블을 사용자 기준으로 참조
+- `profiles.id → auth.users(id)` FK는 이미 제거되어 있었지만 (migration 007), 다른 테이블들은 여전히 `auth.users` 참조
+- 트리거 체인에서 외래키 충돌 가능성을 항상 고려해야 함
+
+#### 3. 디버깅 방법론
+- `docker inspect` 또는 `docker exec env` 로 실제 컨테이너 환경변수 확인
+- `/proc/PID/environ` 으로 프로세스 환경변수 직접 확인 가능
+- 프론트엔드 디버그 로그 추가 시 Vercel 재배포 필요
+
+---
+
+### 수정 파일 및 작업 목록
+
+#### 서버 (EC2 Docker)
+- Docker 컨테이너 재생성: `--env-file /home/ubuntu/egurado/backend/.env` 적용
+- `backend/.env` - KAKAO_REST_API_KEY, KAKAO_REDIRECT_URI, KAKAO_CLIENT_SECRET 업데이트
+
+#### 프론트엔드 (Vercel)
+- `NEXT_PUBLIC_KAKAO_JS_KEY` 환경변수 업데이트
+- `NEXT_PUBLIC_KAKAO_REDIRECT_URI` 환경변수 업데이트
+- `frontend/lib/social-login.ts` - 디버깅 로그 추가 (정리 필요)
+- `frontend/lib/auth-context.tsx` - 디버깅 로그 추가 (정리 필요)
+
+#### 데이터베이스 (Supabase)
+- 11개 테이블 외래키 제약조건 변경: `auth.users(id)` → `profiles(id)`
+- `feature_votes` 고아 데이터 347건 삭제
+
+---
+
+**작성일:** 2026-02-10  
+**작업 시간:** 약 6시간  
+**핵심 이슈:** Docker 환경변수 미반영 + DB 외래키 충돌  
+**테스트 완료:** ✅
+
 =====================================

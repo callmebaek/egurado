@@ -1,8 +1,8 @@
 "use client"
 
 /**
- * 키워드순위 추적 페이지 - Apple Style Premium Design
- * Glassmorphism, Dynamic Gradients, Smooth Animations
+ * 키워드순위 추적 페이지 - TurboTax Style
+ * 대시보드 매장 카드 디자인 통일 + 모바일 완벽 반응형
  */
 import { useStores } from "@/lib/hooks/useStores"
 import { useAuth } from "@/lib/auth-context"
@@ -20,19 +20,15 @@ import {
   FileText,
   Clock,
   BarChart3,
-  X,
   Eye,
   Bell,
-  BellOff,
   Mail,
   Phone,
   MessageCircle,
   Sparkles,
   Search
 } from "lucide-react"
-import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/components/ui/use-toast"
 import { Switch } from "@/components/ui/switch"
@@ -47,6 +43,18 @@ import { useState, useEffect, useMemo } from "react"
 import { api } from "@/lib/config"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { notifyCreditUsed } from "@/lib/credit-utils"
+
+// 대시보드와 동일한 매장별 색상 팔레트
+const STORE_COLORS = [
+  { bg: 'bg-white', border: 'border-emerald-500', text: 'text-neutral-900', badge: 'bg-emerald-500', accent: 'bg-emerald-100', platformBg: 'bg-success' },
+  { bg: 'bg-white', border: 'border-neutral-300', text: 'text-neutral-900', badge: 'bg-neutral-700', accent: 'bg-neutral-100', platformBg: 'bg-neutral-700' },
+  { bg: 'bg-white', border: 'border-emerald-400', text: 'text-neutral-900', badge: 'bg-emerald-400', accent: 'bg-emerald-50', platformBg: 'bg-success' },
+  { bg: 'bg-white', border: 'border-neutral-400', text: 'text-neutral-900', badge: 'bg-neutral-600', accent: 'bg-neutral-50', platformBg: 'bg-neutral-600' },
+  { bg: 'bg-white', border: 'border-emerald-300', text: 'text-neutral-900', badge: 'bg-emerald-600', accent: 'bg-emerald-100', platformBg: 'bg-success' },
+  { bg: 'bg-white', border: 'border-neutral-300', text: 'text-neutral-900', badge: 'bg-neutral-700', accent: 'bg-neutral-100', platformBg: 'bg-neutral-700' },
+  { bg: 'bg-white', border: 'border-emerald-500', text: 'text-neutral-900', badge: 'bg-emerald-500', accent: 'bg-emerald-100', platformBg: 'bg-success' },
+  { bg: 'bg-white', border: 'border-neutral-400', text: 'text-neutral-900', badge: 'bg-neutral-600', accent: 'bg-neutral-50', platformBg: 'bg-neutral-600' },
+]
 
 interface Store {
   id: string
@@ -624,10 +632,14 @@ export default function MetricsTrackerPage() {
 
   if (storesLoading || loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
+      <div className="flex items-center justify-center min-h-[60vh] px-4">
         <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
-          <p className="text-muted-foreground">데이터를 불러오는 중...</p>
+          <div className="relative inline-block">
+            <Loader2 className="h-12 w-12 md:h-16 md:w-16 animate-spin text-emerald-600 mx-auto mb-4" />
+            <Sparkles className="h-5 w-5 md:h-6 md:w-6 text-brand-red absolute top-0 right-0 animate-pulse" />
+          </div>
+          <p className="text-neutral-900 text-lg md:text-xl font-bold leading-tight">데이터를 불러오는 중...</p>
+          <p className="text-neutral-600 text-sm md:text-base mt-2">잠시만 기다려주세요</p>
         </div>
       </div>
     )
@@ -638,312 +650,293 @@ export default function MetricsTrackerPage() {
   }
 
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 py-6 md:px-6 md:py-8 lg:px-8 lg:py-10">
-      {/* 헤더 섹션 - 홈페이지 스타일 */}
-      <header className="mb-8 md:mb-10 text-center">
+    <div className="w-full max-w-6xl mx-auto px-4 py-6 md:px-6 md:py-8 lg:px-8 lg:py-10 overflow-x-hidden">
+      {/* 헤더 섹션 */}
+      <header className="mb-6 md:mb-8 text-center">
         <div className="flex items-center justify-center gap-3 mb-3">
-          <div className="w-12 h-12 md:w-14 md:h-14 bg-gradient-to-br from-violet-400 to-purple-500 rounded-xl flex items-center justify-center shadow-lg">
-            <BarChart3 className="w-6 h-6 md:w-7 md:h-7 text-white" />
+          <div className="w-11 h-11 md:w-12 md:h-12 bg-emerald-600 rounded-button flex items-center justify-center shadow-button">
+            <BarChart3 className="w-5 h-5 md:w-6 md:h-6 text-white" />
           </div>
-          <h1 className="text-2xl md:text-3xl lg:text-4xl font-extrabold text-neutral-900 leading-tight">
+          <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-neutral-900 leading-tight">
             키워드순위 추적
           </h1>
         </div>
-        <p className="text-base md:text-lg text-neutral-600 leading-relaxed max-w-3xl mx-auto mb-4">
+        <p className="text-sm md:text-base text-neutral-600 leading-relaxed max-w-3xl mx-auto mb-4">
           매장별 주요 키워드의 순위 변화와<br className="md:hidden" />
           <span className="hidden md:inline"> </span>리뷰 수를 자동으로 추적하고 알림을 받을 수 있습니다
         </p>
-        <div className="flex items-center justify-center gap-3">
+        <div className="flex items-center justify-center gap-2.5">
           <Badge 
             variant="secondary"
-            className="bg-violet-100 text-violet-700 border-violet-200 px-4 py-2 text-sm font-semibold inline-flex items-center gap-1.5"
+            className="bg-emerald-100 text-emerald-700 border-emerald-200 px-3 py-1.5 text-xs md:text-sm font-bold inline-flex items-center gap-1.5"
           >
-            <Clock className="w-4 h-4" />
+            <Clock className="w-3.5 h-3.5" />
             자동 추적
           </Badge>
-          <Button
+          <button
             onClick={() => setShowAddDialog(true)}
-            className="h-11 px-5 bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all"
+            className="h-10 md:h-11 px-4 md:px-5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-button font-bold shadow-button hover:shadow-button-hover active:scale-95 transition-all duration-200 text-sm flex items-center gap-1.5 min-h-[44px]"
           >
-            <Plus className="w-5 h-5 mr-2" />
+            <Plus className="w-4 h-4" />
             추적 추가
-          </Button>
+          </button>
         </div>
       </header>
 
       {/* 매장별 추적 키워드 카드 */}
       {trackers.length === 0 ? (
-        <div className="backdrop-blur-xl bg-white/40 rounded-3xl border border-white/20 shadow-2xl p-8 sm:p-12">
+        <div className="bg-white rounded-card border border-neutral-300 shadow-card p-8 sm:p-12">
           <div className="text-center">
-            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 mb-6">
-              <BarChart3 className="w-10 h-10 text-white" />
+            <div className="bg-neutral-100 rounded-full w-20 h-20 md:w-24 md:h-24 flex items-center justify-center mx-auto mb-4">
+              <BarChart3 className="w-10 h-10 md:w-12 md:h-12 text-neutral-400" />
             </div>
-            <p className="text-lg sm:text-xl text-gray-700 mb-2 font-semibold">
+            <p className="text-neutral-700 mb-2 text-lg font-bold">
               추적 중인 키워드가 없습니다
             </p>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-neutral-600 mb-6">
               "추적 추가" 버튼을 눌러 키워드 추적을 시작하세요
             </p>
+            <button
+              onClick={() => setShowAddDialog(true)}
+              className="inline-flex items-center px-6 py-3 bg-emerald-600 text-white font-bold rounded-button shadow-button hover:bg-emerald-700 hover:shadow-button-hover active:scale-95 transition-all duration-200 text-base"
+            >
+              추적 시작하기
+              <Plus className="ml-2 w-5 h-5" />
+            </button>
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5 w-full overflow-x-hidden">
           {storeGroups.map((group) => {
-            const gradients = [
-              'from-blue-500 to-cyan-500',
-              'from-purple-500 to-pink-500',
-              'from-green-500 to-emerald-500',
-              'from-orange-500 to-red-500',
-              'from-pink-500 to-rose-500',
-              'from-teal-500 to-green-500',
-              'from-indigo-500 to-purple-500',
-              'from-yellow-500 to-orange-500',
-            ]
-            const gradient = gradients[group.colorIndex]
+            const storeColor = STORE_COLORS[group.colorIndex % STORE_COLORS.length]
 
             return (
               <div
                 key={group.store.id}
-                className="group backdrop-blur-xl bg-white/60 rounded-3xl border border-white/40 shadow-xl hover:shadow-2xl transition-all duration-500 overflow-hidden"
+                className={`relative p-3 md:p-4 rounded-card border-2 ${storeColor.border} ${storeColor.bg} shadow-card hover:shadow-card-hover transition-all duration-200 w-full overflow-hidden`}
               >
-                {/* Gradient Bar */}
-                <div className={`h-1.5 bg-gradient-to-r ${gradient}`} />
-                
-                {/* 매장 헤더 */}
-                <div className="p-4 md:p-6">
-                  {/* 매장 정보 */}
-                  <div className="flex items-center gap-3 mb-4">
+                {/* 매장 헤더 - 대시보드 스타일 */}
+                <div className="flex items-center justify-between mb-3 w-full min-w-0">
+                  <div className="flex items-center gap-2 flex-1 min-w-0 overflow-hidden">
                     {/* 매장 썸네일 */}
                     {group.store.thumbnail ? (
                       <img 
                         src={group.store.thumbnail} 
                         alt={group.store.name} 
-                        className="w-12 h-12 rounded-xl object-cover border-2 border-white shadow-md"
+                        className="w-10 h-10 md:w-12 md:h-12 rounded-button object-cover border-2 border-neutral-200 shadow-sm flex-shrink-0"
                         onError={(e) => {
                           e.currentTarget.style.display = 'none'
                         }}
                       />
                     ) : (
-                      <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center border-2 border-white shadow-md`}>
-                        <StoreIcon className="w-6 h-6 text-white" />
+                      <div className="w-10 h-10 md:w-12 md:h-12 rounded-button bg-neutral-100 flex items-center justify-center border-2 border-neutral-200 shadow-sm flex-shrink-0">
+                        <StoreIcon className="w-5 h-5 text-neutral-500" />
                       </div>
                     )}
                     
-                    {/* 매장명 */}
+                    {/* 매장명 + 플랫폼 */}
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-bold text-base md:text-lg text-gray-800 truncate">
+                      <h3 className={`font-bold text-base md:text-lg ${storeColor.text} truncate leading-tight mb-1`}>
                         {group.store.name}
                       </h3>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium text-white bg-gradient-to-r ${gradient}`}>
-                          {group.store.platform === 'naver' ? '네이버' : '구글'}
+                      <div className="flex items-center gap-2">
+                        <span className={`inline-flex items-center text-xs px-2 py-0.5 rounded-full font-bold text-white ${
+                          group.store.platform === 'naver' ? 'bg-success' : 'bg-info'
+                        }`}>
+                          {group.store.platform === 'naver' ? 'N' : 'G'}
                         </span>
-                        <span className="text-xs text-gray-600">
+                        <span className="text-xs text-neutral-600 font-medium">
                           {group.trackers.length}개 추적중
                         </span>
                       </div>
                     </div>
                   </div>
-                  
-                  {/* 자동수집설정 & 전체 수집 버튼 */}
-                  <div className="grid grid-cols-2 gap-2 mb-4">
-                    <Button
-                      onClick={() => handleEditStoreSettings(group.store.id, group.store.name, group.trackers)}
-                      variant="outline"
-                      size="sm"
-                      className="w-full"
-                    >
-                      <Settings className="w-4 h-4 mr-2" />
-                      <span className="hidden md:inline">자동수집설정</span>
-                      <span className="md:hidden">설정</span>
-                    </Button>
-                    <Button
-                      onClick={() => handleCollectAllStore(group.store.id, group.trackers.map(t => t.id))}
-                      disabled={isRefreshing.has(`store_${group.store.id}`)}
-                      size="sm"
-                      className={`w-full ${isRefreshing.has(`store_${group.store.id}`) ? 'opacity-50' : ''}`}
-                    >
-                      <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing.has(`store_${group.store.id}`) ? 'animate-spin' : ''}`} />
-                      <span className="hidden sm:inline">전체 수집</span>
-                      <span className="sm:hidden">수집</span>
-                    </Button>
-                  </div>
+                </div>
+                
+                {/* 자동수집설정 & 전체 수집 버튼 */}
+                <div className="grid grid-cols-2 gap-2 mb-3">
+                  <button
+                    onClick={() => handleEditStoreSettings(group.store.id, group.store.name, group.trackers)}
+                    className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-button font-bold text-xs transition-all duration-200 min-h-[44px] bg-white text-neutral-700 border border-neutral-300 hover:bg-neutral-50 hover:shadow-sm active:scale-95"
+                  >
+                    <Settings className="w-4 h-4" />
+                    <span className="hidden md:inline">자동수집설정</span>
+                    <span className="md:hidden">설정</span>
+                  </button>
+                  <button
+                    onClick={() => handleCollectAllStore(group.store.id, group.trackers.map(t => t.id))}
+                    disabled={isRefreshing.has(`store_${group.store.id}`)}
+                    className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-button font-bold text-xs transition-all duration-200 min-h-[44px] ${
+                      isRefreshing.has(`store_${group.store.id}`)
+                        ? 'bg-neutral-200 text-neutral-400 cursor-not-allowed'
+                        : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-button hover:shadow-button-hover active:scale-95'
+                    }`}
+                  >
+                    <RefreshCw className={`w-4 h-4 ${isRefreshing.has(`store_${group.store.id}`) ? 'animate-spin' : ''}`} />
+                    <span className="hidden sm:inline">전체 수집</span>
+                    <span className="sm:hidden">수집</span>
+                  </button>
+                </div>
 
-                  {/* 추적 키워드 목록 */}
-                  <div className="space-y-3">
-                    {group.trackers.map((tracker) => (
-                      <div
-                        key={tracker.id}
-                        className="bg-white rounded-xl p-3 md:p-4 border border-gray-200 shadow-sm hover:shadow-md transition-all"
-                      >
-                        {/* 키워드명과 상태 */}
-                        <div className="flex items-center justify-between gap-2 mb-3">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-bold text-base text-gray-800">
+                {/* 추적 키워드 목록 */}
+                <div className="space-y-2 w-full overflow-hidden">
+                  {group.trackers.map((tracker) => (
+                    <div
+                      key={tracker.id}
+                      className="bg-white rounded-button border border-neutral-200 p-2.5 md:p-3 shadow-sm hover:shadow-md transition-shadow duration-200 w-full overflow-hidden"
+                    >
+                      {/* 키워드명 + 순위 + 수집 버튼 (대시보드 키워드 행 스타일) */}
+                      <div className="flex items-center justify-between gap-2 w-full min-w-0 mb-2">
+                        <div className="flex-1 min-w-0 overflow-hidden">
+                          <div className="flex items-center gap-1.5 mb-0.5 w-full min-w-0">
+                            <span className={`font-bold text-sm md:text-base ${storeColor.text} truncate block`}>
                               {tracker.keyword}
                             </span>
                             {tracker.notification_enabled && (
-                              <Badge variant="secondary" className="text-xs">
-                                <Bell className="w-3 h-3 mr-1" />
+                              <span className="text-xs flex-shrink-0">
                                 {tracker.notification_type === 'email' ? '📧' :
                                  tracker.notification_type === 'sms' ? '📱' :
                                  tracker.notification_type === 'kakao' ? '💬' : '🔔'}
-                              </Badge>
+                              </span>
                             )}
                             {!tracker.is_active && (
-                              <Badge variant="destructive" className="text-xs">일시정지</Badge>
+                              <span className="text-[10px] px-1.5 py-0.5 bg-error-bg text-error rounded-full font-bold flex-shrink-0">정지</span>
                             )}
+                            <span className="text-xs text-neutral-600 font-medium px-1.5 py-0.5 bg-neutral-100 rounded-full hidden md:inline flex-shrink-0">
+                              {tracker.update_frequency === 'daily_once' ? '1회/일' : 
+                               tracker.update_frequency === 'daily_twice' ? '2회/일' : '3회/일'}
+                            </span>
                           </div>
-                        </div>
-                        
-                        {/* 최근 업데이트 정보 */}
-                        <div className="flex flex-col gap-1 mb-3 text-xs text-gray-600">
-                          <div className="flex items-center gap-1.5">
+                          {/* 수집 시간 */}
+                          <div className="flex items-center gap-1 text-xs text-neutral-500">
                             <Clock className="w-3 h-3" />
                             {isRefreshing.has(tracker.id) ? (
-                              <span className="flex items-center gap-1 text-primary">
+                              <span className="flex items-center gap-1 text-emerald-600">
                                 <Loader2 className="w-3 h-3 animate-spin" />
                                 수집 중...
                               </span>
                             ) : tracker.last_collected_at ? (
-                              <span>
-                                {new Date(tracker.last_collected_at).toLocaleDateString('ko-KR', {
-                                  month: 'short',
-                                  day: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })}
-                              </span>
+                              <>
+                                <span className="hidden md:inline">
+                                  {new Date(tracker.last_collected_at).toLocaleString('ko-KR', {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })}
+                                </span>
+                                <span className="md:hidden">
+                                  {new Date(tracker.last_collected_at).toLocaleString('ko-KR', {
+                                    month: 'numeric',
+                                    day: 'numeric',
+                                    hour: '2-digit'
+                                  })}
+                                </span>
+                              </>
                             ) : (
                               <span>수집 대기중</span>
                             )}
                           </div>
-                          <div className="flex items-center gap-1.5">
-                            <Settings className="w-3 h-3" />
-                            <span>
-                              {tracker.update_frequency === 'daily_once' ? '1회/일' : 
-                               tracker.update_frequency === 'daily_twice' ? '2회/일' : '3회/일'}
-                              {tracker.update_times && tracker.update_times.length > 0 && (
-                                <span className="text-gray-400 ml-1">
-                                  ({tracker.update_times.map(t => `${t < 10 ? '0' : ''}${t}시`).join(', ')})
-                                </span>
-                              )}
-                            </span>
-                          </div>
                         </div>
+                        
+                        {/* 순위 표시 - 대시보드 스타일 */}
+                        <div className="flex items-center gap-1.5 md:gap-2 flex-shrink-0">
+                          {isRefreshing.has(tracker.id) ? (
+                            <div className="w-14 h-12 flex items-center justify-center">
+                              <Loader2 className="w-5 h-5 animate-spin text-emerald-600" />
+                            </div>
+                          ) : tracker.latest_rank ? (
+                            <div className="flex items-center gap-1">
+                              {tracker.latest_rank >= 1 && tracker.latest_rank <= 5 && (
+                                <Sparkles className="w-4 h-4 text-brand-red animate-pulse flex-shrink-0" />
+                              )}
+                              <div className="text-right">
+                                <div className="flex items-baseline gap-0.5">
+                                  <span className="text-2xl md:text-3xl font-bold text-emerald-600 leading-tight">
+                                    {tracker.latest_rank}
+                                  </span>
+                                  <span className="text-xs md:text-sm text-neutral-600 font-medium">위</span>
+                                </div>
+                                {tracker.rank_change !== undefined && tracker.rank_change !== null && tracker.rank_change !== 0 && (
+                                  <div className={`text-xs font-bold flex items-center justify-end gap-0.5 mt-0.5 ${
+                                    tracker.rank_change > 0 ? 'text-success' : 'text-error'
+                                  }`}>
+                                    {tracker.rank_change > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                                    {tracker.rank_change > 0 ? '↑' : '↓'}{Math.abs(tracker.rank_change)}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="text-right">
+                              <span className="text-xs md:text-sm text-neutral-500 font-medium whitespace-nowrap">300위 밖</span>
+                            </div>
+                          )}
 
-                        {/* 최근 지표 */}
-                        {isRefreshing.has(tracker.id) ? (
-                          <div className="text-center py-6 mb-3 bg-gray-50 rounded-lg">
-                            <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2 text-primary" />
-                            <p className="text-sm text-gray-600">수집 중...</p>
-                          </div>
-                        ) : tracker.latest_rank !== undefined || tracker.visitor_review_count !== undefined ? (
-                          <div className="grid grid-cols-3 gap-2 mb-3">
-                            {/* 순위 */}
-                            <div className="bg-blue-50 rounded-lg p-2 border border-blue-100">
-                              <div className="text-[10px] text-blue-600 font-medium mb-1 flex items-center gap-0.5">
-                                <TrendingUp className="w-3 h-3" />
-                                <span>순위</span>
-                              </div>
-                              <div className="text-center">
-                                <div className={`${tracker.latest_rank ? 'text-xl md:text-2xl' : 'text-sm'} font-bold ${tracker.latest_rank ? 'text-blue-700' : 'text-yellow-600'}`}>
-                                  {tracker.latest_rank || '300+'}
-                                </div>
-                                {tracker.rank_change !== undefined && tracker.rank_change !== null && tracker.rank_change !== 0 ? (
-                                  <div className={`text-[10px] font-bold flex items-center justify-center gap-0.5 mt-0.5 ${tracker.rank_change > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                    {tracker.rank_change > 0 ? <TrendingUp className="w-2.5 h-2.5" /> : <TrendingDown className="w-2.5 h-2.5" />}
-                                    {Math.abs(tracker.rank_change)}
-                                  </div>
-                                ) : (
-                                  <div className="text-[10px] text-gray-400 mt-0.5">-</div>
-                                )}
-                              </div>
-                            </div>
-                            
-                            {/* 방문자 리뷰 */}
-                            <div className="bg-green-50 rounded-lg p-2 border border-green-100">
-                              <div className="text-[10px] text-green-600 font-medium mb-1 flex items-center gap-0.5">
-                                <MessageSquare className="w-3 h-3" />
-                                <span>방문자</span>
-                              </div>
-                              <div className="text-center">
-                                <div className="text-lg md:text-xl font-bold text-green-700">
-                                  {tracker.visitor_review_count?.toLocaleString() || '0'}
-                                </div>
-                                {tracker.visitor_review_change !== undefined && tracker.visitor_review_change !== null && tracker.visitor_review_change !== 0 ? (
-                                  <div className={`text-[10px] font-bold flex items-center justify-center gap-0.5 mt-0.5 ${tracker.visitor_review_change > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                    {tracker.visitor_review_change > 0 ? <TrendingUp className="w-2.5 h-2.5" /> : <TrendingDown className="w-2.5 h-2.5" />}
-                                    {Math.abs(tracker.visitor_review_change)}
-                                  </div>
-                                ) : (
-                                  <div className="text-[10px] text-gray-400 mt-0.5">-</div>
-                                )}
-                              </div>
-                            </div>
-                            
-                            {/* 블로그 리뷰 */}
-                            <div className="bg-orange-50 rounded-lg p-2 border border-orange-100">
-                              <div className="text-[10px] text-orange-600 font-medium mb-1 flex items-center gap-0.5">
-                                <FileText className="w-3 h-3" />
-                                <span>블로그</span>
-                              </div>
-                              <div className="text-center">
-                                <div className="text-lg md:text-xl font-bold text-orange-700">
-                                  {tracker.blog_review_count?.toLocaleString() || '0'}
-                                </div>
-                                {tracker.blog_review_change !== undefined && tracker.blog_review_change !== null && tracker.blog_review_change !== 0 ? (
-                                  <div className={`text-[10px] font-bold flex items-center justify-center gap-0.5 mt-0.5 ${tracker.blog_review_change > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                    {tracker.blog_review_change > 0 ? <TrendingUp className="w-2.5 h-2.5" /> : <TrendingDown className="w-2.5 h-2.5" />}
-                                    {Math.abs(tracker.blog_review_change)}
-                                  </div>
-                                ) : (
-                                  <div className="text-[10px] text-gray-400 mt-0.5">-</div>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="text-center py-4 mb-3 bg-gray-50 rounded-lg">
-                            <Loader2 className="w-4 h-4 animate-spin mx-auto mb-1" />
-                            <p className="text-xs text-gray-500">수집 대기중</p>
-                          </div>
-                        )}
-
-                        {/* 액션 버튼 */}
-                        <div className="grid grid-cols-3 gap-2">
-                          <Button
-                            onClick={() => handleViewMetrics(tracker)}
-                            variant="outline"
-                            size="sm"
-                            className="h-9 text-xs"
-                          >
-                            <Eye className="w-3 h-3 mr-1" />
-                            <span className="hidden sm:inline">지표</span>
-                            <span className="sm:hidden">지표</span>
-                          </Button>
-                          <Button
+                          {/* 개별 수집 버튼 */}
+                          <button
                             onClick={() => handleCollectNow(tracker.id)}
                             disabled={isRefreshing.has(tracker.id)}
-                            size="sm"
-                            className="h-9 text-xs"
+                            className={`p-2 rounded-button transition-all duration-200 flex-shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center ${
+                              isRefreshing.has(tracker.id)
+                                ? 'bg-neutral-100 text-neutral-400 cursor-not-allowed'
+                                : 'bg-emerald-100 text-emerald-600 hover:bg-emerald-200 hover:shadow-sm active:scale-95'
+                            }`}
+                            title="이 키워드 순위를 지금 수집합니다"
                           >
-                            <RefreshCw className={`w-3 h-3 mr-1 ${isRefreshing.has(tracker.id) ? 'animate-spin' : ''}`} />
-                            <span className="hidden sm:inline">수집</span>
-                            <span className="sm:hidden">수집</span>
-                          </Button>
-                          <Button
-                            onClick={() => handleDelete(tracker.id, tracker.keyword)}
-                            variant="destructive"
-                            size="sm"
-                            className="h-9 text-xs"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </Button>
+                            <RefreshCw className={`w-4 h-4 ${isRefreshing.has(tracker.id) ? 'animate-spin' : ''}`} />
+                          </button>
                         </div>
                       </div>
-                    ))}
-                  </div>
+
+                      {/* 리뷰 지표 + 액션 버튼 */}
+                      <div className="pt-2 border-t border-neutral-100">
+                        <div className="flex items-end justify-between gap-2">
+                          {/* 리뷰 지표 - 모바일: 세로, PC: 가로 */}
+                          <div className="flex flex-col gap-1 md:flex-row md:items-center md:gap-3 text-xs min-w-0">
+                            <div className="flex items-center gap-1">
+                              <MessageSquare className="w-3 h-3 text-neutral-500 flex-shrink-0" />
+                              <span className="text-neutral-600 font-bold whitespace-nowrap">방문자</span>
+                              <span className="font-bold text-neutral-900">{tracker.visitor_review_count?.toLocaleString() || '0'}</span>
+                              {tracker.visitor_review_change !== undefined && tracker.visitor_review_change !== null && tracker.visitor_review_change !== 0 && (
+                                <span className={`font-bold ${tracker.visitor_review_change > 0 ? 'text-success' : 'text-error'}`}>
+                                  {tracker.visitor_review_change > 0 ? '+' : ''}{tracker.visitor_review_change}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <FileText className="w-3 h-3 text-neutral-500 flex-shrink-0" />
+                              <span className="text-neutral-600 font-bold whitespace-nowrap">블로그</span>
+                              <span className="font-bold text-neutral-900">{tracker.blog_review_count?.toLocaleString() || '0'}</span>
+                              {tracker.blog_review_change !== undefined && tracker.blog_review_change !== null && tracker.blog_review_change !== 0 && (
+                                <span className={`font-bold ${tracker.blog_review_change > 0 ? 'text-success' : 'text-error'}`}>
+                                  {tracker.blog_review_change > 0 ? '+' : ''}{tracker.blog_review_change}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* 지표 + 삭제 버튼 */}
+                          <div className="flex items-center gap-1.5 flex-shrink-0">
+                            <button
+                              onClick={() => handleViewMetrics(tracker)}
+                              className="p-2 rounded-button bg-primary-100 text-primary-600 hover:bg-primary-200 hover:shadow-sm active:scale-95 transition-all duration-200 min-w-[44px] min-h-[44px] flex items-center justify-center"
+                              title="지표 보기"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(tracker.id, tracker.keyword)}
+                              className="p-2 rounded-button bg-red-100 text-red-600 hover:bg-red-200 hover:shadow-sm active:scale-95 transition-all duration-200 min-w-[44px] min-h-[44px] flex items-center justify-center"
+                              title="삭제"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )
@@ -951,378 +944,477 @@ export default function MetricsTrackerPage() {
         </div>
       )}
 
-      {/* 추적 추가 모달 */}
+      {/* 추적 추가 모달 - 모바일 완벽 반응형 */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-        <DialogContent className="sm:max-w-2xl bg-white border-2 border-neutral-200 shadow-xl rounded-2xl max-h-[95vh] overflow-y-auto p-6">
-          <DialogHeader className="pb-3 border-b border-neutral-200 px-0">
-            {/* 아이콘 헤더 */}
-            <div className="flex items-center justify-center mb-2">
-              <div className="w-10 h-10 bg-gradient-to-br from-violet-400 to-purple-500 rounded-xl flex items-center justify-center shadow-lg">
-                <Plus className="w-5 h-5 text-white" />
+        <DialogContent className="w-[calc(100vw-32px)] sm:w-full sm:max-w-xl lg:max-w-2xl max-h-[calc(100vh-32px)] sm:max-h-[85vh] overflow-hidden bg-white border-2 border-neutral-200 shadow-modal rounded-modal flex flex-col p-0">
+          <DialogHeader className="px-4 md:px-6 pt-4 md:pt-6 pb-3 border-b border-neutral-200 flex-shrink-0">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 md:w-10 md:h-10 bg-[#405D99] rounded-button flex items-center justify-center shadow-sm flex-shrink-0">
+                <Plus className="w-4 h-4 md:w-5 md:h-5 text-white" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <DialogTitle className="text-base md:text-lg font-bold text-neutral-900">
+                  키워드 추적 추가
+                </DialogTitle>
+                <DialogDescription className="text-xs md:text-sm text-neutral-600">
+                  새로운 키워드 순위를 자동 추적하세요
+                </DialogDescription>
               </div>
             </div>
-            <DialogTitle className="text-lg md:text-xl font-extrabold text-neutral-900 text-center">
-              키워드 추적 추가
-            </DialogTitle>
-            <DialogDescription className="text-xs md:text-sm text-neutral-600 text-center">
-              새로운 키워드의 순위를 자동으로 추적하고 알림을 받으세요
-            </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4 px-0">
-            {/* 매장 선택 */}
-            <div className="space-y-1.5">
-              <label className="flex items-center gap-1.5 text-xs md:text-sm font-semibold text-neutral-700">
-                <StoreIcon className="w-3.5 h-3.5 text-violet-500" />
-                매장 선택
-              </label>
-              <select
-                value={selectedStoreId}
-                onChange={(e) => setSelectedStoreId(e.target.value)}
-                className="w-full h-11 px-3 border-2 border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-all bg-white text-sm font-medium"
-              >
-                <option value="">매장을 선택하세요</option>
-                {stores.map((store) => (
-                  <option key={store.id} value={store.id}>
-                    {store.store_name || store.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {/* 키워드 입력 */}
-            <div className="space-y-1.5">
-              <label className="flex items-center gap-1.5 text-xs md:text-sm font-semibold text-neutral-700">
-                <Search className="w-3.5 h-3.5 text-violet-500" />
-                키워드
-              </label>
-              <Input
-                value={newKeyword}
-                onChange={(e) => setNewKeyword(e.target.value)}
-                placeholder="예: 강남 카페"
-                className="h-11 border-2 border-neutral-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-violet-500 text-sm"
-              />
-              
-              {/* 조회된 키워드 목록 */}
-              {selectedStoreId && (
-                <div className="mt-2">
-                  {loadingKeywords ? (
-                    <div className="flex items-center justify-center py-3">
-                      <Loader2 className="w-4 h-4 animate-spin text-violet-500" />
-                    </div>
-                  ) : searchedKeywords.length > 0 ? (
-                    <div className="bg-violet-50 rounded-lg p-3 border border-violet-200">
-                      <p className="text-xs font-semibold text-violet-700 mb-2 flex items-center gap-1">
-                        <Sparkles className="w-3 h-3" />
-                        최근 조회한 키워드
-                      </p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {searchedKeywords.map((kw) => (
-                          <button
-                            key={kw.id}
-                            onClick={() => setNewKeyword(kw.keyword)}
-                            className="px-2.5 py-1.5 bg-white text-violet-700 rounded-md text-xs font-semibold hover:bg-violet-100 transition-all shadow-sm border border-violet-200"
-                          >
-                            {kw.keyword}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
-                </div>
-              )}
-            </div>
-            {/* 수집 주기 & 수집 시간 */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* 수집 주기 */}
+
+          <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4">
+            <div className="space-y-4">
+              {/* 매장 선택 */}
               <div className="space-y-1.5">
-                <label className="flex items-center gap-1.5 text-xs md:text-sm font-semibold text-neutral-700">
-                  <RefreshCw className="w-3.5 h-3.5 text-violet-500" />
-                  수집 주기
+                <label className="flex items-center gap-1.5 text-xs md:text-sm font-bold text-neutral-700">
+                  <StoreIcon className="w-3.5 h-3.5 text-[#405D99]" />
+                  매장 선택
                 </label>
                 <select
-                  value={updateFrequency}
-                  onChange={(e) => {
-                    const newFrequency = e.target.value as 'daily_once' | 'daily_twice' | 'daily_thrice'
-                    setUpdateFrequency(newFrequency)
-                    // 수집 주기 변경 시 기본 시간으로 자동 설정
-                    setUpdateTimes(getDefaultUpdateTimes(newFrequency))
-                  }}
-                  className="w-full h-11 px-3 border-2 border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-all bg-white text-sm font-medium"
+                  value={selectedStoreId}
+                  onChange={(e) => setSelectedStoreId(e.target.value)}
+                  className="w-full h-11 px-3 border-2 border-neutral-300 rounded-button focus:outline-none focus:ring-2 focus:ring-[#405D99] focus:border-[#405D99] transition-all bg-white text-sm font-medium"
                 >
-                  <option value="daily_once">하루 1회</option>
-                  <option value="daily_twice">하루 2회</option>
-                  <option value="daily_thrice">하루 3회</option>
+                  <option value="">매장을 선택하세요</option>
+                  {stores.map((store) => (
+                    <option key={store.id} value={store.id}>
+                      {store.store_name || store.name}
+                    </option>
+                  ))}
                 </select>
               </div>
 
-              {/* 수집 시간 */}
+              {/* 키워드 입력 */}
               <div className="space-y-1.5">
-                <label className="flex items-center gap-1.5 text-xs md:text-sm font-semibold text-neutral-700">
-                  <Clock className="w-3.5 h-3.5 text-violet-500" />
-                  수집 시간
+                <label className="flex items-center gap-1.5 text-xs md:text-sm font-bold text-neutral-700">
+                  <Search className="w-3.5 h-3.5 text-[#405D99]" />
+                  키워드
                 </label>
-                <div className="bg-neutral-50 rounded-lg p-2.5 border border-neutral-200 space-y-2">
-                  {updateTimes.map((time, index) => (
-                    <div key={index} className="flex items-center gap-2">
-                      <Badge variant="secondary" className="w-12 justify-center text-xs bg-violet-100 text-violet-700 border-violet-200 font-semibold">
-                        {index + 1}차
-                      </Badge>
-                      <select
-                        value={time}
-                        onChange={(e) => {
-                          const newTimes = [...updateTimes]
-                          newTimes[index] = parseInt(e.target.value)
-                          setUpdateTimes(newTimes)
-                        }}
-                        className="flex-1 h-10 px-3 border-2 border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-all bg-white text-sm font-medium"
-                      >
-                        {Array.from({ length: 24 }, (_, i) => (
-                          <option key={i} value={i}>
-                            {i}시
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* 순위 알림받기 */}
-            <div className="space-y-2.5">
-              <div className="flex items-center justify-between p-3 bg-gradient-to-br from-yellow-50 to-amber-50 rounded-lg border border-yellow-200">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Bell className="w-4 h-4 text-yellow-600" />
-                  </div>
-                  <div>
-                    <label className="text-xs md:text-sm font-semibold text-neutral-900 block">순위 알림받기</label>
-                    <p className="text-xs text-neutral-600">순위 변동 시 알림</p>
-                  </div>
-                </div>
-                <Switch
-                  checked={notificationEnabled}
-                  onCheckedChange={(checked) => {
-                    setNotificationEnabled(checked)
-                    if (!checked) {
-                      setNotificationType(null)
-                    }
-                  }}
-                  className="data-[state=checked]:bg-violet-600"
+                <Input
+                  value={newKeyword}
+                  onChange={(e) => setNewKeyword(e.target.value)}
+                  placeholder="예: 강남 카페"
+                  className="h-11 border-2 border-neutral-300 rounded-button focus:ring-2 focus:ring-[#405D99] focus:border-[#405D99] text-sm"
                 />
+                
+                {/* 조회된 키워드 목록 */}
+                {selectedStoreId && (
+                  <div className="mt-2">
+                    {loadingKeywords ? (
+                      <div className="flex items-center justify-center py-3">
+                        <Loader2 className="w-4 h-4 animate-spin text-[#405D99]" />
+                      </div>
+                    ) : searchedKeywords.length > 0 ? (
+                      <div className="bg-blue-50 rounded-button p-3 border border-blue-200">
+                        <p className="text-xs font-bold text-[#405D99] mb-2 flex items-center gap-1">
+                          <Sparkles className="w-3 h-3" />
+                          최근 조회한 키워드
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {searchedKeywords.map((kw) => (
+                            <button
+                              key={kw.id}
+                              onClick={() => setNewKeyword(kw.keyword)}
+                              className="px-2.5 py-1.5 bg-white text-[#405D99] rounded-md text-xs font-bold hover:bg-blue-100 active:scale-95 transition-all shadow-sm border border-blue-200 min-h-[32px]"
+                            >
+                              {kw.keyword}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                )}
               </div>
 
-              {notificationEnabled && (
-                <div className="pl-3 border-l-2 border-violet-300 space-y-2">
-                  <label className="flex items-center gap-1.5 text-xs md:text-sm font-semibold text-neutral-700">
-                    <MessageCircle className="w-3.5 h-3.5 text-violet-500" />
-                    알림 방법
+              {/* 수집 주기 & 수집 시간 */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {/* 수집 주기 */}
+                <div className="space-y-1.5">
+                  <label className="flex items-center gap-1.5 text-xs md:text-sm font-bold text-neutral-700">
+                    <RefreshCw className="w-3.5 h-3.5 text-[#405D99]" />
+                    수집 주기
                   </label>
                   <select
-                    value={notificationType || ''}
-                    onChange={(e) => setNotificationType(e.target.value as 'email' | 'sms' | 'kakao')}
-                    className="w-full h-10 px-3 border-2 border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-all bg-white text-sm font-medium"
+                    value={updateFrequency}
+                    onChange={(e) => {
+                      const newFrequency = e.target.value as 'daily_once' | 'daily_twice' | 'daily_thrice'
+                      setUpdateFrequency(newFrequency)
+                      setUpdateTimes(getDefaultUpdateTimes(newFrequency))
+                    }}
+                    className="w-full h-11 px-3 border-2 border-neutral-300 rounded-button focus:outline-none focus:ring-2 focus:ring-[#405D99] focus:border-[#405D99] transition-all bg-white text-sm font-medium"
                   >
-                    <option value="">알림 방법 선택</option>
-                    <option value="email">📧 이메일</option>
-                    <option value="sms">📱 SMS</option>
-                    <option value="kakao">💬 카카오톡</option>
+                    <option value="daily_once">하루 1회</option>
+                    <option value="daily_twice">하루 2회</option>
+                    <option value="daily_thrice">하루 3회</option>
                   </select>
                 </div>
-              )}
+
+                {/* 수집 시간 */}
+                <div className="space-y-1.5">
+                  <label className="flex items-center gap-1.5 text-xs md:text-sm font-bold text-neutral-700">
+                    <Clock className="w-3.5 h-3.5 text-[#405D99]" />
+                    수집 시간
+                  </label>
+                  <div className="bg-neutral-50 rounded-button p-2.5 border border-neutral-200 space-y-2">
+                    {updateTimes.map((time, index) => (
+                      <div key={index} className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-[#405D99] w-10 flex-shrink-0 text-center bg-blue-100 rounded py-1">
+                          {index + 1}차
+                        </span>
+                        <select
+                          value={time}
+                          onChange={(e) => {
+                            const newTimes = [...updateTimes]
+                            newTimes[index] = parseInt(e.target.value)
+                            setUpdateTimes(newTimes)
+                          }}
+                          className="flex-1 h-10 px-3 border-2 border-neutral-300 rounded-button focus:outline-none focus:ring-2 focus:ring-[#405D99] focus:border-[#405D99] transition-all bg-white text-sm font-medium"
+                        >
+                          {Array.from({ length: 24 }, (_, i) => (
+                            <option key={i} value={i}>
+                              {i < 10 ? `0${i}:00` : `${i}:00`}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* 순위 알림받기 */}
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between p-3 bg-amber-50 rounded-button border border-amber-200 min-h-[52px]">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Bell className="w-4 h-4 text-amber-600" />
+                    </div>
+                    <div>
+                      <label className="text-xs md:text-sm font-bold text-neutral-900 block">순위 알림받기</label>
+                      <p className="text-[10px] md:text-xs text-neutral-500">순위 변동 시 알림</p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={notificationEnabled}
+                    onCheckedChange={(checked) => {
+                      setNotificationEnabled(checked)
+                      if (!checked) {
+                        setNotificationType(null)
+                      }
+                    }}
+                    className="data-[state=checked]:bg-[#405D99]"
+                  />
+                </div>
+
+                {notificationEnabled && (
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { type: 'email', icon: Mail, label: '이메일' },
+                      { type: 'sms', icon: Phone, label: '문자' },
+                      { type: 'kakao', icon: MessageCircle, label: '카카오' },
+                    ].map(({ type, icon: Icon, label }) => (
+                      <button
+                        key={type}
+                        onClick={() => setNotificationType(type as 'email' | 'sms' | 'kakao')}
+                        className={`flex items-center justify-center gap-1.5 px-2 py-2.5 rounded-button border-2 transition-all min-h-[44px] active:scale-95 ${
+                          notificationType === type
+                            ? 'border-[#405D99] bg-blue-50'
+                            : 'border-neutral-200 bg-white hover:border-neutral-300'
+                        }`}
+                      >
+                        <Icon className={`w-3.5 h-3.5 ${notificationType === type ? 'text-[#405D99]' : 'text-neutral-400'}`} />
+                        <span className={`text-xs font-bold ${notificationType === type ? 'text-[#405D99]' : 'text-neutral-600'}`}>
+                          {label}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
           
           {/* 버튼 영역 */}
-          <div className="flex gap-2 pt-4 border-t border-neutral-200 px-0">
-            <Button
-              variant="outline"
+          <div className="flex gap-2.5 px-4 md:px-6 py-3 md:py-4 border-t border-neutral-200 flex-shrink-0">
+            <button
               onClick={() => {
                 setShowAddDialog(false)
                 setSearchedKeywords([])
               }}
-              className="flex-1 h-11 rounded-lg border-2 border-neutral-300 hover:bg-neutral-50 font-semibold text-sm"
+              className="flex-1 h-11 md:h-12 rounded-button border-2 border-neutral-300 text-neutral-700 font-bold text-sm hover:bg-neutral-50 active:scale-95 transition-all"
             >
               취소
-            </Button>
-            <Button
+            </button>
+            <button
               onClick={handleAddTracker}
               disabled={isAdding}
-              className="flex-1 h-11 rounded-lg bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white font-semibold text-sm shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 h-11 md:h-12 rounded-button bg-[#405D99] hover:bg-[#2E4577] text-white font-bold text-sm shadow-button hover:shadow-button-hover active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isAdding ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+                <span className="flex items-center justify-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
                   추가 중...
-                </>
+                </span>
               ) : (
                 '추가하기'
               )}
-            </Button>
+            </button>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* 지표 보기 모달 */}
+      {/* 지표 보기 모달 - 모바일 완벽 반응형 */}
       <Dialog open={showMetricsDialog} onOpenChange={setShowMetricsDialog}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto backdrop-blur-xl bg-white/95 border-2 border-white/40 shadow-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              {selectedTracker?.keyword} 지표
-            </DialogTitle>
-            <DialogDescription className="text-gray-600">
-              {selectedTracker?.store_name}
-            </DialogDescription>
-          </DialogHeader>
-          {loadingMetrics ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
-            </div>
-          ) : metrics.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
-              아직 수집된 지표가 없습니다
-            </div>
-          ) : (
-            <div className="space-y-6">
-              {/* 차트 */}
-              <div className="bg-gradient-to-br from-gray-50 to-blue-50 rounded-2xl p-6 border border-gray-200">
-                <h4 className="font-bold text-lg mb-4 text-gray-800">순위 변화</h4>
-                <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={[...metrics].reverse()}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                    <XAxis 
-                      dataKey="collection_date" 
-                      tickFormatter={(date) => new Date(date).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
-                      stroke="#6b7280"
-                    />
-                    <YAxis reversed domain={[1, 'dataMax']} stroke="#6b7280" />
-                    <Tooltip 
-                      labelFormatter={(date) => new Date(date).toLocaleDateString('ko-KR')}
-                      contentStyle={{ 
-                        backgroundColor: 'rgba(255, 255, 255, 0.95)', 
-                        border: '2px solid #e5e7eb',
-                        borderRadius: '12px',
-                        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
-                      }}
-                    />
-                    <Legend />
-                    <Line 
-                      type="monotone" 
-                      dataKey="rank" 
-                      stroke="#3b82f6" 
-                      strokeWidth={3}
-                      name="순위" 
-                      dot={{ fill: '#3b82f6', r: 5 }}
-                      activeDot={{ r: 7 }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
+        <DialogContent className="w-[calc(100vw-32px)] sm:w-full sm:max-w-2xl lg:max-w-4xl max-h-[calc(100vh-32px)] sm:max-h-[85vh] overflow-hidden bg-white border-2 border-neutral-200 shadow-modal rounded-modal flex flex-col p-0">
+          <DialogHeader className="px-4 md:px-6 pt-4 md:pt-6 pb-3 border-b border-neutral-200 flex-shrink-0">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 md:w-10 md:h-10 bg-emerald-600 rounded-button flex items-center justify-center shadow-sm flex-shrink-0">
+                <BarChart3 className="w-4 h-4 md:w-5 md:h-5 text-white" />
               </div>
+              <div className="min-w-0 flex-1">
+                <DialogTitle className="text-base md:text-lg font-bold text-neutral-900 truncate">
+                  {selectedTracker?.keyword} 지표
+                </DialogTitle>
+                <DialogDescription className="text-xs md:text-sm text-neutral-600 truncate">
+                  {selectedTracker?.store_name}
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
 
-              {/* 지표 테이블 */}
-              <div>
-                <h4 className="font-bold text-lg mb-3 text-gray-800">상세 지표</h4>
-                <div className="border-2 border-gray-200 rounded-2xl overflow-hidden">
-                  <table className="w-full text-sm">
-                    <thead className="bg-gradient-to-r from-gray-50 to-blue-50">
-                      <tr>
-                        <th className="px-3 py-3 text-left font-semibold text-gray-700">날짜</th>
-                        <th className="px-3 py-3 text-center font-semibold text-gray-700">순위</th>
-                        <th className="px-3 py-3 text-center font-semibold text-gray-700">순위변동</th>
-                        <th className="px-3 py-3 text-center font-semibold text-gray-700">방문자리뷰</th>
-                        <th className="px-3 py-3 text-center font-semibold text-gray-700">방문자변동</th>
-                        <th className="px-3 py-3 text-center font-semibold text-gray-700">블로그리뷰</th>
-                        <th className="px-3 py-3 text-center font-semibold text-gray-700">블로그변동</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {metrics.map((metric, index) => {
-                        // 이전 데이터와 비교 (역순이므로 다음 index)
-                        const prevMetric = metrics[index + 1]
-                        
-                        // 변동값 계산
-                        const rankChange = prevMetric && metric.rank && prevMetric.rank 
-                          ? metric.rank - prevMetric.rank 
-                          : null
-                        const visitorChange = prevMetric 
-                          ? metric.visitor_review_count - prevMetric.visitor_review_count 
-                          : null
-                        const blogChange = prevMetric 
-                          ? metric.blog_review_count - prevMetric.blog_review_count 
-                          : null
-                        
-                        return (
-                          <tr key={metric.id} className={`border-t border-gray-200 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
-                            <td className="px-3 py-3 text-gray-700 whitespace-nowrap">
-                              {new Date(metric.collection_date).toLocaleDateString('ko-KR')}
-                            </td>
-                            <td className="px-3 py-3 text-center font-bold text-blue-600">
-                              {metric.rank || '-'}
-                            </td>
-                            <td className="px-3 py-3 text-center font-semibold">
-                              {rankChange === null ? (
-                                <span className="text-gray-400">-</span>
-                              ) : rankChange === 0 ? (
-                                <span className="text-gray-500">-</span>
-                              ) : (
-                                <span className={rankChange < 0 ? 'text-red-600' : 'text-blue-600'}>
-                                  {rankChange < 0 ? '+' : '-'}{Math.abs(rankChange)}
-                                </span>
-                              )}
-                            </td>
-                            <td className="px-3 py-3 text-center text-gray-700">
-                              {metric.visitor_review_count.toLocaleString()}
-                            </td>
-                            <td className="px-3 py-3 text-center font-semibold">
-                              {visitorChange === null ? (
-                                <span className="text-gray-400">-</span>
-                              ) : visitorChange === 0 ? (
-                                <span className="text-gray-500">-</span>
-                              ) : (
-                                <span className={visitorChange > 0 ? 'text-red-600' : 'text-blue-600'}>
-                                  {visitorChange > 0 ? '+' : ''}{visitorChange.toLocaleString()}
-                                </span>
-                              )}
-                            </td>
-                            <td className="px-3 py-3 text-center text-gray-700">
-                              {metric.blog_review_count.toLocaleString()}
-                            </td>
-                            <td className="px-3 py-3 text-center font-semibold">
-                              {blogChange === null ? (
-                                <span className="text-gray-400">-</span>
-                              ) : blogChange === 0 ? (
-                                <span className="text-gray-500">-</span>
-                              ) : (
-                                <span className={blogChange > 0 ? 'text-red-600' : 'text-blue-600'}>
-                                  {blogChange > 0 ? '+' : ''}{blogChange.toLocaleString()}
-                                </span>
-                              )}
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
+          <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4">
+            {loadingMetrics ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="text-center">
+                  <Loader2 className="w-10 h-10 animate-spin text-emerald-600 mx-auto mb-3" />
+                  <p className="text-sm text-neutral-600">지표를 불러오는 중...</p>
                 </div>
               </div>
-            </div>
-          )}
+            ) : metrics.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="bg-neutral-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                  <BarChart3 className="w-8 h-8 text-neutral-400" />
+                </div>
+                <p className="text-neutral-700 font-bold mb-1">아직 수집된 지표가 없습니다</p>
+                <p className="text-sm text-neutral-500">수집이 완료되면 여기에 표시됩니다</p>
+              </div>
+            ) : (
+              <div className="space-y-4 md:space-y-5">
+                {/* 차트 */}
+                <div className="bg-neutral-50 rounded-card p-3 md:p-5 border border-neutral-200">
+                  <h4 className="font-bold text-sm md:text-base mb-3 text-neutral-900 flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-emerald-600" />
+                    순위 변화
+                  </h4>
+                  <div className="w-full h-[200px] md:h-[280px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={[...metrics].reverse()}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                        <XAxis 
+                          dataKey="collection_date" 
+                          tickFormatter={(date) => new Date(date).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' })}
+                          stroke="#9ca3af"
+                          tick={{ fontSize: 10 }}
+                          angle={-45}
+                          textAnchor="end"
+                          height={50}
+                          interval="preserveStartEnd"
+                        />
+                        <YAxis reversed domain={[1, 'dataMax']} stroke="#9ca3af" tick={{ fontSize: 10 }} width={30} />
+                        <Tooltip 
+                          labelFormatter={(date) => new Date(date).toLocaleDateString('ko-KR')}
+                          contentStyle={{ 
+                            backgroundColor: '#fff', 
+                            border: '2px solid #e5e7eb',
+                            borderRadius: '8px',
+                            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+                            fontSize: '12px'
+                          }}
+                        />
+                        <Line 
+                          type="monotone" 
+                          dataKey="rank" 
+                          stroke="#059669" 
+                          strokeWidth={2}
+                          name="순위" 
+                          dot={{ fill: '#059669', r: 3 }}
+                          activeDot={{ r: 6 }}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* 상세 지표 - 모바일: 카드형 / PC: 테이블 */}
+                <div>
+                  <h4 className="font-bold text-sm md:text-base mb-3 text-neutral-900 flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-emerald-600" />
+                    상세 지표
+                  </h4>
+                  
+                  {/* 모바일 카드형 레이아웃 (md 미만) */}
+                  <div className="md:hidden space-y-2.5">
+                    {metrics.map((metric, index) => {
+                      const prevMetric = metrics[index + 1]
+                      const rankChange = prevMetric && metric.rank && prevMetric.rank 
+                        ? metric.rank - prevMetric.rank : null
+                      const visitorChange = prevMetric 
+                        ? metric.visitor_review_count - prevMetric.visitor_review_count : null
+                      const blogChange = prevMetric 
+                        ? metric.blog_review_count - prevMetric.blog_review_count : null
+                      
+                      return (
+                        <div key={metric.id} className="bg-white rounded-button border border-neutral-200 p-3 shadow-sm">
+                          {/* 날짜 헤더 */}
+                          <div className="flex items-center justify-between mb-2 pb-2 border-b border-neutral-100">
+                            <span className="text-xs font-bold text-neutral-700">
+                              {new Date(metric.collection_date).toLocaleDateString('ko-KR', {
+                                month: 'short', day: 'numeric'
+                              })}
+                            </span>
+                            <span className={`text-lg font-bold ${metric.rank ? 'text-emerald-600' : 'text-neutral-400'}`}>
+                              {metric.rank ? `${metric.rank}위` : '-'}
+                            </span>
+                          </div>
+                          {/* 지표 그리드 */}
+                          <div className="grid grid-cols-3 gap-2 text-center">
+                            <div>
+                              <p className="text-[10px] text-neutral-500 font-bold mb-0.5">순위변동</p>
+                              <p className="text-xs font-bold">
+                                {rankChange === null || rankChange === 0 ? (
+                                  <span className="text-neutral-400">-</span>
+                                ) : (
+                                  <span className={rankChange < 0 ? 'text-success' : 'text-error'}>
+                                    {rankChange < 0 ? '↑' : '↓'}{Math.abs(rankChange)}
+                                  </span>
+                                )}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-neutral-500 font-bold mb-0.5">방문자</p>
+                              <p className="text-xs font-bold text-neutral-900">{metric.visitor_review_count.toLocaleString()}</p>
+                              {visitorChange !== null && visitorChange !== 0 && (
+                                <p className={`text-[10px] font-bold ${visitorChange > 0 ? 'text-success' : 'text-error'}`}>
+                                  {visitorChange > 0 ? '+' : ''}{visitorChange}
+                                </p>
+                              )}
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-neutral-500 font-bold mb-0.5">블로그</p>
+                              <p className="text-xs font-bold text-neutral-900">{metric.blog_review_count.toLocaleString()}</p>
+                              {blogChange !== null && blogChange !== 0 && (
+                                <p className={`text-[10px] font-bold ${blogChange > 0 ? 'text-success' : 'text-error'}`}>
+                                  {blogChange > 0 ? '+' : ''}{blogChange}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  {/* PC 테이블 레이아웃 (md 이상) */}
+                  <div className="hidden md:block border-2 border-neutral-200 rounded-card overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead className="bg-neutral-50">
+                        <tr>
+                          <th className="px-3 py-3 text-left font-bold text-neutral-700 text-xs">날짜</th>
+                          <th className="px-3 py-3 text-center font-bold text-neutral-700 text-xs">순위</th>
+                          <th className="px-3 py-3 text-center font-bold text-neutral-700 text-xs">변동</th>
+                          <th className="px-3 py-3 text-center font-bold text-neutral-700 text-xs">방문자</th>
+                          <th className="px-3 py-3 text-center font-bold text-neutral-700 text-xs">변동</th>
+                          <th className="px-3 py-3 text-center font-bold text-neutral-700 text-xs">블로그</th>
+                          <th className="px-3 py-3 text-center font-bold text-neutral-700 text-xs">변동</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {metrics.map((metric, index) => {
+                          const prevMetric = metrics[index + 1]
+                          const rankChange = prevMetric && metric.rank && prevMetric.rank 
+                            ? metric.rank - prevMetric.rank : null
+                          const visitorChange = prevMetric 
+                            ? metric.visitor_review_count - prevMetric.visitor_review_count : null
+                          const blogChange = prevMetric 
+                            ? metric.blog_review_count - prevMetric.blog_review_count : null
+                          
+                          return (
+                            <tr key={metric.id} className={`border-t border-neutral-200 ${index % 2 === 0 ? 'bg-white' : 'bg-neutral-50'}`}>
+                              <td className="px-3 py-2.5 text-neutral-700 whitespace-nowrap text-xs">
+                                {new Date(metric.collection_date).toLocaleDateString('ko-KR')}
+                              </td>
+                              <td className="px-3 py-2.5 text-center font-bold text-emerald-600 text-sm">
+                                {metric.rank || '-'}
+                              </td>
+                              <td className="px-3 py-2.5 text-center font-bold text-xs">
+                                {rankChange === null || rankChange === 0 ? (
+                                  <span className="text-neutral-400">-</span>
+                                ) : (
+                                  <span className={rankChange < 0 ? 'text-success' : 'text-error'}>
+                                    {rankChange < 0 ? '↑' : '↓'}{Math.abs(rankChange)}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-3 py-2.5 text-center text-neutral-700 text-xs">
+                                {metric.visitor_review_count.toLocaleString()}
+                              </td>
+                              <td className="px-3 py-2.5 text-center font-bold text-xs">
+                                {visitorChange === null || visitorChange === 0 ? (
+                                  <span className="text-neutral-400">-</span>
+                                ) : (
+                                  <span className={visitorChange > 0 ? 'text-success' : 'text-error'}>
+                                    {visitorChange > 0 ? '+' : ''}{visitorChange.toLocaleString()}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-3 py-2.5 text-center text-neutral-700 text-xs">
+                                {metric.blog_review_count.toLocaleString()}
+                              </td>
+                              <td className="px-3 py-2.5 text-center font-bold text-xs">
+                                {blogChange === null || blogChange === 0 ? (
+                                  <span className="text-neutral-400">-</span>
+                                ) : (
+                                  <span className={blogChange > 0 ? 'text-success' : 'text-error'}>
+                                    {blogChange > 0 ? '+' : ''}{blogChange.toLocaleString()}
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
 
-      {/* 매장별 자동수집 설정 모달 */}
+      {/* 매장별 자동수집 설정 모달 - 모바일 완벽 반응형 */}
       <Dialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog}>
-        <DialogContent className="max-w-4xl max-h-[85vh] overflow-hidden backdrop-blur-xl bg-white/95 border-2 border-white/40 shadow-2xl flex flex-col">
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              자동수집 설정
-            </DialogTitle>
-            <DialogDescription className="text-gray-600">
-              {editingStore?.name} - 추적중인 키워드별 자동수집 시간을 설정합니다
-            </DialogDescription>
+        <DialogContent className="w-[calc(100vw-32px)] sm:w-full sm:max-w-xl lg:max-w-3xl max-h-[calc(100vh-32px)] sm:max-h-[85vh] overflow-hidden bg-white border-2 border-neutral-200 shadow-modal rounded-modal flex flex-col p-0">
+          <DialogHeader className="px-4 md:px-6 pt-4 md:pt-6 pb-3 border-b border-neutral-200 flex-shrink-0">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 md:w-10 md:h-10 bg-emerald-600 rounded-button flex items-center justify-center shadow-sm flex-shrink-0">
+                <Settings className="w-4 h-4 md:w-5 md:h-5 text-white" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <DialogTitle className="text-base md:text-lg font-bold text-neutral-900">
+                  자동수집 설정
+                </DialogTitle>
+                <DialogDescription className="text-xs md:text-sm text-neutral-600 truncate">
+                  {editingStore?.name} - 키워드별 자동수집 시간 설정
+                </DialogDescription>
+              </div>
+            </div>
           </DialogHeader>
           
-          <div className="flex-1 overflow-y-auto py-4">
-            <div className="space-y-4">
+          <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4">
+            <div className="space-y-3 md:space-y-4">
               {editingTrackers.map((tracker) => {
                 const settings = editTrackerSettings[tracker.id]
                 if (!settings) return null
@@ -1331,21 +1423,21 @@ export default function MetricsTrackerPage() {
                                       settings.frequency === 'daily_twice' ? 2 : 3
 
                 return (
-                  <div key={tracker.id} className="border-2 border-gray-200 rounded-2xl p-5 bg-white/50 hover:bg-white/80 transition-all">
+                  <div key={tracker.id} className="border-2 border-neutral-200 rounded-card p-3 md:p-4 bg-white hover:shadow-sm transition-all">
                     {/* 키워드명 */}
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="font-bold text-lg text-gray-800">{tracker.keyword}</h3>
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="font-bold text-sm md:text-base text-neutral-900">{tracker.keyword}</h3>
                       {tracker.notification_enabled && (
-                        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 text-blue-600 rounded-full text-xs font-medium">
+                        <span className="flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full text-[10px] md:text-xs font-bold">
                           <Bell className="w-3 h-3" />
-                          <span>알림 설정됨</span>
-                        </div>
+                          알림
+                        </span>
                       )}
                     </div>
 
                     {/* 수집 주기 */}
-                    <div className="mb-4">
-                      <label className="text-sm font-semibold mb-2 block text-gray-700">수집 주기</label>
+                    <div className="mb-3">
+                      <label className="text-xs md:text-sm font-bold mb-1.5 block text-neutral-700">수집 주기</label>
                       <select
                         value={settings.frequency}
                         onChange={(e) => {
@@ -1359,7 +1451,7 @@ export default function MetricsTrackerPage() {
                             }
                           }))
                         }}
-                        className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white"
+                        className="w-full h-11 px-3 border-2 border-neutral-300 rounded-button focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all bg-white text-sm font-medium"
                       >
                         <option value="daily_once">하루 1회</option>
                         <option value="daily_twice">하루 2회</option>
@@ -1368,12 +1460,12 @@ export default function MetricsTrackerPage() {
                     </div>
 
                     {/* 수집 시간 */}
-                    <div className="mb-4">
-                      <label className="text-sm font-semibold mb-2 block text-gray-700">수집 시간</label>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    <div className="mb-3">
+                      <label className="text-xs md:text-sm font-bold mb-1.5 block text-neutral-700">수집 시간</label>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                         {settings.times.slice(0, frequencyCount).map((time, index) => (
                           <div key={index} className="flex items-center gap-2">
-                            <span className="text-sm text-gray-600 w-12">
+                            <span className="text-xs text-neutral-600 font-bold w-10 flex-shrink-0">
                               {index + 1}회차
                             </span>
                             <select
@@ -1389,7 +1481,7 @@ export default function MetricsTrackerPage() {
                                   }
                                 }))
                               }}
-                              className="flex-1 px-3 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white text-sm"
+                              className="flex-1 h-10 px-3 border-2 border-neutral-300 rounded-button focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all bg-white text-sm font-medium"
                             >
                               {Array.from({ length: 24 }, (_, i) => (
                                 <option key={i} value={i}>
@@ -1403,9 +1495,9 @@ export default function MetricsTrackerPage() {
                     </div>
 
                     {/* 순위 알림받기 */}
-                    <div className="space-y-3 pt-4 border-t border-gray-200">
-                      <div className="flex items-center justify-between">
-                        <label className="text-sm font-semibold text-gray-700">순위 알림받기</label>
+                    <div className="space-y-2.5 pt-3 border-t border-neutral-100">
+                      <div className="flex items-center justify-between min-h-[44px]">
+                        <label className="text-xs md:text-sm font-bold text-neutral-700">순위 알림받기</label>
                         <button
                           onClick={() => {
                             setEditTrackerSettings(prev => ({
@@ -1417,7 +1509,7 @@ export default function MetricsTrackerPage() {
                             }))
                           }}
                           className={`relative inline-flex h-6 w-11 items-center rounded-full transition-all ${
-                            settings.notificationEnabled ? 'bg-blue-600' : 'bg-gray-300'
+                            settings.notificationEnabled ? 'bg-emerald-600' : 'bg-neutral-300'
                           }`}
                         >
                           <span
@@ -1429,73 +1521,35 @@ export default function MetricsTrackerPage() {
                       </div>
                       
                       {settings.notificationEnabled && (
-                        <div className="space-y-2 pl-4 border-l-2 border-blue-200">
-                          <p className="text-xs text-gray-500 mb-2">알림 방법 선택</p>
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <div className="grid grid-cols-3 gap-2">
+                          {[
+                            { type: 'email', icon: Mail, label: '이메일' },
+                            { type: 'sms', icon: Phone, label: '문자' },
+                            { type: 'kakao', icon: MessageCircle, label: '카카오' },
+                          ].map(({ type, icon: Icon, label }) => (
                             <button
+                              key={type}
                               onClick={() => {
                                 setEditTrackerSettings(prev => ({
                                   ...prev,
                                   [tracker.id]: {
                                     ...prev[tracker.id],
-                                    notificationType: 'email'
+                                    notificationType: type as 'email' | 'sms' | 'kakao'
                                   }
                                 }))
                               }}
-                              className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border-2 transition-all ${
-                                settings.notificationType === 'email'
-                                  ? 'border-blue-500 bg-blue-50'
-                                  : 'border-gray-200 bg-white hover:border-gray-300'
+                              className={`flex items-center justify-center gap-1.5 px-2 py-2.5 rounded-button border-2 transition-all min-h-[44px] ${
+                                settings.notificationType === type
+                                  ? 'border-emerald-500 bg-emerald-50'
+                                  : 'border-neutral-200 bg-white hover:border-neutral-300'
                               }`}
                             >
-                              <Mail className={`w-4 h-4 ${settings.notificationType === 'email' ? 'text-blue-600' : 'text-gray-400'}`} />
-                              <span className={`text-sm font-medium ${settings.notificationType === 'email' ? 'text-blue-600' : 'text-gray-600'}`}>
-                                이메일
+                              <Icon className={`w-3.5 h-3.5 ${settings.notificationType === type ? 'text-emerald-600' : 'text-neutral-400'}`} />
+                              <span className={`text-xs font-bold ${settings.notificationType === type ? 'text-emerald-600' : 'text-neutral-600'}`}>
+                                {label}
                               </span>
                             </button>
-                            <button
-                              onClick={() => {
-                                setEditTrackerSettings(prev => ({
-                                  ...prev,
-                                  [tracker.id]: {
-                                    ...prev[tracker.id],
-                                    notificationType: 'sms'
-                                  }
-                                }))
-                              }}
-                              className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border-2 transition-all ${
-                                settings.notificationType === 'sms'
-                                  ? 'border-blue-500 bg-blue-50'
-                                  : 'border-gray-200 bg-white hover:border-gray-300'
-                              }`}
-                            >
-                              <Phone className={`w-4 h-4 ${settings.notificationType === 'sms' ? 'text-blue-600' : 'text-gray-400'}`} />
-                              <span className={`text-sm font-medium ${settings.notificationType === 'sms' ? 'text-blue-600' : 'text-gray-600'}`}>
-                                문자
-                              </span>
-                            </button>
-                            <button
-                              onClick={() => {
-                                setEditTrackerSettings(prev => ({
-                                  ...prev,
-                                  [tracker.id]: {
-                                    ...prev[tracker.id],
-                                    notificationType: 'kakao'
-                                  }
-                                }))
-                              }}
-                              className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border-2 transition-all ${
-                                settings.notificationType === 'kakao'
-                                  ? 'border-blue-500 bg-blue-50'
-                                  : 'border-gray-200 bg-white hover:border-gray-300'
-                              }`}
-                            >
-                              <MessageCircle className={`w-4 h-4 ${settings.notificationType === 'kakao' ? 'text-blue-600' : 'text-gray-400'}`} />
-                              <span className={`text-sm font-medium ${settings.notificationType === 'kakao' ? 'text-blue-600' : 'text-gray-600'}`}>
-                                카카오톡
-                              </span>
-                            </button>
-                          </div>
+                          ))}
                         </div>
                       )}
                     </div>
@@ -1504,14 +1558,13 @@ export default function MetricsTrackerPage() {
               })}
             </div>
             
-            <p className="text-xs text-gray-500 mt-4 text-center">
+            <p className="text-[10px] md:text-xs text-neutral-500 mt-3 text-center">
               ℹ️ 설정한 시간에 자동으로 지표를 수집합니다 (한국시간 기준)
             </p>
           </div>
 
-          <div className="flex gap-3 pt-4 border-t">
-            <Button
-              variant="outline"
+          <div className="flex gap-2.5 px-4 md:px-6 py-3 md:py-4 border-t border-neutral-200 flex-shrink-0">
+            <button
               onClick={() => {
                 setShowSettingsDialog(false)
                 setEditingStore(null)
@@ -1519,24 +1572,24 @@ export default function MetricsTrackerPage() {
                 setEditTrackerSettings({})
               }}
               disabled={isSavingSettings}
-              className="flex-1 h-12 rounded-xl border-2"
+              className="flex-1 h-11 md:h-12 rounded-button border-2 border-neutral-300 text-neutral-700 font-bold text-sm hover:bg-neutral-50 active:scale-95 transition-all disabled:opacity-50"
             >
               취소
-            </Button>
-            <Button
+            </button>
+            <button
               onClick={handleUpdateSettings}
               disabled={isSavingSettings}
-              className="flex-1 h-12 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold shadow-lg disabled:opacity-50"
+              className="flex-1 h-11 md:h-12 rounded-button bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-button hover:shadow-button-hover active:scale-95 transition-all disabled:opacity-50"
             >
               {isSavingSettings ? (
-                <span className="flex items-center gap-2">
-                  <Loader2 className="w-5 h-5 animate-spin" />
+                <span className="flex items-center justify-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
                   저장 중...
                 </span>
               ) : (
                 '저장'
               )}
-            </Button>
+            </button>
           </div>
         </DialogContent>
       </Dialog>
