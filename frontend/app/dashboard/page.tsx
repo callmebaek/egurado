@@ -337,22 +337,21 @@ function SortableStoreTrackerCard({
                       </div>
                       {tracker.last_collected_at && (
                         <div className="flex items-center gap-1 text-xs text-neutral-500">
-                          <Clock className="w-3 h-3" />
-                          <span className="hidden md:inline">
-                            {new Date(tracker.last_collected_at).toLocaleString('ko-KR', {
-                              month: 'short',
-                              day: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                          </span>
-                          <span className="md:hidden">
-                            {new Date(tracker.last_collected_at).toLocaleString('ko-KR', {
-                              month: 'numeric',
-                              day: 'numeric',
-                              hour: '2-digit'
-                            })}
-                          </span>
+                          <Clock className="w-3 h-3 flex-shrink-0" />
+                          <div className="flex flex-col leading-tight md:flex-row md:gap-1">
+                            <span>
+                              {new Date(tracker.last_collected_at).toLocaleString('ko-KR', {
+                                month: 'short',
+                                day: 'numeric',
+                              })}
+                            </span>
+                            <span>
+                              {new Date(tracker.last_collected_at).toLocaleString('ko-KR', {
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </span>
+                          </div>
                         </div>
                       )}
                     </div>

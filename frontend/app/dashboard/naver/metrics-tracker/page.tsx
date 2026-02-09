@@ -885,30 +885,27 @@ export default function MetricsTrackerPage() {
                           </div>
                           {/* 수집 시간 */}
                           <div className="flex items-center gap-1 text-xs text-neutral-500">
-                            <Clock className="w-3 h-3" />
+                            <Clock className="w-3 h-3 flex-shrink-0" />
                             {isRefreshing.has(tracker.id) ? (
                               <span className="flex items-center gap-1 text-emerald-600">
                                 <Loader2 className="w-3 h-3 animate-spin" />
                                 수집 중...
                               </span>
                             ) : tracker.last_collected_at ? (
-                              <>
-                                <span className="hidden md:inline">
+                              <div className="flex flex-col leading-tight md:flex-row md:gap-1">
+                                <span>
                                   {new Date(tracker.last_collected_at).toLocaleString('ko-KR', {
                                     month: 'short',
                                     day: 'numeric',
+                                  })}
+                                </span>
+                                <span>
+                                  {new Date(tracker.last_collected_at).toLocaleString('ko-KR', {
                                     hour: '2-digit',
                                     minute: '2-digit'
                                   })}
                                 </span>
-                                <span className="md:hidden">
-                                  {new Date(tracker.last_collected_at).toLocaleString('ko-KR', {
-                                    month: 'numeric',
-                                    day: 'numeric',
-                                    hour: '2-digit'
-                                  })}
-                                </span>
-                              </>
+                              </div>
                             ) : (
                               <span>수집 대기중</span>
                             )}
