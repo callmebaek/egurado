@@ -335,9 +335,15 @@ function SortableStoreTrackerCard({
                            tracker.update_frequency === 'daily_twice' ? '2회/일' : '3회/일'}
                         </span>
                       </div>
-                      {tracker.last_collected_at && (
-                        <div className="flex items-center gap-1 text-xs text-neutral-500">
-                          <Clock className="w-3 h-3 flex-shrink-0" />
+                      {/* 수집 시간 */}
+                      <div className="flex items-center gap-1 text-xs text-neutral-500">
+                        <Clock className="w-3 h-3 flex-shrink-0" />
+                        {isRefreshing.has(tracker.id) ? (
+                          <span className="flex items-center gap-1 text-emerald-600 font-medium">
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                            수집 중...
+                          </span>
+                        ) : tracker.last_collected_at ? (
                           <div className="flex flex-col leading-tight md:flex-row md:gap-1">
                             <span>
                               {new Date(tracker.last_collected_at).toLocaleString('ko-KR', {
@@ -352,13 +358,19 @@ function SortableStoreTrackerCard({
                               })}
                             </span>
                           </div>
-                        </div>
-                      )}
+                        ) : (
+                          <span>수집 대기중</span>
+                        )}
+                      </div>
                     </div>
                     
                     {/* 순위 - 모바일 최적화 */}
                     <div className="flex items-center gap-2">
-                      {tracker.latest_rank ? (
+                      {isRefreshing.has(tracker.id) ? (
+                        <div className="w-14 h-12 flex items-center justify-center">
+                          <Loader2 className="w-5 h-5 animate-spin text-emerald-600" />
+                        </div>
+                      ) : tracker.latest_rank ? (
                         <div className="flex items-center gap-1 md:gap-2">
                           {/* 1~5위 폭죽 뱃지 */}
                           {tracker.latest_rank >= 1 && tracker.latest_rank <= 5 && (
@@ -408,12 +420,16 @@ function SortableStoreTrackerCard({
                         disabled={isRefreshing.has(tracker.id)}
                         className={`p-1.5 md:p-2 rounded-button transition-all duration-200 flex-shrink-0 min-w-[36px] min-h-[36px] md:min-w-[40px] md:min-h-[40px] flex items-center justify-center ${
                           isRefreshing.has(tracker.id)
-                            ? 'bg-neutral-100 text-neutral-400 cursor-not-allowed'
+                            ? 'bg-emerald-200 text-emerald-600 cursor-not-allowed'
                             : 'bg-emerald-100 text-emerald-600 hover:bg-emerald-200 hover:shadow-sm active:scale-95'
                         }`}
                         title="이 키워드 순위를 지금 수집합니다"
                       >
-                        <RefreshCw className={`w-3.5 h-3.5 md:w-4 md:h-4 ${isRefreshing.has(tracker.id) ? 'animate-spin' : ''}`} />
+                        {isRefreshing.has(tracker.id) ? (
+                          <Loader2 className="w-3.5 h-3.5 md:w-4 md:h-4 animate-spin" />
+                        ) : (
+                          <RefreshCw className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                        )}
                       </button>
                     </div>
                     </div>
@@ -748,7 +764,13 @@ export default function DashboardPage() {
     const storeTrackers = trackers.filter(t => t.store_id === storeId)
     const refreshKey = `store_${storeId}`
     
-    setIsRefreshing(prev => new Set(prev).add(refreshKey))
+    // 전체 키 + 개별 tracker ID 모두 로딩 상태 추가
+    setIsRefreshing(prev => {
+      const newSet = new Set(prev)
+      newSet.add(refreshKey)
+      storeTrackers.forEach(t => newSet.add(t.id))
+      return newSet
+    })
 
     try {
       // 모든 수집 요청을 병렬로 실행하고 응답을 기다림
@@ -777,6 +799,7 @@ export default function DashboardPage() {
       setIsRefreshing(prev => {
         const newSet = new Set(prev)
         newSet.delete(refreshKey)
+        storeTrackers.forEach(t => newSet.delete(t.id))
         return newSet
       })
     }
