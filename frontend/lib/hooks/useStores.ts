@@ -8,8 +8,11 @@ interface Store {
   id: string
   place_id: string
   store_name: string
+  name?: string
   category: string
   address: string
+  road_address?: string
+  thumbnail?: string
   platform: string
   status: string
   created_at: string

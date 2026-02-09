@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { useStores } from "@/lib/hooks/useStores"
 import { EmptyStoreMessage } from "@/components/EmptyStoreMessage"
-import { Loader2, Sparkles, Send, Check, X, AlertCircle, MessageSquare, Settings } from "lucide-react"
+import { Loader2, Sparkles, Send, Check, X, AlertCircle, MessageSquare, Settings, Store as StoreIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Select,
@@ -707,13 +707,35 @@ export default function NaverAIReplyPage() {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">매장 선택</label>
             <Select value={selectedStoreId} onValueChange={setSelectedStoreId}>
-              <SelectTrigger className="h-10 border-gray-300">
-                <SelectValue placeholder="매장을 선택하세요" />
+              <SelectTrigger className="h-11 border-gray-300">
+                {selectedStoreId && stores.find(s => s.id === selectedStoreId) ? (
+                  <div className="flex items-center gap-2">
+                    {(stores.find(s => s.id === selectedStoreId) as any)?.thumbnail ? (
+                      <img src={(stores.find(s => s.id === selectedStoreId) as any).thumbnail} alt="" className="w-7 h-7 rounded-md object-cover flex-shrink-0" />
+                    ) : (
+                      <div className="w-7 h-7 rounded-md bg-neutral-100 flex items-center justify-center flex-shrink-0">
+                        <StoreIcon className="w-4 h-4 text-neutral-400" />
+                      </div>
+                    )}
+                    <span className="text-sm truncate">{stores.find(s => s.id === selectedStoreId)?.store_name || (stores.find(s => s.id === selectedStoreId) as any)?.name || '매장'}</span>
+                  </div>
+                ) : (
+                  <SelectValue placeholder="매장을 선택하세요" />
+                )}
               </SelectTrigger>
               <SelectContent>
                 {stores.map((store) => (
-                  <SelectItem key={store.id} value={store.id}>
-                    {store.store_name || (store as any).name || store.store_name || '매장'}
+                  <SelectItem key={store.id} value={store.id} className="py-2">
+                    <div className="flex items-center gap-2">
+                      {(store as any).thumbnail ? (
+                        <img src={(store as any).thumbnail} alt="" className="w-7 h-7 rounded-md object-cover flex-shrink-0" />
+                      ) : (
+                        <div className="w-7 h-7 rounded-md bg-neutral-100 flex items-center justify-center flex-shrink-0">
+                          <StoreIcon className="w-4 h-4 text-neutral-400" />
+                        </div>
+                      )}
+                      <span className="truncate">{store.store_name || (store as any).name || '매장'}</span>
+                    </div>
                   </SelectItem>
                 ))}
               </SelectContent>

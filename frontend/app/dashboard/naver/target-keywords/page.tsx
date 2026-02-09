@@ -13,7 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/components/ui/use-toast"
-import { Loader2, Search, Target, TrendingUp, Plus, X, AlertCircle, CheckCircle2, Info, History, Calendar, Eye, ChevronDown, ChevronUp } from "lucide-react"
+import { Loader2, Search, Target, TrendingUp, Plus, X, AlertCircle, CheckCircle2, Info, History, Calendar, Eye, ChevronDown, ChevronUp, Store as StoreIcon } from "lucide-react"
 import { api } from "@/lib/config"
 import { notifyCreditUsed } from "@/lib/credit-utils"
 import {
@@ -40,6 +40,8 @@ interface RegisteredStore {
   platform: string
   place_id?: string
   address?: string
+  thumbnail?: string
+  category?: string
   status: string
 }
 
@@ -855,12 +857,34 @@ export default function TargetKeywordsPage() {
             </Label>
             <Select value={selectedStore} onValueChange={setSelectedStore}>
               <SelectTrigger id="store-select" className="h-14 md:h-16 text-base md:text-lg border-2 border-neutral-300 rounded-xl focus:border-orange-500 focus:ring-4 focus:ring-orange-500/20 transition-all duration-200">
-                <SelectValue placeholder="분석할 매장을 선택하세요" />
+                {selectedStore && registeredStores.find(s => s.id === selectedStore) ? (
+                  <div className="flex items-center gap-3">
+                    {registeredStores.find(s => s.id === selectedStore)?.thumbnail ? (
+                      <img src={registeredStores.find(s => s.id === selectedStore)!.thumbnail} alt="" className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
+                    ) : (
+                      <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <StoreIcon className="h-5 w-5 text-orange-600" />
+                      </div>
+                    )}
+                    <span className="truncate">{registeredStores.find(s => s.id === selectedStore)?.name}</span>
+                  </div>
+                ) : (
+                  <SelectValue placeholder="분석할 매장을 선택하세요" />
+                )}
               </SelectTrigger>
               <SelectContent>
                 {registeredStores.map((store) => (
-                  <SelectItem key={store.id} value={store.id}>
-                    {store.name}
+                  <SelectItem key={store.id} value={store.id} className="py-2.5">
+                    <div className="flex items-center gap-2.5">
+                      {store.thumbnail ? (
+                        <img src={store.thumbnail} alt="" className="w-8 h-8 rounded-lg object-cover flex-shrink-0" />
+                      ) : (
+                        <div className="w-8 h-8 rounded-lg bg-neutral-100 flex items-center justify-center flex-shrink-0">
+                          <StoreIcon className="w-4 h-4 text-neutral-400" />
+                        </div>
+                      )}
+                      <span className="truncate">{store.name}</span>
+                    </div>
                   </SelectItem>
                 ))}
               </SelectContent>

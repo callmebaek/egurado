@@ -41,6 +41,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { useState, useEffect, useMemo } from "react"
 import { api } from "@/lib/config"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
@@ -1051,18 +1058,40 @@ export default function MetricsTrackerPage() {
                   <StoreIcon className="w-3.5 h-3.5 text-[#405D99]" />
                   매장 선택
                 </label>
-                <select
-                  value={selectedStoreId}
-                  onChange={(e) => setSelectedStoreId(e.target.value)}
-                  className="w-full h-11 px-3 border-2 border-neutral-300 rounded-button focus:outline-none focus:ring-2 focus:ring-[#405D99] focus:border-[#405D99] transition-all bg-white text-sm font-medium"
-                >
-                  <option value="">매장을 선택하세요</option>
-                  {stores.map((store) => (
-                    <option key={store.id} value={store.id}>
-                      {store.store_name || store.name}
-                    </option>
-                  ))}
-                </select>
+                <Select value={selectedStoreId} onValueChange={setSelectedStoreId}>
+                  <SelectTrigger className="w-full h-12 border-2 border-neutral-300 rounded-button focus:ring-2 focus:ring-[#405D99] focus:border-[#405D99] transition-all bg-white text-sm font-medium">
+                    {selectedStoreId && stores.find(s => s.id === selectedStoreId) ? (
+                      <div className="flex items-center gap-2">
+                        {stores.find(s => s.id === selectedStoreId)?.thumbnail ? (
+                          <img src={stores.find(s => s.id === selectedStoreId)!.thumbnail} alt="" className="w-7 h-7 rounded-md object-cover flex-shrink-0" />
+                        ) : (
+                          <div className="w-7 h-7 rounded-md bg-neutral-100 flex items-center justify-center flex-shrink-0">
+                            <StoreIcon className="w-4 h-4 text-neutral-400" />
+                          </div>
+                        )}
+                        <span className="truncate">{stores.find(s => s.id === selectedStoreId)?.store_name || stores.find(s => s.id === selectedStoreId)?.name}</span>
+                      </div>
+                    ) : (
+                      <SelectValue placeholder="매장을 선택하세요" />
+                    )}
+                  </SelectTrigger>
+                  <SelectContent>
+                    {stores.map((store) => (
+                      <SelectItem key={store.id} value={store.id} className="py-2">
+                        <div className="flex items-center gap-2">
+                          {store.thumbnail ? (
+                            <img src={store.thumbnail} alt="" className="w-7 h-7 rounded-md object-cover flex-shrink-0" />
+                          ) : (
+                            <div className="w-7 h-7 rounded-md bg-neutral-100 flex items-center justify-center flex-shrink-0">
+                              <StoreIcon className="w-4 h-4 text-neutral-400" />
+                            </div>
+                          )}
+                          <span className="truncate">{store.store_name || store.name}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* 키워드 입력 */}

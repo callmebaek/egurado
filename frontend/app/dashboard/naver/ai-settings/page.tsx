@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useStores } from "@/lib/hooks/useStores"
 import { EmptyStoreMessage } from "@/components/EmptyStoreMessage"
-import { Loader2, Save, RotateCcw, Info, Settings, Sparkles, MapPin, Sliders, FileText, ToggleLeft, MessageSquare, Badge as BadgeIcon } from "lucide-react"
+import { Loader2, Save, RotateCcw, Info, Settings, Sparkles, MapPin, Sliders, FileText, ToggleLeft, MessageSquare, Badge as BadgeIcon, Store as StoreIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -195,12 +195,34 @@ export default function AISettingsPage() {
             </Label>
             <Select value={selectedStoreId} onValueChange={setSelectedStoreId}>
               <SelectTrigger className="h-12 md:h-14 text-base border-2 border-emerald-100 focus:border-teal-400 focus:ring-4 focus:ring-teal-100 rounded-xl transition-all">
-                <SelectValue placeholder="AI 답글 설정을 적용할 매장을 선택하세요" />
+                {selectedStoreId && stores.find(s => s.id === selectedStoreId) ? (
+                  <div className="flex items-center gap-2.5">
+                    {(stores.find(s => s.id === selectedStoreId) as any)?.thumbnail ? (
+                      <img src={(stores.find(s => s.id === selectedStoreId) as any).thumbnail} alt="" className="w-8 h-8 rounded-lg object-cover flex-shrink-0" />
+                    ) : (
+                      <div className="w-8 h-8 rounded-lg bg-neutral-100 flex items-center justify-center flex-shrink-0">
+                        <StoreIcon className="w-4 h-4 text-neutral-400" />
+                      </div>
+                    )}
+                    <span className="truncate">{stores.find(s => s.id === selectedStoreId)?.store_name || (stores.find(s => s.id === selectedStoreId) as any)?.name || '매장'}</span>
+                  </div>
+                ) : (
+                  <SelectValue placeholder="AI 답글 설정을 적용할 매장을 선택하세요" />
+                )}
               </SelectTrigger>
               <SelectContent>
                 {stores.map((store) => (
-                  <SelectItem key={store.id} value={store.id}>
-                    {store.store_name || (store as any).name || '매장'}
+                  <SelectItem key={store.id} value={store.id} className="py-2.5">
+                    <div className="flex items-center gap-2.5">
+                      {(store as any).thumbnail ? (
+                        <img src={(store as any).thumbnail} alt="" className="w-8 h-8 rounded-lg object-cover flex-shrink-0" />
+                      ) : (
+                        <div className="w-8 h-8 rounded-lg bg-neutral-100 flex items-center justify-center flex-shrink-0">
+                          <StoreIcon className="w-4 h-4 text-neutral-400" />
+                        </div>
+                      )}
+                      <span className="truncate">{store.store_name || (store as any).name || '매장'}</span>
+                    </div>
                   </SelectItem>
                 ))}
               </SelectContent>

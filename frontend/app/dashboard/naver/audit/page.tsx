@@ -1428,34 +1428,48 @@ export default function NaverAuditPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {stores.map((store) => (
-            <Card key={store.id} className="rounded-card border-neutral-300 shadow-card hover:shadow-lg transition-all">
-              <CardContent className="p-3 md:p-4">
-                <div className="flex items-start gap-2.5 md:gap-3 mb-3 md:mb-4">
+            <Card
+              key={store.id}
+              className="border-neutral-200 hover:border-primary-300 hover:shadow-lg transition-all cursor-pointer group"
+              onClick={() => !isAnalyzing && handleStoreSelect(store)}
+            >
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-start gap-3">
                   {store.thumbnail ? (
-                    <img 
-                      src={store.thumbnail} 
-                      alt={store.name} 
-                      className="w-14 h-14 md:w-16 md:h-16 rounded-lg object-cover flex-shrink-0" 
-                    />
+                    <div className="relative w-12 h-12 flex-shrink-0 rounded-lg overflow-hidden">
+                      <img
+                        src={store.thumbnail}
+                        alt={store.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
                   ) : (
-                    <div className="w-14 h-14 md:w-16 md:h-16 rounded-lg bg-neutral-200 flex items-center justify-center flex-shrink-0">
-                      <Store className="w-7 h-7 md:w-8 md:h-8 text-neutral-500" />
+                    <div className="w-12 h-12 flex-shrink-0 rounded-lg bg-neutral-100 flex items-center justify-center">
+                      <Store className="w-6 h-6 text-neutral-400" />
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-sm md:text-base text-neutral-900 mb-1 md:mb-1.5 line-clamp-2 break-words leading-snug">
+                    <h3 className="text-sm font-bold text-neutral-900 line-clamp-2 break-words">
                       {store.name}
                     </h3>
-                    <p className="text-xs md:text-sm text-neutral-600 line-clamp-1 mb-0.5">{store.category}</p>
-                    <p className="text-[11px] md:text-xs text-neutral-500 line-clamp-2 break-words">{store.address}</p>
+                    <p className="text-xs text-neutral-500 mt-1">
+                      {store.category}
+                    </p>
                   </div>
                 </div>
+                <p className="text-xs text-neutral-600 line-clamp-1">
+                  {store.address}
+                </p>
                 <div className="flex flex-col gap-2">
                   <Button
-                    className="w-full font-semibold h-10 md:h-11 text-xs md:text-sm"
-                    onClick={() => handleStoreSelect(store)}
+                    size="sm"
+                    className="w-full group-hover:bg-primary-600"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleStoreSelect(store)
+                    }}
                     disabled={isAnalyzing}
                   >
                     {isAnalyzing && selectedStore?.id === store.id ? (
@@ -1469,8 +1483,12 @@ export default function NaverAuditPage() {
                   </Button>
                   <Button
                     variant="outline"
-                    className="w-full font-semibold h-10 md:h-11 text-xs md:text-sm border-neutral-300 hover:border-primary-400"
-                    onClick={() => handleViewHistory(store)}
+                    size="sm"
+                    className="w-full border-neutral-300 hover:border-primary-400"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleViewHistory(store)
+                    }}
                     disabled={isAnalyzing}
                   >
                     📜 과거 진단 보기

@@ -21,12 +21,19 @@ import {
   Filter,
   RefreshCw,
   Sparkles,
-  Store,
+  Store as StoreIcon,
   FileText,
   ChevronDown,
   ChevronUp,
   Image as ImageIcon
 } from "lucide-react"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 // ============================================
 // 메모이제이션된 리뷰 아이템 컴포넌트 (성능 최적화)
@@ -169,6 +176,8 @@ interface Store {
   name: string
   platform: string
   naver_place_id?: string
+  thumbnail?: string
+  category?: string
 }
 
 interface ReviewStats {
@@ -1030,18 +1039,40 @@ export default function ReviewManagementPage() {
             <CardTitle className="text-base font-semibold text-gray-900">매장 선택</CardTitle>
           </CardHeader>
           <CardContent>
-            <select
-              className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
-              value={selectedStoreId}
-              onChange={(e) => setSelectedStoreId(e.target.value)}
-            >
-              <option value="">매장을 선택하세요</option>
-              {stores.map((store) => (
-                <option key={store.id} value={store.id}>
-                  {store.name}
-                </option>
-              ))}
-            </select>
+            <Select value={selectedStoreId} onValueChange={setSelectedStoreId}>
+              <SelectTrigger className="h-11 border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all">
+                {selectedStoreId && stores.find(s => s.id === selectedStoreId) ? (
+                  <div className="flex items-center gap-2">
+                    {stores.find(s => s.id === selectedStoreId)?.thumbnail ? (
+                      <img src={stores.find(s => s.id === selectedStoreId)!.thumbnail} alt="" className="w-7 h-7 rounded-md object-cover flex-shrink-0" />
+                    ) : (
+                      <div className="w-7 h-7 rounded-md bg-neutral-100 flex items-center justify-center flex-shrink-0">
+                        <StoreIcon className="w-4 h-4 text-neutral-400" />
+                      </div>
+                    )}
+                    <span className="text-sm truncate">{stores.find(s => s.id === selectedStoreId)?.name}</span>
+                  </div>
+                ) : (
+                  <SelectValue placeholder="매장을 선택하세요" />
+                )}
+              </SelectTrigger>
+              <SelectContent>
+                {stores.map((store) => (
+                  <SelectItem key={store.id} value={store.id} className="py-2">
+                    <div className="flex items-center gap-2">
+                      {store.thumbnail ? (
+                        <img src={store.thumbnail} alt="" className="w-7 h-7 rounded-md object-cover flex-shrink-0" />
+                      ) : (
+                        <div className="w-7 h-7 rounded-md bg-neutral-100 flex items-center justify-center flex-shrink-0">
+                          <StoreIcon className="w-4 h-4 text-neutral-400" />
+                        </div>
+                      )}
+                      <span className="truncate">{store.name}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </CardContent>
         </Card>
 
@@ -1165,7 +1196,7 @@ export default function ReviewManagementPage() {
                         }}
                       />
                     ) : (
-                      <Store className="w-8 h-8 md:w-10 md:h-10 text-gray-400" />
+                      <StoreIcon className="w-8 h-8 md:w-10 md:h-10 text-gray-400" />
                     )
                   })()}
                 </div>

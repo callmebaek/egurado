@@ -8,7 +8,7 @@
 import { useStores } from "@/lib/hooks/useStores"
 import { useAuth } from "@/lib/auth-context"
 import { EmptyStoreMessage } from "@/components/EmptyStoreMessage"
-import { Loader2, TrendingUp, TrendingDown, Search, Minus, MapPin, Star, X, LineChart as LineChartIcon, Plus } from "lucide-react"
+import { Loader2, TrendingUp, TrendingDown, Search, Minus, MapPin, Star, X, LineChart as LineChartIcon, Plus, Store as StoreIcon } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { useState, useEffect } from "react"
 import { supabase } from "@/lib/supabase"
@@ -29,6 +29,8 @@ interface Store {
   name: string
   place_id: string
   platform: string
+  thumbnail?: string
+  category?: string
 }
 
 interface KeywordData {
@@ -678,17 +680,43 @@ export default function NaverRankPage() {
                       id="store-select"
                       className="h-14 md:h-16 border-2 border-neutral-300 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all duration-200"
                     >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <MapPin className="h-5 w-5 text-blue-600" />
+                      {selectedStoreId && stores.find(s => s.id === selectedStoreId) ? (
+                        <div className="flex items-center gap-3">
+                          {stores.find(s => s.id === selectedStoreId)?.thumbnail ? (
+                            <img
+                              src={stores.find(s => s.id === selectedStoreId)!.thumbnail}
+                              alt=""
+                              className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                              <StoreIcon className="h-5 w-5 text-blue-600" />
+                            </div>
+                          )}
+                          <span className="text-base md:text-lg font-medium truncate">{stores.find(s => s.id === selectedStoreId)?.name}</span>
                         </div>
-                        <SelectValue placeholder="매장을 선택하세요" className="text-base md:text-lg" />
-                      </div>
+                      ) : (
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <MapPin className="h-5 w-5 text-blue-600" />
+                          </div>
+                          <SelectValue placeholder="매장을 선택하세요" className="text-base md:text-lg" />
+                        </div>
+                      )}
                     </SelectTrigger>
                     <SelectContent>
                       {stores.map((store) => (
-                        <SelectItem key={store.id} value={store.id} className="text-base">
-                          {store.name}
+                        <SelectItem key={store.id} value={store.id} className="text-base py-2.5">
+                          <div className="flex items-center gap-2.5">
+                            {store.thumbnail ? (
+                              <img src={store.thumbnail} alt="" className="w-8 h-8 rounded-lg object-cover flex-shrink-0" />
+                            ) : (
+                              <div className="w-8 h-8 rounded-lg bg-neutral-100 flex items-center justify-center flex-shrink-0">
+                                <StoreIcon className="w-4 h-4 text-neutral-400" />
+                              </div>
+                            )}
+                            <span className="truncate">{store.name}</span>
+                          </div>
                         </SelectItem>
                       ))}
                     </SelectContent>

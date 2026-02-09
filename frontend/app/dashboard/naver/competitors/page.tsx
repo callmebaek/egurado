@@ -623,29 +623,44 @@ export default function CompetitorsPage() {
                 {stores.map((store) => (
                   <Card
                     key={store.id}
-                    className="cursor-pointer transition-all hover:shadow-lg hover:-translate-y-1 border-2 border-neutral-200 hover:border-primary"
+                    className="border-neutral-200 hover:border-primary-300 hover:shadow-lg transition-all cursor-pointer group"
                     onClick={() => handleStoreSelect(store)}
                   >
-                    {store.thumbnail ? (
-                      <div className="relative w-full pt-[100%]">
-                        <img
-                          src={store.thumbnail}
-                          alt={store.store_name}
-                          className="absolute top-0 left-0 w-full h-full object-cover rounded-t-lg"
-                        />
-                      </div>
-                    ) : (
-                      <div className="relative w-full pt-[100%] bg-neutral-100">
-                        <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center">
-                          <Store className="w-16 h-16 text-primary" />
+                    <CardContent className="p-4 space-y-3">
+                      <div className="flex items-start gap-3">
+                        {store.thumbnail ? (
+                          <div className="relative w-12 h-12 flex-shrink-0 rounded-lg overflow-hidden">
+                            <img
+                              src={store.thumbnail}
+                              alt={store.store_name || '매장'}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        ) : (
+                          <div className="w-12 h-12 flex-shrink-0 rounded-lg bg-neutral-100 flex items-center justify-center">
+                            <Store className="w-6 h-6 text-neutral-400" />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-sm font-bold text-neutral-900 line-clamp-2 break-words">
+                            {store.store_name || "매장명 없음"}
+                          </h3>
+                          <p className="text-xs text-neutral-500 mt-1">
+                            {store.category || "카테고리 없음"}
+                          </p>
                         </div>
                       </div>
-                    )}
-                    <CardContent className="p-4 text-center">
-                      <h3 className="font-semibold text-lg mb-1 truncate">{store.store_name || "매장명 없음"}</h3>
-                      <p className="text-sm text-neutral-600 truncate mb-1">{store.category || "카테고리 없음"}</p>
-                      <p className="text-xs text-neutral-500 line-clamp-2">{store.address || "주소 없음"}</p>
-                      <Button className="w-full mt-3" size="sm">
+                      <p className="text-xs text-neutral-600 line-clamp-1">
+                        {store.address || "주소 없음"}
+                      </p>
+                      <Button
+                        size="sm"
+                        className="w-full group-hover:bg-primary-600"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleStoreSelect(store)
+                        }}
+                      >
                         <Target className="w-4 h-4 mr-2" />
                         이 매장 선택
                       </Button>

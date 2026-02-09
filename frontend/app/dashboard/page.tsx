@@ -319,119 +319,127 @@ function SortableStoreTrackerCard({
               const tracker = visibleTrackers[index]
               
               if (tracker) {
-                // 실제 키워드가 있는 경우
+                // 실제 키워드가 있는 경우 - 키워드순위추적 페이지 스타일 2단 구조
                 return (
                   <div
                     key={tracker.id}
-                    className="bg-white rounded-button border border-neutral-200 p-2 md:p-3 flex items-center justify-between gap-2 min-h-[64px] md:min-h-[72px] shadow-sm hover:shadow-md transition-shadow duration-200 w-full overflow-hidden"
+                    className="bg-white rounded-button border border-neutral-200 p-2.5 md:p-3 shadow-sm hover:shadow-md transition-shadow duration-200 w-full overflow-hidden"
                   >
-                    <div className="flex-1 min-w-0 overflow-hidden">
-                      <div className="flex items-center gap-1.5 mb-1 w-full min-w-0">
-                        <span className={`font-bold text-sm md:text-base ${storeColor.text} truncate block`} style={{ wordBreak: 'break-word' }}>
-                          {tracker.keyword}
-                        </span>
-                        <span className="text-xs text-neutral-600 font-medium px-1.5 py-0.5 bg-neutral-100 rounded-full hidden md:inline">
-                          {tracker.update_frequency === 'daily_once' ? '1회/일' : 
-                           tracker.update_frequency === 'daily_twice' ? '2회/일' : '3회/일'}
-                        </span>
-                      </div>
-                      {/* 수집 시간 */}
-                      <div className="flex items-center gap-1 text-xs text-neutral-500">
-                        <Clock className="w-3 h-3 flex-shrink-0" />
-                        {isRefreshing.has(tracker.id) ? (
-                          <span className="flex items-center gap-1 text-emerald-600 font-medium">
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                            수집 중...
+                    {/* 1단: 키워드명 + 수집시간 | 순위 + 수집버튼 */}
+                    <div className="flex items-center justify-between gap-2 w-full min-w-0 mb-2">
+                      <div className="flex-1 min-w-0 overflow-hidden">
+                        <div className="flex items-center gap-1.5 mb-0.5 w-full min-w-0">
+                          <span className={`font-bold text-sm md:text-base ${storeColor.text} truncate block`}>
+                            {tracker.keyword}
                           </span>
-                        ) : tracker.last_collected_at ? (
-                          <div className="flex flex-col leading-tight md:flex-row md:gap-1">
-                            <span>
-                              {new Date(tracker.last_collected_at).toLocaleString('ko-KR', {
-                                month: 'short',
-                                day: 'numeric',
-                              })}
+                          <span className="text-xs text-neutral-600 font-medium px-1.5 py-0.5 bg-neutral-100 rounded-full hidden md:inline flex-shrink-0">
+                            {tracker.update_frequency === 'daily_once' ? '1회/일' : 
+                             tracker.update_frequency === 'daily_twice' ? '2회/일' : '3회/일'}
+                          </span>
+                        </div>
+                        {/* 수집 시간 */}
+                        <div className="flex items-center gap-1 text-xs text-neutral-500">
+                          <Clock className="w-3 h-3 flex-shrink-0" />
+                          {isRefreshing.has(tracker.id) ? (
+                            <span className="flex items-center gap-1 text-emerald-600 font-medium">
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                              수집 중...
                             </span>
-                            <span>
-                              {new Date(tracker.last_collected_at).toLocaleString('ko-KR', {
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })}
-                            </span>
+                          ) : tracker.last_collected_at ? (
+                            <div className="flex flex-col leading-tight md:flex-row md:gap-1">
+                              <span>
+                                {new Date(tracker.last_collected_at).toLocaleString('ko-KR', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                })}
+                              </span>
+                              <span>
+                                {new Date(tracker.last_collected_at).toLocaleString('ko-KR', {
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </span>
+                            </div>
+                          ) : (
+                            <span>수집 대기중</span>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {/* 순위 + 수집버튼 */}
+                      <div className="flex items-center gap-1.5 md:gap-2 flex-shrink-0">
+                        {isRefreshing.has(tracker.id) ? (
+                          <div className="w-14 h-12 flex items-center justify-center">
+                            <Loader2 className="w-5 h-5 animate-spin text-emerald-600" />
+                          </div>
+                        ) : tracker.latest_rank ? (
+                          <div className="flex items-center gap-1">
+                            {tracker.latest_rank >= 1 && tracker.latest_rank <= 5 && (
+                              <Sparkles className="w-4 h-4 text-brand-red animate-pulse flex-shrink-0" />
+                            )}
+                            <div className="text-right">
+                              <div className="flex items-baseline gap-0.5">
+                                <span className="text-2xl md:text-3xl font-bold text-emerald-600 leading-tight">
+                                  {tracker.latest_rank}
+                                </span>
+                                <span className="text-xs md:text-sm text-neutral-600 font-medium">위</span>
+                              </div>
+                              {tracker.rank_change !== undefined && tracker.rank_change !== null && tracker.rank_change !== 0 && (
+                                <div className={`text-xs font-bold flex items-center justify-end gap-0.5 mt-0.5 ${
+                                  tracker.rank_change > 0 ? 'text-success' : 'text-error'
+                                }`}>
+                                  {tracker.rank_change > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                                  {tracker.rank_change > 0 ? '↑' : '↓'}{Math.abs(tracker.rank_change)}
+                                </div>
+                              )}
+                            </div>
                           </div>
                         ) : (
-                          <span>수집 대기중</span>
+                          <div className="text-right">
+                            <span className="text-xs md:text-sm text-neutral-500 font-medium whitespace-nowrap">300위 밖</span>
+                          </div>
                         )}
+
+                        {/* 수집 버튼 */}
+                        <button
+                          onClick={() => onRefreshTracker(tracker.id)}
+                          disabled={isRefreshing.has(tracker.id)}
+                          className={`p-1.5 md:p-2 rounded-button transition-all duration-200 flex-shrink-0 min-w-[36px] min-h-[36px] md:min-w-[40px] md:min-h-[40px] flex items-center justify-center ${
+                            isRefreshing.has(tracker.id)
+                              ? 'bg-emerald-200 text-emerald-600 cursor-not-allowed'
+                              : 'bg-emerald-100 text-emerald-600 hover:bg-emerald-200 hover:shadow-sm active:scale-95'
+                          }`}
+                          title="이 키워드 순위를 지금 수집합니다"
+                        >
+                          {isRefreshing.has(tracker.id) ? (
+                            <Loader2 className="w-3.5 h-3.5 md:w-4 md:h-4 animate-spin" />
+                          ) : (
+                            <RefreshCw className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                          )}
+                        </button>
                       </div>
                     </div>
-                    
-                    {/* 순위 - 모바일 최적화 */}
-                    <div className="flex items-center gap-2">
-                      {isRefreshing.has(tracker.id) ? (
-                        <div className="w-14 h-12 flex items-center justify-center">
-                          <Loader2 className="w-5 h-5 animate-spin text-emerald-600" />
-                        </div>
-                      ) : tracker.latest_rank ? (
-                        <div className="flex items-center gap-1 md:gap-2">
-                          {/* 1~5위 폭죽 뱃지 */}
-                          {tracker.latest_rank >= 1 && tracker.latest_rank <= 5 && (
-                            <Sparkles className="w-4 h-4 md:w-5 md:h-5 text-brand-red animate-pulse flex-shrink-0" />
-                          )}
-                          <div className="text-right">
-                            <div className="flex items-baseline gap-0.5">
-                              <span className="text-2xl md:text-3xl font-bold text-emerald-600 leading-tight">
-                                {tracker.latest_rank}
-                              </span>
-                              <span className="text-xs md:text-sm text-neutral-600 font-medium">위</span>
-                            </div>
-                            {tracker.rank_change !== undefined && tracker.rank_change !== null && tracker.rank_change !== 0 && (
-                              <div className={`text-xs font-bold flex items-center justify-end gap-0.5 mt-0.5 ${
-                                tracker.rank_change > 0 ? 'text-success' : 'text-error'
-                              }`}>
-                                {tracker.rank_change > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                                {tracker.rank_change > 0 ? '↑' : '↓'}{Math.abs(tracker.rank_change)}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="text-right">
-                          <span className="text-xs md:text-sm text-neutral-500 font-medium whitespace-nowrap">300위 밖</span>
-                        </div>
-                      )}
-                      
-                    {/* 지표 + 경쟁매장 + 새로고침 버튼 */}
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => onViewMetrics(tracker)}
-                        className="p-1.5 md:p-2 rounded-button bg-primary-100 text-primary-600 hover:bg-primary-200 hover:shadow-sm active:scale-95 transition-all duration-200 min-w-[36px] min-h-[36px] md:min-w-[40px] md:min-h-[40px] flex items-center justify-center"
-                        title="지표 보기"
-                      >
-                        <Eye className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                      </button>
-                      <button
-                        onClick={() => onViewCompetitors(tracker)}
-                        className="p-1.5 md:p-2 rounded-button bg-amber-100 text-amber-700 hover:bg-amber-200 hover:shadow-sm active:scale-95 transition-all duration-200 min-w-[36px] min-h-[36px] md:min-w-[40px] md:min-h-[40px] flex items-center justify-center"
-                        title="경쟁매장 보기"
-                      >
-                        <Users className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                      </button>
-                      <button
-                        onClick={() => onRefreshTracker(tracker.id)}
-                        disabled={isRefreshing.has(tracker.id)}
-                        className={`p-1.5 md:p-2 rounded-button transition-all duration-200 flex-shrink-0 min-w-[36px] min-h-[36px] md:min-w-[40px] md:min-h-[40px] flex items-center justify-center ${
-                          isRefreshing.has(tracker.id)
-                            ? 'bg-emerald-200 text-emerald-600 cursor-not-allowed'
-                            : 'bg-emerald-100 text-emerald-600 hover:bg-emerald-200 hover:shadow-sm active:scale-95'
-                        }`}
-                        title="이 키워드 순위를 지금 수집합니다"
-                      >
-                        {isRefreshing.has(tracker.id) ? (
-                          <Loader2 className="w-3.5 h-3.5 md:w-4 md:h-4 animate-spin" />
-                        ) : (
-                          <RefreshCw className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                        )}
-                      </button>
-                    </div>
+
+                    {/* 2단: 액션 버튼 (지표 + 경쟁매장) */}
+                    <div className="pt-2 border-t border-neutral-100">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={() => onViewMetrics(tracker)}
+                          className="p-1.5 md:p-2 rounded-button bg-primary-100 text-primary-600 hover:bg-primary-200 hover:shadow-sm active:scale-95 transition-all duration-200 min-w-[36px] min-h-[36px] md:min-w-[40px] md:min-h-[40px] flex items-center justify-center gap-1"
+                          title="지표 보기"
+                        >
+                          <Eye className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                          <span className="hidden md:inline text-xs font-bold">지표</span>
+                        </button>
+                        <button
+                          onClick={() => onViewCompetitors(tracker)}
+                          className="p-1.5 md:p-2 rounded-button bg-amber-100 text-amber-700 hover:bg-amber-200 hover:shadow-sm active:scale-95 transition-all duration-200 min-w-[36px] min-h-[36px] md:min-w-[40px] md:min-h-[40px] flex items-center justify-center gap-1"
+                          title="경쟁매장 보기"
+                        >
+                          <Users className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                          <span className="hidden md:inline text-xs font-bold">경쟁매장</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )
