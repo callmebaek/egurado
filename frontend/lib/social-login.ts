@@ -40,6 +40,14 @@ export const startKakaoLogin = async () => {
   const redirectUri = process.env.NEXT_PUBLIC_KAKAO_REDIRECT_URI || 
                       `${window.location.origin}/auth/callback/kakao`
   
+  // 디버깅: 실제 사용되는 값 확인
+  console.log('=== KAKAO LOGIN DEBUG ===')
+  console.log('KAKAO_JS_KEY:', process.env.NEXT_PUBLIC_KAKAO_JS_KEY)
+  console.log('KAKAO_REDIRECT_URI:', process.env.NEXT_PUBLIC_KAKAO_REDIRECT_URI)
+  console.log('Calculated redirectUri:', redirectUri)
+  console.log('Window origin:', window.location.origin)
+  console.log('========================')
+  
   if (window.Kakao && window.Kakao.Auth) {
     window.Kakao.Auth.authorize({
       redirectUri: redirectUri,

@@ -186,6 +186,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // 카카오 로그인
   const loginWithKakao = async (code: string) => {
+    // 디버깅: 실제 사용되는 값 확인
+    console.log('=== KAKAO API CALL DEBUG ===')
+    console.log('API_URL:', API_URL)
+    console.log('NEXT_PUBLIC_API_URL:', process.env.NEXT_PUBLIC_API_URL)
+    console.log('Full URL:', `${API_URL}/api/v1/auth/kakao`)
+    console.log('Code:', code.substring(0, 50) + '...')
+    console.log('===========================')
+    
     const response = await fetch(`${API_URL}/api/v1/auth/kakao`, {
       method: 'POST',
       headers: {
@@ -196,6 +204,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (!response.ok) {
       const error = await response.json()
+      console.error('=== KAKAO LOGIN ERROR ===')
+      console.error('Status:', response.status)
+      console.error('Error:', error)
+      console.error('========================')
       throw new Error(error.detail || '카카오 로그인에 실패했습니다')
     }
 
