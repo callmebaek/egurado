@@ -5,7 +5,7 @@ import { MetadataRoute } from 'next'
  * SEO 최적화를 위한 URL 구조 정의
  */
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = 'https://egurado.com'
+  const baseUrl = 'https://whiplace.com'
   const currentDate = new Date()
 
   return [
@@ -14,6 +14,18 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: currentDate,
       changeFrequency: 'daily',
       priority: 1.0,
+    },
+    {
+      url: `${baseUrl}/service`,
+      lastModified: currentDate,
+      changeFrequency: 'weekly',
+      priority: 0.9,
+    },
+    {
+      url: `${baseUrl}/pricing`,
+      lastModified: currentDate,
+      changeFrequency: 'weekly',
+      priority: 0.8,
     },
     {
       url: `${baseUrl}/dashboard`,
@@ -40,28 +52,28 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.7,
     },
     {
-      url: `${baseUrl}/dashboard/google/reviews`,
-      lastModified: currentDate,
-      changeFrequency: 'daily',
-      priority: 0.8,
-    },
-    {
-      url: `${baseUrl}/consulting`,
+      url: `${baseUrl}/terms`,
       lastModified: currentDate,
       changeFrequency: 'monthly',
-      priority: 0.6,
+      priority: 0.4,
     },
     {
-      url: `${baseUrl}/about`,
+      url: `${baseUrl}/privacy`,
       lastModified: currentDate,
       changeFrequency: 'monthly',
-      priority: 0.5,
+      priority: 0.4,
     },
     {
-      url: `${baseUrl}/service-intro`,
+      url: `${baseUrl}/refundpolicy`,
       lastModified: currentDate,
       changeFrequency: 'monthly',
-      priority: 0.6,
+      priority: 0.4,
+    },
+    {
+      url: `${baseUrl}/legal`,
+      lastModified: currentDate,
+      changeFrequency: 'monthly',
+      priority: 0.4,
     },
   ]
 }

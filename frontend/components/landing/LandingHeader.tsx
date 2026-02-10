@@ -2,11 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { Menu, X } from 'lucide-react';
 
 export const LandingHeader = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const pathname = usePathname();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -21,6 +23,15 @@ export const LandingHeader = () => {
     if (element) {
       element.scrollIntoView({ behavior: 'smooth' });
       setIsMobileMenuOpen(false);
+    }
+  };
+
+  /** 홈페이지('/')인 경우 스크롤, 다른 페이지에서는 홈으로 이동 후 앵커 */
+  const handleSectionLink = (sectionId: string) => {
+    if (pathname === '/') {
+      scrollToSection(sectionId);
+    } else {
+      window.location.href = `/#${sectionId}`;
     }
   };
 
@@ -47,20 +58,20 @@ export const LandingHeader = () => {
 
             {/* 데스크톱 네비게이션 */}
             <nav className="hidden md:flex items-center gap-1">
-              <button
-                onClick={() => scrollToSection('service-intro')}
+              <Link
+                href="/service"
                 className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-black hover:bg-gray-50 rounded-lg transition-all"
               >
                 서비스 소개
-              </button>
+              </Link>
               <button
-                onClick={() => scrollToSection('pricing')}
+                onClick={() => handleSectionLink('pricing')}
                 className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-black hover:bg-gray-50 rounded-lg transition-all"
               >
                 가격
               </button>
               <button
-                onClick={() => scrollToSection('about')}
+                onClick={() => handleSectionLink('about')}
                 className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-black hover:bg-gray-50 rounded-lg transition-all"
               >
                 About Us
@@ -111,20 +122,21 @@ export const LandingHeader = () => {
           {/* 메뉴 패널 - TopBanner(40px) + Header(56px) = 96px */}
           <div className="absolute top-24 left-4 right-4 bg-white shadow-xl rounded-2xl border border-gray-200 animate-slide-in">
             <nav className="p-4 space-y-1">
-              <button
-                onClick={() => scrollToSection('service-intro')}
+              <Link
+                href="/service"
                 className="block w-full text-left px-4 py-3 text-base font-medium text-gray-700 hover:text-black hover:bg-gray-50 rounded-lg transition-all touch-target-minimum"
+                onClick={() => setIsMobileMenuOpen(false)}
               >
                 서비스 소개
-              </button>
+              </Link>
               <button
-                onClick={() => scrollToSection('pricing')}
+                onClick={() => { handleSectionLink('pricing'); setIsMobileMenuOpen(false); }}
                 className="block w-full text-left px-4 py-3 text-base font-medium text-gray-700 hover:text-black hover:bg-gray-50 rounded-lg transition-all touch-target-minimum"
               >
                 가격
               </button>
               <button
-                onClick={() => scrollToSection('about')}
+                onClick={() => { handleSectionLink('about'); setIsMobileMenuOpen(false); }}
                 className="block w-full text-left px-4 py-3 text-base font-medium text-gray-700 hover:text-black hover:bg-gray-50 rounded-lg transition-all touch-target-minimum"
               >
                 About Us

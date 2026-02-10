@@ -320,3 +320,4 @@ $$;
 GRANT EXECUTE ON FUNCTION generate_coupon_code(INTEGER) TO service_role;
 
 COMMENT ON FUNCTION generate_coupon_code IS '랜덤 쿠폰 코드 생성 (중복 방지)';
+

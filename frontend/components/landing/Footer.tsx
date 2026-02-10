@@ -75,16 +75,12 @@ export const Footer = () => {
             <h4 className="font-bold text-lg mb-4">서비스</h4>
             <ul className="space-y-2 text-sm text-neutral-400">
               <li>
-                <button
-                  onClick={() =>
-                    document
-                      .getElementById('service-intro')
-                      ?.scrollIntoView({ behavior: 'smooth' })
-                  }
+                <Link
+                  href="/service"
                   className="hover:text-white transition-colors"
                 >
                   서비스 소개
-                </button>
+                </Link>
               </li>
               <li>
                 <button
