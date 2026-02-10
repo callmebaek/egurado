@@ -128,7 +128,9 @@ export const TopMenu = memo(function TopMenu({ onMenuClick }: TopMenuProps) {
   const tierConfig = {
     free: { label: '무료', color: 'bg-gray-600' },
     basic: { label: '베이직', color: 'bg-blue-600' },
+    basic_plus: { label: '베이직+', color: 'bg-blue-700' },
     pro: { label: '프로', color: 'bg-purple-600' },
+    custom: { label: '커스텀', color: 'bg-purple-700' },
     god: { label: 'GOD', color: 'bg-gradient-to-r from-yellow-600 to-orange-600' },
   }
   const tierInfo = tierConfig[credits?.tier as keyof typeof tierConfig] || tierConfig.free

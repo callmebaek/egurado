@@ -5,6 +5,7 @@ Subscription Service
 from uuid import UUID
 from typing import Optional, List
 from datetime import datetime, timedelta
+from dateutil.relativedelta import relativedelta
 import logging
 
 from app.core.database import get_supabase_client
@@ -118,10 +119,10 @@ class SubscriptionService:
             
             # 구독 기간 계산 (1개월)
             started_at = datetime.utcnow()
-            expires_at = started_at + timedelta(days=30)
+            expires_at = started_at + relativedelta(months=1)
             
-            # 다음 결제일 계산 (30일 후)
-            next_billing_date = (started_at + timedelta(days=30)).date()
+            # 다음 결제일 계산 (1개월 후)
+            next_billing_date = (started_at + relativedelta(months=1)).date()
             
             subscription_data = {
                 "user_id": str(user_id),

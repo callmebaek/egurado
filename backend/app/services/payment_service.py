@@ -5,6 +5,7 @@ Payment Service
 from uuid import UUID, uuid4
 from typing import Optional, List
 from datetime import datetime, timedelta
+from dateutil.relativedelta import relativedelta
 import logging
 import base64
 import httpx
@@ -390,51 +391,46 @@ class PaymentService:
             is_upgrade = metadata.get("is_upgrade", False)
             
             now = datetime.utcnow()
+            expires_at = now + relativedelta(months=1)
+            next_billing = (now + relativedelta(months=1)).date()
+            
+            # 기존 구독 확인 (모든 상태 포함 - cancelled, expired 포함)
+            existing_sub = self.supabase.table("subscriptions")\
+                .select("*")\
+                .eq("user_id", str(user_id))\
+                .execute()
+            
+            sub_update_data = {
+                "tier": tier,
+                "status": "active",
+                "started_at": now.isoformat(),
+                "updated_at": now.isoformat(),
+                "expires_at": expires_at.isoformat(),
+                "next_billing_date": next_billing.isoformat(),
+                "payment_method": toss_response.get("method", "card"),
+                "auto_renewal": True,
+                "cancelled_at": None,
+                "metadata": {
+                    "payment_id": str(payment["id"]),
+                    "payment_key": request.payment_key,
+                }
+            }
             
             if is_upgrade:
-                # 기존 구독 업데이트 (Tier만 변경, 만료일 유지)
+                sub_update_data["metadata"]["last_upgrade_at"] = now.isoformat()
+                sub_update_data["metadata"]["upgrade_payment_id"] = str(payment["id"])
+            
+            if existing_sub.data:
+                # 기존 구독이 있으면 UPDATE (cancelled/expired 등 모든 상태 포함)
                 self.supabase.table("subscriptions")\
-                    .update({
-                        "tier": tier,
-                        "updated_at": now.isoformat(),
-                        "metadata": {"last_upgrade_at": now.isoformat(), "upgrade_payment_id": str(payment["id"])}
-                    })\
+                    .update(sub_update_data)\
                     .eq("user_id", str(user_id))\
-                    .eq("status", "active")\
                     .execute()
             else:
-                # 기존 활성 구독 취소
+                # 기존 구독이 전혀 없으면 INSERT
+                sub_update_data["user_id"] = str(user_id)
                 self.supabase.table("subscriptions")\
-                    .update({
-                        "status": "cancelled",
-                        "cancelled_at": now.isoformat(),
-                        "updated_at": now.isoformat()
-                    })\
-                    .eq("user_id", str(user_id))\
-                    .eq("status", "active")\
-                    .execute()
-                
-                # 새 구독 생성
-                expires_at = now + timedelta(days=30)
-                next_billing = (now + timedelta(days=30)).date()
-                
-                sub_data = {
-                    "user_id": str(user_id),
-                    "tier": tier,
-                    "status": "active",
-                    "started_at": now.isoformat(),
-                    "expires_at": expires_at.isoformat(),
-                    "payment_method": toss_response.get("method", "card"),
-                    "auto_renewal": True,
-                    "next_billing_date": next_billing.isoformat(),
-                    "metadata": {
-                        "payment_id": str(payment["id"]),
-                        "payment_key": request.payment_key,
-                    }
-                }
-                
-                self.supabase.table("subscriptions")\
-                    .insert(sub_data)\
+                    .insert(sub_update_data)\
                     .execute()
             
             # 5. 프로필 Tier 업데이트
@@ -459,7 +455,7 @@ class PaymentService:
                         "monthly_credits": monthly_credits,
                         "monthly_used": 0,
                         "last_reset_at": now.isoformat(),
-                        "next_reset_at": (now + timedelta(days=30)).isoformat(),
+                        "next_reset_at": (now + relativedelta(months=1)).isoformat(),
                         "updated_at": now.isoformat()
                     })\
                     .eq("user_id", str(user_id))\
@@ -474,7 +470,7 @@ class PaymentService:
                         "manual_credits": 0,
                         "reset_date": now.day,
                         "last_reset_at": now.isoformat(),
-                        "next_reset_at": (now + timedelta(days=30)).isoformat()
+                        "next_reset_at": (now + relativedelta(months=1)).isoformat()
                     })\
                     .execute()
             

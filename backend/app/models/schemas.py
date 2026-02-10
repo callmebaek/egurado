@@ -14,7 +14,7 @@ from uuid import UUID
 class ProfileBase(BaseModel):
     email: EmailStr
     display_name: Optional[str] = None
-    subscription_tier: Literal['free', 'basic', 'pro', 'god'] = 'free'
+    subscription_tier: Literal['free', 'basic', 'basic_plus', 'pro', 'custom', 'god'] = 'free'
 
 
 class ProfileCreate(ProfileBase):
@@ -24,7 +24,7 @@ class ProfileCreate(ProfileBase):
 
 class ProfileUpdate(BaseModel):
     display_name: Optional[str] = None
-    subscription_tier: Optional[Literal['free', 'basic', 'pro', 'god']] = None
+    subscription_tier: Optional[Literal['free', 'basic', 'basic_plus', 'pro', 'custom', 'god']] = None
     phone_number: Optional[str] = None
     profile_image_url: Optional[str] = None
 

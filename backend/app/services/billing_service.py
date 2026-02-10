@@ -3,6 +3,7 @@ Billing Service
 정기결제 및 크레딧 리셋 스케줄러 서비스
 """
 from datetime import datetime, timedelta, date
+from dateutil.relativedelta import relativedelta
 from typing import List, Optional
 import logging
 
@@ -158,8 +159,8 @@ class BillingService:
     async def _renew_subscription(self, user_id: str, sub: dict, tier: str):
         """구독 갱신 (다음 결제일, 만료일, 크레딧 리셋)"""
         now = datetime.utcnow()
-        next_billing = (now + timedelta(days=30)).date()
-        new_expires = now + timedelta(days=30)
+        next_billing = (now + relativedelta(months=1)).date()
+        new_expires = now + relativedelta(months=1)
         
         # 구독 업데이트
         self.supabase.table("subscriptions")\
@@ -195,7 +196,7 @@ class BillingService:
     async def _reset_free_credits(self, user_id: str, sub: dict):
         """Free 티어 크레딧 리셋"""
         now = datetime.utcnow()
-        next_reset = now + timedelta(days=30)
+        next_reset = now + relativedelta(months=1)
         
         self.supabase.table("user_credits")\
             .update({
@@ -209,7 +210,7 @@ class BillingService:
             .execute()
         
         # 다음 결제일 갱신
-        next_billing = (now + timedelta(days=30)).date()
+        next_billing = (now + relativedelta(months=1)).date()
         self.supabase.table("subscriptions")\
             .update({
                 "next_billing_date": next_billing.isoformat(),
@@ -308,7 +309,7 @@ class BillingService:
                         "monthly_credits": 100,
                         "monthly_used": 0,
                         "last_reset_at": now.isoformat(),
-                        "next_reset_at": (now + timedelta(days=30)).isoformat(),
+                        "next_reset_at": (now + relativedelta(months=1)).isoformat(),
                         "updated_at": now.isoformat()
                     })\
                     .eq("user_id", user_id)\

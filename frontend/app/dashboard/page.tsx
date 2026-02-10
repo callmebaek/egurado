@@ -1237,6 +1237,15 @@ export default function DashboardPage() {
       badgeBg: 'bg-emerald-100',
       badgeText: 'text-emerald-700'
     },
+    basic_plus: { 
+      label: '베이직플러스', 
+      color: 'bg-blue-500', 
+      Icon: Star,
+      iconColor: 'text-blue-600',
+      textColor: 'text-blue-700',
+      badgeBg: 'bg-blue-100',
+      badgeText: 'text-blue-700'
+    },
     pro: { 
       label: '프로', 
       color: 'bg-emerald-600', 
@@ -1245,6 +1254,15 @@ export default function DashboardPage() {
       textColor: 'text-emerald-800',
       badgeBg: 'bg-emerald-200',
       badgeText: 'text-emerald-800'
+    },
+    custom: { 
+      label: '커스텀', 
+      color: 'bg-purple-500', 
+      Icon: Gem,
+      iconColor: 'text-purple-600',
+      textColor: 'text-purple-700',
+      badgeBg: 'bg-purple-100',
+      badgeText: 'text-purple-700'
     },
     god: { 
       label: 'GOD', 
@@ -1258,7 +1276,7 @@ export default function DashboardPage() {
   }
 
   const currentTier = profile?.subscription_tier || 'free'
-  const tier = tierInfo[currentTier]
+  const tier = tierInfo[currentTier as keyof typeof tierInfo] || tierInfo.free
 
   // 🆕 크레딧 계산 (실제 Credits API 데이터 우선 사용)
   const totalCredits = credits?.monthly_credits ?? (profile?.total_credits ?? 1000)

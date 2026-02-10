@@ -251,7 +251,9 @@ export default function CreditsPage() {
   const getTierColor = (tier: string) => {
     switch (tier?.toLowerCase()) {
       case 'god': return 'from-yellow-400 to-orange-500'
+      case 'custom': return 'from-purple-500 to-violet-500'
       case 'pro': return 'from-purple-400 to-pink-500'
+      case 'basic_plus': return 'from-blue-500 to-cyan-500'
       case 'basic': return 'from-blue-400 to-indigo-500'
       default: return 'from-gray-400 to-gray-500'
     }
@@ -260,7 +262,9 @@ export default function CreditsPage() {
   const getTierLabel = (tier: string) => {
     switch (tier?.toLowerCase()) {
       case 'god': return 'GOD'
+      case 'custom': return 'CUSTOM'
       case 'pro': return 'PRO'
+      case 'basic_plus': return 'BASIC+'
       case 'basic': return 'BASIC'
       default: return 'FREE'
     }

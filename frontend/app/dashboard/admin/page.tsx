@@ -722,6 +722,7 @@ export default function AdminPage() {
       basic: { label: 'Basic', color: 'bg-blue-500' },
       basic_plus: { label: 'Basic+', color: 'bg-purple-500' },
       pro: { label: 'Pro', color: 'bg-yellow-500' },
+      custom: { label: 'Custom', color: 'bg-violet-500' },
       god: { label: 'GOD', color: 'bg-red-500' }
     }
     const { label, color } = config[tier] || config.free
