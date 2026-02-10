@@ -427,6 +427,9 @@ class CheckoutResponse(BaseModel):
     amount: int
     original_amount: int
     discount_amount: int = 0
+    upgrade_deduction: int = 0  # 업그레이드 시 현재 플랜 차액 공제
+    current_tier: Optional[str] = None  # 현재 플랜 tier
+    current_tier_price: int = 0  # 현재 플랜 가격
     coupon_applied: bool = False
     coupon_code: Optional[str] = None
     customer_key: str

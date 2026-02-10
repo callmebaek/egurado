@@ -84,6 +84,9 @@ interface CheckoutData {
   amount: number
   original_amount: number
   discount_amount: number
+  upgrade_deduction: number
+  current_tier: string | null
+  current_tier_price: number
   coupon_applied: boolean
   coupon_code: string | null
   customer_key: string
@@ -481,10 +484,32 @@ export default function MembershipPage() {
     }).format(amount)
   }
 
+  // 업그레이드 차액 계산
+  const getUpgradeDeduction = () => {
+    if (!selectedPlan || !subscription) return 0
+    if (subscription.tier === 'free') return 0
+    // 현재 플랜의 가격
+    const currentPlanData = PLANS.find(p => p.tier === subscription.tier)
+    if (!currentPlanData || currentPlanData.price === 0) return 0
+    // 업그레이드인 경우에만 차액 적용
+    if (isUpgrade(selectedPlan.tier)) {
+      return currentPlanData.price
+    }
+    return 0
+  }
+
   // 결제 금액 계산
   const getPaymentAmount = () => {
     if (!selectedPlan) return 0
     let amount = selectedPlan.price
+    
+    // 업그레이드 차액 적용
+    const deduction = getUpgradeDeduction()
+    if (deduction > 0) {
+      amount = Math.max(0, amount - deduction)
+    }
+    
+    // 쿠폰 할인 적용
     if (couponResult?.valid && couponResult.discount_value) {
       if (couponResult.discount_type === 'percentage') {
         amount = Math.max(0, amount - Math.floor(amount * couponResult.discount_value / 100))
@@ -993,16 +1018,40 @@ export default function MembershipPage() {
                 <span className="text-neutral-600">{selectedPlan.name} 월 구독료</span>
                 <span className="font-medium">{formatPrice(selectedPlan.price)}</span>
               </div>
+              {getUpgradeDeduction() > 0 && (
+                <div className="flex justify-between items-center text-orange-600">
+                  <span className="flex items-center gap-1">
+                    <TrendingUp className="w-4 h-4" />
+                    현재 플랜 ({currentPlan.name}) 차액 공제
+                  </span>
+                  <span className="font-medium">-{formatPrice(getUpgradeDeduction())}</span>
+                </div>
+              )}
               {couponResult?.valid && (
                 <div className="flex justify-between items-center text-green-600">
-                  <span>쿠폰 할인 ({couponResult.discount_value}{couponResult.discount_type === 'percentage' ? '%' : '원'})</span>
-                  <span className="font-medium">-{formatPrice(selectedPlan.price - finalAmount)}</span>
+                  <span className="flex items-center gap-1">
+                    <BadgePercent className="w-4 h-4" />
+                    쿠폰 할인 ({couponResult.discount_value}{couponResult.discount_type === 'percentage' ? '%' : '원'})
+                  </span>
+                  <span className="font-medium">
+                    -{formatPrice(
+                      couponResult.discount_type === 'percentage'
+                        ? Math.floor((selectedPlan.price - getUpgradeDeduction()) * couponResult.discount_value / 100)
+                        : Math.min(couponResult.discount_value, selectedPlan.price - getUpgradeDeduction())
+                    )}
+                  </span>
                 </div>
               )}
               <div className="border-t-2 border-gray-200 pt-3 flex justify-between items-center">
-                <span className="text-lg font-bold text-neutral-900">결제 금액</span>
+                <span className="text-lg font-bold text-neutral-900">최종 결제 금액</span>
                 <span className="text-2xl font-extrabold text-blue-600">{formatPrice(finalAmount)}</span>
               </div>
+              {getUpgradeDeduction() > 0 && (
+                <p className="text-xs text-orange-600 bg-orange-50 p-2 rounded-lg">
+                  💡 업그레이드 시 현재 플랜({currentPlan.name}, {formatPrice(currentPlan.price)}/월)의 구독료가 차감됩니다. 
+                  다음 결제일부터는 {selectedPlan.name} 플랜의 정상 가격({formatPrice(selectedPlan.price)}/월)이 청구됩니다.
+                </p>
+              )}
               <p className="text-xs text-neutral-500">* 매월 자동 결제됩니다. 언제든 취소 가능합니다.</p>
             </div>
           </Card>

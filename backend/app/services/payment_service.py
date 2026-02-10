@@ -191,6 +191,9 @@ class PaymentService:
                 .limit(1)\
                 .execute()
             
+            current_tier_name = None
+            current_tier_price = 0
+            
             if current_sub.data:
                 current = current_sub.data[0]
                 current_tier = current.get("tier", "free")
@@ -198,16 +201,10 @@ class PaymentService:
                 if get_tier_order(current_tier) > 0 and get_tier_order(tier) > get_tier_order(current_tier):
                     is_upgrade = True
                     current_price = get_tier_price(current_tier)
-                    
-                    # 남은 기간 비율 계산
-                    expires_at = current.get("expires_at")
-                    if expires_at:
-                        expires_dt = datetime.fromisoformat(expires_at.replace("Z", "+00:00"))
-                        now = datetime.utcnow().replace(tzinfo=expires_dt.tzinfo)
-                        remaining_days = max(0, (expires_dt - now).days)
-                        total_days = 30
-                        remaining_ratio = remaining_days / total_days
-                        discount_from_upgrade = int(current_price * remaining_ratio)
+                    current_tier_name = current_tier
+                    current_tier_price = current_price
+                    # 현재 플랜 월 구독료 전액 차감 (직관적 차액 계산)
+                    discount_from_upgrade = current_price
             
             # 쿠폰 할인 계산
             coupon_discount = 0
@@ -273,6 +270,9 @@ class PaymentService:
                 amount=final_amount,
                 original_amount=original_amount,
                 discount_amount=total_discount,
+                upgrade_deduction=discount_from_upgrade,
+                current_tier=current_tier_name,
+                current_tier_price=current_tier_price,
                 coupon_applied=coupon_applied,
                 coupon_code=coupon_code,
                 customer_key=customer_key,
