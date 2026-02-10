@@ -24,12 +24,12 @@ router = APIRouter(prefix="/api/v1/coupons", tags=["coupons"])
 # ============================================
 
 async def get_admin_user(current_user: dict = Depends(get_current_user)):
-    """관리자 권한 확인"""
+    """관리자 권한 확인 (God Tier만 허용)"""
     from app.core.database import get_supabase_client
     supabase = get_supabase_client()
     
     profile = supabase.table("profiles")\
-        .select("subscription_tier, is_admin")\
+        .select("subscription_tier")\
         .eq("id", current_user["id"])\
         .single()\
         .execute()
@@ -38,10 +38,9 @@ async def get_admin_user(current_user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=403, detail="권한이 없습니다.")
     
     tier = profile.data.get("subscription_tier", "free")
-    is_admin = profile.data.get("is_admin", False)
     
-    if tier != "god" and not is_admin:
-        raise HTTPException(status_code=403, detail="관리자 권한이 필요합니다.")
+    if tier != "god":
+        raise HTTPException(status_code=403, detail="관리자 권한이 필요합니다. (God Tier 전용)")
     
     return current_user
 
