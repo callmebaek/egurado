@@ -712,7 +712,7 @@ export default function AdminPage() {
     if (!dateString) return '-'
     const date = new Date(dateString)
     return date.toLocaleDateString('ko-KR', {
-      year: 'numeric',
+      year: '2-digit',
       month: '2-digit',
       day: '2-digit',
     })
@@ -1009,51 +1009,36 @@ export default function AdminPage() {
           {/* 회원 리스트 */}
           <Card className="overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[1400px]">
+              <table className="w-full min-w-[1500px]">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="text-left py-3 px-4 font-semibold text-sm text-gray-700">이메일</th>
-                    <th className="text-left py-3 px-4 font-semibold text-sm text-gray-700">이름</th>
-                    <th className="text-center py-3 px-4 font-semibold text-sm text-gray-700">Tier</th>
-                    <th className="text-center py-3 px-4 font-semibold text-sm text-gray-700">구독상태</th>
-                    <th className="text-center py-3 px-4 font-semibold text-sm text-gray-700">가입일</th>
-                    <th className="text-center py-3 px-4 font-semibold text-sm text-green-700">
-                      <div className="flex items-center justify-center gap-1">
-                        <CreditCard className="w-3.5 h-3.5" />
-                        최근 결제일
-                      </div>
-                    </th>
-                    <th className="text-center py-3 px-4 font-semibold text-sm text-[#405D99]">
-                      <div className="flex items-center justify-center gap-1">
-                        <CalendarClock className="w-3.5 h-3.5" />
-                        다음 결제일
-                      </div>
-                    </th>
-                    <th className="text-center py-3 px-4 font-semibold text-sm text-red-600">
-                      <div className="flex items-center justify-center gap-1">
-                        <AlertTriangle className="w-3.5 h-3.5" />
-                        서비스 종료일
-                      </div>
-                    </th>
-                    <th className="text-center py-3 px-4 font-semibold text-sm text-blue-700">월간</th>
-                    <th className="text-center py-3 px-4 font-semibold text-sm text-purple-700">수동</th>
-                    <th className="text-center py-3 px-4 font-semibold text-sm text-red-700">사용</th>
-                    <th className="text-center py-3 px-4 font-semibold text-sm text-green-700">잔여</th>
-                    <th className="text-center py-3 px-4 font-semibold text-sm text-gray-700">액션</th>
+                    <th className="text-left py-2.5 px-3 font-semibold text-xs text-gray-700 whitespace-nowrap">이메일</th>
+                    <th className="text-left py-2.5 px-2 font-semibold text-xs text-gray-700 whitespace-nowrap">이름</th>
+                    <th className="text-center py-2.5 px-2 font-semibold text-xs text-gray-700 whitespace-nowrap">Tier</th>
+                    <th className="text-center py-2.5 px-2 font-semibold text-xs text-gray-700 whitespace-nowrap">상태</th>
+                    <th className="text-center py-2.5 px-2 font-semibold text-xs text-gray-700 whitespace-nowrap">가입일</th>
+                    <th className="text-center py-2.5 px-2 font-semibold text-xs text-green-700 whitespace-nowrap">결제일</th>
+                    <th className="text-center py-2.5 px-2 font-semibold text-xs text-[#405D99] whitespace-nowrap">다음결제</th>
+                    <th className="text-center py-2.5 px-2 font-semibold text-xs text-red-600 whitespace-nowrap">종료일</th>
+                    <th className="text-center py-2.5 px-2 font-semibold text-xs text-blue-700 whitespace-nowrap">월간</th>
+                    <th className="text-center py-2.5 px-2 font-semibold text-xs text-purple-700 whitespace-nowrap">수동</th>
+                    <th className="text-center py-2.5 px-2 font-semibold text-xs text-red-700 whitespace-nowrap">사용</th>
+                    <th className="text-center py-2.5 px-2 font-semibold text-xs text-green-700 whitespace-nowrap">잔여</th>
+                    <th className="text-center py-2.5 px-2 font-semibold text-xs text-gray-700 whitespace-nowrap">액션</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredUsers.map((u) => (
                     <tr key={u.id} className="border-t hover:bg-gray-50">
-                      <td className="py-3 px-4 text-sm">{u.email}</td>
-                      <td className="py-3 px-4 text-sm">{u.display_name || '-'}</td>
-                      <td className="py-3 px-4 text-center">{getTierBadge(u.subscription_tier)}</td>
-                      <td className="py-3 px-4 text-center">{getSubscriptionStatusBadge(u)}</td>
-                      <td className="py-3 px-4 text-center text-sm text-gray-600">
-                        {new Date(u.created_at).toLocaleDateString('ko-KR')}
+                      <td className="py-2.5 px-3 text-xs whitespace-nowrap">{u.email}</td>
+                      <td className="py-2.5 px-2 text-xs whitespace-nowrap">{u.display_name || '-'}</td>
+                      <td className="py-2.5 px-2 text-center">{getTierBadge(u.subscription_tier)}</td>
+                      <td className="py-2.5 px-2 text-center">{getSubscriptionStatusBadge(u)}</td>
+                      <td className="py-2.5 px-2 text-center text-xs text-gray-600 whitespace-nowrap">
+                        {new Date(u.created_at).toLocaleDateString('ko-KR', { year: '2-digit', month: '2-digit', day: '2-digit' })}
                       </td>
                       {/* 최근 결제일 */}
-                      <td className="py-3 px-4 text-center text-sm">
+                      <td className="py-2.5 px-2 text-center text-xs whitespace-nowrap">
                         {u.subscription_tier !== 'free' && u.last_payment_date ? (
                           <span className="font-semibold text-green-700">
                             {formatShortDate(u.last_payment_date)}
@@ -1063,7 +1048,7 @@ export default function AdminPage() {
                         )}
                       </td>
                       {/* 다음 결제 예정일 */}
-                      <td className="py-3 px-4 text-center text-sm">
+                      <td className="py-2.5 px-2 text-center text-xs whitespace-nowrap">
                         {u.subscription_tier !== 'free' && u.next_billing_date ? (
                           <span className="font-semibold text-[#405D99]">
                             {formatShortDate(u.next_billing_date)}
@@ -1075,45 +1060,46 @@ export default function AdminPage() {
                         )}
                       </td>
                       {/* 서비스 종료일 */}
-                      <td className="py-3 px-4 text-center text-sm">
+                      <td className="py-2.5 px-2 text-center text-xs whitespace-nowrap">
                         {u.service_end_date ? (
                           <span className="font-semibold text-red-600">
                             {formatShortDate(u.service_end_date)}
                           </span>
                         ) : u.subscription_status === 'cancelled' && u.cancelled_at ? (
-                          <span className="text-orange-500 text-xs">취소처리중</span>
+                          <span className="text-orange-500 text-xs">취소중</span>
                         ) : (
                           <span className="text-gray-400">-</span>
                         )}
                       </td>
-                      <td className="py-3 px-4 text-center text-sm">
+                      <td className="py-2.5 px-2 text-center text-xs whitespace-nowrap">
                         <span className="font-semibold text-blue-600">
                           {u.monthly_credits !== undefined ? u.monthly_credits.toLocaleString() : '-'}
                         </span>
                       </td>
-                      <td className="py-3 px-4 text-center text-sm">
+                      <td className="py-2.5 px-2 text-center text-xs whitespace-nowrap">
                         <span className="font-semibold text-purple-600">
                           {u.manual_credits !== undefined ? u.manual_credits.toLocaleString() : '-'}
                         </span>
                       </td>
-                      <td className="py-3 px-4 text-center text-sm">
+                      <td className="py-2.5 px-2 text-center text-xs whitespace-nowrap">
                         <span className="font-semibold text-red-600">
                           {u.monthly_used !== undefined ? u.monthly_used.toLocaleString() : '-'}
                         </span>
                       </td>
-                      <td className="py-3 px-4 text-center text-sm">
+                      <td className="py-2.5 px-2 text-center text-xs whitespace-nowrap">
                         <span className="font-semibold text-green-600">
                           {u.total_remaining !== undefined ? u.total_remaining.toLocaleString() : '-'}
                         </span>
                       </td>
-                      <td className="py-3 px-4 text-center">
+                      <td className="py-2.5 px-2 text-center whitespace-nowrap">
                         <Button
                           size="sm"
                           variant="outline"
+                          className="text-xs h-8 px-2"
                           onClick={() => setSelectedUser(u)}
                         >
-                          <Gift className="w-4 h-4 mr-1" />
-                          크레딧 지급
+                          <Gift className="w-3.5 h-3.5 mr-1" />
+                          지급
                         </Button>
                       </td>
                     </tr>
