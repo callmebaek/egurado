@@ -275,3 +275,174 @@ class TierQuotas(BaseModel):
 class TierQuotasResponse(BaseModel):
     """Tier별 쿼터 응답 (전체 Tier 비교용)"""
     tiers: list[TierQuotas]
+
+
+# ============================================
+# Billing Key Models
+# ============================================
+
+class BillingKey(BaseModel):
+    """빌링키 정보"""
+    id: UUID
+    user_id: UUID
+    billing_key: str
+    customer_key: str
+    method: str = "card"
+    card_company: Optional[str] = None
+    card_number: Optional[str] = None
+    card_type: Optional[str] = None
+    is_active: bool = True
+    authenticated_at: Optional[datetime] = None
+    metadata: dict = Field(default_factory=dict)
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class BillingKeyIssueRequest(BaseModel):
+    """빌링키 발급 요청 (프론트엔드에서 authKey 전달)"""
+    auth_key: str = Field(description="결제위젯에서 받은 인증키")
+    customer_key: str = Field(description="고객 고유 식별자")
+
+
+class BillingKeyResponse(BaseModel):
+    """빌링키 발급 응답"""
+    success: bool
+    billing_key_id: Optional[UUID] = None
+    card_company: Optional[str] = None
+    card_number: Optional[str] = None
+    message: Optional[str] = None
+
+
+# ============================================
+# Coupon Models
+# ============================================
+
+class Coupon(BaseModel):
+    """쿠폰 정보"""
+    id: UUID
+    code: str
+    name: str
+    description: Optional[str] = None
+    discount_type: str = "percentage"
+    discount_value: int
+    applicable_tiers: Optional[list[str]] = None
+    max_uses: Optional[int] = None
+    current_uses: int = 0
+    max_uses_per_user: int = 1
+    is_active: bool = True
+    is_permanent: bool = True
+    duration_months: Optional[int] = None
+    valid_from: Optional[datetime] = None
+    valid_until: Optional[datetime] = None
+    created_by: Optional[UUID] = None
+    metadata: dict = Field(default_factory=dict)
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class CouponCreateRequest(BaseModel):
+    """쿠폰 생성 요청"""
+    code: Optional[str] = Field(None, description="쿠폰 코드 (미입력 시 자동 생성)")
+    name: str = Field(description="쿠폰 이름")
+    description: Optional[str] = None
+    discount_type: str = Field("percentage", description="할인 유형: percentage, fixed")
+    discount_value: int = Field(description="할인 값 (% 또는 원)")
+    applicable_tiers: Optional[list[str]] = None
+    max_uses: Optional[int] = Field(None, description="총 사용 가능 횟수")
+    max_uses_per_user: int = Field(1, description="사용자당 사용 가능 횟수")
+    is_permanent: bool = Field(True, description="영구 할인 여부")
+    duration_months: Optional[int] = Field(None, description="할인 적용 기간 (개월)")
+    valid_from: Optional[datetime] = None
+    valid_until: Optional[datetime] = None
+
+
+class CouponUpdateRequest(BaseModel):
+    """쿠폰 수정 요청"""
+    name: Optional[str] = None
+    description: Optional[str] = None
+    discount_value: Optional[int] = None
+    is_active: Optional[bool] = None
+    max_uses: Optional[int] = None
+    valid_until: Optional[datetime] = None
+
+
+class CouponValidateRequest(BaseModel):
+    """쿠폰 검증 요청"""
+    code: str = Field(description="쿠폰 코드")
+    tier: str = Field(description="적용할 Tier")
+
+
+class CouponValidateResponse(BaseModel):
+    """쿠폰 검증 응답"""
+    valid: bool
+    coupon_id: Optional[UUID] = None
+    discount_type: Optional[str] = None
+    discount_value: Optional[int] = None
+    discounted_amount: Optional[int] = None
+    original_amount: Optional[int] = None
+    message: Optional[str] = None
+
+
+class UserCoupon(BaseModel):
+    """사용자 쿠폰 사용 정보"""
+    id: UUID
+    user_id: UUID
+    coupon_id: UUID
+    subscription_id: Optional[UUID] = None
+    applied_at: datetime
+    expires_at: Optional[datetime] = None
+    is_active: bool = True
+    discount_type: str
+    discount_value: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# ============================================
+# Checkout / Payment Flow Models
+# ============================================
+
+class CheckoutRequest(BaseModel):
+    """결제 체크아웃 요청"""
+    tier: str = Field(description="구독할 Tier")
+    coupon_code: Optional[str] = Field(None, description="쿠폰 코드")
+    agree_terms: bool = Field(description="이용약관 동의")
+    agree_privacy: bool = Field(description="개인정보처리방침 동의")
+    agree_refund: bool = Field(description="환불정책 동의")
+    agree_payment: bool = Field(description="정기결제 동의")
+
+
+class CheckoutResponse(BaseModel):
+    """결제 체크아웃 응답"""
+    order_id: str
+    order_name: str
+    amount: int
+    original_amount: int
+    discount_amount: int = 0
+    coupon_applied: bool = False
+    coupon_code: Optional[str] = None
+    customer_key: str
+    tier: str
+    is_upgrade: bool = False
+
+
+class PaymentConfirmRequest(BaseModel):
+    """결제 승인 확인 요청 (프론트엔드에서 결제 완료 후)"""
+    payment_key: str = Field(description="토스 결제키")
+    order_id: str = Field(description="주문 ID")
+    amount: int = Field(description="결제 금액")
+
+
+class SubscriptionCancelRequest(BaseModel):
+    """구독 취소 요청"""
+    reason: Optional[str] = Field(None, description="취소 사유")
+    keep_store_ids: list[str] = Field(default_factory=list, description="유지할 매장 ID 목록")
+    keep_keyword_ids: list[str] = Field(default_factory=list, description="유지할 키워드 ID 목록")

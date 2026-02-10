@@ -11,6 +11,7 @@ from app.core.database import get_supabase_client
 from app.services.naver_crawler import crawl_naver_reviews
 from app.services.naver_rank_service import rank_service
 from app.services.metric_tracker_service import metric_tracker_service
+from app.services.billing_service import billing_service
 
 logger = logging.getLogger(__name__)
 
@@ -238,6 +239,31 @@ async def collect_all_metrics():
         logger.error(f"[ERROR] Metric collection scheduler error: {str(e)}", exc_info=True)
 
 
+async def process_billing():
+    """
+    정기결제 처리 - 매일 오전 1시 (KST) 실행
+    1. 결제일이 도래한 구독 자동결제
+    2. 만료된 구독 처리 (Free tier 전환)
+    """
+    try:
+        logger.info(f"[{datetime.now()}] 💳 정기결제 처리 시작")
+        
+        # 1. 자동결제 처리
+        billing_stats = await billing_service.process_due_subscriptions()
+        logger.info(f"[Billing] 자동결제: {billing_stats}")
+        
+        # 2. 만료 구독 처리
+        expired_count = await billing_service.check_and_expire_subscriptions()
+        logger.info(f"[Billing] 만료 처리: {expired_count}건")
+        
+        logger.info(f"[{datetime.now()}] 💳 정기결제 처리 완료")
+        
+    except Exception as e:
+        logger.error(f"[ERROR] Billing scheduler error: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
+
+
 def start_scheduler():
     """스케줄러 시작 (KST 시간대 기준)"""
     from pytz import timezone as pytz_timezone
@@ -271,11 +297,21 @@ def start_scheduler():
         replace_existing=True
     )
     
+    # 매일 오전 1시 (KST): 정기결제 및 구독 만료 처리
+    scheduler.add_job(
+        process_billing,
+        CronTrigger(hour=1, minute=0, timezone=kst),
+        id="process_billing",
+        name="정기결제 및 구독 만료 처리",
+        replace_existing=True
+    )
+    
     scheduler.start()
     print("=" * 60)
     print("[OK] Scheduler started with timezone: Asia/Seoul (KST)")
     print("=" * 60)
     print("  [Scheduled Jobs]")
+    print("    - Billing: 1 AM daily (KST)")
     print("    - Rank check: 3 AM daily (KST)")
     print("    - Review sync: 6 AM daily (KST)")
     print("    - Metric tracking: Every hour at :00 (KST)")
@@ -284,6 +320,7 @@ def start_scheduler():
     logger.info("[OK] Scheduler started with timezone: Asia/Seoul (KST)")
     logger.info("=" * 60)
     logger.info("  [Scheduled Jobs]")
+    logger.info("    - Billing: 1 AM daily (KST)")
     logger.info("    - Rank check: 3 AM daily (KST)")
     logger.info("    - Review sync: 6 AM daily (KST)")
     logger.info("    - Metric tracking: Every hour at :00 (KST)")

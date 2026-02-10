@@ -153,6 +153,7 @@ from app.routers.contact import router as contact_router
 from app.routers.credits import router as credits_router
 from app.routers.subscriptions import router as subscriptions_router
 from app.routers.payments import router as payments_router
+from app.routers.coupons import router as coupons_router
 
 # New Dashboard Feature Routers (2026-02-04)
 from app.routers.notifications import router as notifications_router
@@ -181,6 +182,7 @@ app.include_router(contact_router, prefix="/api/v1/contact", tags=["Contact"])
 app.include_router(credits_router, tags=["Credits"])
 app.include_router(subscriptions_router, tags=["Subscriptions"])
 app.include_router(payments_router, tags=["Payments"])
+app.include_router(coupons_router, tags=["Coupons"])
 
 # New Dashboard Feature Routers (2026-02-04)
 app.include_router(notifications_router)

@@ -69,10 +69,27 @@ async def get_users(
         if users_data:
             logger.info(f"First user sample: {users_data[0]}")
         
+        # 구독 정보 일괄 조회
+        user_ids = [str(u["id"]) for u in users_data]
+        sub_map = {}
+        if user_ids:
+            try:
+                subs_result = supabase.table("subscriptions")\
+                    .select("user_id, status, next_billing_date, expires_at, cancelled_at, auto_renewal")\
+                    .in_("user_id", user_ids)\
+                    .execute()
+                for s in (subs_result.data or []):
+                    sub_map[s["user_id"]] = s
+            except Exception as sub_err:
+                logger.warning(f"구독 정보 조회 실패 (무시): {sub_err}")
+        
         # 응답 생성
-        users = [
-            UserInfoResponse(
-                id=str(u["id"]),
+        users = []
+        for u in users_data:
+            uid = str(u["id"])
+            sub = sub_map.get(uid, {})
+            users.append(UserInfoResponse(
+                id=uid,
                 email=u["email"],
                 display_name=u.get("display_name"),
                 subscription_tier=u.get("tier", "free"),
@@ -83,10 +100,13 @@ async def get_users(
                 manual_credits=u.get("manual_credits", 0),
                 monthly_used=u.get("monthly_used", 0),
                 total_remaining=u.get("total_remaining", 0),
-                total_credits_used=u.get("total_credits_used", 0)
-            )
-            for u in users_data
-        ]
+                total_credits_used=u.get("total_credits_used", 0),
+                subscription_status=sub.get("status"),
+                next_billing_date=sub.get("next_billing_date"),
+                service_end_date=sub.get("expires_at") if sub.get("status") == "cancelled" else None,
+                cancelled_at=sub.get("cancelled_at"),
+                auto_renewal=sub.get("auto_renewal", True),
+            ))
         
         return UserListResponse(
             users=users,
@@ -117,9 +137,26 @@ async def get_users(
             users_data = result.data or []
             total_count = result.count or 0
             
-            users = [
-                UserInfoResponse(
-                    id=str(u["id"]),
+            # 구독 정보 일괄 조회 (fallback)
+            fallback_user_ids = [str(u["id"]) for u in users_data]
+            fallback_sub_map = {}
+            if fallback_user_ids:
+                try:
+                    fallback_subs = supabase.table("subscriptions")\
+                        .select("user_id, status, next_billing_date, expires_at, cancelled_at, auto_renewal")\
+                        .in_("user_id", fallback_user_ids)\
+                        .execute()
+                    for s in (fallback_subs.data or []):
+                        fallback_sub_map[s["user_id"]] = s
+                except Exception:
+                    pass
+            
+            users = []
+            for u in users_data:
+                uid = str(u["id"])
+                sub = fallback_sub_map.get(uid, {})
+                users.append(UserInfoResponse(
+                    id=uid,
                     email=u["email"],
                     display_name=u.get("display_name"),
                     subscription_tier=u.get("subscription_tier", "free"),
@@ -130,10 +167,13 @@ async def get_users(
                     manual_credits=0,
                     monthly_used=0,
                     total_remaining=0,
-                    total_credits_used=0
-                )
-                for u in users_data
-            ]
+                    total_credits_used=0,
+                    subscription_status=sub.get("status"),
+                    next_billing_date=sub.get("next_billing_date"),
+                    service_end_date=sub.get("expires_at") if sub.get("status") == "cancelled" else None,
+                    cancelled_at=sub.get("cancelled_at"),
+                    auto_renewal=sub.get("auto_renewal", True),
+                ))
             
             return UserListResponse(
                 users=users,

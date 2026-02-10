@@ -63,8 +63,12 @@ class Settings:
     # Toss Payment
     TOSS_CLIENT_KEY: str = os.getenv("TOSS_CLIENT_KEY", "")
     TOSS_SECRET_KEY: str = os.getenv("TOSS_SECRET_KEY", "")
+    TOSS_API_URL: str = os.getenv("TOSS_API_URL", "https://api.tosspayments.com")
     TOSS_SUCCESS_URL: str = os.getenv("TOSS_SUCCESS_URL", "https://whiplace.com/payment/success")
     TOSS_FAIL_URL: str = os.getenv("TOSS_FAIL_URL", "https://whiplace.com/payment/fail")
+    
+    # 프론트엔드 URL (결제 콜백 등에서 사용)
+    FRONTEND_URL: str = os.getenv("FRONTEND_URL", "https://whiplace.com")
     
     # 결제 연동 활성화 여부
     PAYMENT_ENABLED: bool = os.getenv("PAYMENT_ENABLED", "false").lower() == "true"
@@ -93,6 +97,36 @@ TIER_AUTO_COLLECTION_LIMITS = {
     "custom": 30,  # 협의 필요
     "god": -1,  # 무제한
 }
+
+# Tier별 월 구독 가격 (원) - TBD는 0으로 설정, 추후 업데이트
+TIER_PRICES = {
+    "free": 0,
+    "basic": 29000,       # ₩29,000/월 (임시)
+    "basic_plus": 49000,   # ₩49,000/월 (임시)
+    "pro": 89000,          # ₩89,000/월 (임시)
+    "custom": 0,           # 협의
+    "god": 0,              # 관리자 전용
+}
+
+# Tier 등급 순서 (업그레이드 판단용)
+TIER_ORDER = {
+    "free": 0,
+    "basic": 1,
+    "basic_plus": 2,
+    "pro": 3,
+    "custom": 4,
+    "god": 5,
+}
+
+
+def get_tier_price(tier: str) -> int:
+    """Tier별 월 구독 가격 조회"""
+    return TIER_PRICES.get(tier, 0)
+
+
+def get_tier_order(tier: str) -> int:
+    """Tier 등급 순서 조회"""
+    return TIER_ORDER.get(tier, 0)
 
 # 기능별 크레딧 소비 (확정된 값)
 FEATURE_CREDITS = {
