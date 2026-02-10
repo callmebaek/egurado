@@ -558,9 +558,6 @@ export default function DashboardPage() {
   const [competitorTotalCount, setCompetitorTotalCount] = useState(0)
   const [competitors, setCompetitors] = useState<CompetitorStore[]>([])
   const [loadingCompetitors, setLoadingCompetitors] = useState(false)
-  const [competitorStoreId, setCompetitorStoreId] = useState("")
-  // 경쟁매장 데이터 캐시 (keyword_storeId → data)
-  const [competitorCache, setCompetitorCache] = useState<Record<string, {competitors: CompetitorStore[], myRank: number | null, totalCount: number}>>({})
   
   // 🆕 실제 크레딧 정보 (Credits API)
   const [credits, setCredits] = useState<{
@@ -730,20 +727,9 @@ export default function DashboardPage() {
 
       if (response.ok) {
         const data = await response.json()
-        const competitorData = data.competitors || []
-        const myRank = data.my_rank
-        const totalCount = data.total_count || 0
-        
-        setCompetitors(competitorData)
-        setCompetitorMyRank(myRank)
-        setCompetitorTotalCount(totalCount)
-        
-        // 캐시에 저장
-        const cacheKey = `${keyword}_${storeId}`
-        setCompetitorCache(prev => ({
-          ...prev,
-          [cacheKey]: { competitors: competitorData, myRank, totalCount }
-        }))
+        setCompetitors(data.competitors || [])
+        setCompetitorMyRank(data.my_rank)
+        setCompetitorTotalCount(data.total_count || 0)
       } else {
         const errorData = await response.json().catch(() => ({}))
         toast({
@@ -763,31 +749,11 @@ export default function DashboardPage() {
     }
   }
 
-  // 경쟁매장 보기 핸들러 (캐시 지원)
+  // 경쟁매장 보기 핸들러 (DB에서 불러옴 - 수집 시 자동 저장됨)
   const handleViewCompetitors = async (tracker: MetricTracker) => {
-    const cacheKey = `${tracker.keyword}_${tracker.store_id}`
-    
     setCompetitorKeyword(tracker.keyword)
-    setCompetitorStoreId(tracker.store_id)
     setShowCompetitorDialog(true)
-    
-    // 캐시 확인
-    if (competitorCache[cacheKey]) {
-      const cached = competitorCache[cacheKey]
-      setCompetitors(cached.competitors)
-      setCompetitorMyRank(cached.myRank)
-      setCompetitorTotalCount(cached.totalCount)
-      setLoadingCompetitors(false)
-      return
-    }
-    
-    // 캐시 없으면 API 조회
     await fetchCompetitorData(tracker.keyword, tracker.store_id)
-  }
-
-  // 경쟁매장 강제 새로고침
-  const handleForceRefreshCompetitors = async () => {
-    await fetchCompetitorData(competitorKeyword, competitorStoreId)
   }
 
   // 개별 키워드 새로고침
@@ -2116,24 +2082,14 @@ export default function DashboardPage() {
         </DialogContent>
       </Dialog>
 
-      {/* 경쟁매장 보기 모달 - 대시보드용 (캐시 지원) */}
+      {/* 경쟁매장 보기 모달 - DB에서 불러옴 */}
       <Dialog open={showCompetitorDialog} onOpenChange={setShowCompetitorDialog}>
         <DialogContent className="w-[calc(100vw-24px)] sm:w-full sm:max-w-2xl lg:max-w-3xl max-h-[calc(100vh-24px)] p-0 rounded-modal shadow-modal flex flex-col overflow-hidden">
           <DialogHeader className="p-4 md:p-6 pb-3 md:pb-4 flex-shrink-0 border-b border-neutral-200">
-            <div className="flex items-center justify-between">
-              <DialogTitle className="text-lg md:text-xl font-bold text-neutral-900 flex items-center gap-2">
-                <Users className="w-5 h-5 text-amber-600" />
-                경쟁매장 순위
-              </DialogTitle>
-              <button
-                onClick={handleForceRefreshCompetitors}
-                disabled={loadingCompetitors}
-                className="p-2 rounded-button bg-amber-100 text-amber-700 hover:bg-amber-200 active:scale-95 transition-all min-w-[40px] min-h-[40px] flex items-center justify-center"
-                title="새로고침"
-              >
-                <RefreshCw className={`w-4 h-4 ${loadingCompetitors ? 'animate-spin' : ''}`} />
-              </button>
-            </div>
+            <DialogTitle className="text-lg md:text-xl font-bold text-neutral-900 flex items-center gap-2">
+              <Users className="w-5 h-5 text-amber-600" />
+              경쟁매장 순위
+            </DialogTitle>
             <DialogDescription className="text-xs md:text-sm text-neutral-500 mt-1">
               &quot;{competitorKeyword}&quot; 키워드 검색 결과 (최대 300위)
               {competitorTotalCount > 0 && (

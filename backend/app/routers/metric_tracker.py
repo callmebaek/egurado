@@ -5,9 +5,10 @@ Metric Tracker API Router
 from fastapi import APIRouter, HTTPException, status, Depends
 from typing import List, Optional
 from uuid import UUID
-from datetime import date
+from datetime import date, datetime
 from pydantic import BaseModel
 import logging
+import json
 
 from app.models.schemas import (
     MetricTrackerCreate,
@@ -390,13 +391,11 @@ async def get_competitors(
     """
     특정 키워드의 경쟁매장 순위 조회 (300위까지)
     
-    네이버 GraphQL API를 통해 해당 키워드로 검색되는
-    모든 매장(최대 300개)의 순위와 상세 정보를 반환합니다.
+    1차: DB에 저장된 데이터 확인 (수집 시 자동 저장됨)
+    2차: DB에 없으면 API 실시간 조회
     
     - **keyword**: 검색 키워드
     - **store_id**: 내 매장 ID (강조 표시용)
-    
-    크레딧: 5 크레딧 소모
     """
     user_id = UUID(current_user["id"])
     
@@ -404,7 +403,7 @@ async def get_competitors(
         from app.core.database import get_supabase_client
         supabase = get_supabase_client()
         
-        # 매장 정보 조회 (place_id 필요)
+        # 매장 정보 조회
         store_result = supabase.table("stores").select(
             "id, place_id, store_name"
         ).eq("id", request.store_id).single().execute()
@@ -420,7 +419,43 @@ async def get_competitors(
         
         logger.info(f"[Competitors] 경쟁매장 조회: keyword={request.keyword}, store={store_data['store_name']}")
         
-        # 🆕 크레딧 체크
+        # ✅ 1차: DB에서 저장된 경쟁매장 데이터 확인
+        db_result = supabase.table("competitor_rankings")\
+            .select("*")\
+            .eq("keyword", request.keyword)\
+            .eq("store_id", request.store_id)\
+            .order("collection_date", desc=True)\
+            .limit(1)\
+            .execute()
+        
+        if db_result.data and len(db_result.data) > 0:
+            cached_data = db_result.data[0]
+            logger.info(
+                f"[Competitors] ✅ DB 캐시 히트: keyword={request.keyword}, "
+                f"date={cached_data['collection_date']}, "
+                f"collected_at={cached_data.get('collected_at', 'N/A')}"
+            )
+            
+            # JSONB 데이터 파싱
+            competitors_data = cached_data.get('competitors_data', [])
+            if isinstance(competitors_data, str):
+                competitors_data = json.loads(competitors_data)
+            
+            competitors = [
+                CompetitorStore(**comp) for comp in competitors_data
+            ]
+            
+            return CompetitorResponse(
+                keyword=request.keyword,
+                my_rank=cached_data.get('my_rank'),
+                total_count=cached_data.get('total_count', 0),
+                competitors=competitors
+            )
+        
+        # ✅ 2차: DB에 없으면 API 실시간 조회
+        logger.info(f"[Competitors] DB 캐시 미스 → API 실시간 조회: keyword={request.keyword}")
+        
+        # 크레딧 체크
         if settings.CREDIT_SYSTEM_ENABLED and settings.CREDIT_CHECK_STRICT:
             check_result = await credit_service.check_sufficient_credits(
                 user_id=user_id,
@@ -477,9 +512,71 @@ async def get_competitors(
         if isinstance(total_count, str):
             total_count = int(total_count.replace(",", "")) if total_count else 0
         
-        logger.info(f"[Competitors] 결과: my_rank={my_rank}, competitors={len(competitors)}, total={total_count}")
+        logger.info(f"[Competitors] API 결과: my_rank={my_rank}, competitors={len(competitors)}, total={total_count}")
         
-        # 🆕 크레딧 차감
+        # ✅ API 결과를 DB에도 저장 (다음번 조회 시 재사용)
+        try:
+            from zoneinfo import ZoneInfo
+            now_kst = datetime.now(ZoneInfo("Asia/Seoul"))
+            today = now_kst.date()
+            
+            # tracker_id 찾기 (해당 keyword + store_id 조합)
+            tracker_result = supabase.table("metric_trackers")\
+                .select("id, keyword_id")\
+                .eq("store_id", request.store_id)\
+                .execute()
+            
+            tracker_id = None
+            keyword_id = None
+            if tracker_result.data:
+                # keyword로 매칭되는 tracker 찾기
+                for t in tracker_result.data:
+                    kw_result = supabase.table("keywords")\
+                        .select("id, keyword")\
+                        .eq("id", t["keyword_id"])\
+                        .single()\
+                        .execute()
+                    if kw_result.data and kw_result.data["keyword"] == request.keyword:
+                        tracker_id = t["id"]
+                        keyword_id = t["keyword_id"]
+                        break
+            
+            if tracker_id and keyword_id:
+                competitors_json = [comp.model_dump() for comp in competitors]
+                competitor_record = {
+                    'tracker_id': tracker_id,
+                    'keyword_id': keyword_id,
+                    'store_id': request.store_id,
+                    'keyword': request.keyword,
+                    'collection_date': today.isoformat(),
+                    'my_rank': my_rank,
+                    'total_count': total_count,
+                    'competitors_data': json.dumps(competitors_json, ensure_ascii=False),
+                    'collected_at': now_kst.isoformat()
+                }
+                
+                existing_comp = supabase.table('competitor_rankings')\
+                    .select('id')\
+                    .eq('tracker_id', tracker_id)\
+                    .eq('collection_date', today.isoformat())\
+                    .execute()
+                
+                if existing_comp.data and len(existing_comp.data) > 0:
+                    supabase.table('competitor_rankings')\
+                        .update(competitor_record)\
+                        .eq('tracker_id', tracker_id)\
+                        .eq('collection_date', today.isoformat())\
+                        .execute()
+                else:
+                    supabase.table('competitor_rankings')\
+                        .insert(competitor_record)\
+                        .execute()
+                
+                logger.info(f"[Competitors] API 결과 DB 저장 완료")
+        except Exception as save_error:
+            logger.error(f"[Competitors] DB 저장 실패 (무시): {str(save_error)}")
+        
+        # 크레딧 차감
         if settings.CREDIT_SYSTEM_ENABLED and settings.CREDIT_AUTO_DEDUCT:
             try:
                 await credit_service.deduct_credits(

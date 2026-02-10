@@ -3,6 +3,7 @@
 Metric Tracker Service
 """
 import logging
+import json
 from typing import List, Dict, Optional
 from datetime import datetime, date, timedelta, timezone
 from zoneinfo import ZoneInfo
@@ -486,6 +487,74 @@ class MetricTrackerService:
                 .update({'last_collected_at': now_kst.isoformat()})\
                 .eq('id', tracker_id)\
                 .execute()
+            
+            # 🆕 경쟁매장 데이터 저장 (search_results가 있으면)
+            search_results = rank_result.get('search_results', [])
+            if search_results:
+                try:
+                    my_place_id = store['place_id']
+                    competitors_data = []
+                    for idx, s in enumerate(search_results, start=1):
+                        place_id = s.get('place_id', '')
+                        visitor_count = s.get('visitor_review_count', 0)
+                        if isinstance(visitor_count, str):
+                            visitor_count = int(visitor_count.replace(',', '')) if visitor_count else 0
+                        blog_count = s.get('blog_review_count', 0)
+                        if isinstance(blog_count, str):
+                            blog_count = int(blog_count.replace(',', '')) if blog_count else 0
+                        
+                        competitors_data.append({
+                            'rank': idx,
+                            'place_id': place_id,
+                            'name': s.get('name', ''),
+                            'category': s.get('category', ''),
+                            'address': s.get('address', ''),
+                            'road_address': s.get('road_address', ''),
+                            'rating': s.get('rating'),
+                            'visitor_review_count': visitor_count,
+                            'blog_review_count': blog_count,
+                            'thumbnail': s.get('thumbnail', ''),
+                            'is_my_store': (place_id == my_place_id)
+                        })
+                    
+                    total_count = rank_result.get('total_count', 0)
+                    if isinstance(total_count, str):
+                        total_count = int(total_count.replace(',', '')) if total_count else 0
+                    
+                    competitor_record = {
+                        'tracker_id': tracker_id,
+                        'keyword_id': tracker['keyword_id'],
+                        'store_id': tracker['store_id'],
+                        'keyword': keyword,
+                        'collection_date': today.isoformat(),
+                        'my_rank': rank_result.get('rank'),
+                        'total_count': total_count,
+                        'competitors_data': json.dumps(competitors_data, ensure_ascii=False),
+                        'collected_at': now_kst.isoformat()
+                    }
+                    
+                    # 오늘 데이터가 이미 있으면 업데이트, 없으면 삽입
+                    existing_comp = self.supabase.table('competitor_rankings')\
+                        .select('id')\
+                        .eq('tracker_id', tracker_id)\
+                        .eq('collection_date', today.isoformat())\
+                        .execute()
+                    
+                    if existing_comp.data and len(existing_comp.data) > 0:
+                        self.supabase.table('competitor_rankings')\
+                            .update(competitor_record)\
+                            .eq('tracker_id', tracker_id)\
+                            .eq('collection_date', today.isoformat())\
+                            .execute()
+                    else:
+                        self.supabase.table('competitor_rankings')\
+                            .insert(competitor_record)\
+                            .execute()
+                    
+                    logger.info(f"[Metrics Collect] 경쟁매장 데이터 저장 완료: {len(competitors_data)}개 매장")
+                except Exception as comp_error:
+                    # 경쟁매장 저장 실패해도 메인 수집은 성공으로 처리
+                    logger.error(f"[Metrics Collect] 경쟁매장 데이터 저장 실패: {str(comp_error)}")
             
             # 방금 삽입/업데이트한 데이터 조회 (id 포함)
             # ✅ collected_at 기준 정렬 추가 (중복 데이터 있어도 최신 것 반환)
