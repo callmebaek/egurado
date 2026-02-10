@@ -568,6 +568,15 @@ export default function DashboardPage() {
     percentage_used: number
   } | null>(null)
   
+  // 구독 정보 (취소 상태 표시용)
+  const [subscriptionInfo, setSubscriptionInfo] = useState<{
+    status: string
+    tier: string
+    expires_at?: string
+    next_billing_date?: string
+    cancelled_at?: string
+  } | null>(null)
+  
   // 드래그앤드롭 센서 설정
   const sensors = useSensors(
     useSensor(MouseSensor, {
@@ -1112,13 +1121,16 @@ export default function DashboardPage() {
           setProfile(profileData)
         }
 
-        // 🆕 1-1. 실제 크레딧 조회 (Credits API)
+        // 🆕 1-1. 실제 크레딧 조회 (Credits API) + 구독 정보 조회
         try {
-          const creditsRes = await fetch(`${api.baseUrl}/api/v1/credits/me`, {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          })
+          const [creditsRes, subRes] = await Promise.all([
+            fetch(`${api.baseUrl}/api/v1/credits/me`, {
+              headers: { 'Authorization': `Bearer ${token}` }
+            }),
+            fetch(`${api.baseUrl}/api/v1/subscriptions/me`, {
+              headers: { 'Authorization': `Bearer ${token}` }
+            })
+          ])
           
           if (creditsRes.ok) {
             const creditsData = await creditsRes.json()
@@ -1130,8 +1142,13 @@ export default function DashboardPage() {
               percentage_used: creditsData.percentage_used || 0
             })
           }
+          
+          if (subRes.ok) {
+            const subData = await subRes.json()
+            setSubscriptionInfo(subData)
+          }
         } catch (error) {
-          console.log('[INFO] Credits API not available yet:', error)
+          console.log('[INFO] Credits/Subscription API not available yet:', error)
           // 크레딧 API가 아직 없으면 기존 프로필 데이터 사용
         }
 
@@ -1376,6 +1393,26 @@ export default function DashboardPage() {
               )}
             </div>
           </div>
+
+          {/* 구독 취소 안내 */}
+          {subscriptionInfo?.status === 'cancelled' && subscriptionInfo?.expires_at && (
+            <div className="mt-2.5 p-2.5 bg-red-50 border border-red-200 rounded-button">
+              <p className="text-xs font-bold text-red-700 mb-0.5">⚠️ 구독 취소됨</p>
+              <p className="text-xs text-red-600">
+                {new Date(subscriptionInfo.expires_at).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' })}까지 이용 가능
+              </p>
+              <p className="text-xs text-red-500 mt-0.5">이후 Free 플랜으로 전환됩니다</p>
+            </div>
+          )}
+          {/* 다음 결제일 */}
+          {subscriptionInfo?.status === 'active' && subscriptionInfo?.next_billing_date && currentTier !== 'free' && currentTier !== 'god' && (
+            <div className="mt-2.5 p-2.5 bg-blue-50 border border-blue-200 rounded-button">
+              <p className="text-xs text-blue-700">
+                <span className="font-bold">다음 결제일:</span>{' '}
+                {new Date(subscriptionInfo.next_billing_date).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' })}
+              </p>
+            </div>
+          )}
         </div>
         {/* 플레이스 활성화 카드 - 스크린샷 스타일 */}
         {latestActivation && latestActivation.summary_cards && latestActivation.summary_cards.length > 0 ? (

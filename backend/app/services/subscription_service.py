@@ -31,11 +31,11 @@ class SubscriptionService:
             Subscription: 구독 정보 (월 크레딧, 최대 매장/키워드/자동수집 수 포함)
         """
         try:
-            # 1. 구독 정보 조회
+            # 1. 구독 정보 조회 (active 또는 cancelled 상태 포함)
             response = self.supabase.table("subscriptions")\
                 .select("*")\
                 .eq("user_id", str(user_id))\
-                .eq("status", "active")\
+                .in_("status", ["active", "cancelled"])\
                 .order("created_at", desc=True)\
                 .limit(1)\
                 .execute()

@@ -230,6 +230,10 @@ export default function MembershipPage() {
   const [keepKeywordIds, setKeepKeywordIds] = useState<string[]>([])
   const [cancelReason, setCancelReason] = useState('')
   
+  // 취소 완료 모달
+  const [showCancelCompleteModal, setShowCancelCompleteModal] = useState(false)
+  const [cancelCompleteData, setCancelCompleteData] = useState<{ endDate: string; message: string } | null>(null)
+  
   // ============================================
   // 구독 정보 로드
   // ============================================
@@ -436,14 +440,14 @@ export default function MembershipPage() {
       if (response.ok) {
         const data = await response.json()
         const endDate = data.service_end_date ? formatDate(data.service_end_date) : ''
-        toast({
-          title: "구독 취소 완료",
-          description: endDate 
-            ? `${endDate}까지 현재 플랜의 모든 기능을 이용하실 수 있습니다. 이후 Free 플랜으로 자동 전환됩니다.`
-            : data.message,
-        })
         setShowCancelDialog(false)
-        window.location.reload()
+        setCancelCompleteData({
+          endDate,
+          message: endDate 
+            ? `${endDate}까지 현재 플랜의 모든 기능을 이용하실 수 있습니다.`
+            : (data.message || '구독이 취소되었습니다.'),
+        })
+        setShowCancelCompleteModal(true)
       } else {
         const error = await response.json()
         throw new Error(error.detail || '구독 취소 실패')
@@ -941,6 +945,60 @@ export default function MembershipPage() {
                 ) : (
                   '구독 취소 확인'
                 )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* 구독 취소 완료 모달 */}
+        <Dialog open={showCancelCompleteModal} onOpenChange={(open) => {
+          if (!open) {
+            setShowCancelCompleteModal(false)
+            window.location.reload()
+          }
+        }}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-bold text-neutral-900 flex items-center gap-3">
+                <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                  <CheckCircle className="w-6 h-6 text-green-600" />
+                </div>
+                구독 취소가 완료되었습니다
+              </DialogTitle>
+            </DialogHeader>
+            
+            <div className="space-y-4 py-4">
+              {cancelCompleteData?.endDate && (
+                <div className="p-4 bg-blue-50 border-2 border-blue-200 rounded-xl">
+                  <p className="text-base font-semibold text-blue-900 mb-1">
+                    📅 서비스 이용 가능일
+                  </p>
+                  <p className="text-lg font-bold text-blue-700">
+                    {cancelCompleteData.endDate}까지
+                  </p>
+                </div>
+              )}
+
+              <div className="p-4 bg-yellow-50 border-2 border-yellow-200 rounded-xl space-y-2">
+                <p className="text-sm font-semibold text-yellow-800">📌 안내사항</p>
+                <ul className="text-sm text-yellow-700 space-y-1.5 list-disc list-inside">
+                  <li>서비스 종료일까지 현재 플랜의 <strong>모든 기능과 크레딧</strong>을 정상 이용하실 수 있습니다.</li>
+                  <li>종료일 이후 자동으로 <strong>Free 플랜</strong>으로 전환됩니다.</li>
+                  <li>미사용 크레딧은 종료일에 <strong>소멸</strong>됩니다.</li>
+                  <li>다시 구독을 원하시면 멤버십 페이지에서 언제든 재구독 가능합니다.</li>
+                </ul>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button 
+                onClick={() => {
+                  setShowCancelCompleteModal(false)
+                  window.location.reload()
+                }}
+                className="w-full h-12 text-base font-bold"
+              >
+                확인
               </Button>
             </DialogFooter>
           </DialogContent>
