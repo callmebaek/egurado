@@ -51,7 +51,6 @@ export const Footer = () => {
               <p>서비스명: 윕플 (whiplace.com)</p>
               <p>대표자: 백성민</p>
               <p>사업자등록번호: 612-86-03314</p>
-              <p>통신판매업신고번호: 현재 발급중</p>
               <p>주소: 서울특별시 중랑구 면목천로6길 22, 1층</p>
               <p>
                 이메일: business@whiplace.com
