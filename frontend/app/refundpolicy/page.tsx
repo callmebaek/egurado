@@ -38,6 +38,14 @@ export default function RefundPolicyPage() {
             서비스 이용과 관련된 환불 기준을 규정합니다.
           </p>
 
+          <div className="mb-10 bg-neutral-50 rounded-lg p-4 text-sm text-neutral-600 space-y-1">
+            <p>상호명: 주식회사 노느니</p>
+            <p>대표자: 백성민</p>
+            <p>사업자등록번호: 612-86-03314</p>
+            <p>통신판매업신고번호: 2026-서울중랑-0237호</p>
+            <p>주소: 서울특별시 중랑구 면목천로6길 22, 1층</p>
+          </div>
+
           <div className="space-y-10 text-sm md:text-base text-neutral-700 leading-relaxed">
             {/* 1. 서비스 유형 */}
             <section>

@@ -41,6 +41,13 @@ export default function TermsPage() {
                 관련하여 회사와 회원 간의 권리, 의무 및 책임사항, 기타 필요한
                 사항을 규정함을 목적으로 합니다.
               </p>
+              <div className="mt-4 bg-neutral-50 rounded-lg p-4 text-sm text-neutral-600 space-y-1">
+                <p>상호명: 주식회사 노느니</p>
+                <p>대표자: 백성민</p>
+                <p>사업자등록번호: 612-86-03314</p>
+                <p>통신판매업신고번호: 2026-서울중랑-0237호</p>
+                <p>주소: 서울특별시 중랑구 면목천로6길 22, 1층</p>
+              </div>
             </section>
 
             {/* 제2조 */}
