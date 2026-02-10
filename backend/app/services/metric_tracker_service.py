@@ -423,14 +423,52 @@ class MetricTrackerService:
             now_kst = datetime.now(KST)
             today = now_kst.date()
             
+            new_visitor = rank_result.get('visitor_review_count', 0)
+            new_blog = rank_result.get('blog_review_count', 0)
+            
+            # 리뷰수 0 방어 로직: 이전에 정상 리뷰수가 있었는데 갑자기 둘 다 0이면 이전 값 보존
+            if new_visitor == 0 and new_blog == 0:
+                # 오늘 기존 데이터 확인
+                today_existing = self.supabase.table('daily_metrics')\
+                    .select('visitor_review_count, blog_review_count')\
+                    .eq('tracker_id', tracker_id)\
+                    .eq('collection_date', today.isoformat())\
+                    .execute()
+                
+                prev_visitor = 0
+                prev_blog = 0
+                
+                if today_existing.data and len(today_existing.data) > 0:
+                    prev_visitor = today_existing.data[0].get('visitor_review_count', 0)
+                    prev_blog = today_existing.data[0].get('blog_review_count', 0)
+                else:
+                    # 오늘 데이터 없으면 전일 데이터 확인
+                    yesterday_check = today - timedelta(days=1)
+                    prev_check = self.supabase.table('daily_metrics')\
+                        .select('visitor_review_count, blog_review_count')\
+                        .eq('tracker_id', tracker_id)\
+                        .eq('collection_date', yesterday_check.isoformat())\
+                        .execute()
+                    if prev_check.data and len(prev_check.data) > 0:
+                        prev_visitor = prev_check.data[0].get('visitor_review_count', 0)
+                        prev_blog = prev_check.data[0].get('blog_review_count', 0)
+                
+                if prev_visitor > 0 or prev_blog > 0:
+                    logger.warning(
+                        f"[Metrics Collect] 리뷰수 0 방어 발동: {tracker_id} - "
+                        f"새로운 값(visitor=0, blog=0) 대신 이전 값(visitor={prev_visitor}, blog={prev_blog}) 유지"
+                    )
+                    new_visitor = prev_visitor
+                    new_blog = prev_blog
+            
             metric_data = {
                 'tracker_id': tracker_id,
                 'keyword_id': tracker['keyword_id'],
                 'store_id': tracker['store_id'],
                 'collection_date': today.isoformat(),
                 'rank': rank_result.get('rank'),
-                'visitor_review_count': rank_result.get('visitor_review_count', 0),
-                'blog_review_count': rank_result.get('blog_review_count', 0),
+                'visitor_review_count': new_visitor,
+                'blog_review_count': new_blog,
                 'collected_at': now_kst.isoformat()
             }
             

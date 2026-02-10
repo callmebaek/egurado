@@ -89,13 +89,18 @@ class NaverRankNewAPIService:
         logger.info(f"[신API Rank] 순위 체크 시작: keyword={keyword}, place_id={target_place_id}, store_name={store_name}, x={coord_x}, y={coord_y}")
         
         try:
-            # 1. GraphQL로 검색 결과 가져오기 (프록시 → 직접 연결 폴백 포함)
+            # 1. GraphQL로 검색 결과 가져오기 (프록시 -> 직접 연결 폴백 포함)
             search_results, total_count = await self._search_places_with_fallback(keyword, max_results, coord_x, coord_y)
             
             if not search_results:
-                logger.warning(f"[신API Rank] 검색 결과 없음 (프록시+직접 연결 모두 실패)")
-                # 🛡️ 여기서도 빈 결과면 예외를 발생시켜 크롤링 폴백 트리거
-                raise Exception("GraphQL 검색 결과 없음 - 모든 연결 방식 실패")
+                # GraphQL이 빈 결과를 반환한 경우 - 2초 대기 후 1회 재시도
+                logger.warning(f"[신API Rank] 검색 결과 0개 -> 2초 후 1회 재시도")
+                await asyncio.sleep(2)
+                search_results, total_count = await self._search_places_with_fallback(keyword, max_results, coord_x, coord_y)
+                
+                if not search_results:
+                    logger.warning(f"[신API Rank] 재시도 후에도 검색 결과 없음 -> 크롤링 폴백")
+                    raise Exception("GraphQL 검색 결과 없음 - 재시도 포함 모든 연결 방식 실패")
             
             # 2. 순위 찾기
             rank = None
@@ -194,8 +199,11 @@ class NaverRankNewAPIService:
         except Exception as e:
             logger.error(f"[신API Rank] 오류: {str(e)}")
             # 오류 시 크롤링 방식으로 폴백
-            logger.info("[신API Rank] 🛡️ 크롤링 방식으로 폴백...")
-            return await self._fallback_to_crawling(keyword, target_place_id, max_results)
+            logger.info("[신API Rank] 크롤링 방식으로 폴백...")
+            return await self._fallback_to_crawling(
+                keyword, target_place_id, max_results,
+                store_name=store_name, coord_x=coord_x, coord_y=coord_y
+            )
     
     async def _search_places_with_fallback(
         self, keyword: str, max_results: int, coord_x: str = None, coord_y: str = None
@@ -536,12 +544,18 @@ class NaverRankNewAPIService:
         self, 
         keyword: str, 
         target_place_id: str, 
-        max_results: int
+        max_results: int,
+        store_name: str = None,
+        coord_x: str = None,
+        coord_y: str = None
     ) -> Dict:
-        """신API 실패 시 크롤링 방식으로 폴백"""
+        """신API 실패 시 크롤링 방식으로 폴백
+        
+        크롤링으로 순위를 찾은 후, 리뷰수는 별도 API로 조회하여 보완
+        """
         try:
             from .naver_rank_service_crawling import rank_service
-            logger.info("[신API Rank → 크롤링] 크롤링 서비스 호출")
+            logger.info("[신API Rank -> 크롤링] 크롤링 서비스 호출")
             result = await rank_service.check_rank(
                 keyword=keyword,
                 target_place_id=target_place_id,
@@ -556,26 +570,62 @@ class NaverRankNewAPIService:
                 "save_count": 0
             }
             
-            if result.get("found") and result.get("search_results"):
-                for store in result["search_results"]:
-                    if store.get("place_id") == target_place_id:
+            # 크롤링으로 매장을 찾았으면 리뷰수를 별도 API로 조회
+            if result.get("found"):
+                logger.info(f"[신API Rank -> 크롤링] 매장 발견 (rank={result.get('rank')}), 리뷰수 별도 조회 시작")
+                try:
+                    # 1차: GraphQL place detail로 리뷰수 조회
+                    place_detail = await self._get_place_detail(target_place_id)
+                    if place_detail and (place_detail.get("visitor_review_count", 0) > 0 or place_detail.get("blog_review_count", 0) > 0):
                         target_store = {
                             "place_id": target_place_id,
-                            "visitor_review_count": int(store.get("review_count", 0) or 0),
-                            "blog_review_count": 0,
-                            "save_count": 0
+                            "visitor_review_count": place_detail.get("visitor_review_count", 0),
+                            "blog_review_count": place_detail.get("blog_review_count", 0),
+                            "save_count": place_detail.get("save_count", 0)
                         }
-                        break
+                        logger.info(
+                            f"[신API Rank -> 크롤링] GraphQL 리뷰수 조회 성공: "
+                            f"visitor={target_store['visitor_review_count']}, blog={target_store['blog_review_count']}"
+                        )
+                    else:
+                        # 2차: naver_review_service로 리뷰수 조회
+                        logger.info("[신API Rank -> 크롤링] GraphQL 리뷰수 0, naver_review_service로 재시도")
+                        from .naver_review_service import NaverReviewService
+                        review_service = NaverReviewService()
+                        place_info = await review_service.get_place_info(
+                            place_id=target_place_id,
+                            store_name=store_name,
+                            x=coord_x,
+                            y=coord_y
+                        )
+                        if place_info:
+                            target_store = {
+                                "place_id": target_place_id,
+                                "visitor_review_count": place_info.get("visitor_review_count", 0),
+                                "blog_review_count": place_info.get("blog_review_count", 0),
+                                "save_count": 0
+                            }
+                            logger.info(
+                                f"[신API Rank -> 크롤링] review_service 리뷰수 조회 성공: "
+                                f"visitor={target_store['visitor_review_count']}, blog={target_store['blog_review_count']}"
+                            )
+                except Exception as review_err:
+                    logger.warning(f"[신API Rank -> 크롤링] 리뷰수 조회 실패 (순위는 유효): {str(review_err)}")
             
             result["target_store"] = target_store
             result["visitor_review_count"] = target_store["visitor_review_count"]
             result["blog_review_count"] = target_store["blog_review_count"]
             result["save_count"] = target_store["save_count"]
             
+            logger.info(
+                f"[신API Rank -> 크롤링] 최종 결과: rank={result.get('rank')}, "
+                f"visitor={target_store['visitor_review_count']}, blog={target_store['blog_review_count']}"
+            )
+            
             return result
             
         except Exception as e:
-            logger.error(f"[신API Rank → 크롤링] 크롤링도 실패: {str(e)}")
+            logger.error(f"[신API Rank -> 크롤링] 크롤링도 실패: {str(e)}")
             raise Exception(f"신API와 크롤링 모두 실패: {str(e)}")
 
 
