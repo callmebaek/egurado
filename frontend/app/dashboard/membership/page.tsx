@@ -238,38 +238,38 @@ export default function MembershipPage() {
   // 구독 정보 로드
   // ============================================
   
-  useEffect(() => {
-    const loadSubscription = async () => {
-      if (!user) return
-      
-      try {
-        const token = getToken()
-        const response = await fetch(`${API_URL}/api/v1/subscriptions/me`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        })
-        
-        if (response.ok) {
-          const data = await response.json()
-          setSubscription(data)
-        } else {
-          setSubscription({
-            tier: user.subscription_tier || 'free',
-            status: 'active',
-            monthly_credits: 100,
-            max_stores: 1,
-            max_keywords: 1,
-            max_auto_collection: 0,
-          })
-        }
-      } catch (error) {
-        console.error('구독 정보 로드 실패:', error)
-      } finally {
-        setIsLoading(false)
-      }
-    }
+  const loadSubscription = useCallback(async () => {
+    if (!user) return
     
-    loadSubscription()
+    try {
+      const token = getToken()
+      const response = await fetch(`${API_URL}/api/v1/subscriptions/me`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        setSubscription(data)
+      } else {
+        setSubscription({
+          tier: user.subscription_tier || 'free',
+          status: 'active',
+          monthly_credits: 100,
+          max_stores: 1,
+          max_keywords: 1,
+          max_auto_collection: 0,
+        })
+      }
+    } catch (error) {
+      console.error('구독 정보 로드 실패:', error)
+    } finally {
+      setIsLoading(false)
+    }
   }, [user, getToken, API_URL])
+  
+  useEffect(() => {
+    loadSubscription()
+  }, [loadSubscription])
   
   // ============================================
   // 쿠폰 검증
@@ -464,16 +464,71 @@ export default function MembershipPage() {
   }
   
   // ============================================
+  // 구독 재활성화 (취소 철회)
+  // ============================================
+  
+  const [showReactivateModal, setShowReactivateModal] = useState(false)
+  const [isReactivating, setIsReactivating] = useState(false)
+  
+  const handleReactivate = async () => {
+    setIsReactivating(true)
+    try {
+      const token = getToken()
+      const response = await fetch(`${API_URL}/api/v1/subscriptions/reactivate`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        setShowReactivateModal(false)
+        toast({
+          title: "구독 재개 완료",
+          description: data.message || "구독이 정상적으로 재활성화되었습니다.",
+        })
+        // 구독 정보 새로고침
+        loadSubscription()
+      } else {
+        const error = await response.json()
+        throw new Error(error.detail || '구독 재활성화에 실패했습니다.')
+      }
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "재활성화 실패",
+        description: error.message || "구독 재활성화에 실패했습니다.",
+      })
+    } finally {
+      setIsReactivating(false)
+    }
+  }
+  
+  // ============================================
   // Helpers
   // ============================================
   
   const currentPlan = PLANS.find(p => p.tier === subscription?.tier) || PLANS[0]
   const TIER_ORDER: Record<string, number> = { free: 0, basic: 1, basic_plus: 2, pro: 3 }
   
+  const isCancelled = subscription?.status === 'cancelled'
+  
   const isUpgrade = (targetTier: string) => {
     const currentOrder = TIER_ORDER[subscription?.tier || 'free'] || 0
     const targetOrder = TIER_ORDER[targetTier] || 0
     return targetOrder > currentOrder
+  }
+  
+  const isDowngrade = (targetTier: string) => {
+    const currentOrder = TIER_ORDER[subscription?.tier || 'free'] || 0
+    const targetOrder = TIER_ORDER[targetTier] || 0
+    return targetOrder < currentOrder
+  }
+  
+  const isSameTier = (targetTier: string) => {
+    return targetTier === subscription?.tier
   }
   
   const formatDate = (dateString: string) => {
@@ -725,7 +780,56 @@ export default function MembershipPage() {
                         ))}
                       </div>
 
-                      {!isCurrent && plan.tier !== 'free' && (
+                      {/* 구독 취소 상태에서 같은 티어 → 재구독(취소 철회) 버튼 */}
+                      {isCurrent && isCancelled && plan.tier !== 'free' && (
+                        <Button
+                          onClick={() => setShowReactivateModal(true)}
+                          className="w-full h-12 text-base font-bold bg-green-500 hover:bg-green-600"
+                        >
+                          <CheckCircle className="w-5 h-5 mr-2" />
+                          구독 재개 (취소 철회)
+                        </Button>
+                      )}
+                      
+                      {/* 구독 취소 상태에서 하위 티어 → 차단 */}
+                      {!isCurrent && isCancelled && isDowngrade(plan.tier) && plan.tier !== 'free' && (
+                        <div className="w-full">
+                          <Button
+                            disabled
+                            className="w-full h-12 text-base font-bold opacity-50 cursor-not-allowed"
+                          >
+                            서비스 종료 후 구매 가능
+                          </Button>
+                          <p className="text-xs text-red-500 mt-1 text-center">
+                            현재 {currentPlan.name} 서비스 이용 기간이 남아있습니다
+                          </p>
+                        </div>
+                      )}
+                      
+                      {/* 구독 취소 상태에서 상위 티어 → 업그레이드 허용 */}
+                      {!isCurrent && isCancelled && isUpgrade(plan.tier) && plan.tier !== 'free' && (
+                        <Button
+                          onClick={() => {
+                            setSelectedPlan(plan)
+                            setCouponCode('')
+                            setCouponResult(null)
+                            setAgreeTerms(false)
+                            setAgreePrivacy(false)
+                            setAgreeRefund(false)
+                            setAgreePayment(false)
+                            setStep('checkout')
+                          }}
+                          className={`w-full h-12 text-base font-bold ${
+                            plan.popular ? 'bg-purple-500 hover:bg-purple-600' : ''
+                          }`}
+                        >
+                          업그레이드
+                          <ArrowRight className="w-5 h-5 ml-2" />
+                        </Button>
+                      )}
+                      
+                      {/* 정상 구독(active) 또는 free 상태 → 기존 로직 */}
+                      {!isCurrent && !isCancelled && plan.tier !== 'free' && (
                         <Button
                           onClick={() => {
                             setSelectedPlan(plan)
@@ -745,7 +849,9 @@ export default function MembershipPage() {
                           <ArrowRight className="w-5 h-5 ml-2" />
                         </Button>
                       )}
-                      {isCurrent && (
+                      
+                      {/* 현재 이용중 (active) */}
+                      {isCurrent && !isCancelled && (
                         <div className="w-full h-12 flex items-center justify-center bg-green-50 rounded-lg border-2 border-green-200">
                           <span className="text-sm font-bold text-green-600 flex items-center gap-2">
                             <CheckCircle className="w-5 h-5" /> 현재 이용 중
@@ -999,6 +1105,65 @@ export default function MembershipPage() {
                 className="w-full h-12 text-base font-bold"
               >
                 확인
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* 구독 재활성화 (취소 철회) 모달 */}
+        <Dialog open={showReactivateModal} onOpenChange={setShowReactivateModal}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-bold text-neutral-900 flex items-center gap-3">
+                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                  <CheckCircle className="w-6 h-6 text-blue-600" />
+                </div>
+                구독 재개 (취소 철회)
+              </DialogTitle>
+              <DialogDescription className="text-base text-neutral-600 mt-2">
+                취소한 구독을 다시 활성화합니다.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4 py-4">
+              <div className="p-4 bg-blue-50 border-2 border-blue-200 rounded-xl">
+                <p className="text-base font-semibold text-blue-900 mb-2">
+                  {currentPlan.name} 플랜 재개
+                </p>
+                <ul className="text-sm text-blue-700 space-y-1.5 list-disc list-inside">
+                  <li>추가 결제 없이 기존 구독이 <strong>즉시 재활성화</strong>됩니다.</li>
+                  <li>다음 결제일에 <strong>자동 갱신</strong>이 정상 진행됩니다.</li>
+                  <li>현재 이용 중인 크레딧과 혜택이 그대로 유지됩니다.</li>
+                </ul>
+              </div>
+
+              {subscription?.expires_at && (
+                <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg text-center">
+                  <p className="text-sm text-neutral-600">
+                    기존 종료 예정일 <strong className="text-neutral-900">{formatDate(subscription.expires_at)}</strong>이 해제되며, 구독이 계속 유지됩니다.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <DialogFooter className="flex gap-3">
+              <Button 
+                variant="outline"
+                onClick={() => setShowReactivateModal(false)}
+                className="flex-1 h-12 text-base font-bold"
+              >
+                취소
+              </Button>
+              <Button 
+                onClick={handleReactivate}
+                disabled={isReactivating}
+                className="flex-1 h-12 text-base font-bold bg-green-500 hover:bg-green-600"
+              >
+                {isReactivating ? (
+                  <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> 처리 중...</>
+                ) : (
+                  <><CheckCircle className="w-5 h-5 mr-2" /> 구독 재개하기</>
+                )}
               </Button>
             </DialogFooter>
           </DialogContent>

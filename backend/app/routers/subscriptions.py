@@ -5,6 +5,7 @@ Subscriptions API Router
 from fastapi import APIRouter, HTTPException, Depends, status
 from uuid import UUID
 from typing import Optional
+from datetime import datetime
 
 from app.models.credits import (
     Subscription,
@@ -16,6 +17,7 @@ from app.models.credits import (
 from app.services.subscription_service import subscription_service
 from app.services.credit_service import credit_service
 from app.routers.auth import get_current_user
+from app.core.database import get_supabase_client
 import logging
 
 logger = logging.getLogger(__name__)
@@ -109,6 +111,89 @@ async def upgrade_tier(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to upgrade tier: {str(e)}"
+        )
+
+
+@router.post("/reactivate")
+async def reactivate_subscription(
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    구독 재활성화 (취소 철회)
+    - cancelled 상태의 구독을 active로 되돌림
+    - 추가 결제 없이 기존 구독 유지
+    - expires_at, next_billing_date 등 기존 값 유지
+    """
+    user_id = current_user["id"]
+    
+    try:
+        supabase = get_supabase_client()
+        
+        # cancelled 상태의 구독 조회
+        sub_result = supabase.table("subscriptions")\
+            .select("*")\
+            .eq("user_id", user_id)\
+            .eq("status", "cancelled")\
+            .order("created_at", desc=True)\
+            .limit(1)\
+            .execute()
+        
+        if not sub_result.data:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="취소된 구독이 없습니다."
+            )
+        
+        sub = sub_result.data[0]
+        
+        # 만료일 확인 - 이미 만료된 경우 재활성화 불가
+        expires_at = sub.get("expires_at")
+        if expires_at:
+            from dateutil.parser import parse as parse_date
+            expiry = parse_date(expires_at).replace(tzinfo=None)
+            if datetime.utcnow() > expiry:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="구독 기간이 이미 만료되었습니다. 새로 구독해주세요."
+                )
+        
+        # 구독 재활성화: cancelled → active
+        now = datetime.utcnow()
+        supabase.table("subscriptions")\
+            .update({
+                "status": "active",
+                "cancelled_at": None,
+                "auto_renewal": True,
+                "updated_at": now.isoformat(),
+                "metadata": {
+                    **sub.get("metadata", {}),
+                    "reactivated_at": now.isoformat(),
+                    "cancel_reason": None,
+                }
+            })\
+            .eq("id", sub["id"])\
+            .execute()
+        
+        tier = sub.get("tier", "free")
+        logger.info(f"[Subscription] 구독 재활성화: user={user_id}, tier={tier}")
+        
+        return {
+            "success": True,
+            "message": f"구독이 재활성화되었습니다. {tier.upper()} 플랜이 계속 유지됩니다.",
+            "tier": tier,
+            "next_billing_date": sub.get("next_billing_date"),
+            "expires_at": sub.get("expires_at"),
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        logger.error(f"구독 재활성화 실패: {e}")
+        logger.error(traceback.format_exc())
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"구독 재활성화에 실패했습니다: {str(e)}"
         )
 
 

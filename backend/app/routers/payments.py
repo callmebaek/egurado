@@ -51,7 +51,13 @@ async def create_checkout(
             detail="모든 약관에 동의해야 합니다."
         )
     
-    checkout = await payment_service.create_checkout(user_id, request)
+    try:
+        checkout = await payment_service.create_checkout(user_id, request)
+    except ValueError as ve:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(ve)
+        )
     
     if not checkout:
         raise HTTPException(

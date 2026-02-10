@@ -179,6 +179,32 @@ class PaymentService:
                 logger.error(f"유효하지 않은 Tier 가격: {tier} = {original_amount}")
                 return None
             
+            # 취소된 구독에서 하위 티어 결제 차단
+            cancelled_sub = self.supabase.table("subscriptions")\
+                .select("*")\
+                .eq("user_id", str(user_id))\
+                .eq("status", "cancelled")\
+                .order("created_at", desc=True)\
+                .limit(1)\
+                .execute()
+            
+            if cancelled_sub.data:
+                cancelled_tier = cancelled_sub.data[0].get("tier", "free")
+                cancelled_expires = cancelled_sub.data[0].get("expires_at")
+                # 아직 만료되지 않은 취소 구독이 있고, 하위 티어를 구매하려는 경우 차단
+                if cancelled_expires:
+                    from dateutil.parser import parse as parse_date
+                    expiry = parse_date(cancelled_expires).replace(tzinfo=None)
+                    if datetime.utcnow() < expiry and get_tier_order(tier) <= get_tier_order(cancelled_tier):
+                        if get_tier_order(tier) == get_tier_order(cancelled_tier):
+                            # 같은 티어 → 재활성화 안내
+                            raise ValueError(f"현재 {cancelled_tier.upper()} 구독이 아직 유효합니다. 구독 재개(취소 철회)를 이용해주세요.")
+                        else:
+                            # 하위 티어 → 차단
+                            from datetime import datetime as dt
+                            end_date_str = expiry.strftime("%Y년 %m월 %d일")
+                            raise ValueError(f"현재 {cancelled_tier.upper()} 구독이 {end_date_str}까지 유효합니다. 서비스 종료 후 구매 가능합니다.")
+            
             # 업그레이드 차액 계산
             is_upgrade = False
             discount_from_upgrade = 0
@@ -284,6 +310,9 @@ class PaymentService:
                 is_upgrade=is_upgrade,
             )
             
+        except ValueError as ve:
+            # 하위 티어 차단 등 의도적 에러 → 그대로 전파
+            raise ve
         except Exception as e:
             logger.error(f"체크아웃 생성 실패: {e}")
             import traceback
