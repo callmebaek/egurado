@@ -828,8 +828,23 @@ export default function MembershipPage() {
                         </Button>
                       )}
                       
-                      {/* 정상 구독(active) 또는 free 상태 → 기존 로직 */}
-                      {!isCurrent && !isCancelled && plan.tier !== 'free' && (
+                      {/* 활성 구독에서 하위 티어 → 차단 */}
+                      {!isCurrent && !isCancelled && isDowngrade(plan.tier) && plan.tier !== 'free' && subscription?.tier !== 'free' && (
+                        <div className="w-full">
+                          <Button
+                            disabled
+                            className="w-full h-12 text-base font-bold opacity-50 cursor-not-allowed"
+                          >
+                            하위 플랜 변경 불가
+                          </Button>
+                          <p className="text-xs text-red-500 mt-1 text-center">
+                            현재 {currentPlan.name} 구독 해지 후 변경 가능합니다
+                          </p>
+                        </div>
+                      )}
+                      
+                      {/* 활성/free 상태에서 상위 티어 또는 free에서 구매 → 허용 */}
+                      {!isCurrent && !isCancelled && plan.tier !== 'free' && (canUpgrade || subscription?.tier === 'free') && (
                         <Button
                           onClick={() => {
                             setSelectedPlan(plan)
@@ -845,7 +860,7 @@ export default function MembershipPage() {
                             plan.popular ? 'bg-purple-500 hover:bg-purple-600' : ''
                           }`}
                         >
-                          {canUpgrade ? '업그레이드' : '구독하기'}
+                          {canUpgrade && subscription?.tier !== 'free' ? '업그레이드' : '구독하기'}
                           <ArrowRight className="w-5 h-5 ml-2" />
                         </Button>
                       )}

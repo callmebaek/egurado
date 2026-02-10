@@ -224,6 +224,13 @@ class PaymentService:
                 current = current_sub.data[0]
                 current_tier = current.get("tier", "free")
                 
+                # 활성 구독에서 하위/같은 티어 결제 차단
+                if get_tier_order(current_tier) > 0 and get_tier_order(tier) <= get_tier_order(current_tier):
+                    if get_tier_order(tier) == get_tier_order(current_tier):
+                        raise ValueError(f"이미 {current_tier.upper()} 플랜을 이용 중입니다.")
+                    else:
+                        raise ValueError(f"현재 {current_tier.upper()} 구독 해지 후 하위 플랜으로 변경 가능합니다.")
+                
                 if get_tier_order(current_tier) > 0 and get_tier_order(tier) > get_tier_order(current_tier):
                     is_upgrade = True
                     current_price = get_tier_price(current_tier)
