@@ -89,6 +89,10 @@ export default function RefundPolicyPage() {
                 <li>
                   서비스 이용 환경, 외부 플랫폼 정책 변경 등에 대한 불만
                 </li>
+                <li>
+                  미사용 크레딧에 대한 환불 요청 (크레딧은 금전적 가치로
+                  환산하여 환불되지 않습니다)
+                </li>
               </ul>
             </section>
 
@@ -157,6 +161,11 @@ export default function RefundPolicyPage() {
                 </li>
                 <li>
                   ③ 해지 시, 이미 결제된 이용 요금은 환불되지 않습니다.
+                </li>
+                <li>
+                  ④ 구독 해지 후 잔여 이용 기간 동안 남은 크레딧은 정상적으로
+                  사용할 수 있으나, 이용 기간 종료 시 소멸되며 이월되지
+                  않습니다.
                 </li>
               </ol>
             </section>
