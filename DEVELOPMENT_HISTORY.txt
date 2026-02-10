@@ -16641,3 +16641,330 @@ location /api/ {
 
 **사용자 경험과 관리자 편의성이 획기적으로 개선되었습니다!** 🚀
 =====================================
+
+
+=====================================
+## 세션 36: 토스페이먼츠 결제 시스템 도입 및 구독 관리 전체 구현
+=====================================
+
+**작업 기간:** 2026-02-10 ~ 2026-02-11
+**주요 목표:** 토스페이먼츠(Toss Payments)를 이용한 월 구독 결제 시스템 구현, 쿠폰 시스템, 구독 관리 (업그레이드/취소/재활성화) 전체 플로우 완성
+
+---
+
+### 💳 1. 결제 서비스 선정 및 연동키 설정
+
+#### 1.1 토스페이먼츠 선정 이유
+- 한국 SaaS 서비스에 최적화된 결제 인프라
+- Payment Widget SDK 제공으로 빠른 구현 가능
+- 정기결제(빌링키) 지원
+- 테스트 모드와 실 결제 모드 분리
+
+#### 1.2 연동키 설정
+- **결제위젯 연동키 (테스트)** → 초기 시도, SDK 호환 문제 발생
+- **API 개별 연동키 (테스트)** → 최종 채택
+  - 상점아이디: whiplac0na
+  - 클라이언트키: test_ck_nRQoOaPz8LKPYl4OmEWGry47BMw6
+  - 시크릿키: test_sk_DnyRpQWGrNWJOn5eMnge8Kwv1M9E
+- 환경변수: `NEXT_PUBLIC_TOSS_CLIENT_KEY`, `TOSS_SECRET_KEY`, `TOSS_CLIENT_KEY`, `TOSS_API_URL`
+
+---
+
+### 🗄️ 2. 데이터베이스 스키마 설계 및 마이그레이션
+
+#### 2.1 신규 테이블
+| 테이블 | 설명 | 주요 컬럼 |
+|---|---|---|
+| `subscriptions` | 구독 관리 | user_id, tier, status, next_billing_date, expires_at, cancelled_at |
+| `payments` | 결제 내역 | user_id, order_id, amount, status, payment_type, toss_payment_key |
+| `billing_keys` | 빌링키 저장 | user_id, billing_key, card_info, is_active |
+| `coupons` | 쿠폰 마스터 | code, discount_rate, is_active, max_uses, current_uses |
+| `user_coupons` | 유저별 쿠폰 사용 | user_id, coupon_id, used_at |
+| `credit_transactions` | 크레딧 거래 내역 | user_id, transaction_type, credits_amount, from_monthly, from_manual, balance_before, balance_after |
+
+#### 2.2 마이그레이션 파일
+- `045_create_credit_transactions.sql` - 크레딧 거래 내역 테이블
+- `046_create_subscriptions.sql` - 구독 테이블
+- `047_create_payments.sql` - 결제 테이블
+- `050_create_billing_keys.sql` - 빌링키 테이블
+- `051_create_coupons.sql` - 쿠폰 관련 테이블
+
+#### 2.3 Stored Procedures / Functions
+- `generate_order_id()` - 주문번호 자동 생성
+- `get_tier_monthly_credits()` - 티어별 월 크레딧 조회
+- `get_tier_auto_collection_limit()` - 티어별 자동수집 한도
+- `init_user_credits()` - 사용자 크레딧 초기화
+- `reset_monthly_credits()` - 월간 크레딧 리셋
+- `get_tier_quotas()` - 티어별 할당량 조회
+- `admin_grant_credits()` - 관리자 크레딧 수동 지급
+- `update_user_tier()` - 유저 티어 업데이트
+- `check_sufficient_credits()` / `deduct_user_credits()` - 크레딧 차감 로직
+- `charge_manual_credits()` - 수동 크레딧 충전
+
+---
+
+### 🔧 3. 백엔드 구현
+
+#### 3.1 서비스 레이어
+| 서비스 | 파일 | 기능 |
+|---|---|---|
+| PaymentService | `backend/app/services/payment_service.py` | 체크아웃 생성, 결제 승인(confirm), 토스 API 연동 |
+| SubscriptionService | `backend/app/services/subscription_service.py` | 구독 CRUD, 상태 관리 (active/cancelled) |
+| BillingService | `backend/app/services/billing_service.py` | 정기결제 처리, 구독 취소 프로세스 |
+| CouponService | `backend/app/services/coupon_service.py` | 쿠폰 생성, 검증, 적용, 사용 기록 |
+
+#### 3.2 API 엔드포인트
+
+**결제 API (`/api/v1/payments/`)**
+| Method | Endpoint | 설명 |
+|---|---|---|
+| POST | `/checkout` | 체크아웃 생성 (주문ID, 금액 계산, 쿠폰 적용) |
+| POST | `/confirm` | 토스 결제 승인 + 구독/크레딧 활성화 |
+
+**구독 API (`/api/v1/subscriptions/`)**
+| Method | Endpoint | 설명 |
+|---|---|---|
+| GET | `/me` | 현재 구독 정보 조회 (active + cancelled) |
+| POST | `/` | 구독 생성 |
+| PATCH | `/` | 구독 업데이트 |
+| POST | `/upgrade` | 티어 업그레이드 |
+| POST | `/cancel` | 구독 취소 (매장/키워드 선택 포함) |
+| GET | `/cancel-info` | 취소 시 필요 정보 (매장/키워드 목록, Free 제한) |
+| POST | `/reactivate` | 구독 재활성화 (취소 철회) |
+
+**쿠폰 API (`/api/v1/coupons/`)**
+| Method | Endpoint | 설명 |
+|---|---|---|
+| POST | `/` | 쿠폰 생성 (Admin) |
+| GET | `/` | 쿠폰 목록 조회 (Admin) |
+| POST | `/validate` | 쿠폰 유효성 검증 |
+| PATCH | `/{coupon_id}/toggle` | 쿠폰 활성/비활성 토글 |
+
+**관리자 API (`/api/v1/admin/`)**
+| Method | Endpoint | 설명 |
+|---|---|---|
+| POST | `/users/{user_id}/credits` | 크레딧 수동 지급 + 트랜잭션 기록 |
+
+#### 3.3 티어 및 가격 설정
+
+```python
+# backend/app/core/config.py
+TIER_PRICES = {
+    "free": 0,
+    "basic": 29000,
+    "basic_plus": 49000,
+    "pro": 89000,
+    "custom": 0,
+    "god": 0,
+}
+
+TIER_ORDER = {
+    "free": 0,
+    "basic": 1,
+    "basic_plus": 2,
+    "pro": 3,
+    "custom": 4,
+    "god": 5,
+}
+```
+
+#### 3.4 결제 플로우
+```
+프론트 → POST /checkout (주문생성, 쿠폰/업그레이드 차액 계산)
+    → 토스 SDK payment.requestPayment() (카드결제 UI)
+    → 토스 → successUrl 리다이렉트
+    → 프론트 → POST /confirm (paymentKey, orderId, amount)
+        → 백엔드 → 토스 API 승인 요청
+        → 구독 생성/업데이트
+        → 크레딧 부여
+        → 프로필 티어/할당량 업데이트
+```
+
+---
+
+### 🎨 4. 프론트엔드 구현
+
+#### 4.1 멤버십 페이지 (`/dashboard/membership/page.tsx`)
+- **플랜 카드**: Free / Basic / Basic+ / Pro 4개 플랜 그리드
+- **체크아웃 플로우**: 플랜 선택 → 쿠폰 입력 → 약관 동의 → 토스 결제
+- **결제 성공/실패 페이지**: `/membership/success`, `/membership/fail`
+- **구독 취소 다이얼로그**: 매장/키워드 선택 UI + 경고 메시지 + 완료 모달
+- **구독 재활성화 모달**: 취소 철회 확인 UI
+
+#### 4.2 관리자 페이지 (`/dashboard/admin/page.tsx`)
+- **쿠폰 관리 탭**: 쿠폰 생성(직접입력/자동생성), 할인율 설정, 활성/비활성 토글
+- **회원 관리 테이블**: 다음결제일, 최근결제일, 서비스종료일, 등록매장수, 추적키워드수, 크레딧 지급 기능
+
+#### 4.3 대시보드 (`/dashboard/page.tsx`)
+- 계정정보 카드에 구독 상태, 다음 결제일, 취소 시 서비스종료일 표시
+
+#### 4.4 크레딧 관리 (`/dashboard/credits/page.tsx`)
+- 구독 취소 시 경고 배너 (서비스종료일 안내)
+- 크레딧 사용내역에 관리자 지급 내역 표시 (`charge` 타입 + `metadata.admin_note`)
+
+#### 4.5 계정 설정 (`/dashboard/settings/page.tsx`)
+- 구독 정보 섹션 추가 (현재 플랜, 상태, 다음결제일, 서비스종료일)
+
+---
+
+### 🐛 5. 버그 수정 및 개선 이력
+
+#### 5.1 결제 연동 초기 이슈
+| 이슈 | 원인 | 해결 |
+|---|---|---|
+| "API 개별 연동 키로 SDK 연동하세요" 에러 | 결제위젯 연동키로 SDK 초기화 | API 개별 연동키로 변경 |
+| 결제 확인 400 에러 | amount 불일치 (프론트 vs 토스) | 백엔드 confirm에서 amount 재계산 로직 정확화 |
+| 쿠폰 생성 500/400 에러 | Pydantic Literal 타입 불일치, 컬럼명 오류 | `subscription_tier` Literal에 누락 티어 추가, 컬럼명 수정 |
+
+#### 5.2 구독/크레딧 관련 이슈
+| 이슈 | 원인 | 해결 |
+|---|---|---|
+| 로그인 실패 (결제 후) | Profile 모델에 `basic_plus`, `custom` 티어 미정의 | Pydantic Literal에 티어 추가 |
+| 다음결제일 3월12일 (30일 후) | `timedelta(days=30)` 사용 | `relativedelta(months=1)` 로 변경 (정확한 월 단위) |
+| 쿠폰 중복 사용 가능 | 사용 여부 미검증 | `user_coupons` 테이블 체크 + 프론트 에러 메시지 |
+| 결제금액 불일치 (프론트 vs 토스) | 백엔드에서 쿠폰할인 미반영 | checkout과 confirm 모두 동일한 금액 계산 로직 적용 |
+| Pro 업그레이드 후 매장/키워드 한도 미갱신 | profiles 테이블 업데이트 누락 | confirm_payment에서 profiles quota 업데이트 추가 |
+| cancel-info 500 에러 | `metric_trackers.keyword` 컬럼 미존재 | `keywords(keyword)` 조인으로 변경 |
+| Admin 크레딧 지급 실패 | RLS `auth.uid()` NULL (서비스키 사용 시) | 서비스키 Supabase 클라이언트 사용으로 RLS 우회 |
+| 크레딧 지급 내역 미표시 | `credit_transactions` 삽입 시 잘못된 컬럼명/타입 | `transaction_type='charge'`, `from_manual`, `metadata.admin_note` 정확히 설정 |
+| 구독취소 토스트 너무 빨리 사라짐 | Toast 자동 dismiss | Modal Dialog로 변경하여 영구 표시 |
+
+#### 5.3 Admin 페이지 개선
+| 이슈 | 해결 |
+|---|---|
+| 서비스종료일 "취소중" 표시 | `expires_at` 실제 날짜로 표시 |
+| 테이블 줄바꿈으로 가독성 저하 | `whitespace-nowrap` 적용, 컬럼 폭 최적화 |
+| test5 최근결제일 미표시 | payments 테이블 조인 쿼리 수정 |
+| 등록매장수/추적키워드수 미표시 | stores/metric_trackers 카운트 쿼리 추가 |
+
+---
+
+### 🔒 6. 구독 티어 변경 정책 (최종)
+
+#### 6.1 활성 구독 (Active) 상태에서의 정책
+| 대상 티어 | 동작 | 설명 |
+|---|---|---|
+| 상위 티어 | ✅ **업그레이드 허용** | 현재 플랜 가격 차액만 결제 |
+| 같은 티어 | 🔒 **차단** | "이미 이용 중입니다" |
+| 하위 티어 | 🔒 **차단** | "구독 해지 후 변경 가능합니다" |
+
+#### 6.2 취소된 구독 (Cancelled) 상태에서의 정책
+| 대상 티어 | 동작 | 설명 |
+|---|---|---|
+| 상위 티어 | ✅ **업그레이드 허용** | 전액 결제 (취소 구독은 차액 계산 안함) |
+| 같은 티어 | 🔄 **취소 철회 (재활성화)** | 추가 결제 없이 즉시 active 복원 |
+| 하위 티어 | 🔒 **차단** | "서비스 종료 후 구매 가능" |
+
+#### 6.3 구현 위치
+- **프론트엔드**: 멤버십 페이지 플랜 카드 버튼 조건부 렌더링
+- **백엔드**: `create_checkout()` 에서 이중 검증 (ValueError → 400 응답)
+- **백엔드**: `POST /subscriptions/reactivate` 엔드포인트로 취소 철회 처리
+
+---
+
+### 📋 7. 구독 취소 플로우
+
+```
+사용자: "구독 취소" 클릭
+    → GET /cancel-info (매장/키워드 목록 + Free 제한 정보)
+    → 매장/키워드 선택 다이얼로그 표시
+        - Free 티어 제한: 매장 1개, 키워드 1개
+        - ⚠️ "선택하지 않은 데이터는 영구 삭제됩니다" 경고
+    → POST /cancel (keep_store_ids, keep_keyword_ids, reason)
+        → 구독 상태: active → cancelled
+        → expires_at: 다음 결제일 (이 날짜까지 서비스 이용 가능)
+        → 선택되지 않은 매장/키워드 삭제
+    → 완료 모달 표시 (서비스종료일, 안내사항)
+```
+
+### 📋 8. 구독 재활성화 (취소 철회) 플로우
+
+```
+사용자: 멤버십 페이지 → 같은 티어 카드 "구독 재개(취소 철회)" 클릭
+    → 확인 모달 표시 (추가 결제 없음, 자동 갱신 재개 안내)
+    → POST /subscriptions/reactivate
+        → 구독 상태: cancelled → active
+        → cancelled_at: null
+        → auto_renewal: true
+    → 토스트 메시지 "구독이 재활성화되었습니다"
+    → 구독 정보 새로고침
+```
+
+---
+
+### 🏗️ 9. 배포 구성
+
+#### 9.1 프론트엔드 (Vercel)
+- 환경변수: `NEXT_PUBLIC_TOSS_CLIENT_KEY`, `NEXT_PUBLIC_API_URL`
+- GitHub Desktop 커밋 & 푸시 → Vercel 자동 배포
+
+#### 9.2 백엔드 (EC2 + Docker)
+- `scp` 로 파일 전송 → `docker cp` 로 컨테이너 내 파일 교체 → `docker restart`
+- 환경변수: `TOSS_SECRET_KEY`, `TOSS_CLIENT_KEY`, `TOSS_API_URL`, `TOSS_MID`
+
+#### 9.3 데이터베이스 (Supabase)
+- Supabase Dashboard SQL Editor에서 마이그레이션 직접 실행
+
+---
+
+### 📦 10. 변경된 파일 목록
+
+#### 백엔드 (신규)
+- `backend/app/services/payment_service.py` - 결제 처리 서비스
+- `backend/app/services/subscription_service.py` - 구독 관리 서비스
+- `backend/app/services/billing_service.py` - 빌링/정기결제 서비스
+- `backend/app/services/coupon_service.py` - 쿠폰 서비스
+- `backend/app/routers/payments.py` - 결제 API 라우터
+- `backend/app/routers/subscriptions.py` - 구독 API 라우터
+- `backend/app/routers/coupons.py` - 쿠폰 API 라우터
+
+#### 백엔드 (수정)
+- `backend/app/routers/admin.py` - 크레딧 지급 + 트랜잭션 기록
+- `backend/app/models/credits.py` - Subscription, Payment, Coupon 모델 추가
+- `backend/app/core/config.py` - TIER_PRICES, TIER_ORDER 상수 추가
+- `backend/app/main.py` - 결제/구독/쿠폰 라우터 등록
+
+#### 프론트엔드 (수정)
+- `frontend/app/dashboard/membership/page.tsx` - 결제 플로우 전체 구현
+- `frontend/app/dashboard/membership/success/page.tsx` - 결제 성공 페이지 (신규)
+- `frontend/app/dashboard/membership/fail/page.tsx` - 결제 실패 페이지 (신규)
+- `frontend/app/dashboard/admin/page.tsx` - 쿠폰관리 탭 + 회원관리 확장
+- `frontend/app/dashboard/page.tsx` - 계정정보 카드에 구독 상태 표시
+- `frontend/app/dashboard/credits/page.tsx` - 구독 취소 배너 + 지급 내역 표시
+- `frontend/app/dashboard/settings/page.tsx` - 구독 정보 섹션 추가
+
+#### 데이터베이스 (마이그레이션)
+- `supabase/migrations/045_create_credit_transactions.sql`
+- `supabase/migrations/046_create_subscriptions.sql`
+- `supabase/migrations/047_create_payments.sql`
+- `supabase/migrations/050_create_billing_keys.sql`
+- `supabase/migrations/051_create_coupons.sql`
+
+---
+
+### 🎉 주요 성과
+
+#### 완성된 기능
+1. ✅ **토스페이먼츠 결제 연동** - 카드 결제, 결제 승인, 환불 처리
+2. ✅ **월 구독 시스템** - 자동 결제일 관리, 크레딧 자동 부여
+3. ✅ **티어 업그레이드** - 차액 계산, 직관적 금액 표시
+4. ✅ **구독 취소 + 재활성화** - 매장/키워드 선택, 데이터 보존, 취소 철회
+5. ✅ **쿠폰 시스템** - 생성/관리/검증/적용, 1계정 1회 사용 제한
+6. ✅ **하위 티어 다운그레이드 차단** - Active/Cancelled 모두 차단
+7. ✅ **약관 동의 플로우** - 이용약관, 개인정보, 환불정책, 결제동의
+8. ✅ **관리자 도구** - 쿠폰 관리, 회원관리 (결제일/매장수/키워드수/크레딧지급)
+9. ✅ **크레딧 거래 내역** - 모든 크레딧 변동 추적 (소비/충전/지급/리셋)
+
+#### 기술 스택
+- **결제**: Toss Payments SDK (`@tosspayments/tosspayments-sdk`)
+- **백엔드**: FastAPI + httpx (토스 API 통신) + python-dateutil (월 단위 날짜 계산)
+- **프론트엔드**: Next.js + shadcn/ui (Dialog, Button, Input 등)
+- **데이터베이스**: Supabase (PostgreSQL + RLS)
+- **배포**: Vercel (프론트) + EC2 Docker (백엔드)
+
+---
+
+**이 세션의 결과로 결제 시스템이 완전히 구현되어 실제 구독 결제가 가능해졌습니다!** 🎊
+
+**토스페이먼츠 연동부터 구독 관리, 쿠폰 시스템, 관리자 도구까지 SaaS 운영에 필요한 결제 인프라가 완성되었습니다!** 💳🚀
+=====================================

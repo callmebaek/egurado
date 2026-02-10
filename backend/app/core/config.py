@@ -78,32 +78,32 @@ class Settings:
 settings = Settings()
 
 
-# Tier별 크레딧 설정 (확정된 값)
+# Tier별 크레딧 설정
 TIER_CREDITS = {
     "free": 100,
     "basic": 600,
-    "basic_plus": 1200,
-    "pro": 3000,
-    "custom": 5000,  # 협의 필요
+    "basic_plus": 1500,
+    "pro": 3500,
+    "custom": 0,  # 협의
     "god": -1,  # 무제한
 }
 
-# Tier별 자동수집 제한 (확정된 값)
+# Tier별 자동수집 제한
 TIER_AUTO_COLLECTION_LIMITS = {
     "free": 0,
     "basic": 3,
-    "basic_plus": 6,
-    "pro": 15,
-    "custom": 30,  # 협의 필요
+    "basic_plus": 8,
+    "pro": 20,
+    "custom": 0,  # 협의
     "god": -1,  # 무제한
 }
 
 # Tier별 월 구독 가격 (원) - TBD는 0으로 설정, 추후 업데이트
 TIER_PRICES = {
     "free": 0,
-    "basic": 29000,       # ₩29,000/월 (임시)
-    "basic_plus": 49000,   # ₩49,000/월 (임시)
-    "pro": 89000,          # ₩89,000/월 (임시)
+    "basic": 24900,        # ₩24,900/월
+    "basic_plus": 37900,   # ₩37,900/월
+    "pro": 69900,          # ₩69,900/월
     "custom": 0,           # 협의
     "god": 0,              # 관리자 전용
 }

@@ -476,10 +476,10 @@ class PaymentService:
             # 5. 프로필 Tier + 쿼터 업데이트
             tier_quotas = {
                 "free": {"max_stores": 1, "max_keywords": 1, "max_trackers": 1},
-                "basic": {"max_stores": 3, "max_keywords": 10, "max_trackers": 10},
-                "basic_plus": {"max_stores": 4, "max_keywords": 6, "max_trackers": 6},
-                "pro": {"max_stores": 10, "max_keywords": 50, "max_trackers": 50},
-                "custom": {"max_stores": 20, "max_keywords": 100, "max_trackers": 100},
+                "basic": {"max_stores": 1, "max_keywords": 3, "max_trackers": 3},
+                "basic_plus": {"max_stores": 2, "max_keywords": 8, "max_trackers": 8},
+                "pro": {"max_stores": 5, "max_keywords": 20, "max_trackers": 20},
+                "custom": {"max_stores": 0, "max_keywords": 0, "max_trackers": 0},
                 "god": {"max_stores": -1, "max_keywords": -1, "max_trackers": -1},
             }
             quotas = tier_quotas.get(tier, tier_quotas["free"])

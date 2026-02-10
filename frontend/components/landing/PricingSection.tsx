@@ -27,13 +27,13 @@ export const PricingSection = () => {
     {
       name: 'Basic',
       tier: 'basic',
-      price: '추후 공지',
-      priceNote: '출시 예정',
-      description: '주 2-3회 플레이스를 관리하는 분',
+      price: '₩24,900',
+      priceNote: '/ 월',
+      description: '플레이스를 본격적으로 관리하는 분',
       popular: false,
       features: [
-        '매장 3개',
-        '키워드 10개',
+        '매장 1개',
+        '키워드 3개',
         '월 600 크레딧',
         '자동 순위 수집 3개',
         '플레이스 진단',
@@ -41,47 +41,47 @@ export const PricingSection = () => {
         '리뷰 분석',
         '경쟁매장 분석',
       ],
-      cta: '출시 알림 받기',
+      cta: '구독하기',
       ctaVariant: 'outline',
     },
     {
       name: 'Basic+',
       tier: 'basic_plus',
-      price: '추후 공지',
-      priceNote: '출시 예정',
-      description: '빡세게 플레이스를 관리하는 분',
+      price: '₩37,900',
+      priceNote: '/ 월',
+      description: '여러 매장을 체계적으로 관리하는 분',
       popular: true,
       features: [
-        '매장 4개',
-        '키워드 6개',
-        '월 1,200 크레딧',
-        '자동 순위 수집 6개',
+        '매장 2개',
+        '키워드 8개',
+        '월 1,500 크레딧',
+        '자동 순위 수집 8개',
         '플레이스 진단',
         '키워드 순위 조회',
         '리뷰 분석',
         '경쟁매장 분석',
       ],
-      cta: '출시 알림 받기',
+      cta: '구독하기',
       ctaVariant: 'filled',
     },
     {
       name: 'Pro',
       tier: 'pro',
-      price: '추후 공지',
-      priceNote: '출시 예정',
-      description: '다점포를 운영하는 파워 유저',
+      price: '₩69,900',
+      priceNote: '/ 월',
+      description: '파워 유저 및 다점포 관리자',
       popular: false,
       features: [
-        '매장 10개',
-        '키워드 50개',
-        '월 3,000 크레딧',
-        '자동 순위 수집 15개',
+        '매장 5개',
+        '키워드 20개',
+        '월 3,500 크레딧',
+        '자동 순위 수집 20개',
         '모든 기능 사용 가능',
         'AI 답글 생성',
         '우선 고객 지원',
         '전담 매니저 배정',
       ],
-      cta: '출시 알림 받기',
+      cta: '구독하기',
       ctaVariant: 'outline',
     },
     {
@@ -192,7 +192,7 @@ export const PricingSection = () => {
 
                 {/* CTA 버튼 */}
                 <Link
-                  href={plan.tier === 'free' ? '/dashboard' : '/signup'}
+                  href={plan.tier === 'free' ? '/dashboard' : plan.tier === 'custom' ? '/dashboard/support' : '/dashboard/membership'}
                   className={`block text-center px-6 py-3 rounded-xl text-sm md:text-base font-bold transition-all ${
                     plan.ctaVariant === 'filled'
                       ? plan.popular

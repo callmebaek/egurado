@@ -19,7 +19,7 @@ export default function PricingPage() {
       stores: 1,
       keywords: 1,
       autoCollection: 0,
-      description: "신규 유저를 위한 무료 플랜",
+      description: "플레이스 관리를 처음 시작하는 분",
       badge: null,
       features: [
         { name: "플레이스 진단", included: true },
@@ -36,12 +36,12 @@ export default function PricingPage() {
     {
       name: "Basic",
       tier: "basic",
-      price: null, // TBD
+      price: 24900,
       credits: 600,
-      stores: 3,
-      keywords: 10,
+      stores: 1,
+      keywords: 3,
       autoCollection: 3,
-      description: "일반 사용자를 위한 추천 플랜",
+      description: "플레이스를 본격적으로 관리하는 분",
       badge: null,
       features: [
         { name: "Free 기능 전부", included: true },
@@ -51,50 +51,50 @@ export default function PricingPage() {
         { name: "경쟁매장 분석", included: true },
         { name: "자동수집 (3개 키워드)", included: true },
       ],
-      cta: "가격 문의",
+      cta: "구독하기",
       popular: false,
       icon: TrendingUp,
     },
     {
       name: "Basic+",
       tier: "basic_plus",
-      price: null, // TBD
-      credits: 1200,
-      stores: 4,
-      keywords: 6,
-      autoCollection: 6,
-      description: "빡시게 플레이스 관리하는 사람",
+      price: 37900,
+      credits: 1500,
+      stores: 2,
+      keywords: 8,
+      autoCollection: 8,
+      description: "여러 매장을 체계적으로 관리하는 분",
       badge: "인기",
       features: [
         { name: "Basic 기능 전부", included: true },
-        { name: "크레딧 2배 (1,200)", included: true },
-        { name: "매장 4개", included: true },
-        { name: "자동수집 (6개 키워드)", included: true },
+        { name: "크레딧 1,500", included: true },
+        { name: "매장 2개", included: true },
+        { name: "자동수집 (8개 키워드)", included: true },
         { name: "우선 고객 지원", included: true },
       ],
-      cta: "가격 문의",
+      cta: "구독하기",
       popular: true,
       icon: Zap,
     },
     {
       name: "Pro",
       tier: "pro",
-      price: null, // TBD
-      credits: 3000,
-      stores: 10,
-      keywords: 50,
-      autoCollection: 15,
+      price: 69900,
+      credits: 3500,
+      stores: 5,
+      keywords: 20,
+      autoCollection: 20,
       description: "파워 유저 및 다점포 관리자",
       badge: null,
       features: [
         { name: "Basic+ 기능 전부", included: true },
-        { name: "크레딧 3,000", included: true },
-        { name: "매장 10개", included: true },
-        { name: "자동수집 (15개 키워드)", included: true },
+        { name: "크레딧 3,500", included: true },
+        { name: "매장 5개", included: true },
+        { name: "자동수집 (20개 키워드)", included: true },
         { name: "전담 계정 매니저", included: true },
         { name: "API 접근 (추후)", included: true },
       ],
-      cta: "가격 문의",
+      cta: "구독하기",
       popular: false,
       icon: Crown,
     },
@@ -112,11 +112,11 @@ export default function PricingPage() {
             네이버 플레이스 순위 관리를 더 쉽고 효율적으로
           </p>
           
-          {/* Coming Soon Badge */}
-          <div className="mt-8 inline-flex items-center gap-2 px-4 py-2 bg-yellow-50 border border-yellow-200 rounded-full">
-            <Sparkles className="h-4 w-4 text-yellow-600" />
-            <span className="text-sm font-medium text-yellow-800">
-              가격은 곧 공개됩니다! 지금 무료로 시작하세요
+          {/* Pricing Highlight */}
+          <div className="mt-8 inline-flex items-center gap-2 px-4 py-2 bg-blue-50 border border-blue-200 rounded-full">
+            <Sparkles className="h-4 w-4 text-blue-600" />
+            <span className="text-sm font-medium text-blue-800">
+              지금 가입하면 무료 100 크레딧을 매달 제공합니다!
             </span>
           </div>
         </div>
@@ -156,11 +156,7 @@ export default function PricingPage() {
                   </CardDescription>
 
                   <div className="mt-4">
-                    {tier.price === null ? (
-                      <div className="text-3xl font-bold text-gray-900">
-                        Coming Soon
-                      </div>
-                    ) : tier.price === 0 ? (
+                    {tier.price === 0 ? (
                       <div className="text-3xl font-bold text-gray-900">
                         무료
                       </div>
@@ -241,7 +237,13 @@ export default function PricingPage() {
                         : ""
                     }`}
                     variant={tier.popular ? "default" : "outline"}
-                    disabled={tier.price !== 0 && tier.price !== null}
+                    onClick={() => {
+                      if (tier.price === 0) {
+                        window.location.href = "/signup"
+                      } else {
+                        window.location.href = "/dashboard/membership"
+                      }
+                    }}
                   >
                     {tier.cta}
                   </Button>
@@ -287,12 +289,12 @@ export default function PricingPage() {
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">언제 출시되나요?</CardTitle>
+                <CardTitle className="text-lg">구독 해지는 어떻게 하나요?</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-gray-600">
-                  유료 플랜은 2026년 2월 중 출시 예정입니다. 지금 무료 플랜으로 시작하시면 
-                  출시 시 특별 할인 혜택을 드립니다!
+                  대시보드의 멤버십 관리 페이지에서 언제든지 구독을 해지할 수 있습니다. 
+                  해지 후에도 결제 주기가 끝날 때까지 기존 플랜의 모든 혜택을 이용하실 수 있습니다.
                 </p>
               </CardContent>
             </Card>
