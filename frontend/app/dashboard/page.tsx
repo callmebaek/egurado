@@ -568,13 +568,17 @@ export default function DashboardPage() {
     percentage_used: number
   } | null>(null)
   
-  // 구독 정보 (취소 상태 표시용)
+  // 구독 정보 (취소 상태 표시용 + 쿼터 정보)
   const [subscriptionInfo, setSubscriptionInfo] = useState<{
     status: string
     tier: string
     expires_at?: string
     next_billing_date?: string
     cancelled_at?: string
+    max_stores?: number
+    max_keywords?: number
+    max_auto_collection?: number
+    monthly_credits?: number
   } | null>(null)
   
   // 드래그앤드롭 센서 설정
@@ -1302,9 +1306,9 @@ export default function DashboardPage() {
   const creditPercentage = totalCredits === -1 ? 100 : ((totalCredits - usedCredits) / totalCredits) * 100
 
   // Quota 계산
-  const maxStores = profile?.max_stores ?? 1
-  const maxKeywords = profile?.max_keywords ?? 10
-  const maxTrackers = profile?.max_trackers ?? 3
+  const maxStores = subscriptionInfo?.max_stores ?? profile?.max_stores ?? 1
+  const maxKeywords = subscriptionInfo?.max_keywords ?? profile?.max_keywords ?? 1
+  const maxTrackers = subscriptionInfo?.max_auto_collection ?? profile?.max_trackers ?? 1
 
   return (
     <div className="space-y-3 md:space-y-4 lg:space-y-5 pb-6 md:pb-8 overflow-x-hidden">

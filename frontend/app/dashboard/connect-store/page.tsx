@@ -295,7 +295,7 @@ export default function ConnectStorePage() {
                   </span>
                 </div>
                 <span className="text-xs md:text-sm font-medium text-neutral-500 bg-neutral-100 px-3 py-1.5 rounded-full">
-                  Free 1개 · Basic 3개 · Pro 10개
+                  Free 1개 · Basic 1개 · Basic+ 2개 · Pro 5개
                 </span>
               </CardTitle>
             </CardHeader>
