@@ -1,10 +1,32 @@
 'use client';
 
 import Link from 'next/link';
-import { Mail, Phone, MapPin } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/auth-context';
+import { useToast } from '@/components/ui/use-toast';
 
 export const Footer = () => {
   const currentYear = new Date().getFullYear();
+  const router = useRouter();
+  const { user } = useAuth();
+  const { toast } = useToast();
+
+  /** 고객센터 / 자주 묻는 질문 클릭 핸들러 */
+  const handleSupportClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (user) {
+      router.push('/dashboard/support');
+    } else {
+      toast({
+        title: '로그인이 필요합니다',
+        description:
+          '고객센터는 정확한 고객의 소리를 듣기 위해 로그인이 필요합니다. 로그인 페이지로 이동합니다.',
+      });
+      setTimeout(() => {
+        router.push('/login');
+      }, 1500);
+    }
+  };
 
   return (
     <footer className="bg-neutral-900 text-white py-12 md:py-16 lg:py-20">
@@ -19,23 +41,31 @@ export const Footer = () => {
                 className="h-8 w-auto brightness-0 invert"
               />
             </Link>
-            <p className="text-sm text-neutral-400 mb-4 leading-relaxed">
-              네이버 플레이스 관리를 위한
+            <p className="text-sm text-neutral-400 mb-5 leading-relaxed">
+              소상공인, 자영업자들을 위한
               <br />
-              AI 기반 데이터 솔루션
+              온라인 매장관리 솔루션
             </p>
-            <div className="space-y-2 text-sm text-neutral-400">
-              <div className="flex items-center gap-2">
-                <Mail className="w-4 h-4" />
-                <span>추후 등록예정</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Phone className="w-4 h-4" />
-                <span>추후 등록예정</span>
-              </div>
-              <div className="flex items-start gap-2">
-                <MapPin className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                <span>서울특별시 중랑구 면목천로 6길 22</span>
+            <div className="space-y-1 text-xs text-neutral-500 leading-relaxed">
+              <p>상호명: 주식회사노느니</p>
+              <p>서비스명: 윕플 (whiplace.com)</p>
+              <p>대표자: 백성민</p>
+              <p>사업자등록번호: 612-86-03314</p>
+              <p>통신판매업신고번호: 현재 발급중</p>
+              <p>주소: 서울특별시 중랑구 면목천로6길 22, 1층</p>
+              <p>
+                이메일: business@whiplace.com
+                <br className="md:hidden" />
+                <span className="hidden md:inline"> | </span>
+                전화: 010-8431-6128
+              </p>
+              <div className="pt-2.5 mt-2.5 border-t border-neutral-800">
+                <p className="text-neutral-600 text-[11px]">
+                  본 서비스는 월 구독형 디지털 서비스로 매월 자동결제됩니다.
+                </p>
+                <p className="text-neutral-600 text-[11px]">
+                  네이버(Naver)와 공식적으로 제휴된 서비스가 아닙니다.
+                </p>
               </div>
             </div>
           </div>
@@ -46,7 +76,11 @@ export const Footer = () => {
             <ul className="space-y-2 text-sm text-neutral-400">
               <li>
                 <button
-                  onClick={() => document.getElementById('service-intro')?.scrollIntoView({ behavior: 'smooth' })}
+                  onClick={() =>
+                    document
+                      .getElementById('service-intro')
+                      ?.scrollIntoView({ behavior: 'smooth' })
+                  }
                   className="hover:text-white transition-colors"
                 >
                   서비스 소개
@@ -54,19 +88,29 @@ export const Footer = () => {
               </li>
               <li>
                 <button
-                  onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })}
+                  onClick={() =>
+                    document
+                      .getElementById('pricing')
+                      ?.scrollIntoView({ behavior: 'smooth' })
+                  }
                   className="hover:text-white transition-colors"
                 >
                   가격 안내
                 </button>
               </li>
               <li>
-                <Link href="/dashboard" className="hover:text-white transition-colors">
+                <Link
+                  href="/dashboard"
+                  className="hover:text-white transition-colors"
+                >
                   대시보드
                 </Link>
               </li>
               <li>
-                <Link href="/signup" className="hover:text-white transition-colors">
+                <Link
+                  href="/signup"
+                  className="hover:text-white transition-colors"
+                >
                   무료 시작하기
                 </Link>
               </li>
@@ -78,24 +122,20 @@ export const Footer = () => {
             <h4 className="font-bold text-lg mb-4">지원</h4>
             <ul className="space-y-2 text-sm text-neutral-400">
               <li>
-                <a href="#" className="hover:text-white transition-colors">
+                <button
+                  onClick={handleSupportClick}
+                  className="hover:text-white transition-colors text-left"
+                >
                   자주 묻는 질문
-                </a>
+                </button>
               </li>
               <li>
-                <a href="#" className="hover:text-white transition-colors">
-                  사용 가이드
-                </a>
-              </li>
-              <li>
-                <a href="#" className="hover:text-white transition-colors">
-                  고객 지원
-                </a>
-              </li>
-              <li>
-                <a href="#" className="hover:text-white transition-colors">
-                  API 문서
-                </a>
+                <button
+                  onClick={handleSupportClick}
+                  className="hover:text-white transition-colors text-left"
+                >
+                  고객센터
+                </button>
               </li>
             </ul>
           </div>
@@ -105,24 +145,36 @@ export const Footer = () => {
             <h4 className="font-bold text-lg mb-4">법적 고지</h4>
             <ul className="space-y-2 text-sm text-neutral-400">
               <li>
-                <a href="#" className="hover:text-white transition-colors">
+                <Link
+                  href="/terms"
+                  className="hover:text-white transition-colors"
+                >
                   이용약관
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="#" className="hover:text-white transition-colors">
+                <Link
+                  href="/privacy"
+                  className="hover:text-white transition-colors"
+                >
                   개인정보처리방침
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="#" className="hover:text-white transition-colors">
-                  환불 정책
-                </a>
+                <Link
+                  href="/refundpolicy"
+                  className="hover:text-white transition-colors"
+                >
+                  환불정책
+                </Link>
               </li>
               <li>
-                <a href="#" className="hover:text-white transition-colors">
-                  사업자 정보
-                </a>
+                <Link
+                  href="/legal"
+                  className="hover:text-white transition-colors"
+                >
+                  법적고지
+                </Link>
               </li>
             </ul>
           </div>
@@ -132,33 +184,9 @@ export const Footer = () => {
         <div className="border-t border-neutral-800 pt-8">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-sm text-neutral-500 text-center md:text-left">
-              © {currentYear} <span className="font-millenial">/윕플.</span> All rights reserved.
-            </p>
-            <div className="flex items-center gap-6 text-sm text-neutral-500">
-              <a href="#" className="hover:text-white transition-colors">
-                블로그
-              </a>
-              <a href="#" className="hover:text-white transition-colors">
-                뉴스레터
-              </a>
-              <a href="#" className="hover:text-white transition-colors">
-                제휴 문의
-              </a>
-            </div>
-          </div>
-        </div>
-
-        {/* 사업자 정보 (선택적) */}
-        <div className="mt-6 pt-6 border-t border-neutral-800 text-xs text-neutral-600">
-          <div className="max-w-4xl mx-auto space-y-1">
-            <p className="text-center md:text-left">
-              상호명: 주식회사 노느니 (<span className="font-millenial">/윕플.</span>) | 대표자: 백성민 | 사업자등록번호: 612-86-03312
-            </p>
-            <p className="text-center md:text-left">
-              통신판매업신고번호: 베타테스트 후 등록예정 | 주소: 서울특별시 중랑구 면목천로 6길 22
-            </p>
-            <p className="text-center md:text-left">
-              전화번호: 추후 등록예정 | 이메일: 추후 등록예정
+              © {currentYear}{' '}
+              <span className="font-millenial">/윕플.</span> All rights
+              reserved.
             </p>
           </div>
         </div>
