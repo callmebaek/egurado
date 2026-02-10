@@ -41,6 +41,7 @@ class UserInfoResponse(BaseModel):
     # 구독/결제 관련 필드
     subscription_status: Optional[str] = None  # active, cancelled, expired
     next_billing_date: Optional[datetime] = None  # 다음 결제 예정일
+    last_payment_date: Optional[datetime] = None  # 최근 결제일
     service_end_date: Optional[datetime] = None  # 서비스 종료일 (구독 취소 시)
     cancelled_at: Optional[datetime] = None  # 구독 취소 시각
     auto_renewal: bool = True  # 자동 갱신 여부

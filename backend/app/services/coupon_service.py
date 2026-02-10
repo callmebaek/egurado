@@ -220,21 +220,19 @@ class CouponService:
                 .eq("id", coupon["id"])\
                 .execute()
             
-            # 사용자-쿠폰 매핑 생성
-            expires_at = None
-            if not coupon.get("is_permanent") and coupon.get("duration_months"):
-                expires_at = (datetime.utcnow() + timedelta(days=30 * coupon["duration_months"])).isoformat()
-            
+            # 사용자-쿠폰 매핑 생성 (user_coupons 테이블 스키마에 맞춤)
             user_coupon_data = {
                 "user_id": str(user_id),
                 "coupon_id": coupon["id"],
-                "subscription_id": subscription_id,
                 "applied_at": datetime.utcnow().isoformat(),
-                "expires_at": expires_at,
-                "is_active": True,
                 "discount_type": coupon["discount_type"],
                 "discount_value": coupon["discount_value"],
+                "status": "used",
             }
+            
+            # subscription_id는 있을 때만 포함
+            if subscription_id:
+                user_coupon_data["subscription_id"] = subscription_id
             
             self.supabase.table("user_coupons")\
                 .insert(user_coupon_data)\

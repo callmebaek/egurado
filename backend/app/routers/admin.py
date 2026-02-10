@@ -75,7 +75,7 @@ async def get_users(
         if user_ids:
             try:
                 subs_result = supabase.table("subscriptions")\
-                    .select("user_id, status, next_billing_date, expires_at, cancelled_at, auto_renewal")\
+                    .select("user_id, status, started_at, next_billing_date, expires_at, cancelled_at, auto_renewal")\
                     .in_("user_id", user_ids)\
                     .execute()
                 for s in (subs_result.data or []):
@@ -103,6 +103,7 @@ async def get_users(
                 total_credits_used=u.get("total_credits_used", 0),
                 subscription_status=sub.get("status"),
                 next_billing_date=sub.get("next_billing_date"),
+                last_payment_date=sub.get("started_at"),
                 service_end_date=sub.get("expires_at") if sub.get("status") == "cancelled" else None,
                 cancelled_at=sub.get("cancelled_at"),
                 auto_renewal=sub.get("auto_renewal", True),
@@ -143,7 +144,7 @@ async def get_users(
             if fallback_user_ids:
                 try:
                     fallback_subs = supabase.table("subscriptions")\
-                        .select("user_id, status, next_billing_date, expires_at, cancelled_at, auto_renewal")\
+                        .select("user_id, status, started_at, next_billing_date, expires_at, cancelled_at, auto_renewal")\
                         .in_("user_id", fallback_user_ids)\
                         .execute()
                     for s in (fallback_subs.data or []):
@@ -170,6 +171,7 @@ async def get_users(
                     total_credits_used=0,
                     subscription_status=sub.get("status"),
                     next_billing_date=sub.get("next_billing_date"),
+                    last_payment_date=sub.get("started_at"),
                     service_end_date=sub.get("expires_at") if sub.get("status") == "cancelled" else None,
                     cancelled_at=sub.get("cancelled_at"),
                     auto_renewal=sub.get("auto_renewal", True),

@@ -41,6 +41,7 @@ import {
   RefreshCw,
   AlertTriangle,
   CalendarClock,
+  CreditCard,
   Ban
 } from 'lucide-react'
 import { api } from '@/lib/config'
@@ -90,6 +91,7 @@ interface UserInfo {
   // 구독/결제 관련 필드
   subscription_status?: string
   next_billing_date?: string
+  last_payment_date?: string
   service_end_date?: string
   cancelled_at?: string
   auto_renewal?: boolean
@@ -1015,6 +1017,12 @@ export default function AdminPage() {
                     <th className="text-center py-3 px-4 font-semibold text-sm text-gray-700">Tier</th>
                     <th className="text-center py-3 px-4 font-semibold text-sm text-gray-700">구독상태</th>
                     <th className="text-center py-3 px-4 font-semibold text-sm text-gray-700">가입일</th>
+                    <th className="text-center py-3 px-4 font-semibold text-sm text-green-700">
+                      <div className="flex items-center justify-center gap-1">
+                        <CreditCard className="w-3.5 h-3.5" />
+                        최근 결제일
+                      </div>
+                    </th>
                     <th className="text-center py-3 px-4 font-semibold text-sm text-[#405D99]">
                       <div className="flex items-center justify-center gap-1">
                         <CalendarClock className="w-3.5 h-3.5" />
@@ -1043,6 +1051,16 @@ export default function AdminPage() {
                       <td className="py-3 px-4 text-center">{getSubscriptionStatusBadge(u)}</td>
                       <td className="py-3 px-4 text-center text-sm text-gray-600">
                         {new Date(u.created_at).toLocaleDateString('ko-KR')}
+                      </td>
+                      {/* 최근 결제일 */}
+                      <td className="py-3 px-4 text-center text-sm">
+                        {u.subscription_tier !== 'free' && u.last_payment_date ? (
+                          <span className="font-semibold text-green-700">
+                            {formatShortDate(u.last_payment_date)}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
                       </td>
                       {/* 다음 결제 예정일 */}
                       <td className="py-3 px-4 text-center text-sm">

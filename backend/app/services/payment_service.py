@@ -206,7 +206,10 @@ class PaymentService:
                     # 현재 플랜 월 구독료 전액 차감 (직관적 차액 계산)
                     discount_from_upgrade = current_price
             
-            # 쿠폰 할인 계산
+            # 업그레이드 차감 후 금액 계산
+            amount_after_upgrade = max(0, original_amount - discount_from_upgrade)
+            
+            # 쿠폰 할인 계산 (차감 후 금액 기준)
             coupon_discount = 0
             coupon_applied = False
             coupon_code = None
@@ -220,9 +223,10 @@ class PaymentService:
                     coupon_applied = True
                     coupon_code = request.coupon_code
                     if coupon_result["discount_type"] == "percentage":
-                        coupon_discount = int(original_amount * coupon_result["discount_value"] / 100)
+                        # 업그레이드 차감 후 금액에 쿠폰 할인 적용
+                        coupon_discount = int(amount_after_upgrade * coupon_result["discount_value"] / 100)
                     else:
-                        coupon_discount = coupon_result["discount_value"]
+                        coupon_discount = min(coupon_result["discount_value"], amount_after_upgrade)
             
             # 최종 결제 금액
             total_discount = discount_from_upgrade + coupon_discount
