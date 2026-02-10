@@ -93,14 +93,25 @@ class NaverRankNewAPIService:
             search_results, total_count = await self._search_places_with_fallback(keyword, max_results, coord_x, coord_y)
             
             if not search_results:
-                # GraphQL이 빈 결과를 반환한 경우 - 2초 대기 후 1회 재시도
-                logger.warning(f"[신API Rank] 검색 결과 0개 -> 2초 후 1회 재시도")
+                # 2순위: 직접 연결로 재시도
+                logger.warning(f"[신API Rank] 1차 프록시 결과 0개 -> 직접 연결로 재시도 (2순위)")
+                await asyncio.sleep(1)
+                search_results, total_count = await self._search_places_with_fallback(
+                    keyword, max_results, coord_x, coord_y, force_direct=True
+                )
+            
+            if not search_results:
+                # 3순위: 프록시 재시도
+                logger.warning(f"[신API Rank] 직접 연결도 결과 0개 -> 프록시 재시도 (3순위)")
                 await asyncio.sleep(2)
-                search_results, total_count = await self._search_places_with_fallback(keyword, max_results, coord_x, coord_y)
-                
-                if not search_results:
-                    logger.warning(f"[신API Rank] 재시도 후에도 검색 결과 없음 -> 크롤링 폴백")
-                    raise Exception("GraphQL 검색 결과 없음 - 재시도 포함 모든 연결 방식 실패")
+                search_results, total_count = await self._search_places_with_fallback(
+                    keyword, max_results, coord_x, coord_y
+                )
+            
+            if not search_results:
+                # 4순위: 크롤링 폴백
+                logger.warning(f"[신API Rank] 프록시/직접 모두 결과 없음 -> 크롤링 폴백 (4순위)")
+                raise Exception("GraphQL 검색 결과 없음 - 프록시/직접/프록시 재시도 모두 실패")
             
             # 2. 순위 찾기
             rank = None
@@ -206,28 +217,34 @@ class NaverRankNewAPIService:
             )
     
     async def _search_places_with_fallback(
-        self, keyword: str, max_results: int, coord_x: str = None, coord_y: str = None
+        self, keyword: str, max_results: int, coord_x: str = None, coord_y: str = None,
+        force_direct: bool = False
     ) -> tuple[List[Dict], int]:
         """
-        🛡️ 페이지별 프록시 → 직접 연결 자동 폴백이 포함된 검색
+        페이지별 프록시 -> 직접 연결 자동 폴백이 포함된 검색
         
         각 페이지마다 개별적으로 폴백 처리:
         - 프록시로 성공한 페이지는 결과 유지
         - 프록시 실패한 페이지만 직접 연결로 재시도
         - 프록시 실패 시 남은 페이지도 직접 연결로 전환 (불필요한 재시도 방지)
         
+        Args:
+            force_direct: True이면 프록시 무시하고 직접 연결만 사용
+        
         Returns:
             (검색 결과 리스트, 전체 업체수)
         """
         from app.core.proxy import record_request
         
-        proxy_url = get_proxy()
+        proxy_url = get_proxy() if not force_direct else None
         use_proxy = bool(proxy_url)
         
         search_x = coord_x if coord_x else "127.0276"
         search_y = coord_y if coord_y else "37.4979"
         
-        if use_proxy:
+        if force_direct:
+            logger.info(f"[신API Rank] 직접 연결 모드 (force_direct)")
+        elif use_proxy:
             logger.info(f"[신API Rank] 프록시 모드 시작 (페이지별 폴백 활성)")
         else:
             logger.info(f"[신API Rank] 직접 연결 모드 (프록시 미설정 또는 비활성)")
