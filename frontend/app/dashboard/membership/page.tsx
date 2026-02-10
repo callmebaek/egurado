@@ -435,9 +435,12 @@ export default function MembershipPage() {
       
       if (response.ok) {
         const data = await response.json()
+        const endDate = data.service_end_date ? formatDate(data.service_end_date) : ''
         toast({
           title: "구독 취소 완료",
-          description: data.message,
+          description: endDate 
+            ? `${endDate}까지 현재 플랜의 모든 기능을 이용하실 수 있습니다. 이후 Free 플랜으로 자동 전환됩니다.`
+            : data.message,
         })
         setShowCancelDialog(false)
         window.location.reload()
@@ -565,7 +568,7 @@ export default function MembershipPage() {
                       </div>
                       {subscription.status === 'cancelled' && (
                         <div className="px-3 py-1.5 bg-red-100 text-red-700 rounded-full text-sm font-bold">
-                          ⚠️ 취소됨 - {subscription.expires_at ? formatDate(subscription.expires_at) + '까지 이용 가능' : ''}
+                          ⚠️ 구독 취소됨
                         </div>
                       )}
                     </div>
@@ -609,6 +612,35 @@ export default function MembershipPage() {
                       </div>
                     </div>
 
+                    {/* 구독 취소 안내 배너 */}
+                    {subscription.status === 'cancelled' && (
+                      <div className="bg-red-50 border-2 border-red-300 rounded-xl p-5 space-y-3">
+                        <div className="flex items-center gap-2 text-red-700">
+                          <AlertTriangle className="w-5 h-5" />
+                          <span className="font-bold text-base">구독 취소 안내</span>
+                        </div>
+                        <div className="space-y-2 text-sm text-red-700">
+                          {subscription.expires_at && (
+                            <p>
+                              <strong>서비스 이용 가능일:</strong> {formatDate(subscription.expires_at)}까지
+                            </p>
+                          )}
+                          <p>
+                            서비스 종료일까지 현재 <strong>{currentPlan.name}</strong> 플랜의 모든 기능과 잔여 크레딧을 정상적으로 이용하실 수 있습니다.
+                          </p>
+                          <p>
+                            서비스 종료 후 <strong>Free</strong> 플랜으로 자동 전환되며, 미사용 크레딧은 소멸됩니다.
+                          </p>
+                        </div>
+                        {subscription.cancelled_at && (
+                          <p className="text-xs text-red-500">
+                            취소일: {formatDate(subscription.cancelled_at)}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* 다음 결제일 (활성 구독만) */}
                     {subscription.next_billing_date && subscription.status === 'active' && (
                       <div className="bg-gray-50 border-2 border-gray-200 rounded-lg p-4">
                         <div className="flex items-center justify-between">

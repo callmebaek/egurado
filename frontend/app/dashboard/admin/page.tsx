@@ -1074,12 +1074,17 @@ export default function AdminPage() {
                       </td>
                       {/* 서비스 종료일 */}
                       <td className="py-2.5 px-2 text-center text-xs whitespace-nowrap">
-                        {u.service_end_date ? (
-                          <span className="font-semibold text-red-600">
-                            {formatShortDate(u.service_end_date)}
-                          </span>
-                        ) : u.subscription_status === 'cancelled' && u.cancelled_at ? (
-                          <span className="text-orange-500 text-xs">취소중</span>
+                        {u.subscription_status === 'cancelled' ? (
+                          u.service_end_date ? (
+                            <div>
+                              <span className="font-semibold text-red-600">
+                                {formatShortDate(u.service_end_date)}
+                              </span>
+                              <div className="text-[10px] text-red-400">취소됨</div>
+                            </div>
+                          ) : (
+                            <span className="text-orange-500 text-xs font-medium">취소됨</span>
+                          )
                         ) : (
                           <span className="text-gray-400">-</span>
                         )}

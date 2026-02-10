@@ -240,9 +240,9 @@ async def grant_credits(
                 detail="크레딧 수량은 0보다 커야 합니다."
             )
         
-        # 대상 사용자 user_credits 업데이트 (Service Role Key로 직접 수행)
+        # 대상 사용자 user_credits 조회 (잔액 계산 포함)
         credit_result = supabase.table("user_credits")\
-            .select("id, manual_credits")\
+            .select("id, manual_credits, monthly_credits, monthly_used")\
             .eq("user_id", user_id)\
             .execute()
         
@@ -252,8 +252,12 @@ async def grant_credits(
                 detail="대상 사용자의 크레딧 정보를 찾을 수 없습니다."
             )
         
-        current_manual = credit_result.data[0].get("manual_credits", 0)
+        credit_data = credit_result.data[0]
+        current_manual = credit_data.get("manual_credits", 0)
+        monthly_remaining = credit_data.get("monthly_credits", 0) - credit_data.get("monthly_used", 0)
+        balance_before = monthly_remaining + current_manual
         new_manual = current_manual + request.credit_amount
+        balance_after = balance_before + request.credit_amount
         
         supabase.table("user_credits")\
             .update({
@@ -263,14 +267,25 @@ async def grant_credits(
             .eq("user_id", user_id)\
             .execute()
         
-        # 크레딧 트랜잭션 기록
+        # 크레딧 트랜잭션 기록 (credit_transactions 스키마에 맞춤)
         try:
             supabase.table("credit_transactions").insert({
                 "user_id": user_id,
-                "type": "admin_grant",
-                "amount": request.credit_amount,
-                "description": request.admin_note or f"관리자 수동 지급 ({request.credit_amount} 크레딧)",
-                "granted_by": admin_user_id,
+                "transaction_type": "charge",
+                "feature": "manual_charge",
+                "credits_amount": request.credit_amount,
+                "from_monthly": 0,
+                "from_manual": request.credit_amount,
+                "balance_before": balance_before,
+                "balance_after": balance_after,
+                "status": "completed",
+                "metadata": {
+                    "type": "admin_grant",
+                    "admin_user_id": admin_user_id,
+                    "admin_note": request.admin_note or "",
+                    "description": f"관리자 수동 지급 ({request.credit_amount} 크레딧)"
+                },
+                "completed_at": datetime.utcnow().isoformat()
             }).execute()
         except Exception as tx_err:
             logger.warning(f"크레딧 트랜잭션 기록 실패 (무시): {tx_err}")

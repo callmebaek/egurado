@@ -24,9 +24,14 @@ import {
   Monitor,
   Smartphone,
   Chrome,
-  Loader2
+  Loader2,
+  Crown,
+  Calendar,
+  CreditCard,
+  Zap
 } from 'lucide-react'
 import { api } from '@/lib/config'
+import Link from 'next/link'
 import {
   Dialog,
   DialogContent,
@@ -58,9 +63,25 @@ interface NotificationSettings {
   marketing_consent: boolean
 }
 
+interface SubscriptionInfo {
+  tier: string
+  status: string
+  expires_at?: string
+  cancelled_at?: string
+  next_billing_date?: string
+  auto_renewal?: boolean
+  monthly_credits?: number
+  max_stores?: number
+  max_keywords?: number
+}
+
 export default function SettingsPage() {
   const { user, getToken } = useAuth()
   const { toast } = useToast()
+  
+  // 구독 정보
+  const [subscriptionInfo, setSubscriptionInfo] = useState<SubscriptionInfo | null>(null)
+  const [isLoadingSub, setIsLoadingSub] = useState(true)
   
   // 프로필 정보
   const [profile, setProfile] = useState<UserProfile | null>(null)
@@ -95,6 +116,28 @@ export default function SettingsPage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
   const [isDeletingAccount, setIsDeletingAccount] = useState(false)
+
+  // 구독 정보 로드
+  useEffect(() => {
+    const loadSubscription = async () => {
+      if (!user) return
+      try {
+        const token = getToken()
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/subscriptions/me`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+        if (response.ok) {
+          const data = await response.json()
+          setSubscriptionInfo(data)
+        }
+      } catch (error) {
+        console.error('구독 정보 로드 실패:', error)
+      } finally {
+        setIsLoadingSub(false)
+      }
+    }
+    loadSubscription()
+  }, [user, getToken])
 
   // 프로필 정보 로드
   useEffect(() => {
@@ -504,6 +547,119 @@ export default function SettingsPage() {
                       )}
                     </Button>
                   </div>
+                </div>
+              )}
+            </div>
+          </Card>
+        </section>
+
+        {/* 구독 & 결제 정보 */}
+        <section>
+          <Card className="rounded-xl border-2 border-neutral-300 shadow-lg overflow-hidden">
+            <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border-b-2 border-yellow-200 p-5 md:p-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 md:w-12 md:h-12 bg-yellow-500 rounded-xl flex items-center justify-center shadow-md">
+                  <Crown className="w-5 h-5 md:w-6 md:h-6 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-xl md:text-2xl font-bold text-neutral-900 leading-tight">
+                    구독 & 결제 정보
+                  </h2>
+                  <p className="text-sm text-yellow-700 mt-0.5">
+                    현재 구독 상태와 결제 정보를 확인합니다
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-5 md:p-6">
+              {isLoadingSub ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin text-yellow-500" />
+                </div>
+              ) : subscriptionInfo ? (
+                <div className="space-y-4">
+                  {/* 현재 플랜 */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Crown className="w-4 h-4 text-yellow-600" />
+                        <span className="text-xs font-semibold text-neutral-600">현재 플랜</span>
+                      </div>
+                      <div className="text-lg font-bold text-neutral-900 capitalize">
+                        {subscriptionInfo.tier === 'basic_plus' ? 'Basic+' : subscriptionInfo.tier}
+                      </div>
+                    </div>
+                    <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Zap className="w-4 h-4 text-blue-600" />
+                        <span className="text-xs font-semibold text-neutral-600">구독 상태</span>
+                      </div>
+                      <div className={`text-lg font-bold ${
+                        subscriptionInfo.status === 'active' ? 'text-green-600' :
+                        subscriptionInfo.status === 'cancelled' ? 'text-red-600' :
+                        'text-neutral-600'
+                      }`}>
+                        {subscriptionInfo.status === 'active' ? '활성' :
+                         subscriptionInfo.status === 'cancelled' ? '취소됨' :
+                         subscriptionInfo.status === 'expired' ? '만료' : subscriptionInfo.status}
+                      </div>
+                    </div>
+                    <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Calendar className="w-4 h-4 text-green-600" />
+                        <span className="text-xs font-semibold text-neutral-600">
+                          {subscriptionInfo.status === 'cancelled' ? '서비스 종료일' : '다음 결제일'}
+                        </span>
+                      </div>
+                      <div className="text-lg font-bold text-neutral-900">
+                        {subscriptionInfo.status === 'cancelled' && subscriptionInfo.expires_at
+                          ? new Date(subscriptionInfo.expires_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })
+                          : subscriptionInfo.next_billing_date
+                          ? new Date(subscriptionInfo.next_billing_date).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })
+                          : '-'
+                        }
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 구독 취소 경고 */}
+                  {subscriptionInfo.status === 'cancelled' && (
+                    <div className="bg-red-50 border-2 border-red-300 rounded-xl p-4 space-y-2">
+                      <div className="flex items-center gap-2 text-red-700">
+                        <AlertTriangle className="w-5 h-5" />
+                        <span className="font-bold">구독 취소 안내</span>
+                      </div>
+                      <div className="text-sm text-red-700 space-y-1">
+                        {subscriptionInfo.expires_at && (
+                          <p>
+                            <strong>{new Date(subscriptionInfo.expires_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}</strong>까지 현재 플랜의 모든 기능을 이용하실 수 있습니다.
+                          </p>
+                        )}
+                        <p>서비스 종료 후 Free 플랜으로 자동 전환되며, 미사용 크레딧은 소멸됩니다.</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 멤버십 관리 링크 */}
+                  <div className="flex justify-end pt-2">
+                    <Link href="/dashboard/membership">
+                      <Button variant="outline" className="h-12 px-6 text-base font-bold">
+                        <CreditCard className="w-5 h-5 mr-2" />
+                        멤버십 관리
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-sm text-neutral-600">구독 정보를 불러올 수 없습니다.</p>
+                  <Link href="/dashboard/membership">
+                    <Button className="mt-4 h-12 px-6 text-base font-bold">
+                      <Crown className="w-5 h-5 mr-2" />
+                      멤버십 시작하기
+                    </Button>
+                  </Link>
                 </div>
               )}
             </div>

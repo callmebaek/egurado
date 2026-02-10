@@ -17,7 +17,8 @@ import {
   Zap,
   Info,
   Loader2,
-  Crown
+  Crown,
+  AlertTriangle
 } from 'lucide-react'
 import { api } from '@/lib/config'
 import Link from 'next/link'
@@ -31,6 +32,15 @@ interface CreditInfo {
   tier: string
   next_reset: string
   percentage_used: number
+}
+
+interface SubscriptionInfo {
+  status: string
+  tier: string
+  expires_at?: string
+  cancelled_at?: string
+  next_billing_date?: string
+  auto_renewal?: boolean
 }
 
 interface CreditHistory {
@@ -80,7 +90,8 @@ const FEATURE_NAME_MAP: Record<string, string> = {
   'charge': '크레딧 충전',
   'refund': '크레딧 환불',
   'reset': '월간 크레딧 리셋',
-  'manual_charge': '수동 충전',
+  'manual_charge': '관리자 크레딧 지급',
+  'admin_grant': '관리자 크레딧 지급',
   'subscription_charge': '구독 충전',
 }
 
@@ -105,26 +116,34 @@ export default function CreditsPage() {
   const { toast } = useToast()
   
   const [creditInfo, setCreditInfo] = useState<CreditInfo | null>(null)
+  const [subscriptionInfo, setSubscriptionInfo] = useState<SubscriptionInfo | null>(null)
   const [history, setHistory] = useState<CreditHistory[]>([])
   const [isLoadingInfo, setIsLoadingInfo] = useState(true)
   const [isLoadingHistory, setIsLoadingHistory] = useState(true)
 
-  // 크레딧 정보 로드
+  // 크레딧 정보 및 구독 정보 로드
   useEffect(() => {
     const loadCreditInfo = async () => {
       if (!user) return
       
       try {
         const token = getToken()
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/credits/me`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        })
+        const [creditRes, subRes] = await Promise.all([
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/credits/me`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          }),
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/subscriptions/me`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          })
+        ])
         
-        if (response.ok) {
-          const data = await response.json()
+        if (creditRes.ok) {
+          const data = await creditRes.json()
           setCreditInfo(data)
+        }
+        if (subRes.ok) {
+          const subData = await subRes.json()
+          setSubscriptionInfo(subData)
         }
       } catch (error) {
         console.error('크레딧 정보 로드 실패:', error)
@@ -171,7 +190,9 @@ export default function CreditsPage() {
             let description = transaction.metadata?.description || ''
             if (!description) {
               // 트랜잭션 타입별 기본 설명
-              if (transaction.transaction_type === 'deduct') {
+              if (transaction.metadata?.type === 'admin_grant') {
+                description = transaction.metadata?.admin_note || '관리자 크레딧 지급'
+              } else if (transaction.transaction_type === 'deduct') {
                 description = transaction.metadata?.keyword ? 
                   `키워드: ${transaction.metadata.keyword}` :
                   transaction.metadata?.store_name ?
@@ -367,12 +388,44 @@ export default function CreditsPage() {
                     </div>
                   </div>
 
+                  {/* 구독 취소 안내 배너 */}
+                  {subscriptionInfo?.status === 'cancelled' && (
+                    <div className="mt-6 bg-red-50 border-2 border-red-300 rounded-xl p-5 space-y-2">
+                      <div className="flex items-center gap-2 text-red-700">
+                        <AlertTriangle className="w-5 h-5" />
+                        <span className="font-bold text-base">구독 취소됨</span>
+                      </div>
+                      <div className="text-sm text-red-700 space-y-1">
+                        {subscriptionInfo.expires_at && (
+                          <p>
+                            <strong>서비스 이용 가능일:</strong> {new Date(subscriptionInfo.expires_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}까지
+                          </p>
+                        )}
+                        <p>서비스 종료일까지 잔여 크레딧을 정상적으로 사용하실 수 있습니다.</p>
+                        <p>종료 후 <strong>Free</strong> 플랜으로 전환되며, 미사용 크레딧은 소멸됩니다.</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 다음 결제일 / 크레딧 리셋 안내 */}
+                  {subscriptionInfo?.status === 'active' && subscriptionInfo?.next_billing_date && (
+                    <div className="mt-6 bg-blue-50 border-2 border-blue-200 rounded-xl p-4">
+                      <div className="flex items-center gap-2 text-blue-700">
+                        <Calendar className="w-4 h-4" />
+                        <span className="text-sm font-semibold">
+                          다음 결제일: {new Date(subscriptionInfo.next_billing_date).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}
+                        </span>
+                      </div>
+                      <p className="text-xs text-blue-600 mt-1">결제일에 월간 크레딧이 리셋됩니다. 미사용 크레딧은 이월되지 않습니다.</p>
+                    </div>
+                  )}
+
                   {/* 구독 또는 업그레이드 하기 버튼 */}
                   <div className="mt-6 flex justify-center">
                     <Link href="/dashboard/membership">
                       <Button className="bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800 h-12 px-8 text-base font-bold shadow-lg">
                         <Crown className="w-5 h-5 mr-2" />
-                        구독 또는 업그레이드 하기
+                        {subscriptionInfo?.status === 'cancelled' ? '다시 구독하기' : '구독 또는 업그레이드 하기'}
                       </Button>
                     </Link>
                   </div>
