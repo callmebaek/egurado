@@ -31,9 +31,9 @@ export const Footer = () => {
   return (
     <footer className="bg-neutral-900 text-white py-12 md:py-16 lg:py-20">
       <div className="w-full max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_1fr] gap-8 lg:gap-12 mb-8">
           {/* 회사 정보 */}
-          <div>
+          <div className="md:col-span-2 lg:col-span-1">
             <Link href="/" className="flex items-center mb-4">
               <img
                 src="/whiplace-logo.svg"
@@ -47,7 +47,7 @@ export const Footer = () => {
               온라인 매장관리 솔루션
             </p>
             <div className="space-y-1 text-xs text-neutral-500 leading-relaxed">
-              <p>상호명: 주식회사노느니</p>
+              <p>상호명: 주식회사 노느니</p>
               <p>서비스명: 윕플 (whiplace.com)</p>
               <p>대표자: 백성민</p>
               <p>사업자등록번호: 612-86-03314</p>
