@@ -88,6 +88,9 @@ interface UserInfo {
   monthly_used?: number
   total_remaining?: number
   total_credits_used?: number
+  // 매장/키워드 현황
+  store_count?: number
+  tracker_count?: number
   // 구독/결제 관련 필드
   subscription_status?: string
   next_billing_date?: string
@@ -1009,7 +1012,7 @@ export default function AdminPage() {
           {/* 회원 리스트 */}
           <Card className="overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[1500px]">
+              <table className="w-full min-w-[1600px]">
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="text-left py-2.5 px-3 font-semibold text-xs text-gray-700 whitespace-nowrap">이메일</th>
@@ -1017,6 +1020,8 @@ export default function AdminPage() {
                     <th className="text-center py-2.5 px-2 font-semibold text-xs text-gray-700 whitespace-nowrap">Tier</th>
                     <th className="text-center py-2.5 px-2 font-semibold text-xs text-gray-700 whitespace-nowrap">상태</th>
                     <th className="text-center py-2.5 px-2 font-semibold text-xs text-gray-700 whitespace-nowrap">가입일</th>
+                    <th className="text-center py-2.5 px-2 font-semibold text-xs text-teal-700 whitespace-nowrap">매장</th>
+                    <th className="text-center py-2.5 px-2 font-semibold text-xs text-indigo-700 whitespace-nowrap">키워드</th>
                     <th className="text-center py-2.5 px-2 font-semibold text-xs text-green-700 whitespace-nowrap">결제일</th>
                     <th className="text-center py-2.5 px-2 font-semibold text-xs text-[#405D99] whitespace-nowrap">다음결제</th>
                     <th className="text-center py-2.5 px-2 font-semibold text-xs text-red-600 whitespace-nowrap">종료일</th>
@@ -1036,6 +1041,14 @@ export default function AdminPage() {
                       <td className="py-2.5 px-2 text-center">{getSubscriptionStatusBadge(u)}</td>
                       <td className="py-2.5 px-2 text-center text-xs text-gray-600 whitespace-nowrap">
                         {new Date(u.created_at).toLocaleDateString('ko-KR', { year: '2-digit', month: '2-digit', day: '2-digit' })}
+                      </td>
+                      {/* 등록 매장수 */}
+                      <td className="py-2.5 px-2 text-center text-xs whitespace-nowrap">
+                        <span className="font-semibold text-teal-600">{u.store_count ?? 0}</span>
+                      </td>
+                      {/* 추적 키워드수 */}
+                      <td className="py-2.5 px-2 text-center text-xs whitespace-nowrap">
+                        <span className="font-semibold text-indigo-600">{u.tracker_count ?? 0}</span>
                       </td>
                       {/* 최근 결제일 */}
                       <td className="py-2.5 px-2 text-center text-xs whitespace-nowrap">

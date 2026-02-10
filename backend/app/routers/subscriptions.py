@@ -16,6 +16,9 @@ from app.models.credits import (
 from app.services.subscription_service import subscription_service
 from app.services.credit_service import credit_service
 from app.routers.auth import get_current_user
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/subscriptions", tags=["subscriptions"])
 
@@ -196,9 +199,9 @@ async def get_cancel_info(
                 .execute()
             keywords_data = keywords.data or []
         
-        # metric_trackers도 조회 (추적 키워드)
+        # metric_trackers도 조회 (추적 키워드 - keyword_id로 keywords 조인)
         trackers = supabase.table("metric_trackers")\
-            .select("id, keyword, store_id, stores(store_name)")\
+            .select("id, keyword_id, store_id, stores(store_name), keywords(keyword)")\
             .eq("user_id", user_id)\
             .execute()
         
@@ -221,6 +224,9 @@ async def get_cancel_info(
         }
         
     except Exception as e:
+        import traceback
+        logger.error(f"cancel-info 에러: {e}")
+        logger.error(f"cancel-info traceback: {traceback.format_exc()}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"취소 정보 조회 실패: {str(e)}"

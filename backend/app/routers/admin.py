@@ -83,6 +83,33 @@ async def get_users(
             except Exception as sub_err:
                 logger.warning(f"구독 정보 조회 실패 (무시): {sub_err}")
         
+        # 매장 수 / 추적키워드 수 일괄 조회
+        store_count_map = {}
+        tracker_count_map = {}
+        if user_ids:
+            try:
+                stores_result = supabase.table("stores")\
+                    .select("user_id")\
+                    .in_("user_id", user_ids)\
+                    .eq("status", "active")\
+                    .execute()
+                for s in (stores_result.data or []):
+                    uid_s = s["user_id"]
+                    store_count_map[uid_s] = store_count_map.get(uid_s, 0) + 1
+            except Exception as store_err:
+                logger.warning(f"매장 수 조회 실패 (무시): {store_err}")
+            
+            try:
+                trackers_result = supabase.table("metric_trackers")\
+                    .select("user_id")\
+                    .in_("user_id", user_ids)\
+                    .execute()
+                for t in (trackers_result.data or []):
+                    uid_t = t["user_id"]
+                    tracker_count_map[uid_t] = tracker_count_map.get(uid_t, 0) + 1
+            except Exception as tracker_err:
+                logger.warning(f"추적키워드 수 조회 실패 (무시): {tracker_err}")
+        
         # 응답 생성
         users = []
         for u in users_data:
@@ -101,6 +128,8 @@ async def get_users(
                 monthly_used=u.get("monthly_used", 0),
                 total_remaining=u.get("total_remaining", 0),
                 total_credits_used=u.get("total_credits_used", 0),
+                store_count=store_count_map.get(uid, 0),
+                tracker_count=tracker_count_map.get(uid, 0),
                 subscription_status=sub.get("status"),
                 next_billing_date=sub.get("next_billing_date"),
                 last_payment_date=sub.get("started_at"),
@@ -202,55 +231,68 @@ async def grant_credits(
     """
     try:
         supabase = get_supabase_client()
+        admin_user_id = user["id"]
         
-        # Stored procedure 호출
-        result = supabase.rpc("admin_grant_credits", {
-            "target_user_id": user_id,
-            "credit_amount": request.credit_amount,
-            "admin_note": request.admin_note
-        }).execute()
-        
-        if not result.data:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to grant credits"
-            )
-        
-        result_data = result.data
-        return GrantCreditsResponse(
-            success=result_data["success"],
-            user_id=result_data["user_id"],
-            credits_granted=result_data["credits_granted"],
-            new_manual_credits=result_data["new_manual_credits"],
-            granted_by=result_data["granted_by"],
-            timestamp=result_data["timestamp"]
-        )
-        
-    except Exception as e:
-        logger.error(f"Failed to grant credits: {e}")
-        
-        # 에러 메시지 파싱
-        error_msg = str(e)
-        if "Only God tier users can grant credits" in error_msg:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only God tier users can grant credits"
-            )
-        elif "Target user not found" in error_msg:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Target user not found"
-            )
-        elif "Credit amount must be positive" in error_msg:
+        # credit_amount 검증
+        if request.credit_amount <= 0:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Credit amount must be positive"
+                detail="크레딧 수량은 0보다 커야 합니다."
             )
-        else:
+        
+        # 대상 사용자 user_credits 업데이트 (Service Role Key로 직접 수행)
+        credit_result = supabase.table("user_credits")\
+            .select("id, manual_credits")\
+            .eq("user_id", user_id)\
+            .execute()
+        
+        if not credit_result.data:
             raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to grant credits"
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="대상 사용자의 크레딧 정보를 찾을 수 없습니다."
             )
+        
+        current_manual = credit_result.data[0].get("manual_credits", 0)
+        new_manual = current_manual + request.credit_amount
+        
+        supabase.table("user_credits")\
+            .update({
+                "manual_credits": new_manual,
+                "updated_at": datetime.utcnow().isoformat()
+            })\
+            .eq("user_id", user_id)\
+            .execute()
+        
+        # 크레딧 트랜잭션 기록
+        try:
+            supabase.table("credit_transactions").insert({
+                "user_id": user_id,
+                "type": "admin_grant",
+                "amount": request.credit_amount,
+                "description": request.admin_note or f"관리자 수동 지급 ({request.credit_amount} 크레딧)",
+                "granted_by": admin_user_id,
+            }).execute()
+        except Exception as tx_err:
+            logger.warning(f"크레딧 트랜잭션 기록 실패 (무시): {tx_err}")
+        
+        now = datetime.utcnow()
+        return GrantCreditsResponse(
+            success=True,
+            user_id=user_id,
+            credits_granted=request.credit_amount,
+            new_manual_credits=new_manual,
+            granted_by=admin_user_id,
+            timestamp=now
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to grant credits: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"크레딧 지급 실패: {str(e)}"
+        )
 
 
 @router.get("/notifications")

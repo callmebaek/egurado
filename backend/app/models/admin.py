@@ -38,6 +38,10 @@ class UserInfoResponse(BaseModel):
     monthly_used: int = 0
     total_remaining: int = 0
     
+    # 매장/키워드 현황
+    store_count: int = 0  # 등록 매장 수
+    tracker_count: int = 0  # 추적 키워드 수
+    
     # 구독/결제 관련 필드
     subscription_status: Optional[str] = None  # active, cancelled, expired
     next_billing_date: Optional[datetime] = None  # 다음 결제 예정일
