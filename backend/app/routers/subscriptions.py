@@ -186,9 +186,19 @@ async def get_cancel_info(
             .eq("status", "active")\
             .execute()
         
-        # 현재 키워드 목록
-        keywords = supabase.table("keywords")\
-            .select("id, keyword, store_id, current_rank, stores(store_name)")\
+        # 현재 키워드 목록 (keywords 테이블에는 user_id가 없으므로 stores 조인)
+        store_ids = [s["id"] for s in (stores.data or [])]
+        keywords_data = []
+        if store_ids:
+            keywords = supabase.table("keywords")\
+                .select("id, keyword, store_id, current_rank, stores(store_name)")\
+                .in_("store_id", store_ids)\
+                .execute()
+            keywords_data = keywords.data or []
+        
+        # metric_trackers도 조회 (추적 키워드)
+        trackers = supabase.table("metric_trackers")\
+            .select("id, keyword, store_id, stores(store_name)")\
             .eq("user_id", user_id)\
             .execute()
         
@@ -197,7 +207,8 @@ async def get_cancel_info(
         
         return {
             "stores": stores.data or [],
-            "keywords": keywords.data or [],
+            "keywords": keywords_data,
+            "trackers": trackers.data or [],
             "current_tier": subscription.tier if subscription else "free",
             "free_tier_limits": {
                 "max_stores": 1,
