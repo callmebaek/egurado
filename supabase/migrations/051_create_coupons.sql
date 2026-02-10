@@ -29,8 +29,10 @@ CREATE TABLE IF NOT EXISTS coupons (
     valid_from TIMESTAMPTZ DEFAULT NOW(),
     valid_until TIMESTAMPTZ, -- NULL이면 무기한
     
-    -- 쿠폰 지속 효과 (구독 기간 내내 적용 여부)
-    is_recurring BOOLEAN DEFAULT true, -- true: 구독 기간 내내 할인, false: 첫 결제만
+    -- 쿠폰 지속 효과
+    is_permanent BOOLEAN DEFAULT true, -- 영구 할인 여부 (구독 기간 내내 할인)
+    duration_months INTEGER, -- 할인 적용 기간 (개월, is_permanent=false일 때만 사용)
+    is_recurring BOOLEAN DEFAULT true, -- true: 구독 기간 내내 할인, false: 첫 결제만 (deprecated, use is_permanent)
     
     -- 상태
     is_active BOOLEAN DEFAULT true, -- 활성화/비활성화
