@@ -29,6 +29,12 @@ class CouponService:
         parts = [code[i:i+4] for i in range(0, len(code), 4)]
         return '-'.join(parts)
     
+    def _build_discount_message(self, coupon: dict, discount_type: str, discount_value: float) -> str:
+        """할인 메시지 생성"""
+        duration = "영구" if coupon.get("is_permanent") else f"{coupon.get('duration_months', 1)}개월"
+        unit = "%" if discount_type == "percentage" else "원"
+        return f"{duration} {discount_value}{unit} 할인이 적용됩니다."
+    
     async def create_coupon(
         self,
         name: str,
@@ -175,7 +181,7 @@ class CouponService:
                 "original_amount": original_amount,
                 "is_permanent": coupon.get("is_permanent", True),
                 "duration_months": coupon.get("duration_months"),
-                "message": f"{'영구' if coupon.get('is_permanent') else f'{coupon.get(\"duration_months\", 1)}개월'} {discount_value}{'%' if discount_type == 'percentage' else '원'} 할인이 적용됩니다."
+                "message": self._build_discount_message(coupon, discount_type, discount_value)
             }
             
         except Exception as e:
