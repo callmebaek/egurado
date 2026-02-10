@@ -174,6 +174,8 @@ export default function MetricsTrackerPage() {
     is_my_store: boolean
   }[]>([])
   const [loadingCompetitors, setLoadingCompetitors] = useState(false)
+  // 경쟁매장 데이터 캐시 (keyword_storeId → data)
+  const [competitorCache, setCompetitorCache] = useState<Record<string, {competitors: typeof competitors, myRank: number | null, totalCount: number}>>({})
 
   // 주기별 기본 수집 시간 설정
   const getDefaultUpdateTimes = (frequency: 'daily_once' | 'daily_twice' | 'daily_thrice'): number[] => {
@@ -629,14 +631,11 @@ export default function MetricsTrackerPage() {
     }
   }
 
-  // 경쟁매장 보기
-  const handleViewCompetitors = async (tracker: MetricTracker) => {
-    setCompetitorKeyword(tracker.keyword)
-    setCompetitorStoreId(tracker.store_id)
+  // 경쟁매장 API 조회 (내부 함수)
+  const fetchCompetitorData = async (keyword: string, storeId: string) => {
     setCompetitors([])
     setCompetitorMyRank(null)
     setCompetitorTotalCount(0)
-    setShowCompetitorDialog(true)
     setLoadingCompetitors(true)
 
     try {
@@ -650,16 +649,27 @@ export default function MetricsTrackerPage() {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          keyword: tracker.keyword,
-          store_id: tracker.store_id
+          keyword,
+          store_id: storeId
         })
       })
 
       if (response.ok) {
         const data = await response.json()
-        setCompetitors(data.competitors || [])
-        setCompetitorMyRank(data.my_rank)
-        setCompetitorTotalCount(data.total_count || 0)
+        const competitorData = data.competitors || []
+        const myRank = data.my_rank
+        const totalCount = data.total_count || 0
+        
+        setCompetitors(competitorData)
+        setCompetitorMyRank(myRank)
+        setCompetitorTotalCount(totalCount)
+        
+        // 캐시에 저장
+        const cacheKey = `${keyword}_${storeId}`
+        setCompetitorCache(prev => ({
+          ...prev,
+          [cacheKey]: { competitors: competitorData, myRank, totalCount }
+        }))
         
         // 크레딧 사용 알림
         notifyCreditUsed(5, token)
@@ -680,6 +690,33 @@ export default function MetricsTrackerPage() {
     } finally {
       setLoadingCompetitors(false)
     }
+  }
+
+  // 경쟁매장 보기 (캐시 지원)
+  const handleViewCompetitors = async (tracker: MetricTracker) => {
+    const cacheKey = `${tracker.keyword}_${tracker.store_id}`
+    
+    setCompetitorKeyword(tracker.keyword)
+    setCompetitorStoreId(tracker.store_id)
+    setShowCompetitorDialog(true)
+    
+    // 캐시 확인
+    if (competitorCache[cacheKey]) {
+      const cached = competitorCache[cacheKey]
+      setCompetitors(cached.competitors)
+      setCompetitorMyRank(cached.myRank)
+      setCompetitorTotalCount(cached.totalCount)
+      setLoadingCompetitors(false)
+      return
+    }
+    
+    // 캐시 없으면 API 조회
+    await fetchCompetitorData(tracker.keyword, tracker.store_id)
+  }
+
+  // 경쟁매장 강제 새로고침
+  const handleForceRefreshCompetitors = async () => {
+    await fetchCompetitorData(competitorKeyword, competitorStoreId)
   }
 
   // 삭제 (🚀 state에서만 제거로 최적화)
@@ -1703,14 +1740,24 @@ export default function MetricsTrackerPage() {
         </DialogContent>
       </Dialog>
 
-      {/* 경쟁매장 보기 모달 - 모바일 완벽 반응형 */}
+      {/* 경쟁매장 보기 모달 - 캐시 지원 + 새로고침 */}
       <Dialog open={showCompetitorDialog} onOpenChange={setShowCompetitorDialog}>
         <DialogContent className="w-[calc(100vw-24px)] sm:w-full sm:max-w-2xl lg:max-w-3xl max-h-[calc(100vh-24px)] p-0 rounded-modal shadow-modal flex flex-col overflow-hidden">
           <DialogHeader className="p-4 md:p-6 pb-3 md:pb-4 flex-shrink-0 border-b border-neutral-200">
-            <DialogTitle className="text-lg md:text-xl font-bold text-neutral-900 flex items-center gap-2">
-              <Users className="w-5 h-5 text-amber-600" />
-              경쟁매장 순위
-            </DialogTitle>
+            <div className="flex items-center justify-between">
+              <DialogTitle className="text-lg md:text-xl font-bold text-neutral-900 flex items-center gap-2">
+                <Users className="w-5 h-5 text-amber-600" />
+                경쟁매장 순위
+              </DialogTitle>
+              <button
+                onClick={handleForceRefreshCompetitors}
+                disabled={loadingCompetitors}
+                className="p-2 rounded-button bg-amber-100 text-amber-700 hover:bg-amber-200 active:scale-95 transition-all min-w-[40px] min-h-[40px] flex items-center justify-center"
+                title="새로고침"
+              >
+                <RefreshCw className={`w-4 h-4 ${loadingCompetitors ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
             <DialogDescription className="text-xs md:text-sm text-neutral-500 mt-1">
               &quot;{competitorKeyword}&quot; 키워드 검색 결과 (최대 300위)
               {competitorTotalCount > 0 && (

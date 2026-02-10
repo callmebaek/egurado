@@ -32,7 +32,7 @@ from ..services.auth_service import (
     get_naver_token,
     get_naver_user_info,
 )
-from ..core.database import get_supabase_client
+from ..core.database import get_supabase_client, create_auth_client, auth_client_context
 
 router = APIRouter(prefix="/auth", tags=["인증"])
 security = HTTPBearer()
@@ -117,10 +117,11 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
 async def signup(request: UserSignupRequest):
     """
     이메일 회원가입 (이메일 인증 필요)
+    ⚠️ auth.sign_up()은 일회용 클라이언트에서 실행 (글로벌 세션 오염 방지)
     """
     supabase = get_supabase_client()
     
-    # 이메일 중복 확인
+    # 이메일 중복 확인 (데이터 전용 클라이언트 사용 - 안전)
     existing_user = supabase.table("profiles").select("id").eq("email", request.email).execute()
     if existing_user.data and len(existing_user.data) > 0:
         raise HTTPException(
@@ -128,9 +129,10 @@ async def signup(request: UserSignupRequest):
             detail="이미 사용 중인 이메일입니다",
         )
     
-    # Supabase Auth에 사용자 생성 (이메일 인증 활성화 시 자동으로 이메일 발송됨)
+    # Supabase Auth에 사용자 생성 (일회용 클라이언트 사용 - 글로벌 세션 보호)
+    auth_client = create_auth_client()
     try:
-        auth_response = supabase.auth.sign_up({
+        auth_response = auth_client.auth.sign_up({
             "email": request.email,
             "password": request.password,
             "options": {
@@ -203,6 +205,10 @@ async def signup(request: UserSignupRequest):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"회원가입 처리 중 오류가 발생했습니다: {str(e)}",
         )
+    finally:
+        # 일회용 auth 클라이언트 폐기 (글로벌 세션 보호)
+        del auth_client
+        print(f"[회원가입] 일회용 auth 클라이언트 폐기 완료")
 
 
 @router.post("/login", response_model=AuthResponse)
@@ -210,20 +216,8 @@ async def login(request: UserLoginRequest):
     """
     이메일 로그인 (일회용 클라이언트로 비밀번호 검증, 전역 세션 영향 없음)
     """
-    import os
-    from supabase import create_client
-    
     # 일회용 Supabase 클라이언트 생성 (전역 싱글톤과 독립적)
-    supabase_url = os.getenv("SUPABASE_URL")
-    supabase_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
-    
-    if not supabase_url or not supabase_key:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="서버 설정 오류",
-        )
-    
-    temp_client = create_client(supabase_url, supabase_key)
+    temp_client = create_auth_client()
     
     try:
         # 일회용 클라이언트로 비밀번호 검증 (이 인스턴스에만 토큰 저장)
@@ -593,6 +587,7 @@ async def change_password(
 ):
     """
     비밀번호 변경 (로그인 상태)
+    ⚠️ 일회용 클라이언트 + Admin API 사용 (글로벌 세션 오염 방지)
     """
     supabase = get_supabase_client()
     user_id = current_user["id"]
@@ -607,10 +602,11 @@ async def change_password(
                 detail="소셜 로그인으로 가입한 계정은 비밀번호 변경이 불가능합니다."
             )
         
-        # Supabase Auth에서 현재 비밀번호 확인
+        # 현재 비밀번호 확인 (일회용 클라이언트 사용 - 글로벌 세션 보호)
         email = current_user.get("email")
+        auth_client = create_auth_client()
         try:
-            login_check = supabase.auth.sign_in_with_password({
+            login_check = auth_client.auth.sign_in_with_password({
                 "email": email,
                 "password": request.current_password
             })
@@ -619,22 +615,30 @@ async def change_password(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="현재 비밀번호가 올바르지 않습니다."
                 )
+        except HTTPException:
+            raise
         except Exception:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="현재 비밀번호가 올바르지 않습니다."
             )
+        finally:
+            # 비밀번호 검증용 일회용 클라이언트 즉시 폐기
+            del auth_client
         
-        # 새 비밀번호로 업데이트
-        result = supabase.auth.update_user({
-            "password": request.new_password
-        })
+        # 새 비밀번호로 업데이트 (Admin API 사용 - 세션 변경 없음)
+        result = supabase.auth.admin.update_user_by_id(
+            user_id,
+            {"password": request.new_password}
+        )
         
         if not result.user:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="비밀번호 변경에 실패했습니다."
             )
+        
+        print(f"[비밀번호 변경] 성공: user_id={user_id} (Admin API 사용)")
         
         return {
             "message": "비밀번호가 성공적으로 변경되었습니다.",
@@ -658,6 +662,7 @@ async def delete_account(
 ):
     """
     계정 삭제
+    ⚠️ 비밀번호 확인은 일회용 클라이언트, 삭제는 Admin API 사용 (글로벌 세션 보호)
     """
     supabase = get_supabase_client()
     user_id = current_user["id"]
@@ -674,10 +679,11 @@ async def delete_account(
         auth_provider = current_user.get("auth_provider", "email")
         
         if auth_provider == "email":
-            # 비밀번호 확인
+            # 비밀번호 확인 (일회용 클라이언트 사용 - 글로벌 세션 보호)
             email = current_user.get("email")
+            auth_client = create_auth_client()
             try:
-                login_check = supabase.auth.sign_in_with_password({
+                login_check = auth_client.auth.sign_in_with_password({
                     "email": email,
                     "password": request.password
                 })
@@ -686,14 +692,21 @@ async def delete_account(
                         status_code=status.HTTP_401_UNAUTHORIZED,
                         detail="비밀번호가 올바르지 않습니다."
                     )
+            except HTTPException:
+                raise
             except Exception:
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="비밀번호가 올바르지 않습니다."
                 )
+            finally:
+                # 비밀번호 검증용 일회용 클라이언트 즉시 폐기
+                del auth_client
         
-        # Supabase Auth에서 사용자 삭제 (profiles, stores, reviews 등은 CASCADE로 자동 삭제)
+        # Supabase Auth에서 사용자 삭제 (Admin API - 세션 변경 없음)
+        # profiles, stores, reviews 등은 CASCADE로 자동 삭제
         result = supabase.auth.admin.delete_user(user_id)
+        print(f"[계정 삭제] 성공: user_id={user_id} (Admin API 사용)")
         
         return {
             "message": "계정이 성공적으로 삭제되었습니다.",

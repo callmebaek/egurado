@@ -63,6 +63,7 @@ import {
   rectSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
 interface UserProfile {
   id: string
@@ -404,41 +405,66 @@ function SortableStoreTrackerCard({
                         <button
                           onClick={() => onRefreshTracker(tracker.id)}
                           disabled={isRefreshing.has(tracker.id)}
-                          className={`p-1.5 md:p-2 rounded-button transition-all duration-200 flex-shrink-0 min-w-[36px] min-h-[36px] md:min-w-[40px] md:min-h-[40px] flex items-center justify-center ${
+                          className={`p-2 rounded-button transition-all duration-200 flex-shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center ${
                             isRefreshing.has(tracker.id)
-                              ? 'bg-emerald-200 text-emerald-600 cursor-not-allowed'
+                              ? 'bg-neutral-100 text-neutral-400 cursor-not-allowed'
                               : 'bg-emerald-100 text-emerald-600 hover:bg-emerald-200 hover:shadow-sm active:scale-95'
                           }`}
                           title="이 키워드 순위를 지금 수집합니다"
                         >
                           {isRefreshing.has(tracker.id) ? (
-                            <Loader2 className="w-3.5 h-3.5 md:w-4 md:h-4 animate-spin" />
+                            <Loader2 className="w-4 h-4 animate-spin" />
                           ) : (
-                            <RefreshCw className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                            <RefreshCw className="w-4 h-4" />
                           )}
                         </button>
                       </div>
                     </div>
 
-                    {/* 2단: 액션 버튼 (지표 + 경쟁매장) */}
+                    {/* 리뷰 지표 + 액션 버튼 - 키워드순위추적 페이지와 동일 */}
                     <div className="pt-2 border-t border-neutral-100">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <button
-                          onClick={() => onViewMetrics(tracker)}
-                          className="p-1.5 md:p-2 rounded-button bg-primary-100 text-primary-600 hover:bg-primary-200 hover:shadow-sm active:scale-95 transition-all duration-200 min-w-[36px] min-h-[36px] md:min-w-[40px] md:min-h-[40px] flex items-center justify-center gap-1"
-                          title="지표 보기"
-                        >
-                          <Eye className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                          <span className="hidden md:inline text-xs font-bold">지표</span>
-                        </button>
-                        <button
-                          onClick={() => onViewCompetitors(tracker)}
-                          className="p-1.5 md:p-2 rounded-button bg-amber-100 text-amber-700 hover:bg-amber-200 hover:shadow-sm active:scale-95 transition-all duration-200 min-w-[36px] min-h-[36px] md:min-w-[40px] md:min-h-[40px] flex items-center justify-center gap-1"
-                          title="경쟁매장 보기"
-                        >
-                          <Users className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                          <span className="hidden md:inline text-xs font-bold">경쟁매장</span>
-                        </button>
+                      <div className="flex items-end justify-between gap-2">
+                        {/* 리뷰 지표 - 모바일: 세로, PC: 가로 */}
+                        <div className="flex flex-col gap-1 md:flex-row md:items-center md:gap-3 text-xs min-w-0">
+                          <div className="flex items-center gap-1">
+                            <MessageSquare className="w-3 h-3 text-neutral-500 flex-shrink-0" />
+                            <span className="text-neutral-600 font-bold whitespace-nowrap">방문자</span>
+                            <span className="font-bold text-neutral-900">{tracker.visitor_review_count?.toLocaleString() || '0'}</span>
+                            {tracker.visitor_review_change !== undefined && tracker.visitor_review_change !== null && tracker.visitor_review_change !== 0 && (
+                              <span className={`font-bold ${tracker.visitor_review_change > 0 ? 'text-success' : 'text-error'}`}>
+                                {tracker.visitor_review_change > 0 ? '+' : ''}{tracker.visitor_review_change}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <FileText className="w-3 h-3 text-neutral-500 flex-shrink-0" />
+                            <span className="text-neutral-600 font-bold whitespace-nowrap">블로그</span>
+                            <span className="font-bold text-neutral-900">{tracker.blog_review_count?.toLocaleString() || '0'}</span>
+                            {tracker.blog_review_change !== undefined && tracker.blog_review_change !== null && tracker.blog_review_change !== 0 && (
+                              <span className={`font-bold ${tracker.blog_review_change > 0 ? 'text-success' : 'text-error'}`}>
+                                {tracker.blog_review_change > 0 ? '+' : ''}{tracker.blog_review_change}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* 지표 + 경쟁매장 버튼 */}
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <button
+                            onClick={() => onViewMetrics(tracker)}
+                            className="p-2 rounded-button bg-primary-100 text-primary-600 hover:bg-primary-200 hover:shadow-sm active:scale-95 transition-all duration-200 min-w-[40px] min-h-[40px] flex items-center justify-center"
+                            title="지표 보기"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => onViewCompetitors(tracker)}
+                            className="p-2 rounded-button bg-amber-100 text-amber-700 hover:bg-amber-200 hover:shadow-sm active:scale-95 transition-all duration-200 min-w-[40px] min-h-[40px] flex items-center justify-center"
+                            title="경쟁매장 보기"
+                          >
+                            <Users className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -532,6 +558,9 @@ export default function DashboardPage() {
   const [competitorTotalCount, setCompetitorTotalCount] = useState(0)
   const [competitors, setCompetitors] = useState<CompetitorStore[]>([])
   const [loadingCompetitors, setLoadingCompetitors] = useState(false)
+  const [competitorStoreId, setCompetitorStoreId] = useState("")
+  // 경쟁매장 데이터 캐시 (keyword_storeId → data)
+  const [competitorCache, setCompetitorCache] = useState<Record<string, {competitors: CompetitorStore[], myRank: number | null, totalCount: number}>>({})
   
   // 🆕 실제 크레딧 정보 (Credits API)
   const [credits, setCredits] = useState<{
@@ -676,13 +705,11 @@ export default function DashboardPage() {
     }
   }
 
-  // 경쟁매장 보기 핸들러
-  const handleViewCompetitors = async (tracker: MetricTracker) => {
-    setCompetitorKeyword(tracker.keyword)
+  // 경쟁매장 API 조회 (내부 함수)
+  const fetchCompetitorData = async (keyword: string, storeId: string) => {
     setCompetitors([])
     setCompetitorMyRank(null)
     setCompetitorTotalCount(0)
-    setShowCompetitorDialog(true)
     setLoadingCompetitors(true)
 
     try {
@@ -696,16 +723,27 @@ export default function DashboardPage() {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          keyword: tracker.keyword,
-          store_id: tracker.store_id
+          keyword,
+          store_id: storeId
         })
       })
 
       if (response.ok) {
         const data = await response.json()
-        setCompetitors(data.competitors || [])
-        setCompetitorMyRank(data.my_rank)
-        setCompetitorTotalCount(data.total_count || 0)
+        const competitorData = data.competitors || []
+        const myRank = data.my_rank
+        const totalCount = data.total_count || 0
+        
+        setCompetitors(competitorData)
+        setCompetitorMyRank(myRank)
+        setCompetitorTotalCount(totalCount)
+        
+        // 캐시에 저장
+        const cacheKey = `${keyword}_${storeId}`
+        setCompetitorCache(prev => ({
+          ...prev,
+          [cacheKey]: { competitors: competitorData, myRank, totalCount }
+        }))
       } else {
         const errorData = await response.json().catch(() => ({}))
         toast({
@@ -723,6 +761,33 @@ export default function DashboardPage() {
     } finally {
       setLoadingCompetitors(false)
     }
+  }
+
+  // 경쟁매장 보기 핸들러 (캐시 지원)
+  const handleViewCompetitors = async (tracker: MetricTracker) => {
+    const cacheKey = `${tracker.keyword}_${tracker.store_id}`
+    
+    setCompetitorKeyword(tracker.keyword)
+    setCompetitorStoreId(tracker.store_id)
+    setShowCompetitorDialog(true)
+    
+    // 캐시 확인
+    if (competitorCache[cacheKey]) {
+      const cached = competitorCache[cacheKey]
+      setCompetitors(cached.competitors)
+      setCompetitorMyRank(cached.myRank)
+      setCompetitorTotalCount(cached.totalCount)
+      setLoadingCompetitors(false)
+      return
+    }
+    
+    // 캐시 없으면 API 조회
+    await fetchCompetitorData(tracker.keyword, tracker.store_id)
+  }
+
+  // 경쟁매장 강제 새로고침
+  const handleForceRefreshCompetitors = async () => {
+    await fetchCompetitorData(competitorKeyword, competitorStoreId)
   }
 
   // 개별 키워드 새로고침
@@ -1824,118 +1889,251 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* 지표 보기 모달 - 대시보드용 */}
+      {/* 지표 보기 모달 - 키워드순위추적 페이지와 동일 */}
       <Dialog open={showMetricsDialog} onOpenChange={setShowMetricsDialog}>
-        <DialogContent className="w-[calc(100vw-24px)] sm:w-full sm:max-w-2xl lg:max-w-3xl max-h-[calc(100vh-24px)] p-0 rounded-modal shadow-modal flex flex-col overflow-hidden">
-          <DialogHeader className="p-4 md:p-6 pb-3 md:pb-4 flex-shrink-0 border-b border-neutral-200">
-            <DialogTitle className="text-lg md:text-xl font-bold text-neutral-900 flex items-center gap-2">
-              <BarChart3 className="w-5 h-5 text-primary-600" />
-              지표 추이
-            </DialogTitle>
-            <DialogDescription className="text-xs md:text-sm text-neutral-500 mt-1">
-              {selectedTracker?.store_name && (
-                <span className="font-medium">{selectedTracker.store_name} · </span>
-              )}
-              &quot;{selectedTracker?.keyword}&quot; 키워드의 일별 지표 변화
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="flex-1 overflow-y-auto p-3 md:p-4">
-            {loadingMetrics ? (
-              <div className="flex flex-col items-center justify-center py-12">
-                <Loader2 className="w-8 h-8 text-primary-600 animate-spin mb-3" />
-                <p className="text-sm text-neutral-500">지표 데이터 불러오는 중...</p>
+        <DialogContent className="w-[calc(100vw-32px)] sm:w-full sm:max-w-2xl lg:max-w-4xl max-h-[calc(100vh-32px)] sm:max-h-[85vh] overflow-hidden bg-white border-2 border-neutral-200 shadow-modal rounded-modal flex flex-col p-0">
+          <DialogHeader className="px-4 md:px-6 pt-4 md:pt-6 pb-3 border-b border-neutral-200 flex-shrink-0">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 md:w-10 md:h-10 bg-emerald-600 rounded-button flex items-center justify-center shadow-sm flex-shrink-0">
+                <BarChart3 className="w-4 h-4 md:w-5 md:h-5 text-white" />
               </div>
-            ) : metrics.length > 0 ? (
-              <>
-                {/* 모바일: 카드 레이아웃 */}
-                <div className="md:hidden space-y-2">
-                  {metrics.map((metric, idx) => (
-                    <div key={metric.id || idx} className="bg-white border border-neutral-200 rounded-button p-3">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-bold text-neutral-900">
-                          {new Date(metric.collection_date).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
-                        </span>
-                        <span className={`text-lg font-bold ${
-                          metric.rank && metric.rank <= 10 ? 'text-emerald-600' : 
-                          metric.rank && metric.rank <= 50 ? 'text-blue-600' : 'text-neutral-600'
-                        }`}>
-                          {metric.rank ? `${metric.rank}위` : '300위 밖'}
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-3 gap-2 text-xs">
-                        <div className="text-center bg-neutral-50 rounded px-2 py-1.5">
-                          <div className="text-neutral-500">방문자</div>
-                          <div className="font-bold text-neutral-900">{metric.visitor_review_count?.toLocaleString() || '0'}</div>
-                        </div>
-                        <div className="text-center bg-neutral-50 rounded px-2 py-1.5">
-                          <div className="text-neutral-500">블로그</div>
-                          <div className="font-bold text-neutral-900">{metric.blog_review_count?.toLocaleString() || '0'}</div>
-                        </div>
-                        <div className="text-center bg-neutral-50 rounded px-2 py-1.5">
-                          <div className="text-neutral-500">저장수</div>
-                          <div className="font-bold text-neutral-900">{metric.save_count?.toLocaleString() || '0'}</div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+              <div className="min-w-0 flex-1">
+                <DialogTitle className="text-base md:text-lg font-bold text-neutral-900 truncate">
+                  {selectedTracker?.keyword} 지표
+                </DialogTitle>
+                <DialogDescription className="text-xs md:text-sm text-neutral-600 truncate">
+                  {selectedTracker?.store_name}
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4">
+            {loadingMetrics ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="text-center">
+                  <Loader2 className="w-10 h-10 animate-spin text-emerald-600 mx-auto mb-3" />
+                  <p className="text-sm text-neutral-600">지표를 불러오는 중...</p>
                 </div>
-                
-                {/* PC: 테이블 레이아웃 */}
-                <div className="hidden md:block">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-neutral-200">
-                        <th className="text-left py-2 px-3 font-bold text-neutral-600">날짜</th>
-                        <th className="text-center py-2 px-3 font-bold text-neutral-600">순위</th>
-                        <th className="text-center py-2 px-3 font-bold text-neutral-600">방문자리뷰</th>
-                        <th className="text-center py-2 px-3 font-bold text-neutral-600">블로그리뷰</th>
-                        <th className="text-center py-2 px-3 font-bold text-neutral-600">저장수</th>
-                        <th className="text-right py-2 px-3 font-bold text-neutral-600">수집시간</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {metrics.map((metric, idx) => (
-                        <tr key={metric.id || idx} className="border-b border-neutral-100 hover:bg-neutral-50">
-                          <td className="py-2.5 px-3 font-medium">
-                            {new Date(metric.collection_date).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
-                          </td>
-                          <td className={`py-2.5 px-3 text-center font-bold ${
-                            metric.rank && metric.rank <= 10 ? 'text-emerald-600' : 
-                            metric.rank && metric.rank <= 50 ? 'text-blue-600' : 'text-neutral-600'
-                          }`}>
-                            {metric.rank ? `${metric.rank}위` : '300위 밖'}
-                          </td>
-                          <td className="py-2.5 px-3 text-center">{metric.visitor_review_count?.toLocaleString() || '0'}</td>
-                          <td className="py-2.5 px-3 text-center">{metric.blog_review_count?.toLocaleString() || '0'}</td>
-                          <td className="py-2.5 px-3 text-center">{metric.save_count?.toLocaleString() || '0'}</td>
-                          <td className="py-2.5 px-3 text-right text-neutral-500 text-xs">
-                            {new Date(metric.collected_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+              </div>
+            ) : metrics.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="bg-neutral-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                  <BarChart3 className="w-8 h-8 text-neutral-400" />
                 </div>
-              </>
+                <p className="text-neutral-700 font-bold mb-1">아직 수집된 지표가 없습니다</p>
+                <p className="text-sm text-neutral-500">수집이 완료되면 여기에 표시됩니다</p>
+              </div>
             ) : (
-              <div className="flex flex-col items-center justify-center py-12">
-                <BarChart3 className="w-10 h-10 text-neutral-300 mb-3" />
-                <p className="text-sm text-neutral-500">아직 수집된 지표가 없습니다</p>
+              <div className="space-y-4 md:space-y-5">
+                {/* 차트 */}
+                <div className="bg-neutral-50 rounded-card p-3 md:p-5 border border-neutral-200">
+                  <h4 className="font-bold text-sm md:text-base mb-3 text-neutral-900 flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-emerald-600" />
+                    순위 변화
+                  </h4>
+                  <div className="w-full h-[200px] md:h-[280px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={[...metrics].reverse()}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                        <XAxis 
+                          dataKey="collection_date" 
+                          tickFormatter={(date) => new Date(date).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' })}
+                          stroke="#9ca3af"
+                          tick={{ fontSize: 10 }}
+                          angle={-45}
+                          textAnchor="end"
+                          height={50}
+                          interval="preserveStartEnd"
+                        />
+                        <YAxis reversed domain={[1, 'dataMax']} stroke="#9ca3af" tick={{ fontSize: 10 }} width={30} />
+                        <Tooltip 
+                          labelFormatter={(date) => new Date(date).toLocaleDateString('ko-KR')}
+                          contentStyle={{ 
+                            backgroundColor: '#fff', 
+                            border: '2px solid #e5e7eb',
+                            borderRadius: '8px',
+                            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+                            fontSize: '12px'
+                          }}
+                        />
+                        <Line 
+                          type="monotone" 
+                          dataKey="rank" 
+                          stroke="#059669" 
+                          strokeWidth={2}
+                          name="순위" 
+                          dot={{ fill: '#059669', r: 3 }}
+                          activeDot={{ r: 6 }}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* 상세 지표 */}
+                <div>
+                  <h4 className="font-bold text-sm md:text-base mb-3 text-neutral-900 flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-emerald-600" />
+                    상세 지표
+                  </h4>
+                  
+                  {/* 모바일 카드형 레이아웃 */}
+                  <div className="md:hidden space-y-2.5">
+                    {metrics.map((metric, index) => {
+                      const prevMetric = metrics[index + 1]
+                      const rankChange = prevMetric && metric.rank && prevMetric.rank 
+                        ? metric.rank - prevMetric.rank : null
+                      const visitorChange = prevMetric 
+                        ? metric.visitor_review_count - prevMetric.visitor_review_count : null
+                      const blogChange = prevMetric 
+                        ? metric.blog_review_count - prevMetric.blog_review_count : null
+                      
+                      return (
+                        <div key={metric.id || index} className="bg-white rounded-button border border-neutral-200 p-3 shadow-sm">
+                          <div className="flex items-center justify-between mb-2 pb-2 border-b border-neutral-100">
+                            <span className="text-xs font-bold text-neutral-700">
+                              {new Date(metric.collection_date).toLocaleDateString('ko-KR', {
+                                month: 'short', day: 'numeric'
+                              })}
+                            </span>
+                            <span className={`text-lg font-bold ${metric.rank ? 'text-emerald-600' : 'text-neutral-400'}`}>
+                              {metric.rank ? `${metric.rank}위` : '-'}
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-3 gap-2 text-center">
+                            <div>
+                              <p className="text-[10px] text-neutral-500 font-bold mb-0.5">순위변동</p>
+                              <p className="text-xs font-bold">
+                                {rankChange === null || rankChange === 0 ? (
+                                  <span className="text-neutral-400">-</span>
+                                ) : (
+                                  <span className={rankChange < 0 ? 'text-success' : 'text-error'}>
+                                    {rankChange < 0 ? '↑' : '↓'}{Math.abs(rankChange)}
+                                  </span>
+                                )}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-neutral-500 font-bold mb-0.5">방문자</p>
+                              <p className="text-xs font-bold text-neutral-900">{metric.visitor_review_count.toLocaleString()}</p>
+                              {visitorChange !== null && visitorChange !== 0 && (
+                                <p className={`text-[10px] font-bold ${visitorChange > 0 ? 'text-success' : 'text-error'}`}>
+                                  {visitorChange > 0 ? '+' : ''}{visitorChange}
+                                </p>
+                              )}
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-neutral-500 font-bold mb-0.5">블로그</p>
+                              <p className="text-xs font-bold text-neutral-900">{metric.blog_review_count.toLocaleString()}</p>
+                              {blogChange !== null && blogChange !== 0 && (
+                                <p className={`text-[10px] font-bold ${blogChange > 0 ? 'text-success' : 'text-error'}`}>
+                                  {blogChange > 0 ? '+' : ''}{blogChange}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  {/* PC 테이블 레이아웃 */}
+                  <div className="hidden md:block border-2 border-neutral-200 rounded-card overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead className="bg-neutral-50">
+                        <tr>
+                          <th className="px-3 py-3 text-left font-bold text-neutral-700 text-xs">날짜</th>
+                          <th className="px-3 py-3 text-center font-bold text-neutral-700 text-xs">순위</th>
+                          <th className="px-3 py-3 text-center font-bold text-neutral-700 text-xs">변동</th>
+                          <th className="px-3 py-3 text-center font-bold text-neutral-700 text-xs">방문자</th>
+                          <th className="px-3 py-3 text-center font-bold text-neutral-700 text-xs">변동</th>
+                          <th className="px-3 py-3 text-center font-bold text-neutral-700 text-xs">블로그</th>
+                          <th className="px-3 py-3 text-center font-bold text-neutral-700 text-xs">변동</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {metrics.map((metric, index) => {
+                          const prevMetric = metrics[index + 1]
+                          const rankChange = prevMetric && metric.rank && prevMetric.rank 
+                            ? metric.rank - prevMetric.rank : null
+                          const visitorChange = prevMetric 
+                            ? metric.visitor_review_count - prevMetric.visitor_review_count : null
+                          const blogChange = prevMetric 
+                            ? metric.blog_review_count - prevMetric.blog_review_count : null
+                          
+                          return (
+                            <tr key={metric.id || index} className={`border-t border-neutral-200 ${index % 2 === 0 ? 'bg-white' : 'bg-neutral-50'}`}>
+                              <td className="px-3 py-2.5 text-neutral-700 whitespace-nowrap text-xs">
+                                {new Date(metric.collection_date).toLocaleDateString('ko-KR')}
+                              </td>
+                              <td className="px-3 py-2.5 text-center font-bold text-emerald-600 text-sm">
+                                {metric.rank || '-'}
+                              </td>
+                              <td className="px-3 py-2.5 text-center font-bold text-xs">
+                                {rankChange === null || rankChange === 0 ? (
+                                  <span className="text-neutral-400">-</span>
+                                ) : (
+                                  <span className={rankChange < 0 ? 'text-success' : 'text-error'}>
+                                    {rankChange < 0 ? '↑' : '↓'}{Math.abs(rankChange)}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-3 py-2.5 text-center text-neutral-700 text-xs">
+                                {metric.visitor_review_count.toLocaleString()}
+                              </td>
+                              <td className="px-3 py-2.5 text-center font-bold text-xs">
+                                {visitorChange === null || visitorChange === 0 ? (
+                                  <span className="text-neutral-400">-</span>
+                                ) : (
+                                  <span className={visitorChange > 0 ? 'text-success' : 'text-error'}>
+                                    {visitorChange > 0 ? '+' : ''}{visitorChange.toLocaleString()}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-3 py-2.5 text-center text-neutral-700 text-xs">
+                                {metric.blog_review_count.toLocaleString()}
+                              </td>
+                              <td className="px-3 py-2.5 text-center font-bold text-xs">
+                                {blogChange === null || blogChange === 0 ? (
+                                  <span className="text-neutral-400">-</span>
+                                ) : (
+                                  <span className={blogChange > 0 ? 'text-success' : 'text-error'}>
+                                    {blogChange > 0 ? '+' : ''}{blogChange.toLocaleString()}
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
             )}
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* 경쟁매장 보기 모달 - 대시보드용 */}
+      {/* 경쟁매장 보기 모달 - 대시보드용 (캐시 지원) */}
       <Dialog open={showCompetitorDialog} onOpenChange={setShowCompetitorDialog}>
         <DialogContent className="w-[calc(100vw-24px)] sm:w-full sm:max-w-2xl lg:max-w-3xl max-h-[calc(100vh-24px)] p-0 rounded-modal shadow-modal flex flex-col overflow-hidden">
           <DialogHeader className="p-4 md:p-6 pb-3 md:pb-4 flex-shrink-0 border-b border-neutral-200">
-            <DialogTitle className="text-lg md:text-xl font-bold text-neutral-900 flex items-center gap-2">
-              <Users className="w-5 h-5 text-amber-600" />
-              경쟁매장 순위
-            </DialogTitle>
+            <div className="flex items-center justify-between">
+              <DialogTitle className="text-lg md:text-xl font-bold text-neutral-900 flex items-center gap-2">
+                <Users className="w-5 h-5 text-amber-600" />
+                경쟁매장 순위
+              </DialogTitle>
+              <button
+                onClick={handleForceRefreshCompetitors}
+                disabled={loadingCompetitors}
+                className="p-2 rounded-button bg-amber-100 text-amber-700 hover:bg-amber-200 active:scale-95 transition-all min-w-[40px] min-h-[40px] flex items-center justify-center"
+                title="새로고침"
+              >
+                <RefreshCw className={`w-4 h-4 ${loadingCompetitors ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
             <DialogDescription className="text-xs md:text-sm text-neutral-500 mt-1">
               &quot;{competitorKeyword}&quot; 키워드 검색 결과 (최대 300위)
               {competitorTotalCount > 0 && (

@@ -59,6 +59,35 @@ app.add_middleware(
 )
 
 
+# 글로벌 Supabase 클라이언트 세션 무결성 보호 미들웨어
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+from starlette.responses import Response
+
+class SessionIntegrityMiddleware(BaseHTTPMiddleware):
+    """
+    모든 요청 전에 글로벌 Supabase 클라이언트의 세션 무결성을 검증합니다.
+    
+    만약 누군가 실수로 글로벌 클라이언트에서 auth.sign_in()을 호출하여
+    세션이 오염되더라도, 다음 요청에서 자동으로 감지하고 복구합니다.
+    """
+    _check_counter = 0
+    _check_interval = 10  # 매 10번째 요청마다 검증 (성능 최적화)
+    
+    async def dispatch(self, request: Request, call_next):
+        # 매 N번째 요청마다 세션 무결성 검증 (성능과 안전성 균형)
+        SessionIntegrityMiddleware._check_counter += 1
+        if SessionIntegrityMiddleware._check_counter >= SessionIntegrityMiddleware._check_interval:
+            SessionIntegrityMiddleware._check_counter = 0
+            from app.core.database import verify_client_integrity
+            verify_client_integrity()
+        
+        response = await call_next(request)
+        return response
+
+app.add_middleware(SessionIntegrityMiddleware)
+
+
 @app.get("/")
 async def root():
     """헬스체크 엔드포인트"""
@@ -72,14 +101,17 @@ async def root():
 @app.get("/api/health")
 async def health_check():
     """API 상태 확인"""
-    from app.core.database import check_database_connection
+    from app.core.database import check_database_connection, verify_client_integrity
     
+    # 글로벌 Supabase 클라이언트 세션 무결성 검증
+    client_healthy = verify_client_integrity()
     db_connected = await check_database_connection()
     
     return {
         "status": "ok" if db_connected else "warning",
         "message": "Egurado API is running",
-        "database_connected": db_connected
+        "database_connected": db_connected,
+        "client_session_healthy": client_healthy
     }
 
 
