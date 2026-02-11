@@ -737,7 +737,7 @@ export default function SupportPage() {
                       이메일
                     </h3>
                     <p className="text-sm text-neutral-600 mb-2">
-                      support@whiplace.com
+                      business@whiplace.com
                     </p>
                     <p className="text-xs text-neutral-500">
                       24시간 이내 답변

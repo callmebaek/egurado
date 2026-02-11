@@ -491,53 +491,69 @@ export default function NotificationsPage() {
         </section>
       </div>
 
-      {/* 알림 상세 다이얼로그 */}
+      {/* 알림 상세 다이얼로그 - 지표 모달 스타일 */}
       <Dialog open={showDetailDialog} onOpenChange={setShowDetailDialog}>
-        <DialogContent>
+        <DialogContent className="w-[calc(100vw-32px)] sm:w-full sm:max-w-lg max-h-[calc(100vh-32px)] sm:max-h-[85vh] overflow-hidden bg-white border-2 border-neutral-200 shadow-modal rounded-modal flex flex-col p-0">
           {selectedNotification && (
             <>
-              <DialogHeader>
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                    {getNotificationIcon(selectedNotification.type)}
+              {/* 헤더 */}
+              <DialogHeader className="px-4 md:px-6 pt-4 md:pt-6 pb-3 border-b border-neutral-200 flex-shrink-0">
+                <div className="flex items-center gap-2.5">
+                  <div className={`w-9 h-9 md:w-10 md:h-10 rounded-button flex items-center justify-center shadow-sm flex-shrink-0 ${
+                    selectedNotification.type === 'announcement' ? 'bg-blue-500' :
+                    selectedNotification.type === 'update' ? 'bg-purple-500' :
+                    selectedNotification.type === 'marketing' ? 'bg-green-500' :
+                    'bg-orange-500'
+                  }`}>
+                    {selectedNotification.type === 'announcement' && <Megaphone className="w-4 h-4 md:w-5 md:h-5 text-white" />}
+                    {selectedNotification.type === 'update' && <Sparkles className="w-4 h-4 md:w-5 md:h-5 text-white" />}
+                    {selectedNotification.type === 'marketing' && <TrendingUp className="w-4 h-4 md:w-5 md:h-5 text-white" />}
+                    {selectedNotification.type === 'system' && <AlertCircle className="w-4 h-4 md:w-5 md:h-5 text-white" />}
                   </div>
-                  <span className={`inline-block px-3 py-1 rounded-lg text-sm font-semibold ${getNotificationBadgeColor(selectedNotification.type)}`}>
-                    {getNotificationTypeLabel(selectedNotification.type)}
-                  </span>
+                  <div className="min-w-0 flex-1">
+                    <DialogTitle className="text-base md:text-lg font-bold text-neutral-900 leading-tight">
+                      {selectedNotification.title}
+                    </DialogTitle>
+                    <DialogDescription className="text-xs md:text-sm text-neutral-500 mt-0.5 flex items-center gap-2">
+                      <span className={`inline-block px-2 py-0.5 rounded text-[10px] md:text-xs font-semibold ${getNotificationBadgeColor(selectedNotification.type)}`}>
+                        {getNotificationTypeLabel(selectedNotification.type)}
+                      </span>
+                      <span>{formatDate(selectedNotification.created_at)}</span>
+                    </DialogDescription>
+                  </div>
                 </div>
-                <DialogTitle className="text-xl font-bold text-neutral-900">
-                  {selectedNotification.title}
-                </DialogTitle>
-                <DialogDescription className="text-sm text-neutral-500 pt-1">
-                  {formatDate(selectedNotification.created_at)}
-                </DialogDescription>
               </DialogHeader>
               
-              <div className="py-4">
-                <p className="text-base text-neutral-700 leading-relaxed whitespace-pre-wrap">
-                  {selectedNotification.content}
-                </p>
+              {/* 본문 */}
+              <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4">
+                <div className="bg-neutral-50 rounded-card p-4 md:p-5 border border-neutral-200">
+                  <p className="text-sm md:text-base text-neutral-700 leading-relaxed whitespace-pre-wrap">
+                    {selectedNotification.content}
+                  </p>
+                </div>
               </div>
 
-              <DialogFooter className="gap-2">
-                {selectedNotification.link && (
-                  <Button
-                    onClick={() => {
-                      window.location.href = selectedNotification.link!
-                    }}
-                    className="h-12 px-6"
+              {/* 푸터 */}
+              <div className="px-4 md:px-6 py-3 md:py-4 border-t border-neutral-200 flex-shrink-0">
+                <div className="flex gap-2.5 justify-end">
+                  <button
+                    onClick={() => setShowDetailDialog(false)}
+                    className="h-10 md:h-11 px-5 text-sm font-semibold text-neutral-700 bg-neutral-100 hover:bg-neutral-200 active:bg-neutral-300 rounded-button transition-all duration-200 touch-manipulation"
                   >
-                    자세히 보기
-                  </Button>
-                )}
-                <Button
-                  variant="outline"
-                  onClick={() => setShowDetailDialog(false)}
-                  className="h-12 px-6"
-                >
-                  닫기
-                </Button>
-              </DialogFooter>
+                    닫기
+                  </button>
+                  {selectedNotification.link && (
+                    <button
+                      onClick={() => {
+                        window.location.href = selectedNotification.link!
+                      }}
+                      className="h-10 md:h-11 px-5 text-sm font-semibold text-white bg-[#405D99] hover:bg-[#2E4577] active:bg-[#1A2B52] rounded-button shadow-sm hover:shadow-md transition-all duration-200 touch-manipulation"
+                    >
+                      자세히 보기
+                    </button>
+                  )}
+                </div>
+              </div>
             </>
           )}
         </DialogContent>
