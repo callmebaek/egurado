@@ -25,6 +25,7 @@ from ..models.schemas import (
     OTPVerifyRequest,
     OTPSendResponse,
     OTPVerifyResponse,
+    RegisterPhoneRequest,
 )
 from ..services.auth_service import (
     hash_password,
@@ -597,6 +598,85 @@ async def update_profile(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"프로필 업데이트 실패: {str(e)}"
+        )
+
+
+@router.post("/register-phone")
+async def register_phone(
+    request: RegisterPhoneRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    기존 유저 전화번호 등록 (OTP 인증 완료 후)
+    - 전화번호가 없는 기존 유저가 전화번호를 등록
+    - OTP 인증이 완료된 전화번호만 등록 가능
+    - 중복 전화번호 체크
+    """
+    supabase = get_supabase_client()
+    user_id = current_user["id"]
+    
+    try:
+        normalized_phone = request.phone_number.replace("-", "").replace(" ", "")
+        
+        # 1. 이미 전화번호가 등록된 유저인지 확인
+        profile = supabase.table("profiles").select("phone_number").eq("id", user_id).execute()
+        if profile.data and profile.data[0].get("phone_number"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="이미 전화번호가 등록되어 있습니다."
+            )
+        
+        # 2. 전화번호 중복 확인 (다른 유저가 이미 사용 중인지)
+        dup_check = supabase.table("profiles").select("id").eq("phone_number", normalized_phone).execute()
+        if dup_check.data and len(dup_check.data) > 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="이미 다른 계정에 등록된 전화번호입니다."
+            )
+        
+        # 3. OTP 인증 완료 확인
+        from ..services.otp_service import otp_service
+        verification = otp_service.supabase.table("phone_verifications")\
+            .select("id, is_verified")\
+            .eq("phone_number", normalized_phone)\
+            .eq("is_verified", True)\
+            .order("created_at", desc=True)\
+            .limit(1)\
+            .execute()
+        
+        if not verification.data or len(verification.data) == 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="전화번호 OTP 인증이 완료되지 않았습니다. 먼저 인증을 진행해주세요."
+            )
+        
+        # 4. 프로필에 전화번호 등록
+        update_result = supabase.table("profiles").update({
+            "phone_number": normalized_phone,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }).eq("id", user_id).execute()
+        
+        if not update_result.data:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="전화번호 등록에 실패했습니다."
+            )
+        
+        print(f"[전화번호 등록] 성공: user_id={user_id}, phone={normalized_phone[-4:].rjust(11, '*')}")
+        
+        return {
+            "success": True,
+            "message": "전화번호가 성공적으로 등록되었습니다.",
+            "phone_number": normalized_phone,
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[ERROR] Phone registration failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"전화번호 등록 실패: {str(e)}"
         )
 
 

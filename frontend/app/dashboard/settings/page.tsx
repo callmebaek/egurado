@@ -105,6 +105,18 @@ export default function SettingsPage() {
   // 전화번호 등록 여부 (기존 유저 폴백용)
   const hasPhone = Boolean(phone)
   
+  // 전화번호 등록 (기존 유저용)
+  const [registerPhone, setRegisterPhone] = useState('')
+  const [registerOtpCode, setRegisterOtpCode] = useState('')
+  const [registerOtpSent, setRegisterOtpSent] = useState(false)
+  const [registerOtpVerified, setRegisterOtpVerified] = useState(false)
+  const [registerOtpCooldown, setRegisterOtpCooldown] = useState(0)
+  const [registerOtpExpiry, setRegisterOtpExpiry] = useState(0)
+  const [isRegisterSendingOtp, setIsRegisterSendingOtp] = useState(false)
+  const [isRegisterVerifyingOtp, setIsRegisterVerifyingOtp] = useState(false)
+  const [isRegisteringPhone, setIsRegisteringPhone] = useState(false)
+  const [showRegisterForm, setShowRegisterForm] = useState(false)
+  
   // OTP 본인인증 (비밀번호 변경용 - 전화번호 등록 유저만)
   const [otpPhone, setOtpPhone] = useState('')
   const [otpCode, setOtpCode] = useState('')
@@ -383,6 +395,136 @@ export default function SettingsPage() {
       })
     } finally {
       setIsVerifyingOtp(false)
+    }
+  }
+
+  // ── 전화번호 등록 (기존 유저용) ──
+  // 전화번호 등록 쿨다운 타이머
+  useEffect(() => {
+    if (registerOtpCooldown <= 0) return
+    const timer = setInterval(() => {
+      setRegisterOtpCooldown(prev => {
+        if (prev <= 1) { clearInterval(timer); return 0 }
+        return prev - 1
+      })
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [registerOtpCooldown])
+
+  // 전화번호 등록 만료 타이머
+  useEffect(() => {
+    if (registerOtpExpiry <= 0) return
+    const timer = setInterval(() => {
+      setRegisterOtpExpiry(prev => {
+        if (prev <= 1) {
+          clearInterval(timer)
+          setRegisterOtpSent(false)
+          setRegisterOtpVerified(false)
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [registerOtpExpiry])
+
+  // 전화번호 등록 OTP 발송
+  const handleRegisterSendOtp = async () => {
+    const cleanPhone = registerPhone.replace(/[^\d]/g, '')
+    if (!cleanPhone.startsWith('010') || cleanPhone.length !== 11) {
+      toast({ variant: "destructive", title: "❌ 전화번호 오류", description: "올바른 전화번호를 입력해주세요 (010-XXXX-XXXX)" })
+      return
+    }
+    setIsRegisterSendingOtp(true)
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/send-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone_number: cleanPhone }),
+      })
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.detail || '인증코드 발송에 실패했습니다')
+      }
+      setRegisterOtpSent(true)
+      setRegisterOtpVerified(false)
+      setRegisterOtpCooldown(60)
+      setRegisterOtpExpiry(180)
+      setRegisterOtpCode('')
+      toast({ title: "✅ 인증코드 발송", description: "카카오톡으로 인증코드가 발송되었습니다." })
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "❌ 발송 실패", description: error.message || "인증코드 발송에 실패했습니다." })
+    } finally {
+      setIsRegisterSendingOtp(false)
+    }
+  }
+
+  // 전화번호 등록 OTP 검증
+  const handleRegisterVerifyOtp = async () => {
+    if (registerOtpCode.length !== 6) {
+      toast({ variant: "destructive", title: "❌ 인증코드 오류", description: "6자리 인증코드를 입력해주세요." })
+      return
+    }
+    setIsRegisterVerifyingOtp(true)
+    try {
+      const cleanPhone = registerPhone.replace(/[^\d]/g, '')
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/verify-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone_number: cleanPhone, code: registerOtpCode, purpose: 'verify_identity' }),
+      })
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.detail || '인증에 실패했습니다')
+      }
+      const data = await response.json()
+      if (data.verified || data.success) {
+        setRegisterOtpVerified(true)
+        toast({ title: "✅ 인증 완료", description: "전화번호 인증이 완료되었습니다." })
+      }
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "❌ 인증 실패", description: error.message || "인증코드가 올바르지 않습니다." })
+    } finally {
+      setIsRegisterVerifyingOtp(false)
+    }
+  }
+
+  // 전화번호 등록 최종 처리
+  const handleRegisterPhone = async () => {
+    if (!registerOtpVerified) {
+      toast({ variant: "destructive", title: "❌ 인증 필요", description: "먼저 전화번호 OTP 인증을 완료해주세요." })
+      return
+    }
+    setIsRegisteringPhone(true)
+    try {
+      const token = getToken()
+      const cleanPhone = registerPhone.replace(/[^\d]/g, '')
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/register-phone`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ phone_number: cleanPhone }),
+      })
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.detail || '전화번호 등록에 실패했습니다')
+      }
+      const data = await response.json()
+      // 성공 시 프로필 전화번호 업데이트
+      setPhone(cleanPhone)
+      setOtpPhone(formatPhoneNumber(cleanPhone))
+      setShowRegisterForm(false)
+      setRegisterPhone('')
+      setRegisterOtpCode('')
+      setRegisterOtpSent(false)
+      setRegisterOtpVerified(false)
+      toast({ title: "✅ 전화번호 등록 완료", description: "전화번호가 성공적으로 등록되었습니다." })
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "❌ 등록 실패", description: error.message || "전화번호 등록에 실패했습니다." })
+    } finally {
+      setIsRegisteringPhone(false)
     }
   }
 
@@ -692,7 +834,7 @@ export default function SettingsPage() {
                     </div>
                   </div>
 
-                  {/* 전화번호 (인증된 번호 - 읽기 전용) */}
+                  {/* 전화번호 */}
                   <div className="space-y-2">
                     <Label htmlFor="phone" className="text-sm font-semibold text-neutral-700 flex items-center gap-1.5">
                       전화번호
@@ -703,18 +845,181 @@ export default function SettingsPage() {
                         </span>
                       )}
                     </Label>
-                    <Input
-                      id="phone"
-                      value={phone ? formatPhoneNumber(phone) : ''}
-                      placeholder={phone ? '' : '등록된 전화번호가 없습니다'}
-                      disabled
-                      className="h-12 text-base bg-gray-50"
-                    />
-                    <p className="text-xs text-neutral-500">
-                      {phone
-                        ? '전화번호는 회원가입 시 인증된 번호로 변경이 불가합니다.'
-                        : '신규 가입 시 전화번호 인증이 필요합니다. 기존 회원은 별도 등록 없이 이용 가능합니다.'}
-                    </p>
+
+                    {phone ? (
+                      /* 전화번호가 등록된 유저: 읽기 전용 */
+                      <>
+                        <Input
+                          id="phone"
+                          value={formatPhoneNumber(phone)}
+                          disabled
+                          className="h-12 text-base bg-gray-50"
+                        />
+                        <p className="text-xs text-neutral-500">
+                          전화번호는 회원가입 시 인증된 번호로 변경이 불가합니다.
+                        </p>
+                      </>
+                    ) : !showRegisterForm ? (
+                      /* 전화번호 미등록 유저: 등록 버튼 */
+                      <div className="flex items-center gap-3 p-4 bg-amber-50 border-2 border-amber-200 rounded-xl">
+                        <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0" />
+                        <div className="flex-1">
+                          <p className="text-sm font-bold text-amber-800">전화번호가 등록되어 있지 않습니다</p>
+                          <p className="text-xs text-amber-600 mt-0.5">
+                            계정 보안 강화 및 비밀번호 찾기를 위해 전화번호를 등록해주세요.
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          onClick={() => setShowRegisterForm(true)}
+                          className="h-10 px-4 text-sm font-bold bg-amber-500 hover:bg-amber-600 text-white whitespace-nowrap"
+                        >
+                          등록하기
+                        </Button>
+                      </div>
+                    ) : (
+                      /* 전화번호 등록 폼 (OTP 인증) */
+                      <div className="space-y-3 p-4 bg-blue-50 border-2 border-blue-200 rounded-xl">
+                        <p className="text-sm font-bold text-blue-800 mb-2">📱 전화번호 등록</p>
+
+                        {registerOtpVerified ? (
+                          /* OTP 인증 완료 → 등록 버튼 */
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-300 rounded-lg">
+                              <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0" />
+                              <p className="text-sm font-bold text-green-800">
+                                {formatPhoneNumber(registerPhone)} 인증 완료
+                              </p>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button
+                                type="button"
+                                onClick={handleRegisterPhone}
+                                disabled={isRegisteringPhone}
+                                className="flex-1 h-12 font-bold bg-emerald-500 hover:bg-emerald-600 text-white"
+                              >
+                                {isRegisteringPhone ? (
+                                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />등록 중...</>
+                                ) : (
+                                  '전화번호 등록'
+                                )}
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => {
+                                  setShowRegisterForm(false)
+                                  setRegisterOtpVerified(false)
+                                  setRegisterOtpSent(false)
+                                  setRegisterPhone('')
+                                  setRegisterOtpCode('')
+                                }}
+                                className="h-12 px-4 font-bold"
+                              >
+                                취소
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            {/* 전화번호 입력 + OTP 발송 */}
+                            <div className="space-y-2">
+                              <Label className="text-sm font-semibold text-neutral-700 flex items-center gap-1.5">
+                                <Phone className="w-4 h-4 text-blue-500" />
+                                전화번호 입력
+                              </Label>
+                              <div className="flex gap-2">
+                                <Input
+                                  type="tel"
+                                  placeholder="010-1234-5678"
+                                  value={registerPhone}
+                                  onChange={(e) => setRegisterPhone(formatPhoneNumber(e.target.value))}
+                                  maxLength={13}
+                                  disabled={isRegisterSendingOtp || isRegisterVerifyingOtp}
+                                  className="flex-1 h-12 text-base"
+                                />
+                                <Button
+                                  type="button"
+                                  onClick={handleRegisterSendOtp}
+                                  disabled={isRegisterSendingOtp || registerOtpCooldown > 0 || registerPhone.replace(/[^\d]/g, '').length !== 11}
+                                  className="h-12 px-4 font-bold whitespace-nowrap"
+                                >
+                                  {isRegisterSendingOtp ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : registerOtpCooldown > 0 ? (
+                                    `${registerOtpCooldown}초`
+                                  ) : registerOtpSent ? (
+                                    '재발송'
+                                  ) : (
+                                    '인증요청'
+                                  )}
+                                </Button>
+                              </div>
+                            </div>
+
+                            {/* 인증코드 입력 */}
+                            {registerOtpSent && (
+                              <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <Label className="text-sm font-semibold text-neutral-700 flex items-center gap-1.5">
+                                    <ShieldCheck className="w-4 h-4 text-blue-500" />
+                                    인증코드
+                                  </Label>
+                                  {registerOtpExpiry > 0 && (
+                                    <span className={`text-xs font-bold ${registerOtpExpiry <= 30 ? 'text-red-500' : 'text-blue-600'}`}>
+                                      {Math.floor(registerOtpExpiry / 60)}:{(registerOtpExpiry % 60).toString().padStart(2, '0')}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex gap-2">
+                                  <Input
+                                    type="text"
+                                    inputMode="numeric"
+                                    placeholder="6자리 인증코드"
+                                    value={registerOtpCode}
+                                    onChange={(e) => setRegisterOtpCode(e.target.value.replace(/[^\d]/g, '').slice(0, 6))}
+                                    maxLength={6}
+                                    disabled={isRegisterVerifyingOtp}
+                                    className="flex-1 h-12 text-base text-center tracking-[0.3em] font-bold"
+                                  />
+                                  <Button
+                                    type="button"
+                                    onClick={handleRegisterVerifyOtp}
+                                    disabled={registerOtpCode.length !== 6 || isRegisterVerifyingOtp}
+                                    className="h-12 px-4 font-bold whitespace-nowrap"
+                                  >
+                                    {isRegisterVerifyingOtp ? (
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                      '인증확인'
+                                    )}
+                                  </Button>
+                                </div>
+                                <p className="text-xs text-gray-500 flex items-center gap-1.5">
+                                  <MessageSquare className="w-3.5 h-3.5 text-yellow-500" />
+                                  카카오톡으로 발송된 인증코드를 입력해주세요
+                                </p>
+                              </div>
+                            )}
+
+                            {/* 취소 버튼 */}
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => {
+                                setShowRegisterForm(false)
+                                setRegisterOtpSent(false)
+                                setRegisterPhone('')
+                                setRegisterOtpCode('')
+                              }}
+                              className="w-full h-10 text-sm font-bold"
+                            >
+                              취소
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {/* 저장 버튼 */}

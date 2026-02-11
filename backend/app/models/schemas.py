@@ -131,6 +131,11 @@ class DeleteAccountRequest(BaseModel):
 # OTP (Phone Auth) Schemas
 # ============================================
 
+class RegisterPhoneRequest(BaseModel):
+    """기존 유저 전화번호 등록 요청"""
+    phone_number: str = Field(..., description="OTP 인증 완료된 전화번호")
+
+
 class OTPSendRequest(BaseModel):
     """OTP 인증코드 발송 요청"""
     phone_number: str = Field(..., description="전화번호 (010-1234-5678 또는 01012345678)")
