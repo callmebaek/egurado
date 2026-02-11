@@ -95,8 +95,8 @@ export const api = {
   reviews: {
     analyze: () => api.url('/api/v1/reviews/analyze'),
     extract: () => api.url('/api/v1/reviews/extract'),
-    analyzeStream: (storeId: string, startDate: string, endDate: string) => 
-      api.url(`/api/v1/reviews/analyze-stream?store_id=${storeId}&start_date=${startDate}&end_date=${endDate}`),
+    analyzeStream: (storeId: string, startDate: string, endDate: string, reviewCount?: number) => 
+      api.url(`/api/v1/reviews/analyze-stream?store_id=${storeId}&start_date=${startDate}&end_date=${endDate}${reviewCount ? `&review_count=${reviewCount}` : ''}`),
     stats: (storeId: string, date?: string) => {
       const params = date ? `?date=${date}` : ''
       return api.url(`/api/v1/reviews/stats/${storeId}${params}`)

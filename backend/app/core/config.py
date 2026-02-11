@@ -169,7 +169,7 @@ FEATURE_CREDITS = {
     "main_keyword_analysis": 10,
     "place_activation": 15,
     "target_keyword_extraction": 20,
-    "review_analysis": 30,
+    "review_analysis": 2,  # 리뷰 1개당 2 크레딧 (동적 계산: 리뷰수 × 2)
     "competitor_analysis": 30,
     
     # 동적 크레딧 (건당)
@@ -226,10 +226,9 @@ def calculate_feature_credits(feature: str, **kwargs) -> int:
         return max(12, min(50, 10 + combination_count // 2))
     
     elif feature == "review_analysis":
-        # 리뷰 수에 비례: ceil(리뷰 수 / 5) + 5
-        review_count = kwargs.get("review_count", 10)
-        import math
-        return math.ceil(review_count / 5) + 5
+        # 리뷰 수 × 2 크레딧
+        review_count = kwargs.get("review_count", 1)
+        return review_count * 2
     
     elif feature == "ai_reply_generate":
         # 답글 수 × 1

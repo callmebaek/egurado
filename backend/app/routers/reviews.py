@@ -122,12 +122,11 @@ async def extract_reviews(
     current_user: dict = Depends(get_current_user)
 ):
     """
-    리뷰 추출 (분석 없이)
+    리뷰 조회 (분석 없이)
     
     빠르게 리뷰만 추출하여 반환합니다.
-    이후 analyze-stream으로 실시간 분석을 진행합니다.
-    
-    크레딧 체크: 이후 분석에 필요한 10 크레딧을 미리 체크합니다.
+    크레딧을 차감하지 않습니다. 리뷰 수만 확인하는 용도입니다.
+    이후 analyze-stream으로 실시간 분석을 진행할 수 있습니다.
     """
     print("=" * 80, flush=True)
     print("EXTRACT_REVIEWS FUNCTION CALLED!", flush=True)
@@ -199,22 +198,7 @@ async def extract_reviews(
                 images=parsed["images"]
             ))
         
-        # 4. 크레딧 사전 체크 (리뷰가 있는 경우에만)
-        if len(parsed_reviews) > 0 and settings.CREDIT_SYSTEM_ENABLED:
-            from app.services.credit_service import credit_service
-            user_id = current_user.get("id")
-            credit_check = await credit_service.check_sufficient_credits(
-                user_id=user_id,
-                feature="review_analysis",
-                required_credits=10
-            )
-            if not credit_check.sufficient:
-                logger.warning(f"[리뷰 분석] 크레딧 부족: user_id={user_id}, required=10, available={credit_check.current_credits}")
-                raise HTTPException(
-                    status_code=402,
-                    detail=f"크레딧이 부족합니다. (필요: 10 크레딧, 보유: {credit_check.current_credits} 크레딧)"
-                )
-        
+        # 크레딧 체크 없이 바로 반환 (리뷰 조회는 무료)
         return ExtractReviewsResponse(
             status="success",
             store_id=store_id,
@@ -246,27 +230,14 @@ async def analyze_store_reviews(
     2. OpenAI로 감성 분석
     3. DB에 저장 (일별 통계 + 개별 리뷰)
     4. 통계 반환
-    크레딧: 30 크레딧 소모
+    크레딧: 리뷰 수 × 2 크레딧 동적 소모 (analyze-stream 사용 권장)
     """
     user_id = UUID(current_user["id"])
     
     try:
-        # 🆕 크레딧 체크 (Feature Flag 확인)
-        if settings.CREDIT_SYSTEM_ENABLED and settings.CREDIT_CHECK_STRICT:
-            check_result = await credit_service.check_sufficient_credits(
-                user_id=user_id,
-                feature="review_analysis",
-                required_credits=30
-            )
-            
-            if not check_result.sufficient:
-                logger.warning(f"[Credits] User {user_id} has insufficient credits for review analysis")
-                raise HTTPException(
-                    status_code=status.HTTP_402_PAYMENT_REQUIRED,
-                    detail="크레딧이 부족합니다. 크레딧을 충전하거나 플랜을 업그레이드해주세요."
-                )
-            
-            logger.info(f"[Credits] User {user_id} has sufficient credits for review analysis")
+        # 참고: /analyze 엔드포인트는 레거시. 프론트엔드는 /analyze-stream을 사용합니다.
+        # 크레딧 체크는 실제 리뷰 수 확인 후 동적으로 진행합니다.
+        pass
         
         store_id = request.store_id
         # 한국 시간 기준으로 오늘 날짜 계산
@@ -488,13 +459,14 @@ async def analyze_reviews_stream(
     store_id: str,
     start_date: str,
     end_date: str,
-    token: Optional[str] = None
+    token: Optional[str] = None,
+    review_count: Optional[int] = None
 ):
     """
     리뷰 실시간 스트리밍 분석 (SSE)
     
     추출된 리뷰를 하나씩 분석하면서 진행 상황을 실시간으로 전송합니다.
-    크레딧: 30 크레딧 소모
+    크레딧: 리뷰 수 × 2 크레딧 동적 소모
     
     Note: SSE는 커스텀 헤더를 지원하지 않으므로 토큰을 쿼리 파라미터로 받습니다.
     """
@@ -511,21 +483,23 @@ async def analyze_reviews_stream(
             logger.warning(f"[SSE Auth] Token validation failed: {e}")
     
     # 🆕 크레딧 체크 (Feature Flag 확인) - user_id가 있을 때만
-    if user_id and settings.CREDIT_SYSTEM_ENABLED and settings.CREDIT_CHECK_STRICT:
+    # 리뷰 수 × 2 크레딧 동적 계산
+    required_credits = (review_count or 0) * 2
+    if user_id and settings.CREDIT_SYSTEM_ENABLED and settings.CREDIT_CHECK_STRICT and required_credits > 0:
         check_result = await credit_service.check_sufficient_credits(
             user_id=user_id,
             feature="review_analysis",
-            required_credits=30
+            required_credits=required_credits
         )
         
         if not check_result.sufficient:
-            logger.warning(f"[Credits] User {user_id} has insufficient credits for review analysis (stream)")
+            logger.warning(f"[Credits] User {user_id} has insufficient credits for review analysis (stream): required={required_credits}, available={check_result.current_credits}")
             raise HTTPException(
                 status_code=status.HTTP_402_PAYMENT_REQUIRED,
-                detail="크레딧이 부족합니다. 크레딧을 충전하거나 플랜을 업그레이드해주세요."
+                detail=f"크레딧이 부족합니다. (필요: {required_credits} 크레딧, 보유: {check_result.current_credits} 크레딧)"
             )
         
-        logger.info(f"[Credits] User {user_id} has sufficient credits for review analysis (stream)")
+        logger.info(f"[Credits] User {user_id} has sufficient credits for review analysis (stream): required={required_credits}")
     
     async def event_generator():
         try:
@@ -827,20 +801,23 @@ async def analyze_reviews_stream(
             print(f"Review save summary: {saved_count} saved ({skipped_count} updated), {failed_count} failed out of {len(analyzed_reviews)} total", flush=True)
             
             # 🆕 크레딧 차감 (성공 시) - user_id가 있을 때만
-            if user_id and settings.CREDIT_SYSTEM_ENABLED and settings.CREDIT_AUTO_DEDUCT:
+            # 리뷰 수 × 2 크레딧 동적 차감
+            actual_credits = len(analyzed_reviews) * 2
+            if user_id and settings.CREDIT_SYSTEM_ENABLED and settings.CREDIT_AUTO_DEDUCT and actual_credits > 0:
                 try:
                     transaction_id = await credit_service.deduct_credits(
                         user_id=user_id,
                         feature="review_analysis",
-                        credits_amount=30,
+                        credits_amount=actual_credits,
                         metadata={
                             "store_id": store_id,
                             "start_date": start_date,
                             "end_date": end_date,
-                            "review_count": len(analyzed_reviews)
+                            "review_count": len(analyzed_reviews),
+                            "credits_per_review": 2
                         }
                     )
-                    logger.info(f"[Credits] Deducted 30 credits from user {user_id} (transaction: {transaction_id})")
+                    logger.info(f"[Credits] Deducted {actual_credits} credits ({len(analyzed_reviews)} reviews × 2) from user {user_id} (transaction: {transaction_id})")
                 except Exception as credit_error:
                     logger.error(f"[Credits] Failed to deduct credits: {credit_error}")
             
@@ -850,7 +827,8 @@ async def analyze_reviews_stream(
                 'summary': summary,
                 'total_analyzed': len(analyzed_reviews),
                 'stats': stats,
-                'saved_date': save_date  # 저장된 날짜 전달
+                'saved_date': save_date,  # 저장된 날짜 전달
+                'credits_used': len(analyzed_reviews) * 2  # 실제 차감된 크레딧
             }
             yield f"data: {json.dumps(complete_data)}\n\n"
             

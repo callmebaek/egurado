@@ -262,6 +262,11 @@ export default function ReviewManagementPage() {
   // 분석 시도 여부 (리뷰 없음 메시지 표시 조건)
   const [hasAttemptedAnalysis, setHasAttemptedAnalysis] = useState(false)
   
+  // 리뷰 조회 완료 여부 (2단계 분석 버튼 표시용)
+  const [reviewsFetched, setReviewsFetched] = useState(false)
+  // 조회된 리뷰의 날짜 범위 저장 (분석 시 사용)
+  const [fetchedDateRange, setFetchedDateRange] = useState<{ start_date: string; end_date: string } | null>(null)
+  
   // autoStart 처리를 위한 ref (한 번만 실행)
   const autoStartProcessedRef = useRef(false)
   const autoStartPendingRef = useRef(false)
@@ -298,7 +303,7 @@ export default function ReviewManagementPage() {
       
       // 매장 정보 로딩을 위해 약간의 딜레이
       const timer = setTimeout(() => {
-        handleAnalyze()
+        handleFetchReviews()
       }, 500)
       
       return () => clearTimeout(timer)
@@ -316,6 +321,8 @@ export default function ReviewManagementPage() {
       setAnalysisProgress(0)
       setHasAttemptedAnalysis(false)
       setTotalReviewsCount(0)
+      setReviewsFetched(false)
+      setFetchedDateRange(null)
       
       // 새 매장 정보 로드
       loadPlaceInfo()
@@ -330,6 +337,20 @@ export default function ReviewManagementPage() {
       setTotalReviewsCount(0)
     }
   }, [selectedStoreId])
+  
+  // 기간 변경 시 조회 결과 초기화
+  useEffect(() => {
+    if (reviewsFetched) {
+      setReviewsFetched(false)
+      setFetchedDateRange(null)
+      setReviews([])
+      setFilteredReviews([])
+      setHasAttemptedAnalysis(false)
+      setStats(null)
+      setTotalReviewsCount(0)
+      setCurrentStats({ positive: 0, neutral: 0, negative: 0 })
+    }
+  }, [datePeriod])
   
   // 필터 적용
   useEffect(() => {
@@ -527,62 +548,40 @@ export default function ReviewManagementPage() {
     }
   }
   
-  const handleAnalyze = async () => {
+  // ============================================
+  // 1단계: 리뷰 조회 (크레딧 차감 없음)
+  // ============================================
+  const handleFetchReviews = async () => {
     if (!selectedStoreId) return
     
-    // 사용자 및 토큰 확인 (인증 필수)
     if (!user) {
-      console.log("⚠️ 사용자 정보 없음")
-      toast({
-        title: "인증 오류",
-        description: "로그인이 필요합니다.",
-        variant: "destructive",
-      })
+      toast({ title: "인증 오류", description: "로그인이 필요합니다.", variant: "destructive" })
       return
     }
     
     const token = getToken()
     if (!token) {
-      console.log("⚠️ 토큰 없음")
-      toast({
-        title: "인증 오류",
-        description: "로그인이 필요합니다. 다시 로그인해주세요.",
-        variant: "destructive",
-      })
+      toast({ title: "인증 오류", description: "로그인이 필요합니다. 다시 로그인해주세요.", variant: "destructive" })
       return
     }
     
     const dateRange = getDateRange()
-    console.log("========================================")
-    console.log("🔄 하이브리드 리뷰 분석 시작")
-    console.log("========================================")
-    console.log("📅 선택된 기간:", datePeriod)
-    console.log("📅 시작 날짜:", dateRange.start_date)
-    console.log("📅 종료 날짜:", dateRange.end_date)
-    console.log("🏪 Store ID:", selectedStoreId)
-    console.log("👤 User ID:", user.id)
-    console.log("🔑 Token:", token ? "있음" : "없음")
-    console.log("========================================")
+    console.log("🔍 리뷰 조회 시작:", { datePeriod, ...dateRange, selectedStoreId })
     
-    // 분석 시도 플래그 설정
     setHasAttemptedAnalysis(true)
-    
-    // 분석 시작 전 이전 결과 완전 초기화
     setStats(null)
     setReviews([])
     setFilteredReviews([])
     setAnalyzedCount(0)
     setCurrentStats({ positive: 0, neutral: 0, negative: 0 })
     setTotalReviewsCount(0)
-    
-    setExtracting(true) // 추출 중 상태
-    setExtractingSummary(false) // AI 요약 추출 상태 초기화
+    setReviewsFetched(false)
+    setFetchedDateRange(null)
+    setExtracting(true)
+    setExtractingSummary(false)
     setAnalysisProgress(0)
     
     try {
-      
-      // 1단계: 리뷰 추출 (빠름)
-      console.log("📥 1단계: 리뷰 추출 중...")
       const extractResponse = await fetch(api.reviews.extract(), {
         method: "POST",
         headers: { 
@@ -598,78 +597,94 @@ export default function ReviewManagementPage() {
       
       if (!extractResponse.ok) {
         const errorData = await extractResponse.json().catch(() => ({}))
-        
-        // 402 에러 (크레딧 부족)를 명시적으로 처리
-        if (extractResponse.status === 402) {
-          throw new Error(errorData.detail || "크레딧이 부족합니다. 크레딧을 충전하거나 플랜을 업그레이드해주세요.")
-        }
-        
-        throw new Error(errorData.detail || errorData.message || "리뷰 추출 실패")
+        throw new Error(errorData.detail || errorData.message || "리뷰 조회 실패")
       }
       
       const extractData = await extractResponse.json()
       const extractedReviews = extractData.reviews || []
       const actualReviewCount = extractedReviews.length
       
-      console.log(`✅ 리뷰 추출 완료: ${actualReviewCount}개 (백엔드 total: ${extractData.total_reviews})`)
+      console.log(`✅ 리뷰 조회 완료: ${actualReviewCount}개`)
       
-      // 추출 완료
       setExtracting(false)
       setTotalReviewsCount(actualReviewCount)
       
-      // 리뷰가 0개인 경우
       if (actualReviewCount === 0) {
-        toast({
-          title: "리뷰 없음",
-          description: "선택한 기간 동안 등록된 리뷰가 없습니다.",
-          variant: "default",
-        })
+        toast({ title: "리뷰 없음", description: "선택한 기간 동안 등록된 리뷰가 없습니다.", variant: "default" })
         return
       }
       
-      // 추출된 리뷰를 즉시 표시 (sentiment는 "analyzing"으로)
+      // 추출된 리뷰를 즉시 표시 (아직 분석 안 됨)
       const pendingReviews = extractedReviews.map((review: any) => ({
         ...review,
-        sentiment: "analyzing", // 분석 중 상태
+        sentiment: "pending",
         temperature_score: null,
         confidence: null,
         evidence_quotes: [],
         aspect_sentiments: {}
       }))
       
-      console.log(`📊 pendingReviews.length = ${pendingReviews.length}`)
-      console.log(`📊 actualReviewCount = ${actualReviewCount}`)
-      
       setReviews(pendingReviews)
       setFilteredReviews(pendingReviews)
-      
-      setEstimatedTime(Math.max(10, Math.ceil(actualReviewCount * 0.3)))
+      setReviewsFetched(true)
+      setFetchedDateRange(dateRange)
       
       toast({
-        title: "리뷰 추출 완료",
-        description: `${actualReviewCount}개의 리뷰를 추출했습니다. 분석을 시작합니다...`,
+        title: "리뷰 조회 완료",
+        description: `${actualReviewCount}개의 리뷰가 조회되었습니다.`,
       })
       
-      // 분석 시작
-      setAnalyzing(true)
+    } catch (error) {
+      console.error("리뷰 조회 실패:", error)
+      setExtracting(false)
+      setHasAttemptedAnalysis(false)
+      setStats(null)
+      setReviews([])
+      setFilteredReviews([])
       
-      // 2단계: 스트리밍 분석 (실시간 SSE)
-      console.log("🔄 2단계: 실시간 분석 시작...")
-      
-      // SSE URL 생성 (토큰은 이미 위에서 가져옴)
-      const baseUrl = api.reviews.analyzeStream(selectedStoreId, dateRange.start_date, dateRange.end_date)
+      toast({
+        title: "리뷰 조회 실패",
+        description: error instanceof Error ? error.message : "오류가 발생했습니다.",
+        variant: "destructive",
+      })
+    }
+  }
+  
+  // ============================================
+  // 2단계: 리뷰 AI 분석 (크레딧: 리뷰수 × 2)
+  // ============================================
+  const handleStartAnalysis = async () => {
+    if (!selectedStoreId || !fetchedDateRange || reviews.length === 0) return
+    
+    const token = getToken()
+    if (!token) {
+      toast({ title: "인증 오류", description: "로그인이 필요합니다. 다시 로그인해주세요.", variant: "destructive" })
+      return
+    }
+    
+    const reviewCount = reviews.length
+    const requiredCredits = reviewCount * 2
+    console.log(`🔬 리뷰 AI 분석 시작: ${reviewCount}개, ${requiredCredits} 크레딧`)
+    
+    setAnalyzing(true)
+    setExtractingSummary(false)
+    setAnalysisProgress(0)
+    setAnalyzedCount(0)
+    setCurrentStats({ positive: 0, neutral: 0, negative: 0 })
+    
+    setReviews(prev => prev.map(r => ({ ...r, sentiment: "analyzing" })))
+    setFilteredReviews(prev => prev.map(r => ({ ...r, sentiment: "analyzing" })))
+    setEstimatedTime(Math.max(10, Math.ceil(reviewCount * 0.3)))
+    
+    try {
+      const dateRange = fetchedDateRange
+      const baseUrl = api.reviews.analyzeStream(selectedStoreId, dateRange.start_date, dateRange.end_date, reviewCount)
       const urlWithToken = `${baseUrl}&token=${encodeURIComponent(token)}`
-      
-      console.log("📡 SSE URL:", baseUrl)
       
       const eventSource = new EventSource(urlWithToken)
       
-      // SSE 타임아웃 설정 (5분)
       const sseTimeout = setTimeout(() => {
-        console.error("⏰ SSE 타임아웃: 5분 초과")
         eventSource.close()
-        
-        // 타임아웃 시 모든 상태 초기화
         setAnalyzing(false)
         setExtractingSummary(false)
         setAnalysisProgress(0)
@@ -677,106 +692,66 @@ export default function ReviewManagementPage() {
         setCurrentStats({ positive: 0, neutral: 0, negative: 0 })
         setTotalReviewsCount(0)
         setHasAttemptedAnalysis(false)
+        setReviewsFetched(false)
         setStats(null)
         setReviews([])
         setFilteredReviews([])
-        
-        toast({
-          title: "분석 시간 초과",
-          description: "분석 시간이 너무 오래 걸립니다. 다시 시도해주세요.",
-          variant: "destructive",
-        })
-      }, 300000) // 5분
-      
-      eventSource.onopen = () => {
-        console.log("✅ SSE 연결 성공")
-      }
+        toast({ title: "분석 시간 초과", description: "분석 시간이 너무 오래 걸립니다. 다시 시도해주세요.", variant: "destructive" })
+      }, 300000)
       
       eventSource.onmessage = async (event) => {
         try {
-          console.log("📨 SSE 메시지 수신:", event.data.substring(0, 100))
           const data = JSON.parse(event.data)
-          console.log("📊 파싱된 데이터 타입:", data.type)
           
           switch (data.type) {
             case 'init':
-              console.log(`📊 분석 초기화: 총 ${data.total}개`)
               break
               
             case 'progress':
               const progress = Math.round((data.current / data.total) * 100)
               setAnalysisProgress(progress)
               setAnalyzedCount(data.current)
-              console.log(`⏳ 진행: ${data.current}/${data.total} (${progress}%)`)
-              
-              // 100% 도달 시 즉시 AI 요약 추출 메시지 표시
-              if (progress === 100) {
-                console.log("✨ 100% 도달! AI 요약 추출 메시지 표시")
-                setExtractingSummary(true)
-              }
+              if (progress === 100) setExtractingSummary(true)
               break
               
             case 'review_analyzed':
-              console.log(`✅ 리뷰 분석 완료:`, data.review?.id)
-              // 개별 리뷰 업데이트
               setReviews(prev => prev.map(review => 
                 review.naver_review_id === data.review.id
-                  ? {
-                      ...review,
-                      sentiment: data.review.sentiment,
-                      temperature_score: data.review.temperature_score
-                    }
+                  ? { ...review, sentiment: data.review.sentiment, temperature_score: data.review.temperature_score }
                   : review
               ))
               setFilteredReviews(prev => prev.map(review =>
                 review.naver_review_id === data.review.id
-                  ? {
-                      ...review,
-                      sentiment: data.review.sentiment,
-                      temperature_score: data.review.temperature_score
-                    }
+                  ? { ...review, sentiment: data.review.sentiment, temperature_score: data.review.temperature_score }
                   : review
               ))
               break
               
             case 'stats_update':
-              const updatedStats = {
+              setCurrentStats({
                 positive: data.positive || 0,
                 neutral: data.neutral || 0,
                 negative: data.negative || 0
-              }
-              setCurrentStats(updatedStats)
-              console.log(`📈 통계 업데이트:`, updatedStats)
+              })
               break
               
             case 'complete':
-              console.log("🎉 분석 완료!", data)
-              clearTimeout(sseTimeout) // 타임아웃 클리어
+              clearTimeout(sseTimeout)
               eventSource.close()
 
-              // ✨ 크레딧 실시간 차감 알림 (리뷰 분석 30 크레딧)
-              notifyCreditUsed(30, token)
+              const creditsUsed = data.credits_used || (data.total_analyzed * 2)
+              notifyCreditUsed(creditsUsed, token)
               
-              // savedDate를 먼저 추출 (closure 문제 방지)
               const savedDate = data.saved_date || dateRange.end_date
               const totalAnalyzed = data.total_analyzed
               
-              // complete 이벤트에서 즉시 데이터 로드 시작 (extractingSummary는 이미 progress에서 true로 설정됨)
               ;(async () => {
                 try {
-                  // 통계 및 리뷰 목록 새로고침 (백엔드가 저장한 날짜로 조회)
-                  console.log("📊 통계 로딩 시작 (AI 요약 포함)")
-                  console.log("   - 사용할 날짜:", savedDate)
-                  console.log("   - API URL:", api.reviews.stats(selectedStoreId, savedDate))
                   await loadStats(savedDate)
-                  console.log("✅ 통계 로딩 완료 (AI 요약 포함)")
                   
-                  // DB에서 분석된 리뷰 목록 다시 로드 (날짜별로 필터링됨)
-                  console.log("📝 리뷰 목록 다시 로드 중 (날짜:", savedDate, ")")
                   try {
                     const reloadToken = getToken()
                     const reviewsApiUrl = `https://api.whiplace.com/api/v1/reviews/list/${selectedStoreId}?date=${savedDate}`
-                    console.log("📝 리뷰 API URL:", reviewsApiUrl)
                     const reviewsResponse = await fetch(reviewsApiUrl, {
                       headers: {
                         'Authorization': `Bearer ${reloadToken}`,
@@ -785,26 +760,22 @@ export default function ReviewManagementPage() {
                     })
                     if (reviewsResponse.ok) {
                       const reviewsData = await reviewsResponse.json()
-                      console.log("📝 리뷰 로드 성공:", reviewsData.length, "개")
                       setReviews(reviewsData)
                       setFilteredReviews(reviewsData)
-                    } else {
-                      console.error("❌ 리뷰 로드 실패:", reviewsResponse.status)
                     }
                   } catch (error) {
                     console.error("❌ 리뷰 로드 에러:", error)
                   }
                   
-                  console.log("✅ AI 요약 추출 완료 - extractingSummary를 false로 설정")
+                  setExtractingSummary(false)
+                  setAnalyzing(false)
+                  setReviewsFetched(false)
+                  setTimeout(() => setAnalysisProgress(0), 1000)
                   
                   toast({
                     title: "리뷰 분석 완료",
-                    description: `${totalAnalyzed}개의 리뷰를 분석했습니다.`,
+                    description: `${totalAnalyzed}개 리뷰 분석 완료 (${creditsUsed} 크레딧 사용)`,
                   })
-                  
-                  setExtractingSummary(false) // AI 요약 추출 완료
-                  setAnalyzing(false) // 전체 분석 프로세스 완료
-                  setTimeout(() => setAnalysisProgress(0), 1000)
                 } catch (error) {
                   console.error("❌ 완료 처리 중 오류:", error)
                   setExtractingSummary(false)
@@ -814,11 +785,8 @@ export default function ReviewManagementPage() {
               break
               
             case 'error':
-              console.error("❌ 백엔드 분석 오류:", data.message)
               clearTimeout(sseTimeout)
               eventSource.close()
-              
-              // 에러 발생 시 모든 상태 초기화
               setAnalyzing(false)
               setExtractingSummary(false)
               setAnalysisProgress(0)
@@ -826,6 +794,7 @@ export default function ReviewManagementPage() {
               setCurrentStats({ positive: 0, neutral: 0, negative: 0 })
               setTotalReviewsCount(0)
               setHasAttemptedAnalysis(false)
+              setReviewsFetched(false)
               setStats(null)
               setReviews([])
               setFilteredReviews([])
@@ -838,17 +807,13 @@ export default function ReviewManagementPage() {
               break
           }
         } catch (err) {
-          console.error("❌ SSE 메시지 파싱 오류:", err, "원본 데이터:", event.data)
+          console.error("❌ SSE 메시지 파싱 오류:", err)
         }
       }
       
-      eventSource.onerror = (error) => {
-        console.error("❌ SSE 연결 오류:", error)
-        console.error("   readyState:", eventSource.readyState)
+      eventSource.onerror = () => {
         clearTimeout(sseTimeout)
         eventSource.close()
-        
-        // 에러 발생 시 모든 상태 초기화
         setAnalyzing(false)
         setExtractingSummary(false)
         setAnalysisProgress(0)
@@ -856,6 +821,7 @@ export default function ReviewManagementPage() {
         setCurrentStats({ positive: 0, neutral: 0, negative: 0 })
         setTotalReviewsCount(0)
         setHasAttemptedAnalysis(false)
+        setReviewsFetched(false)
         setStats(null)
         setReviews([])
         setFilteredReviews([])
@@ -869,8 +835,6 @@ export default function ReviewManagementPage() {
       
     } catch (error) {
       console.error("리뷰 분석 실패:", error)
-      
-      // 에러 발생 시 모든 상태 초기화
       setExtracting(false)
       setAnalyzing(false)
       setExtractingSummary(false)
@@ -878,11 +842,7 @@ export default function ReviewManagementPage() {
       setAnalyzedCount(0)
       setCurrentStats({ positive: 0, neutral: 0, negative: 0 })
       setTotalReviewsCount(0)
-      
-      // 분석 시도 플래그 초기화 (초기 화면으로 복귀)
       setHasAttemptedAnalysis(false)
-      
-      // 분석 결과 데이터 초기화
       setStats(null)
       setReviews([])
       setFilteredReviews([])
@@ -968,6 +928,8 @@ export default function ReviewManagementPage() {
         return <ThumbsDown className="w-4 h-4 text-red-600" />
       case "analyzing":
         return <RefreshCw className="w-4 h-4 text-blue-500 animate-spin" />
+      case "pending":
+        return <Clock className="w-4 h-4 text-gray-400" />
       default:
         return <Minus className="w-4 h-4 text-gray-600" />
     }
@@ -981,6 +943,8 @@ export default function ReviewManagementPage() {
         return "bg-red-100 text-red-800"
       case "analyzing":
         return "bg-blue-100 text-blue-800"
+      case "pending":
+        return "bg-gray-50 text-gray-500"
       default:
         return "bg-gray-100 text-gray-800"
     }
@@ -994,6 +958,8 @@ export default function ReviewManagementPage() {
         return "부정"
       case "analyzing":
         return "분석 중"
+      case "pending":
+        return "미분석"
       default:
         return "중립"
     }
@@ -1019,7 +985,7 @@ export default function ReviewManagementPage() {
           </h1>
         </div>
         <p className="text-base md:text-lg text-neutral-600 leading-relaxed max-w-3xl mx-auto mb-4">
-          방문자 리뷰와 블로그 리뷰를 AI로 분석하여<br className="md:hidden" />
+          리뷰를 먼저 조회한 후, AI 분석을 진행하여<br className="md:hidden" />
           <span className="hidden md:inline"> </span>긍정/부정 감성과 핵심 키워드를 파악합니다
         </p>
         <Badge 
@@ -1079,7 +1045,7 @@ export default function ReviewManagementPage() {
         {/* 기간 선택 + 분석 버튼 */}
         <Card className="border-gray-200 shadow-sm lg:col-span-8">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold text-gray-900">분석 기간 선택</CardTitle>
+            <CardTitle className="text-base font-semibold text-gray-900">조회 기간 선택</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex flex-col lg:flex-row gap-3 lg:items-center">
@@ -1087,7 +1053,7 @@ export default function ReviewManagementPage() {
               <div className="flex-1 grid grid-cols-2 lg:grid-cols-4 gap-2">
                 <button
                   onClick={() => setDatePeriod("today")}
-                  disabled={analyzing}
+                  disabled={analyzing || extracting}
                   className={`h-10 px-2 sm:px-3 rounded-lg font-medium text-xs sm:text-sm whitespace-nowrap transition-all flex items-center justify-center ${
                     datePeriod === "today"
                       ? "bg-blue-500 text-white shadow-md border-2 border-blue-500"
@@ -1098,7 +1064,7 @@ export default function ReviewManagementPage() {
                 </button>
                 <button
                   onClick={() => setDatePeriod("yesterday")}
-                  disabled={analyzing}
+                  disabled={analyzing || extracting}
                   className={`h-10 px-2 sm:px-3 rounded-lg font-medium text-xs sm:text-sm whitespace-nowrap transition-all flex items-center justify-center ${
                     datePeriod === "yesterday"
                       ? "bg-blue-500 text-white shadow-md border-2 border-blue-500"
@@ -1109,7 +1075,7 @@ export default function ReviewManagementPage() {
                 </button>
                 <button
                   onClick={() => setDatePeriod("last7days")}
-                  disabled={analyzing}
+                  disabled={analyzing || extracting}
                   className={`h-10 px-2 sm:px-3 rounded-lg font-medium text-xs sm:text-sm whitespace-nowrap transition-all flex items-center justify-center ${
                     datePeriod === "last7days"
                       ? "bg-blue-500 text-white shadow-md border-2 border-blue-500"
@@ -1120,7 +1086,7 @@ export default function ReviewManagementPage() {
                 </button>
                 <button
                   onClick={() => setDatePeriod("last30days")}
-                  disabled={analyzing}
+                  disabled={analyzing || extracting}
                   className={`h-10 px-2 sm:px-3 rounded-lg font-medium text-xs sm:text-sm whitespace-nowrap transition-all flex items-center justify-center ${
                     datePeriod === "last30days"
                       ? "bg-blue-500 text-white shadow-md border-2 border-blue-500"
@@ -1131,21 +1097,21 @@ export default function ReviewManagementPage() {
                 </button>
               </div>
 
-              {/* 리뷰 분석 버튼 */}
+              {/* 리뷰 조회 버튼 */}
               <Button 
-                onClick={handleAnalyze} 
-                disabled={!selectedStoreId || analyzing}
-                className="h-10 px-5 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all lg:min-w-[140px]"
+                onClick={handleFetchReviews} 
+                disabled={!selectedStoreId || extracting || analyzing}
+                className="h-10 px-5 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all lg:min-w-[140px]"
               >
-                {analyzing ? (
+                {extracting ? (
                   <>
                     <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                    분석 중
+                    조회 중
                   </>
                 ) : (
                   <>
-                    <Sparkles className="mr-2 h-4 w-4" />
-                    리뷰 분석
+                    <FileText className="mr-2 h-4 w-4" />
+                    리뷰 조회
                   </>
                 )}
               </Button>
@@ -1272,9 +1238,39 @@ export default function ReviewManagementPage() {
             <div className="flex items-center gap-3 md:gap-4">
               <RefreshCw className="w-6 h-6 md:w-8 md:h-8 text-green-500 animate-spin flex-shrink-0" />
               <div className="flex-1">
-                <h3 className="text-sm md:text-base font-semibold text-green-900 mb-1">리뷰 추출 중...</h3>
-                <p className="text-xs md:text-sm text-green-700">선택한 기간의 리뷰를 정확히 추출하고 있습니다.</p>
+                <h3 className="text-sm md:text-base font-semibold text-green-900 mb-1">리뷰 조회 중...</h3>
+                <p className="text-xs md:text-sm text-green-700">선택한 기간의 리뷰를 조회하고 있습니다.</p>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      
+      {/* 리뷰 조회 완료 → 분석 시작 카드 */}
+      {reviewsFetched && !analyzing && !extracting && reviews.length > 0 && (
+        <Card className="border-green-200 bg-gradient-to-br from-green-50 to-emerald-50 shadow-md">
+          <CardContent className="pt-5 pb-5">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 md:w-14 md:h-14 bg-gradient-to-br from-green-400 to-emerald-500 rounded-xl flex items-center justify-center shadow-lg">
+                  <MessageSquare className="w-6 h-6 md:w-7 md:h-7 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-base md:text-lg font-bold text-gray-900">
+                    {reviews.length}개의 리뷰가 조회되었습니다
+                  </h3>
+                  <p className="text-sm text-gray-600 mt-0.5">
+                    AI 감성 분석을 시작하려면 아래 버튼을 눌러주세요
+                  </p>
+                </div>
+              </div>
+              <Button
+                onClick={handleStartAnalysis}
+                className="h-12 px-6 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all text-base flex items-center gap-2"
+              >
+                <Sparkles className="w-5 h-5" />
+                리뷰 분석 ({reviews.length}개 × 2 = {reviews.length * 2} 크레딧)
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -1731,25 +1727,27 @@ export default function ReviewManagementPage() {
           <CardHeader className="pb-3">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
               <CardTitle className="text-base font-semibold text-gray-900">
-                리뷰 목록 ({filteredReviews.length}개)
+                {reviewsFetched && !analyzing ? "조회된 리뷰" : "리뷰 목록"} ({filteredReviews.length}개)
                 {sentimentFilter !== "all" && <span className="text-sm text-gray-500 ml-2">/ 전체 {reviews.length}개</span>}
               </CardTitle>
               
-              {/* 필터 */}
-              <div className="flex items-center gap-2">
-                <Filter className="w-4 h-4 text-gray-500" />
-                
-                <select
-                  className="h-9 md:h-10 w-full md:w-[130px] rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
-                  value={sentimentFilter}
-                  onChange={(e) => setSentimentFilter(e.target.value)}
-                >
-                  <option value="all">전체</option>
-                  <option value="positive">긍정 리뷰</option>
-                  <option value="neutral">중립 리뷰</option>
-                  <option value="negative">부정 리뷰</option>
-                </select>
-              </div>
+              {/* 필터 - 분석 완료 후에만 표시 */}
+              {!reviewsFetched && (
+                <div className="flex items-center gap-2">
+                  <Filter className="w-4 h-4 text-gray-500" />
+                  
+                  <select
+                    className="h-9 md:h-10 w-full md:w-[130px] rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                    value={sentimentFilter}
+                    onChange={(e) => setSentimentFilter(e.target.value)}
+                  >
+                    <option value="all">전체</option>
+                    <option value="positive">긍정 리뷰</option>
+                    <option value="neutral">중립 리뷰</option>
+                    <option value="negative">부정 리뷰</option>
+                  </select>
+                </div>
+              )}
             </div>
           </CardHeader>
           <CardContent>
