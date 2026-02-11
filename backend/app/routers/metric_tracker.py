@@ -255,8 +255,20 @@ async def collect_metrics_now(
     - 스케줄과 관계없이 즉시 순위, 리뷰수 등을 수집
     - 테스트 및 데모용으로 유용
     - 크레딧: 5 크레딧 소모
+    - 🛡️ 유저당 동시 10개 제한 (서버 사이드 레이트 리밋)
     """
+    from app.core.rate_limiter import user_collect_limiter
+    
     user_id = UUID(current_user["id"])
+    user_id_str = str(user_id)
+    
+    # 🛡️ 1단계: 유저별 동시 요청 제한 체크
+    acquired = await user_collect_limiter.try_acquire(user_id_str)
+    if not acquired:
+        raise HTTPException(
+            status_code=429,
+            detail="동시 수집 요청이 너무 많습니다. 잠시 후 자동으로 재시도됩니다."
+        )
     
     try:
         # 권한 확인
@@ -314,6 +326,9 @@ async def collect_metrics_now(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"지표 수집 중 오류가 발생했습니다: {str(e)}"
         )
+    finally:
+        # 🛡️ 반드시 슬롯 해제 (성공/실패 무관)
+        await user_collect_limiter.release(user_id_str)
 
 
 @router.get("/trackers/{tracker_id}/metrics", response_model=DailyMetricsListResponse)

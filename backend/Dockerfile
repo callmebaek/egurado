@@ -62,4 +62,10 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
   CMD python -c "import requests; requests.get('http://localhost:8000/api/health')" || exit 1
 
 # 서버 시작
-CMD ["sh", "-c", "uvicorn app.main:app --host ${HOST} --port ${PORT}"]
+# 🛡️ Uvicorn 최적화 설정 (100+ 동시 유저 대응)
+# --workers 1: APScheduler와 인메모리 레이트 리밋의 정합성을 위해 단일 워커 유지
+#              (async FastAPI는 단일 워커로도 수백 개 동시 I/O 요청 처리 가능)
+# --limit-concurrency 200: 최대 동시 접속 200개 (100명 × 유저당 2개 커넥션)
+# --timeout-keep-alive 30: Keep-alive 30초 (기본 5초 → 연결 재사용 효율 향상)
+# --backlog 200: TCP 백로그 200 (대기 큐 크기)
+CMD ["sh", "-c", "uvicorn app.main:app --host ${HOST} --port ${PORT} --workers 1 --limit-concurrency 200 --timeout-keep-alive 30 --backlog 200"]

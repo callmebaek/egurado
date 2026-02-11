@@ -131,6 +131,24 @@ async def proxy_status():
     return get_proxy_status()
 
 
+@app.get("/api/v1/system/rate-limit-status")
+async def rate_limit_status():
+    """
+    레이트 리밋 상태 실시간 모니터링
+    
+    브라우저에서 https://api.whiplace.com/api/v1/system/rate-limit-status 로 접속하여 확인 가능
+    
+    Returns:
+        - user_limiter: 유저별 동시 요청 제한 상태
+        - naver_api_limiter: 글로벌 네이버 API 동시 호출 제한 상태
+    """
+    from app.core.rate_limiter import user_collect_limiter, naver_api_limiter
+    return {
+        "user_collect_limiter": user_collect_limiter.get_status(),
+        "naver_api_limiter": naver_api_limiter.get_status(),
+    }
+
+
 # 라우터 등록
 # 라우터 import
 from app.routers.auth import router as auth_router

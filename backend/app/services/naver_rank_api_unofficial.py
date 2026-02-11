@@ -65,6 +65,10 @@ class NaverRankNewAPIService:
         """
         특정 키워드에서 매장의 순위 확인 (신API - 빠름!)
         
+        🛡️ 글로벌 네이버 API 세마포어 적용 (동시 최대 20개)
+        - 슬롯 여유 시: 즉시 실행
+        - 슬롯 부족 시: 대기 후 자동 실행 (FIFO)
+        
         Args:
             keyword: 검색 키워드
             target_place_id: 찾을 매장의 Place ID
@@ -86,6 +90,10 @@ class NaverRankNewAPIService:
                 'save_count': int (저장 수)
             }
         """
+        # 🛡️ 2단계: 글로벌 네이버 API 레이트 리밋 (세마포어)
+        from app.core.rate_limiter import naver_api_limiter
+        
+        await naver_api_limiter.acquire()
         logger.info(f"[신API Rank] 순위 체크 시작: keyword={keyword}, place_id={target_place_id}, store_name={store_name}, x={coord_x}, y={coord_y}")
         
         try:
@@ -215,6 +223,9 @@ class NaverRankNewAPIService:
                 keyword, target_place_id, max_results,
                 store_name=store_name, coord_x=coord_x, coord_y=coord_y
             )
+        finally:
+            # 🛡️ 반드시 세마포어 해제 (성공/실패/폴백 무관)
+            await naver_api_limiter.release()
     
     async def _search_places_with_fallback(
         self, keyword: str, max_results: int, coord_x: str = None, coord_y: str = None,
