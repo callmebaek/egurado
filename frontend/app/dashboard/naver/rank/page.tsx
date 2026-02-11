@@ -8,11 +8,10 @@
 import { useStores } from "@/lib/hooks/useStores"
 import { useAuth } from "@/lib/auth-context"
 import { EmptyStoreMessage } from "@/components/EmptyStoreMessage"
-import { Loader2, TrendingUp, TrendingDown, Search, Minus, MapPin, Star, X, LineChart as LineChartIcon, Plus, Store as StoreIcon } from "lucide-react"
+import { Loader2, TrendingUp, TrendingDown, Search, MapPin, Star, X, Plus, Store as StoreIcon, Clock, Bell, Settings2 } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { useState, useEffect } from "react"
 import { supabase } from "@/lib/supabase"
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { api } from "@/lib/config"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -44,12 +43,6 @@ interface KeywordData {
   is_tracked: boolean
   last_checked_at: string
   created_at: string
-}
-
-interface RankHistoryData {
-  date: string
-  rank: number | null
-  checked_at: string
 }
 
 interface RankResult {
@@ -88,9 +81,6 @@ export default function NaverRankPage() {
   const [rankResult, setRankResult] = useState<RankResult | null>(null)
   const [keywords, setKeywords] = useState<KeywordData[]>([])
   const [loadingKeywords, setLoadingKeywords] = useState(false)
-  const [selectedKeywordForChart, setSelectedKeywordForChart] = useState<KeywordData | null>(null)
-  const [rankHistory, setRankHistory] = useState<RankHistoryData[]>([])
-  const [loadingHistory, setLoadingHistory] = useState(false)
   
   // 구독 tier 및 키워드 제한
   const [subscriptionTier, setSubscriptionTier] = useState<string>("free")
@@ -427,33 +417,6 @@ export default function NaverRankPage() {
     }
   }
 
-  // 키워드 순위 히스토리 조회
-  const handleViewKeywordHistory = async (keyword: KeywordData) => {
-    setSelectedKeywordForChart(keyword)
-    setLoadingHistory(true)
-    
-    try {
-      const response = await fetch(api.naver.keywordHistory(keyword.id))
-
-      if (!response.ok) {
-        throw new Error("순위 히스토리 조회에 실패했습니다")
-      }
-
-      const data = await response.json()
-      setRankHistory(data.history || [])
-    } catch (error: any) {
-      console.error("순위 히스토리 조회 실패:", error)
-      toast({
-        title: "순위 히스토리 조회 실패",
-        description: error.message || "순위 히스토리를 조회하는 중 오류가 발생했습니다",
-        variant: "destructive",
-      })
-      setRankHistory([])
-    } finally {
-      setLoadingHistory(false)
-    }
-  }
-
   // 추적 추가 핸들러
   const handleAddTracking = (keyword: KeywordData) => {
     setSelectedKeywordForTracking(keyword)
@@ -568,11 +531,6 @@ export default function NaverRankPage() {
 
       if (!response.ok) {
         throw new Error(`키워드 삭제에 실패했습니다 (${response.status})`)
-      }
-
-      if (selectedKeywordForChart?.id === keywordId) {
-        setSelectedKeywordForChart(null)
-        setRankHistory([])
       }
 
       if (selectedStoreId) {
@@ -1083,9 +1041,6 @@ export default function NaverRankPage() {
                           <th className="hidden md:table-cell px-2 md:px-3 py-3.5 md:py-4 text-center text-xs md:text-sm font-extrabold text-neutral-900 w-28">
                             최근 조회
                           </th>
-                          <th className="hidden lg:table-cell px-2 py-3.5 md:py-4 text-center text-xs md:text-sm font-extrabold text-neutral-900 w-16">
-                            차트
-                          </th>
                           <th className="px-2 py-3.5 md:py-4 text-center text-xs md:text-sm font-extrabold text-neutral-900 w-20 md:w-24">
                             추적
                           </th>
@@ -1134,15 +1089,6 @@ export default function NaverRankPage() {
                                 })}
                               </span>
                             </td>
-                            <td className="hidden lg:table-cell px-2 py-3.5 md:py-4 text-center">
-                              <button
-                                onClick={() => handleViewKeywordHistory(kw)}
-                                className="inline-flex items-center justify-center w-9 h-9 rounded-lg transition-all duration-200 bg-primary-100 text-primary-600 hover:bg-primary-200 hover:shadow-md active:scale-95"
-                                title="순위 차트 보기"
-                              >
-                                <LineChartIcon className="w-4 h-4" />
-                              </button>
-                            </td>
                             <td className="px-2 py-3.5 md:py-4 text-center">
                               {kw.is_tracked ? (
                                 <Badge variant="secondary" className="bg-green-100 text-green-700 border-green-300 text-xs px-2.5 py-1.5 whitespace-nowrap font-semibold">
@@ -1180,429 +1126,177 @@ export default function NaverRankPage() {
           </section>
         )}
 
-        {/* 순위 히스토리 차트 - TurboTax Style */}
-        {selectedKeywordForChart && (
-          <section>
-            <div className="mb-4 md:mb-5">
-              <h2 className="text-lg md:text-xl font-bold text-neutral-900 mb-1.5 leading-tight">
-                순위 변화 차트
-              </h2>
-              <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
-                "{selectedKeywordForChart.keyword}" 키워드의 순위 변화를 확인하세요
-              </p>
-            </div>
-
-          <Card className="rounded-xl border-2 border-neutral-300 shadow-lg overflow-hidden">
-            <CardHeader className="bg-gradient-to-r from-purple-50 to-indigo-50 border-b-2 border-purple-200 pb-4 px-5 md:px-6 pt-5 md:pt-6">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 md:w-12 md:h-12 bg-purple-500 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md">
-                    <LineChartIcon className="w-5 h-5 md:w-6 md:h-6 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="text-base md:text-lg font-bold text-neutral-900">순위 히스토리</h3>
-                    <p className="text-xs md:text-sm text-neutral-600 mt-0.5">
-                      "{selectedKeywordForChart.keyword}"
-                    </p>
-                  </div>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setSelectedKeywordForChart(null)
-                    setRankHistory([])
-                  }}
-                  className="h-9 w-9 p-0 hover:bg-red-100 hover:text-red-600 rounded-lg transition-colors duration-200"
-                >
-                  <X className="h-5 w-5" />
-                </Button>
-              </div>
-            </CardHeader>
-
-            <CardContent className="p-5 md:p-6">
-              {loadingHistory ? (
-                <div className="flex items-center justify-center py-12">
-                  <div className="flex flex-col items-center gap-3">
-                    <Loader2 className="h-10 w-10 md:h-12 md:w-12 animate-spin text-purple-500" />
-                    <p className="text-sm md:text-base text-neutral-600 font-medium">데이터를 불러오는 중...</p>
-                  </div>
-                </div>
-              ) : rankHistory.length === 0 ? (
-                <div className="flex items-center justify-center py-12">
-                  <div className="bg-gradient-to-br from-neutral-50 to-neutral-100 border-2 border-dashed border-neutral-300 rounded-xl p-8 md:p-10 max-w-lg mx-auto">
-                    <div className="flex flex-col items-center gap-4">
-                      <div className="w-16 h-16 md:w-20 md:h-20 bg-neutral-200 rounded-2xl flex items-center justify-center">
-                        <span className="text-3xl md:text-4xl">📊</span>
-                      </div>
-                      <div className="text-center space-y-2">
-                        <p className="text-base md:text-lg font-bold text-neutral-900">순위 히스토리가 없습니다</p>
-                        <p className="text-sm md:text-base text-neutral-600">
-                          순위를 조회하면 여기에 날짜별 변화가 표시됩니다
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-5 md:space-y-6">
-                  {/* 통계 요약 */}
-                  <div className="grid grid-cols-2 gap-3 md:gap-4">
-                    {/* 현재 순위 */}
-                    <div className="bg-gradient-to-br from-purple-50 to-indigo-50 border-2 border-purple-200 rounded-xl p-4 md:p-5 shadow-sm">
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center">
-                          <TrendingUp className="w-4 h-4 text-white" />
-                        </div>
-                        <p className="text-xs md:text-sm text-purple-700 font-semibold">현재 순위</p>
-                      </div>
-                      <p className="text-3xl md:text-4xl font-extrabold text-purple-600">
-                        {selectedKeywordForChart.current_rank || '-'}
-                        <span className="text-lg md:text-xl text-neutral-600 ml-1">위</span>
-                      </p>
-                    </div>
-
-                    {/* 측정 횟수 */}
-                    <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-4 md:p-5 shadow-sm">
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center">
-                          <LineChartIcon className="w-4 h-4 text-white" />
-                        </div>
-                        <p className="text-xs md:text-sm text-green-700 font-semibold">측정 횟수</p>
-                      </div>
-                      <p className="text-3xl md:text-4xl font-extrabold text-green-600">
-                        {(() => {
-                          const thirtyDaysAgo = new Date()
-                          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-                          return rankHistory.filter(item => 
-                            new Date(item.checked_at) >= thirtyDaysAgo
-                          ).length
-                        })()}
-                        <span className="text-lg md:text-xl text-neutral-600 ml-1">회</span>
-                      </p>
-                      <p className="text-xs text-green-600 mt-1 font-medium">최근 30일</p>
-                    </div>
-                  </div>
-
-                  {/* 차트 */}
-                  <div className="w-full h-[300px] md:h-[400px] bg-white rounded-xl p-3 md:p-5 border-2 border-neutral-300 shadow-sm">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart
-                        data={(() => {
-                          if (rankHistory.length === 0) return []
-                          
-                          const dates = rankHistory.map(item => new Date(item.checked_at))
-                          const oldestDate = new Date(Math.min(...dates.map(d => d.getTime())))
-                          oldestDate.setHours(0, 0, 0, 0)
-                          
-                          const days = []
-                          for (let i = 0; i < 30; i++) {
-                            const date = new Date(oldestDate)
-                            date.setDate(oldestDate.getDate() + i)
-                            days.push(date)
-                          }
-                          
-                          const dataMap = new Map()
-                          rankHistory.forEach(item => {
-                            const itemDate = new Date(item.checked_at)
-                            const year = itemDate.getFullYear()
-                            const month = String(itemDate.getMonth() + 1).padStart(2, '0')
-                            const day = String(itemDate.getDate()).padStart(2, '0')
-                            const dateKey = `${year}-${month}-${day}`
-                            
-                            if (!dataMap.has(dateKey) || new Date(dataMap.get(dateKey).checked_at) < itemDate) {
-                              dataMap.set(dateKey, item)
-                            }
-                          })
-                          
-                          return days.map(date => {
-                            const year = date.getFullYear()
-                            const month = String(date.getMonth() + 1).padStart(2, '0')
-                            const day = String(date.getDate()).padStart(2, '0')
-                            const dateKey = `${year}-${month}-${day}`
-                            const dataForDate = dataMap.get(dateKey)
-                            
-                            return {
-                              date: date.toLocaleDateString('ko-KR', {
-                                month: 'short',
-                                day: 'numeric'
-                              }),
-                              rank: dataForDate ? dataForDate.rank : null,
-                              fullDate: dataForDate ? new Date(dataForDate.checked_at).toLocaleString('ko-KR') : null,
-                              rawDate: dataForDate ? dataForDate.checked_at : null
-                            }
-                          })
-                        })()}
-                        margin={{ top: 20, right: 20, left: 10, bottom: 60 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                        <XAxis 
-                          dataKey="date" 
-                          tick={{ fontSize: 11 }}
-                          angle={-45}
-                          textAnchor="end"
-                          height={80}
-                          interval="preserveStartEnd"
-                          stroke="#9ca3af"
-                        />
-                        <YAxis 
-                          reversed={true}
-                          label={{ value: '순위', angle: -90, position: 'insideLeft', style: { fontSize: 12 } }}
-                          tick={{ fontSize: 11 }}
-                          domain={[0, 300]}
-                          ticks={[1, 50, 100, 150, 200, 250, 300]}
-                          allowDecimals={false}
-                          stroke="#9ca3af"
-                        />
-                        <Tooltip 
-                          content={({ active, payload }) => {
-                            if (active && payload && payload.length && payload[0].payload.fullDate) {
-                              return (
-                                <div className="bg-white p-3 border border-neutral-200 rounded-lg shadow-lg">
-                                  <p className="text-xs text-neutral-600 mb-1">{payload[0].payload.fullDate}</p>
-                                  <p className="text-lg font-bold text-primary-600">
-                                    {payload[0].value}위
-                                  </p>
-                                </div>
-                              )
-                            }
-                            return null
-                          }}
-                        />
-                        <Legend wrapperStyle={{ fontSize: '12px' }} />
-                        <Line 
-                          type="monotone" 
-                          dataKey="rank" 
-                          stroke="#635bff" 
-                          strokeWidth={3}
-                          dot={(props: any) => {
-                            const { cx, cy, payload } = props
-                            if (!payload.rank || !payload.rawDate) return <circle cx={cx} cy={cy} r={0} />
-                            
-                            const allData = rankHistory.filter(h => h.rank !== null)
-                            if (allData.length === 0) return <circle cx={cx} cy={cy} r={0} />
-                            
-                            const latestDate = new Date(Math.max(...allData.map(h => new Date(h.checked_at).getTime())))
-                            const currentDate = new Date(payload.rawDate)
-                            const isLatest = Math.abs(currentDate.getTime() - latestDate.getTime()) < 60000
-                            
-                            return (
-                              <circle
-                                cx={cx}
-                                cy={cy}
-                                r={isLatest ? 8 : 4}
-                                fill={isLatest ? "#ef4444" : "#635bff"}
-                                stroke={isLatest ? "#fff" : "none"}
-                                strokeWidth={isLatest ? 2 : 0}
-                              />
-                            )
-                          }}
-                          activeDot={{ r: 8 }}
-                          name="순위"
-                          connectNulls={true}
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-
-                  {/* 안내 메시지 */}
-                  <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 md:p-5">
-                    <div className="flex items-start gap-3">
-                      <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <span className="text-xl">💡</span>
-                      </div>
-                      <div>
-                        <p className="text-sm md:text-base font-bold text-blue-900 mb-1">
-                          순위 변화 추적
-                        </p>
-                        <p className="text-xs md:text-sm text-blue-700 leading-relaxed">
-                          최근 30일간의 순위 변화를 확인할 수 있습니다. 빨간색 점은 가장 최근 측정된 순위입니다.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-          </section>
-        )}
-
-        {/* 추적 추가 모달 - TurboTax Style */}
+        {/* 추적 추가 모달 - 지표 모달 스타일 */}
         <Dialog open={showAddTrackingDialog} onOpenChange={setShowAddTrackingDialog}>
-          <DialogContent className="sm:max-w-[500px] rounded-2xl border-2 border-neutral-300 shadow-2xl">
-            <DialogHeader className="pb-4 border-b border-neutral-200">
-              <div className="flex items-start gap-3">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md">
-                  <Plus className="w-6 h-6 text-white" />
+          <DialogContent className="w-[calc(100vw-32px)] sm:w-full sm:max-w-lg max-h-[calc(100vh-32px)] sm:max-h-[85vh] overflow-hidden bg-white border-2 border-neutral-200 shadow-modal rounded-modal flex flex-col p-0">
+            {/* 헤더 - 지표 모달 스타일 */}
+            <DialogHeader className="px-4 md:px-6 pt-4 md:pt-6 pb-3 border-b border-neutral-200 flex-shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 md:w-10 md:h-10 bg-[#405D99] rounded-button flex items-center justify-center shadow-sm flex-shrink-0">
+                  <Plus className="w-4 h-4 md:w-5 md:h-5 text-white" />
                 </div>
-                <div className="flex-1">
-                  <DialogTitle className="text-xl md:text-2xl font-bold text-neutral-900 mb-1">
+                <div className="min-w-0 flex-1">
+                  <DialogTitle className="text-base md:text-lg font-bold text-neutral-900 truncate">
                     키워드 추적 추가
                   </DialogTitle>
-                  <DialogDescription className="text-sm md:text-base text-neutral-600 leading-relaxed">
-                    선택한 키워드를 추적 목록에 추가하고 자동 수집 및 알림 설정을 구성하세요
+                  <DialogDescription className="text-xs md:text-sm text-neutral-600 truncate">
+                    {selectedStore?.name || '매장'}
                   </DialogDescription>
                 </div>
               </div>
             </DialogHeader>
 
-            <div className="space-y-5 py-5">
-              {/* 선택된 키워드 정보 */}
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-4 md:p-5">
-                <div className="flex items-center gap-2 mb-2">
-                  <Search className="w-4 h-4 text-blue-600" />
-                  <Label className="text-xs md:text-sm text-blue-700 font-semibold">선택한 키워드</Label>
+            {/* 본문 - 스크롤 가능 영역 */}
+            <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4">
+              <div className="space-y-4">
+                {/* 선택된 키워드 정보 카드 */}
+                <div className="bg-neutral-50 rounded-card p-3 md:p-4 border border-neutral-200">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <Search className="w-3.5 h-3.5 text-[#405D99]" />
+                    <span className="text-[10px] md:text-xs text-neutral-500 font-bold">선택한 키워드</span>
+                  </div>
+                  <p className="text-base md:text-lg font-bold text-neutral-900">
+                    {selectedKeywordForTracking?.keyword}
+                  </p>
+                  {selectedKeywordForTracking?.current_rank && (
+                    <div className="flex items-center gap-2 mt-1.5">
+                      <span className="text-xs text-neutral-500">현재 순위</span>
+                      <span className="text-sm font-bold text-emerald-600">{selectedKeywordForTracking.current_rank}위</span>
+                    </div>
+                  )}
                 </div>
-                <p className="text-lg md:text-xl font-extrabold text-neutral-900">
-                  {selectedKeywordForTracking?.keyword}
-                </p>
-              </div>
 
-              {/* 수집 주기 */}
-              <div>
-                <Label htmlFor="frequency-select" className="text-sm md:text-base font-bold text-neutral-900 mb-3 block flex items-center gap-2">
-                  <div className="w-6 h-6 bg-purple-100 rounded-lg flex items-center justify-center">
-                    <span className="text-xs">🔄</span>
+                {/* 수집 주기 */}
+                <div className="bg-neutral-50 rounded-card p-3 md:p-4 border border-neutral-200">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Settings2 className="w-3.5 h-3.5 text-[#405D99]" />
+                    <span className="text-xs md:text-sm font-bold text-neutral-900">수집 주기</span>
                   </div>
-                  수집 주기
-                </Label>
-                <Select 
-                  value={updateFrequency} 
-                  onValueChange={(value) => {
-                    const freq = value as 'daily_once' | 'daily_twice'
-                    setUpdateFrequency(freq)
-                    if (freq === 'daily_once') {
-                      setUpdateTimes([9])
-                    } else {
-                      setUpdateTimes([9, 18])
-                    }
-                  }}
-                >
-                  <SelectTrigger id="frequency-select" className="h-12 md:h-14 border-2 border-neutral-300 rounded-xl focus:border-primary-500 focus:ring-4 focus:ring-primary-500/20 transition-all duration-200">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="daily_once">하루 1회</SelectItem>
-                    <SelectItem value="daily_twice">하루 2회</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+                  <Select 
+                    value={updateFrequency} 
+                    onValueChange={(value) => {
+                      const freq = value as 'daily_once' | 'daily_twice'
+                      setUpdateFrequency(freq)
+                      if (freq === 'daily_once') {
+                        setUpdateTimes([9])
+                      } else {
+                        setUpdateTimes([9, 18])
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="h-11 border border-neutral-300 rounded-button focus:border-[#405D99] focus:ring-2 focus:ring-[#405D99]/20 transition-all duration-200 bg-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="daily_once">하루 1회</SelectItem>
+                      <SelectItem value="daily_twice">하루 2회</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              {/* 수집 시간 */}
-              <div>
-                <Label className="text-sm md:text-base font-bold text-neutral-900 mb-3 block flex items-center gap-2">
-                  <div className="w-6 h-6 bg-green-100 rounded-lg flex items-center justify-center">
-                    <span className="text-xs">⏰</span>
+                {/* 수집 시간 */}
+                <div className="bg-neutral-50 rounded-card p-3 md:p-4 border border-neutral-200">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Clock className="w-3.5 h-3.5 text-[#405D99]" />
+                    <span className="text-xs md:text-sm font-bold text-neutral-900">수집 시간</span>
                   </div>
-                  수집 시간
-                </Label>
-                <div className="space-y-3">
-                  {updateTimes.map((time, index) => (
-                    <div key={index} className="flex items-center gap-3">
-                      <Badge variant="secondary" className="bg-primary-100 text-primary-700 border-primary-200 px-3 py-2 font-bold text-xs">
-                        {index + 1}차
-                      </Badge>
-                      <Select
-                        value={time.toString()}
-                        onValueChange={(value) => {
-                          const newTimes = [...updateTimes]
-                          newTimes[index] = parseInt(value || '9')
-                          setUpdateTimes(newTimes)
-                        }}
-                      >
-                        <SelectTrigger className="h-11 border-2 border-neutral-300 rounded-xl focus:border-primary-500 focus:ring-4 focus:ring-primary-500/20 transition-all duration-200">
-                          <SelectValue />
+                  <div className="space-y-2.5">
+                    {updateTimes.map((time, index) => (
+                      <div key={index} className="flex items-center gap-2.5">
+                        <span className="text-xs font-bold text-[#405D99] bg-blue-50 border border-blue-200 rounded-md px-2.5 py-1 flex-shrink-0 min-w-[40px] text-center">
+                          {index + 1}차
+                        </span>
+                        <Select
+                          value={time.toString()}
+                          onValueChange={(value) => {
+                            const newTimes = [...updateTimes]
+                            newTimes[index] = parseInt(value || '9')
+                            setUpdateTimes(newTimes)
+                          }}
+                        >
+                          <SelectTrigger className="h-10 border border-neutral-300 rounded-button focus:border-[#405D99] focus:ring-2 focus:ring-[#405D99]/20 transition-all duration-200 bg-white">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Array.from({ length: 24 }, (_, i) => (
+                              <SelectItem key={i} value={i.toString()}>
+                                {String(i).padStart(2, '0')}:00
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 순위 알림받기 */}
+                <div className="bg-neutral-50 rounded-card p-3 md:p-4 border border-neutral-200">
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-2">
+                      <Bell className="w-3.5 h-3.5 text-[#405D99]" />
+                      <span className="text-xs md:text-sm font-bold text-neutral-900">순위 알림받기</span>
+                    </div>
+                    <Switch
+                      checked={notificationEnabled}
+                      onCheckedChange={(checked) => {
+                        setNotificationEnabled(checked)
+                        if (!checked) {
+                          setNotificationType('')
+                        }
+                      }}
+                    />
+                  </div>
+                  <p className="text-[10px] md:text-xs text-neutral-500 mb-2 ml-[22px]">순위 변동 시 알림을 받습니다</p>
+
+                  {notificationEnabled && (
+                    <div className="pt-3 border-t border-neutral-200 mt-3">
+                      <label className="text-xs font-bold text-neutral-700 mb-2 block">알림 방법</label>
+                      <Select value={notificationType} onValueChange={(value) => setNotificationType(value as any)}>
+                        <SelectTrigger className="h-10 border border-neutral-300 rounded-button focus:border-[#405D99] focus:ring-2 focus:ring-[#405D99]/20 transition-all duration-200 bg-white">
+                          <SelectValue placeholder="알림 방법 선택" />
                         </SelectTrigger>
                         <SelectContent>
-                          {Array.from({ length: 24 }, (_, i) => (
-                            <SelectItem key={i} value={i.toString()}>
-                              {i}시
-                            </SelectItem>
-                          ))}
+                          <SelectItem value="email">📧 이메일</SelectItem>
+                          <SelectItem value="sms">📱 SMS</SelectItem>
+                          <SelectItem value="kakao">💬 카카오톡</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
-                  ))}
+                  )}
                 </div>
-              </div>
-
-              {/* 순위 알림받기 */}
-              <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-yellow-200 rounded-xl p-4 md:p-5">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-start gap-2.5">
-                    <div className="w-8 h-8 bg-yellow-400 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <span className="text-base">🔔</span>
-                    </div>
-                    <div>
-                      <Label className="text-sm md:text-base font-bold text-neutral-900">순위 알림받기</Label>
-                      <p className="text-xs md:text-sm text-neutral-600 mt-0.5">순위 변동 시 알림을 받습니다</p>
-                    </div>
-                  </div>
-                  <Switch
-                    checked={notificationEnabled}
-                    onCheckedChange={(checked) => {
-                      setNotificationEnabled(checked)
-                      if (!checked) {
-                        setNotificationType('')
-                      }
-                    }}
-                  />
-                </div>
-
-                {notificationEnabled && (
-                  <div className="pt-4 border-t-2 border-yellow-200 mt-4">
-                    <Label htmlFor="notification-type" className="text-sm md:text-base font-bold text-neutral-900 mb-3 block">
-                      알림 방법
-                    </Label>
-                    <Select value={notificationType} onValueChange={(value) => setNotificationType(value as any)}>
-                      <SelectTrigger id="notification-type" className="h-11 border-2 border-neutral-300 rounded-xl focus:border-primary-500 focus:ring-4 focus:ring-primary-500/20 transition-all duration-200">
-                        <SelectValue placeholder="알림 방법 선택" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="email">📧 이메일</SelectItem>
-                        <SelectItem value="sms">📱 SMS</SelectItem>
-                        <SelectItem value="kakao">💬 카카오톡</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <div className="mt-3 flex items-start gap-2 bg-yellow-100 border border-yellow-300 rounded-lg p-3">
-                      <span className="text-sm flex-shrink-0">💡</span>
-                      <p className="text-xs md:text-sm text-yellow-800 leading-relaxed">
-                        순위 변동 시 선택한 방법으로 알림을 받습니다
-                      </p>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
 
-            <DialogFooter className="pt-5 border-t border-neutral-200 gap-3">
-              <Button
-                variant="outline"
-                onClick={() => setShowAddTrackingDialog(false)}
-                disabled={isAddingTracker}
-                className="h-12 px-6 border-2 border-neutral-300 rounded-xl hover:bg-neutral-100 active:scale-95 transition-all duration-200 font-semibold"
-              >
-                취소
-              </Button>
-              <Button
-                onClick={handleSubmitTracking}
-                disabled={isAddingTracker}
-                className="h-12 px-6 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 rounded-xl shadow-lg hover:shadow-xl active:scale-95 transition-all duration-200 font-semibold"
-              >
-                {isAddingTracker ? (
-                  <>
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    추가 중...
-                  </>
-                ) : (
-                  <>
-                    <Plus className="mr-2 h-5 w-5" />
-                    추적 추가
-                  </>
-                )}
-              </Button>
-            </DialogFooter>
+            {/* 푸터 - 지표 모달 스타일 */}
+            <div className="px-4 md:px-6 py-3 md:py-4 border-t border-neutral-200 flex-shrink-0">
+              <div className="flex gap-2.5 justify-end">
+                <button
+                  onClick={() => setShowAddTrackingDialog(false)}
+                  disabled={isAddingTracker}
+                  className="h-10 md:h-11 px-5 text-sm font-semibold text-neutral-700 bg-neutral-100 hover:bg-neutral-200 active:bg-neutral-300 disabled:opacity-50 rounded-button transition-all duration-200 touch-manipulation"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleSubmitTracking}
+                  disabled={isAddingTracker}
+                  className="h-10 md:h-11 px-5 text-sm font-semibold text-white bg-[#405D99] hover:bg-[#2E4577] active:bg-[#1A2B52] disabled:bg-neutral-300 disabled:text-neutral-500 rounded-button shadow-sm hover:shadow-md transition-all duration-200 touch-manipulation flex items-center gap-2"
+                >
+                  {isAddingTracker ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      추가 중...
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="h-4 w-4" />
+                      추적 추가
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
       {/* 크레딧 차감 확인 모달 */}
