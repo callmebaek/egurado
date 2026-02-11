@@ -25,6 +25,7 @@ from ..models.schemas import (
     OTPVerifyRequest,
     OTPSendResponse,
     OTPVerifyResponse,
+    OTPVerifyIdentityResponse,
 )
 from ..services.auth_service import (
     hash_password,
@@ -591,63 +592,133 @@ async def change_password(
 ):
     """
     비밀번호 변경 (로그인 상태)
+    
+    인증 방식:
+    1. 현재 비밀번호 입력 (이메일 가입 사용자)
+    2. OTP 본인인증 (otp_verified=True일 때, 소셜/전화번호 가입자도 가능)
+    
     ⚠️ 일회용 클라이언트 + Admin API 사용 (글로벌 세션 오염 방지)
     """
     supabase = get_supabase_client()
     user_id = current_user["id"]
     
     try:
-        # 현재 비밀번호 확인 (이메일 로그인 사용자만 가능)
         auth_provider = current_user.get("auth_provider", "email")
         
-        if auth_provider != "email":
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="소셜 로그인으로 가입한 계정은 비밀번호 변경이 불가능합니다."
-            )
+        if request.otp_verified:
+            # OTP 본인인증으로 비밀번호 변경 (모든 가입 방식에서 가능)
+            print(f"[비밀번호 변경] OTP 본인인증 방식: user_id={user_id}")
+            
+            # Supabase Auth에 계정이 없는 경우 (소셜/전화번호 가입자)
+            # Admin API로 직접 비밀번호 설정
+            email = current_user.get("email")
+            
+            try:
+                # Admin API로 비밀번호 업데이트 시도
+                result = supabase.auth.admin.update_user_by_id(
+                    user_id,
+                    {"password": request.new_password}
+                )
+                
+                if not result.user:
+                    raise Exception("Admin API 업데이트 실패")
+                    
+            except Exception as admin_err:
+                print(f"[비밀번호 변경] Admin API 실패 (신규 생성 시도): {admin_err}")
+                
+                # Supabase Auth에 사용자가 없을 수 있음 (소셜/전화번호 가입자)
+                # Admin API로 사용자 생성
+                try:
+                    create_result = supabase.auth.admin.create_user({
+                        "uid": user_id,
+                        "email": email,
+                        "password": request.new_password,
+                        "email_confirm": True,
+                    })
+                    
+                    if not create_result.user:
+                        raise HTTPException(
+                            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail="비밀번호 설정에 실패했습니다."
+                        )
+                except Exception as create_err:
+                    print(f"[비밀번호 변경] 사용자 생성도 실패: {create_err}")
+                    raise HTTPException(
+                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        detail="비밀번호 변경에 실패했습니다."
+                    )
+            
+            # auth_provider가 email이 아닌 경우 email로 변경 (비밀번호 로그인 가능하도록)
+            if auth_provider != "email":
+                supabase.table("profiles").update({
+                    "auth_provider": "email",
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                }).eq("id", user_id).execute()
+                print(f"[비밀번호 변경] auth_provider 업데이트: {auth_provider} → email")
+            
+            print(f"[비밀번호 변경] OTP 방식 성공: user_id={user_id}")
+            
+            return {
+                "message": "비밀번호가 성공적으로 변경되었습니다.",
+                "success": True
+            }
         
-        # 현재 비밀번호 확인 (일회용 클라이언트 사용 - 글로벌 세션 보호)
-        email = current_user.get("email")
-        auth_client = create_auth_client()
-        try:
-            login_check = auth_client.auth.sign_in_with_password({
-                "email": email,
-                "password": request.current_password
-            })
-            if not login_check.user:
+        else:
+            # 기존 비밀번호 입력 방식 (이메일 가입 사용자만)
+            if auth_provider != "email":
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="소셜 로그인 계정은 OTP 본인인증을 통해 비밀번호를 변경해주세요."
+                )
+            
+            if not request.current_password:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="현재 비밀번호를 입력해주세요."
+                )
+            
+            # 현재 비밀번호 확인 (일회용 클라이언트 사용 - 글로벌 세션 보호)
+            email = current_user.get("email")
+            auth_client = create_auth_client()
+            try:
+                login_check = auth_client.auth.sign_in_with_password({
+                    "email": email,
+                    "password": request.current_password
+                })
+                if not login_check.user:
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="현재 비밀번호가 올바르지 않습니다."
+                    )
+            except HTTPException:
+                raise
+            except Exception:
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="현재 비밀번호가 올바르지 않습니다."
                 )
-        except HTTPException:
-            raise
-        except Exception:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="현재 비밀번호가 올바르지 않습니다."
+            finally:
+                # 비밀번호 검증용 일회용 클라이언트 즉시 폐기
+                del auth_client
+            
+            # 새 비밀번호로 업데이트 (Admin API 사용 - 세션 변경 없음)
+            result = supabase.auth.admin.update_user_by_id(
+                user_id,
+                {"password": request.new_password}
             )
-        finally:
-            # 비밀번호 검증용 일회용 클라이언트 즉시 폐기
-            del auth_client
-        
-        # 새 비밀번호로 업데이트 (Admin API 사용 - 세션 변경 없음)
-        result = supabase.auth.admin.update_user_by_id(
-            user_id,
-            {"password": request.new_password}
-        )
-        
-        if not result.user:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="비밀번호 변경에 실패했습니다."
-            )
-        
-        print(f"[비밀번호 변경] 성공: user_id={user_id} (Admin API 사용)")
-        
-        return {
-            "message": "비밀번호가 성공적으로 변경되었습니다.",
-            "success": True
-        }
+            
+            if not result.user:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="비밀번호 변경에 실패했습니다."
+                )
+            
+            print(f"[비밀번호 변경] 기존 비밀번호 방식 성공: user_id={user_id}")
+            
+            return {
+                "message": "비밀번호가 성공적으로 변경되었습니다.",
+                "success": True
+            }
         
     except HTTPException:
         raise
@@ -867,11 +938,11 @@ async def send_otp(request: OTPSendRequest):
 @router.post("/verify-otp", response_model=None)
 async def verify_otp(request: OTPVerifyRequest):
     """
-    OTP 인증코드 검증 및 로그인/회원가입
+    OTP 인증코드 검증
     
-    1. 인증코드 검증
-    2. 기존 회원이면 → JWT 토큰 발급 (로그인)
-    3. 신규 회원이면 → 프로필 자동 생성 → JWT 토큰 발급
+    purpose에 따라 동작이 달라짐:
+    - login: 인증 후 로그인/회원가입 (JWT 발급)
+    - verify_identity: 본인인증만 (비밀번호 변경 등)
     """
     from ..services.otp_service import otp_service
     
@@ -883,6 +954,15 @@ async def verify_otp(request: OTPVerifyRequest):
             detail=result["message"],
         )
     
+    # ── 본인인증 전용 모드 (비밀번호 변경 등) ──
+    if request.purpose == "verify_identity":
+        return OTPVerifyIdentityResponse(
+            success=True,
+            message="본인 인증이 완료되었습니다",
+            verified=True,
+        )
+    
+    # ── 로그인/회원가입 모드 ──
     supabase = get_supabase_client()
     
     if result.get("is_new_user"):

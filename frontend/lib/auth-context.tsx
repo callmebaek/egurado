@@ -29,6 +29,8 @@ interface AuthContextType {
   confirmEmail: (userId: string, email: string, displayName?: string) => Promise<void>
   loginWithKakao: (code: string) => Promise<void>
   loginWithNaver: (code: string, state: string) => Promise<void>
+  sendOtp: (phoneNumber: string) => Promise<{ success: boolean; message: string; expires_in?: number }>
+  verifyOtpAndLogin: (phoneNumber: string, code: string) => Promise<void>
   logout: () => void
   refreshUser: () => Promise<void>
   getToken: () => string | null
@@ -250,6 +252,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  // OTP 인증코드 발송
+  const sendOtp = async (phoneNumber: string) => {
+    const response = await fetch(`${API_URL}/api/v1/auth/send-otp`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ phone_number: phoneNumber }),
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.detail || 'OTP 발송에 실패했습니다')
+    }
+
+    return await response.json()
+  }
+
+  // OTP 인증 후 로그인
+  const verifyOtpAndLogin = async (phoneNumber: string, code: string) => {
+    const response = await fetch(`${API_URL}/api/v1/auth/verify-otp`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ phone_number: phoneNumber, code, purpose: 'login' }),
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.detail || '인증에 실패했습니다')
+    }
+
+    const data = await response.json()
+    setToken(data.access_token)
+    setUser(data.user)
+
+    // 온보딩 필요 시 온보딩 페이지로 이동
+    if (data.onboarding_required) {
+      router.push('/onboarding')
+    } else {
+      router.push('/dashboard')
+    }
+  }
+
   // 로그아웃
   const logout = () => {
     removeToken()
@@ -267,6 +314,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         confirmEmail,
         loginWithKakao,
         loginWithNaver,
+        sendOtp,
+        verifyOtpAndLogin,
         logout,
         refreshUser,
         getToken,

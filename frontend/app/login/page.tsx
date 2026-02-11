@@ -1,13 +1,13 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Loader2, Mail, Lock, Sparkles, ArrowRight, Check } from "lucide-react"
+import { Loader2, Mail, Lock, Sparkles, ArrowRight, Check, Phone, MessageSquare, ShieldCheck } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { useAuth } from "@/lib/auth-context"
 import { startKakaoLogin, startNaverLogin } from "@/lib/social-login"
@@ -38,10 +38,26 @@ const QUOTES = [
 export default function LoginPage() {
   const router = useRouter()
   const { toast } = useToast()
-  const { login } = useAuth()
+  const { login, sendOtp, verifyOtpAndLogin } = useAuth()
+  
+  // 탭 상태: 'email' | 'phone'
+  const [loginTab, setLoginTab] = useState<'email' | 'phone'>('email')
+  
+  // 이메일 로그인
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  
+  // 전화번호 OTP 로그인
+  const [phoneNumber, setPhoneNumber] = useState("")
+  const [otpCode, setOtpCode] = useState("")
+  const [otpSent, setOtpSent] = useState(false)
+  const [otpCooldown, setOtpCooldown] = useState(0)
+  const [otpExpiry, setOtpExpiry] = useState(0)
+  const [isSendingOtp, setIsSendingOtp] = useState(false)
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false)
+  
+  // 명언
   const [currentQuote, setCurrentQuote] = useState("")
   const [fadeIn, setFadeIn] = useState(true)
 
@@ -73,6 +89,114 @@ export default function LoginPage() {
 
     return () => clearInterval(interval)
   }, [])
+
+  // OTP 재발송 쿨다운 타이머
+  useEffect(() => {
+    if (otpCooldown <= 0) return
+    const timer = setInterval(() => {
+      setOtpCooldown(prev => {
+        if (prev <= 1) {
+          clearInterval(timer)
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [otpCooldown])
+
+  // OTP 만료 타이머
+  useEffect(() => {
+    if (otpExpiry <= 0) return
+    const timer = setInterval(() => {
+      setOtpExpiry(prev => {
+        if (prev <= 1) {
+          clearInterval(timer)
+          setOtpSent(false)
+          toast({
+            variant: "destructive",
+            title: "⏰ 인증코드 만료",
+            description: "인증코드가 만료되었습니다. 다시 요청해주세요.",
+          })
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [otpExpiry])
+
+  // 전화번호 포맷팅 (010-1234-5678)
+  const formatPhoneNumber = (value: string) => {
+    const numbers = value.replace(/[^\d]/g, '')
+    if (numbers.length <= 3) return numbers
+    if (numbers.length <= 7) return `${numbers.slice(0, 3)}-${numbers.slice(3)}`
+    return `${numbers.slice(0, 3)}-${numbers.slice(3, 7)}-${numbers.slice(7, 11)}`
+  }
+
+  // OTP 발송
+  const handleSendOtp = async () => {
+    const cleanPhone = phoneNumber.replace(/[^\d]/g, '')
+    if (!cleanPhone.startsWith('010') || cleanPhone.length !== 11) {
+      toast({
+        variant: "destructive",
+        title: "❌ 전화번호 오류",
+        description: "올바른 전화번호를 입력해주세요 (010-XXXX-XXXX)",
+      })
+      return
+    }
+
+    setIsSendingOtp(true)
+    try {
+      const result = await sendOtp(cleanPhone)
+      setOtpSent(true)
+      setOtpCooldown(60) // 60초 재발송 쿨다운
+      setOtpExpiry(180)  // 3분 만료
+      setOtpCode("")
+      toast({
+        title: "✅ 인증코드 발송",
+        description: "카카오톡으로 인증코드가 발송되었습니다.",
+      })
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "❌ 발송 실패",
+        description: error.message || "인증코드 발송에 실패했습니다.",
+      })
+    } finally {
+      setIsSendingOtp(false)
+    }
+  }
+
+  // OTP 검증 및 로그인
+  const handleVerifyOtp = async () => {
+    if (otpCode.length !== 6) {
+      toast({
+        variant: "destructive",
+        title: "❌ 인증코드 오류",
+        description: "6자리 인증코드를 입력해주세요.",
+      })
+      return
+    }
+
+    setIsVerifyingOtp(true)
+    try {
+      const cleanPhone = phoneNumber.replace(/[^\d]/g, '')
+      await verifyOtpAndLogin(cleanPhone, otpCode)
+      toast({
+        title: "✅ 로그인 성공",
+        description: "환영합니다!",
+      })
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "❌ 인증 실패",
+        description: error.message || "인증코드가 올바르지 않습니다.",
+      })
+    } finally {
+      setIsVerifyingOtp(false)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -194,69 +318,201 @@ export default function LoginPage() {
                 </CardDescription>
               </CardHeader>
           <CardContent className="space-y-5 md:space-y-6 p-6 md:p-8">
-          {/* 이메일 로그인 폼 */}
-          <form onSubmit={handleSubmit} className="space-y-4 md:space-y-5">
-            <div className="space-y-2">
-              <label htmlFor="email" className="flex items-center gap-2 text-sm md:text-base font-semibold text-gray-700">
-                <Mail className="w-4 h-4 text-emerald-500" />
-                이메일
-              </label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                disabled={isLoading}
-                className="h-12 md:h-14 text-base border-2 border-emerald-100 focus:border-teal-400 focus:ring-4 focus:ring-teal-100 rounded-xl transition-all"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label htmlFor="password" className="flex items-center gap-2 text-sm md:text-base font-semibold text-gray-700">
-                  <Lock className="w-4 h-4 text-emerald-500" />
-                  비밀번호
-                </label>
-                <Link
-                  href="/auth/forgot-password"
-                  className="text-xs md:text-sm text-teal-600 hover:text-teal-700 hover:underline font-medium"
-                >
-                  비밀번호를 잊으셨나요?
-                </Link>
-              </div>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                disabled={isLoading}
-                minLength={8}
-                className="h-12 md:h-14 text-base border-2 border-emerald-100 focus:border-teal-400 focus:ring-4 focus:ring-teal-100 rounded-xl transition-all"
-              />
-            </div>
-
-            <Button
-              type="submit"
-              className="w-full h-12 md:h-14 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white text-base md:text-lg font-bold rounded-xl shadow-lg hover:shadow-xl transition-all"
-              disabled={isLoading}
+          {/* 로그인 방식 탭 */}
+          <div className="flex rounded-xl bg-gray-100 p-1">
+            <button
+              type="button"
+              onClick={() => setLoginTab('email')}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-sm font-bold transition-all min-h-[44px] ${
+                loginTab === 'email'
+                  ? 'bg-white text-emerald-700 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
             >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  로그인 중...
-                </>
-              ) : (
-                <>
-                  로그인
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </>
+              <Mail className="w-4 h-4" />
+              이메일
+            </button>
+            <button
+              type="button"
+              onClick={() => setLoginTab('phone')}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-sm font-bold transition-all min-h-[44px] ${
+                loginTab === 'phone'
+                  ? 'bg-white text-emerald-700 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              <Phone className="w-4 h-4" />
+              전화번호
+            </button>
+          </div>
+
+          {/* === 이메일 로그인 폼 === */}
+          {loginTab === 'email' && (
+            <>
+              <form onSubmit={handleSubmit} className="space-y-4 md:space-y-5">
+                <div className="space-y-2">
+                  <label htmlFor="email" className="flex items-center gap-2 text-sm md:text-base font-semibold text-gray-700">
+                    <Mail className="w-4 h-4 text-emerald-500" />
+                    이메일
+                  </label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="you@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    disabled={isLoading}
+                    className="h-12 md:h-14 text-base border-2 border-emerald-100 focus:border-teal-400 focus:ring-4 focus:ring-teal-100 rounded-xl transition-all"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label htmlFor="password" className="flex items-center gap-2 text-sm md:text-base font-semibold text-gray-700">
+                      <Lock className="w-4 h-4 text-emerald-500" />
+                      비밀번호
+                    </label>
+                    <Link
+                      href="/auth/forgot-password"
+                      className="text-xs md:text-sm text-teal-600 hover:text-teal-700 hover:underline font-medium"
+                    >
+                      비밀번호를 잊으셨나요?
+                    </Link>
+                  </div>
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    disabled={isLoading}
+                    minLength={8}
+                    className="h-12 md:h-14 text-base border-2 border-emerald-100 focus:border-teal-400 focus:ring-4 focus:ring-teal-100 rounded-xl transition-all"
+                  />
+                </div>
+
+                <Button
+                  type="submit"
+                  className="w-full h-12 md:h-14 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white text-base md:text-lg font-bold rounded-xl shadow-lg hover:shadow-xl transition-all"
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      로그인 중...
+                    </>
+                  ) : (
+                    <>
+                      로그인
+                      <ArrowRight className="ml-2 h-5 w-5" />
+                    </>
+                  )}
+                </Button>
+              </form>
+            </>
+          )}
+
+          {/* === 전화번호 OTP 로그인 폼 === */}
+          {loginTab === 'phone' && (
+            <div className="space-y-4 md:space-y-5">
+              {/* 전화번호 입력 + 발송 버튼 */}
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm md:text-base font-semibold text-gray-700">
+                  <Phone className="w-4 h-4 text-emerald-500" />
+                  전화번호
+                </label>
+                <div className="flex gap-2">
+                  <Input
+                    type="tel"
+                    placeholder="010-1234-5678"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(formatPhoneNumber(e.target.value))}
+                    maxLength={13}
+                    disabled={isSendingOtp || isVerifyingOtp}
+                    className="flex-1 h-12 md:h-14 text-base border-2 border-emerald-100 focus:border-teal-400 focus:ring-4 focus:ring-teal-100 rounded-xl transition-all"
+                  />
+                  <Button
+                    type="button"
+                    onClick={handleSendOtp}
+                    disabled={isSendingOtp || otpCooldown > 0 || phoneNumber.replace(/[^\d]/g, '').length !== 11}
+                    className="h-12 md:h-14 px-4 md:px-5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold rounded-xl shadow-md whitespace-nowrap text-sm"
+                  >
+                    {isSendingOtp ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : otpCooldown > 0 ? (
+                      `${otpCooldown}초`
+                    ) : otpSent ? (
+                      '재발송'
+                    ) : (
+                      '인증요청'
+                    )}
+                  </Button>
+                </div>
+              </div>
+
+              {/* OTP 입력 (발송 후 표시) */}
+              {otpSent && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="flex items-center gap-2 text-sm md:text-base font-semibold text-gray-700">
+                      <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                      인증코드
+                    </label>
+                    {otpExpiry > 0 && (
+                      <span className={`text-xs font-bold ${otpExpiry <= 30 ? 'text-red-500' : 'text-emerald-600'}`}>
+                        {Math.floor(otpExpiry / 60)}:{(otpExpiry % 60).toString().padStart(2, '0')}
+                      </span>
+                    )}
+                  </div>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="6자리 인증코드 입력"
+                    value={otpCode}
+                    onChange={(e) => setOtpCode(e.target.value.replace(/[^\d]/g, '').slice(0, 6))}
+                    maxLength={6}
+                    disabled={isVerifyingOtp}
+                    className="h-12 md:h-14 text-base text-center tracking-[0.3em] font-bold border-2 border-emerald-100 focus:border-teal-400 focus:ring-4 focus:ring-teal-100 rounded-xl transition-all"
+                    autoFocus
+                  />
+                  <p className="text-xs text-gray-500 flex items-center gap-1.5">
+                    <MessageSquare className="w-3.5 h-3.5 text-yellow-500" />
+                    카카오톡으로 발송된 인증코드를 입력해주세요
+                  </p>
+                </div>
               )}
-            </Button>
-          </form>
+
+              {/* 로그인 버튼 */}
+              <Button
+                type="button"
+                onClick={handleVerifyOtp}
+                className="w-full h-12 md:h-14 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white text-base md:text-lg font-bold rounded-xl shadow-lg hover:shadow-xl transition-all"
+                disabled={!otpSent || otpCode.length !== 6 || isVerifyingOtp}
+              >
+                {isVerifyingOtp ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    인증 중...
+                  </>
+                ) : (
+                  <>
+                    로그인
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </>
+                )}
+              </Button>
+
+              {/* 신규 가입 안내 */}
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3">
+                <p className="text-xs text-emerald-700 text-center leading-relaxed">
+                  💡 처음 이용하시나요? 전화번호로 인증하면<br />
+                  <strong>자동으로 계정이 생성</strong>됩니다.
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* 구분선 */}
           <div className="relative">

@@ -113,8 +113,9 @@ class ResetPasswordRequest(BaseModel):
 
 class ChangePasswordRequest(BaseModel):
     """Change password request (authenticated user)"""
-    current_password: str
+    current_password: Optional[str] = None  # 기존 비밀번호 (이메일 사용자)
     new_password: str = Field(min_length=8, max_length=100)
+    otp_verified: bool = False  # OTP 본인인증 완료 여부 (True면 current_password 불필요)
 
 
 class DeleteAccountRequest(BaseModel):
@@ -136,6 +137,10 @@ class OTPVerifyRequest(BaseModel):
     """OTP 인증코드 검증 요청"""
     phone_number: str = Field(..., description="전화번호")
     code: str = Field(..., min_length=6, max_length=6, description="6자리 인증코드")
+    purpose: Literal['login', 'verify_identity'] = Field(
+        default='login',
+        description="인증 목적: login(로그인/회원가입), verify_identity(본인인증만)"
+    )
 
 
 class OTPSendResponse(BaseModel):
@@ -153,6 +158,13 @@ class OTPVerifyResponse(BaseModel):
     user: Optional[Profile] = None
     is_new_user: Optional[bool] = None
     onboarding_required: Optional[bool] = None
+
+
+class OTPVerifyIdentityResponse(BaseModel):
+    """OTP 본인인증 응답 (비밀번호 변경 등)"""
+    success: bool
+    message: str
+    verified: bool = False
 
 
 # ============================================
