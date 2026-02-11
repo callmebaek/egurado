@@ -59,6 +59,8 @@ class UserSignupRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=100)
     display_name: Optional[str] = None
+    phone_number: str = Field(..., description="휴대전화번호 (필수, OTP 인증 완료된 번호)")
+    phone_verified: bool = Field(default=False, description="전화번호 OTP 인증 완료 여부")
 
 
 class UserLoginRequest(BaseModel):
@@ -101,14 +103,15 @@ class SignupResponse(BaseModel):
 
 
 class ForgotPasswordRequest(BaseModel):
-    """Forgot password request"""
+    """Forgot password request (이메일로 연결된 전화번호 확인)"""
     email: str
 
 
 class ResetPasswordRequest(BaseModel):
-    """Reset password request"""
-    access_token: str
-    new_password: str
+    """Reset password request (OTP 인증 후)"""
+    phone_number: str = Field(..., description="OTP 인증된 전화번호")
+    new_password: str = Field(min_length=8, max_length=100)
+    reset_token: str = Field(..., description="OTP 검증 후 받은 리셋 토큰")
 
 
 class ChangePasswordRequest(BaseModel):
@@ -137,9 +140,9 @@ class OTPVerifyRequest(BaseModel):
     """OTP 인증코드 검증 요청"""
     phone_number: str = Field(..., description="전화번호")
     code: str = Field(..., min_length=6, max_length=6, description="6자리 인증코드")
-    purpose: Literal['login', 'verify_identity'] = Field(
-        default='login',
-        description="인증 목적: login(로그인/회원가입), verify_identity(본인인증만)"
+    purpose: Literal['signup', 'verify_identity', 'find_id', 'reset_password'] = Field(
+        default='signup',
+        description="인증 목적: signup(회원가입), verify_identity(비밀번호 변경), find_id(아이디 찾기), reset_password(비밀번호 재설정)"
     )
 
 
@@ -151,20 +154,14 @@ class OTPSendResponse(BaseModel):
 
 
 class OTPVerifyResponse(BaseModel):
-    """OTP 검증 응답"""
-    success: bool
-    message: str
-    access_token: Optional[str] = None
-    user: Optional[Profile] = None
-    is_new_user: Optional[bool] = None
-    onboarding_required: Optional[bool] = None
-
-
-class OTPVerifyIdentityResponse(BaseModel):
-    """OTP 본인인증 응답 (비밀번호 변경 등)"""
+    """OTP 검증 응답 (범용)"""
     success: bool
     message: str
     verified: bool = False
+    # 아이디 찾기용 필드
+    masked_email: Optional[str] = None
+    # 비밀번호 재설정용 필드
+    reset_token: Optional[str] = None
 
 
 # ============================================

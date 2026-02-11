@@ -21,16 +21,24 @@ interface User {
   updated_at: string
 }
 
+interface OtpVerifyResult {
+  success: boolean
+  message: string
+  verified?: boolean
+  masked_email?: string
+  reset_token?: string
+}
+
 interface AuthContextType {
   user: User | null
   loading: boolean
   login: (email: string, password: string) => Promise<void>
-  signup: (email: string, password: string, displayName?: string) => Promise<void>
+  signup: (email: string, password: string, displayName?: string, phoneNumber?: string, phoneVerified?: boolean) => Promise<void>
   confirmEmail: (userId: string, email: string, displayName?: string) => Promise<void>
   loginWithKakao: (code: string) => Promise<void>
   loginWithNaver: (code: string, state: string) => Promise<void>
   sendOtp: (phoneNumber: string) => Promise<{ success: boolean; message: string; expires_in?: number }>
-  verifyOtpAndLogin: (phoneNumber: string, code: string) => Promise<void>
+  verifyOtp: (phoneNumber: string, code: string, purpose: 'signup' | 'verify_identity' | 'find_id' | 'reset_password') => Promise<OtpVerifyResult>
   logout: () => void
   refreshUser: () => Promise<void>
   getToken: () => string | null
@@ -128,14 +136,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  // 이메일 회원가입
-  const signup = async (email: string, password: string, displayName?: string) => {
+  // 이메일 회원가입 (전화번호 OTP 인증 필수)
+  const signup = async (email: string, password: string, displayName?: string, phoneNumber?: string, phoneVerified?: boolean) => {
     const response = await fetch(`${API_URL}/api/v1/auth/signup`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ email, password, display_name: displayName }),
+      body: JSON.stringify({ 
+        email, 
+        password, 
+        display_name: displayName,
+        phone_number: phoneNumber,
+        phone_verified: phoneVerified,
+      }),
     })
 
     if (!response.ok) {
@@ -270,14 +284,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return await response.json()
   }
 
-  // OTP 인증 후 로그인
-  const verifyOtpAndLogin = async (phoneNumber: string, code: string) => {
+  // OTP 인증 (인증 전용 - 로그인 없음)
+  const verifyOtp = async (phoneNumber: string, code: string, purpose: 'signup' | 'verify_identity' | 'find_id' | 'reset_password'): Promise<OtpVerifyResult> => {
     const response = await fetch(`${API_URL}/api/v1/auth/verify-otp`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ phone_number: phoneNumber, code, purpose: 'login' }),
+      body: JSON.stringify({ phone_number: phoneNumber, code, purpose }),
     })
 
     if (!response.ok) {
@@ -285,16 +299,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw new Error(error.detail || '인증에 실패했습니다')
     }
 
-    const data = await response.json()
-    setToken(data.access_token)
-    setUser(data.user)
-
-    // 온보딩 필요 시 온보딩 페이지로 이동
-    if (data.onboarding_required) {
-      router.push('/onboarding')
-    } else {
-      router.push('/dashboard')
-    }
+    return await response.json()
   }
 
   // 로그아웃
@@ -315,7 +320,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         loginWithKakao,
         loginWithNaver,
         sendOtp,
-        verifyOtpAndLogin,
+        verifyOtp,
         logout,
         refreshUser,
         getToken,
