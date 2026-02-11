@@ -94,13 +94,18 @@ export default function SettingsPage() {
   const [isSavingProfile, setIsSavingProfile] = useState(false)
   
   // 비밀번호 변경
+  const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false)
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isChangingPassword, setIsChangingPassword] = useState(false)
   
-  // OTP 본인인증 (비밀번호 변경용 - 필수)
+  // 전화번호 등록 여부 (기존 유저 폴백용)
+  const hasPhone = Boolean(phone)
+  
+  // OTP 본인인증 (비밀번호 변경용 - 전화번호 등록 유저만)
   const [otpPhone, setOtpPhone] = useState('')
   const [otpCode, setOtpCode] = useState('')
   const [otpSent, setOtpSent] = useState(false)
@@ -424,19 +429,32 @@ export default function SettingsPage() {
     }
   }
 
-  // 비밀번호 변경 (OTP 본인인증 필수)
+  // 비밀번호 변경 (전화번호 있으면 OTP, 없으면 현재 비밀번호)
   const handleChangePassword = async () => {
-    // OTP 본인인증 확인
-    if (!otpVerified) {
-      toast({
-        variant: "destructive",
-        title: "❌ 본인인증 필요",
-        description: "먼저 전화번호 OTP 인증을 완료해주세요.",
-      })
-      return
+    // 인증 방식별 유효성 검사
+    if (hasPhone) {
+      // 전화번호 등록 유저: OTP 필수
+      if (!otpVerified) {
+        toast({
+          variant: "destructive",
+          title: "❌ 본인인증 필요",
+          description: "먼저 전화번호 OTP 인증을 완료해주세요.",
+        })
+        return
+      }
+    } else {
+      // 전화번호 미등록 기존 유저: 현재 비밀번호 필수
+      if (!currentPassword) {
+        toast({
+          variant: "destructive",
+          title: "❌ 입력 오류",
+          description: "현재 비밀번호를 입력해주세요.",
+        })
+        return
+      }
     }
 
-    // 유효성 검사
+    // 공통 유효성 검사
     if (!newPassword || !confirmPassword) {
       toast({
         variant: "destructive",
@@ -468,16 +486,18 @@ export default function SettingsPage() {
     
     try {
       const token = getToken()
+      // 전화번호 유무에 따라 요청 본문 분기
+      const body = hasPhone
+        ? { new_password: newPassword, otp_verified: true }
+        : { current_password: currentPassword, new_password: newPassword, otp_verified: false }
+
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/change-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({
-          new_password: newPassword,
-          otp_verified: true,
-        })
+        body: JSON.stringify(body)
       })
       
       if (response.ok) {
@@ -487,6 +507,7 @@ export default function SettingsPage() {
         })
         
         // 입력 필드 초기화
+        setCurrentPassword('')
         setNewPassword('')
         setConfirmPassword('')
         setOtpVerified(false)
@@ -684,12 +705,15 @@ export default function SettingsPage() {
                     </Label>
                     <Input
                       id="phone"
-                      value={phone ? formatPhoneNumber(phone) : '등록된 전화번호 없음'}
+                      value={phone ? formatPhoneNumber(phone) : ''}
+                      placeholder={phone ? '' : '등록된 전화번호가 없습니다'}
                       disabled
                       className="h-12 text-base bg-gray-50"
                     />
                     <p className="text-xs text-neutral-500">
-                      전화번호는 회원가입 시 인증된 번호로 변경이 불가합니다.
+                      {phone
+                        ? '전화번호는 회원가입 시 인증된 번호로 변경이 불가합니다.'
+                        : '신규 가입 시 전화번호 인증이 필요합니다. 기존 회원은 별도 등록 없이 이용 가능합니다.'}
                     </p>
                   </div>
 
@@ -856,108 +880,147 @@ export default function SettingsPage() {
               <div>
                 <h3 className="text-lg font-bold text-neutral-900 mb-2">비밀번호 변경</h3>
                 <p className="text-sm text-neutral-500 mb-4">
-                  비밀번호 변경을 위해 가입 시 등록한 전화번호로 본인인증이 필요합니다.
+                  {hasPhone
+                    ? '비밀번호 변경을 위해 가입 시 등록한 전화번호로 본인인증이 필요합니다.'
+                    : '현재 비밀번호를 확인한 후 새 비밀번호를 설정합니다.'}
                 </p>
 
+                {/* 전화번호 미등록 유저 안내 배너 */}
+                {!hasPhone && (
+                  <div className="flex items-start gap-3 p-4 bg-amber-50 border-2 border-amber-300 rounded-xl mb-4">
+                    <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-bold text-amber-800">전화번호를 등록해주세요</p>
+                      <p className="text-xs text-amber-700 mt-1">
+                        계정 보안 강화를 위해 전화번호 등록을 권장합니다.<br />
+                        전화번호 등록 후에는 더 안전한 OTP 인증으로 비밀번호를 변경할 수 있습니다.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 <div className="space-y-4">
-                  {/* OTP 본인인증 (필수) */}
-                  <div className="space-y-3">
-                    {otpVerified ? (
-                      /* 인증 완료 상태 */
-                      <div className="flex items-center gap-3 p-4 bg-green-50 border-2 border-green-300 rounded-xl">
-                        <CheckCircle2 className="w-6 h-6 text-green-600 flex-shrink-0" />
-                        <div>
-                          <p className="text-sm font-bold text-green-800">본인인증 완료</p>
-                          <p className="text-xs text-green-600 mt-0.5">아래에 새 비밀번호를 입력해주세요</p>
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        {/* 전화번호 입력 + 발송 */}
-                        <div className="space-y-2">
-                          <Label className="text-sm font-semibold text-neutral-700 flex items-center gap-1.5">
-                            <Phone className="w-4 h-4 text-purple-500" />
-                            가입 시 등록된 전화번호
-                          </Label>
-                          <div className="flex gap-2">
-                            <Input
-                              type="tel"
-                              placeholder="010-1234-5678"
-                              value={otpPhone}
-                              onChange={(e) => setOtpPhone(formatPhoneNumber(e.target.value))}
-                              maxLength={13}
-                              disabled={isSendingOtp || isVerifyingOtp}
-                              className="flex-1 h-12 text-base"
-                            />
-                            <Button
-                              type="button"
-                              onClick={handleSendPasswordOtp}
-                              disabled={isSendingOtp || otpCooldown > 0 || otpPhone.replace(/[^\d]/g, '').length !== 11}
-                              className="h-12 px-4 font-bold whitespace-nowrap"
-                            >
-                              {isSendingOtp ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : otpCooldown > 0 ? (
-                                `${otpCooldown}초`
-                              ) : otpSent ? (
-                                '재발송'
-                              ) : (
-                                '인증요청'
-                              )}
-                            </Button>
+                  {hasPhone ? (
+                    /* ══════ 전화번호 등록 유저: OTP 인증 ══════ */
+                    <div className="space-y-3">
+                      {otpVerified ? (
+                        <div className="flex items-center gap-3 p-4 bg-green-50 border-2 border-green-300 rounded-xl">
+                          <CheckCircle2 className="w-6 h-6 text-green-600 flex-shrink-0" />
+                          <div>
+                            <p className="text-sm font-bold text-green-800">본인인증 완료</p>
+                            <p className="text-xs text-green-600 mt-0.5">아래에 새 비밀번호를 입력해주세요</p>
                           </div>
                         </div>
-
-                        {/* OTP 입력 (발송 후) */}
-                        {otpSent && (
+                      ) : (
+                        <>
                           <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                              <Label className="text-sm font-semibold text-neutral-700 flex items-center gap-1.5">
-                                <ShieldCheck className="w-4 h-4 text-purple-500" />
-                                인증코드
-                              </Label>
-                              {otpExpiry > 0 && (
-                                <span className={`text-xs font-bold ${otpExpiry <= 30 ? 'text-red-500' : 'text-purple-600'}`}>
-                                  {Math.floor(otpExpiry / 60)}:{(otpExpiry % 60).toString().padStart(2, '0')}
-                                </span>
-                              )}
-                            </div>
+                            <Label className="text-sm font-semibold text-neutral-700 flex items-center gap-1.5">
+                              <Phone className="w-4 h-4 text-purple-500" />
+                              가입 시 등록된 전화번호
+                            </Label>
                             <div className="flex gap-2">
                               <Input
-                                type="text"
-                                inputMode="numeric"
-                                placeholder="6자리 인증코드"
-                                value={otpCode}
-                                onChange={(e) => setOtpCode(e.target.value.replace(/[^\d]/g, '').slice(0, 6))}
-                                maxLength={6}
-                                disabled={isVerifyingOtp}
-                                className="flex-1 h-12 text-base text-center tracking-[0.3em] font-bold"
+                                type="tel"
+                                placeholder="010-1234-5678"
+                                value={otpPhone}
+                                onChange={(e) => setOtpPhone(formatPhoneNumber(e.target.value))}
+                                maxLength={13}
+                                disabled={isSendingOtp || isVerifyingOtp}
+                                className="flex-1 h-12 text-base"
                               />
                               <Button
                                 type="button"
-                                onClick={handleVerifyPasswordOtp}
-                                disabled={otpCode.length !== 6 || isVerifyingOtp}
+                                onClick={handleSendPasswordOtp}
+                                disabled={isSendingOtp || otpCooldown > 0 || otpPhone.replace(/[^\d]/g, '').length !== 11}
                                 className="h-12 px-4 font-bold whitespace-nowrap"
                               >
-                                {isVerifyingOtp ? (
+                                {isSendingOtp ? (
                                   <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : otpCooldown > 0 ? (
+                                  `${otpCooldown}초`
+                                ) : otpSent ? (
+                                  '재발송'
                                 ) : (
-                                  '인증확인'
+                                  '인증요청'
                                 )}
                               </Button>
                             </div>
-                            <p className="text-xs text-gray-500 flex items-center gap-1.5">
-                              <MessageSquare className="w-3.5 h-3.5 text-yellow-500" />
-                              카카오톡으로 발송된 인증코드를 입력해주세요
-                            </p>
                           </div>
-                        )}
-                      </>
-                    )}
-                  </div>
 
-                  {/* 새 비밀번호 (OTP 인증 완료 후에만 표시) */}
-                  {otpVerified && (
+                          {otpSent && (
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between">
+                                <Label className="text-sm font-semibold text-neutral-700 flex items-center gap-1.5">
+                                  <ShieldCheck className="w-4 h-4 text-purple-500" />
+                                  인증코드
+                                </Label>
+                                {otpExpiry > 0 && (
+                                  <span className={`text-xs font-bold ${otpExpiry <= 30 ? 'text-red-500' : 'text-purple-600'}`}>
+                                    {Math.floor(otpExpiry / 60)}:{(otpExpiry % 60).toString().padStart(2, '0')}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex gap-2">
+                                <Input
+                                  type="text"
+                                  inputMode="numeric"
+                                  placeholder="6자리 인증코드"
+                                  value={otpCode}
+                                  onChange={(e) => setOtpCode(e.target.value.replace(/[^\d]/g, '').slice(0, 6))}
+                                  maxLength={6}
+                                  disabled={isVerifyingOtp}
+                                  className="flex-1 h-12 text-base text-center tracking-[0.3em] font-bold"
+                                />
+                                <Button
+                                  type="button"
+                                  onClick={handleVerifyPasswordOtp}
+                                  disabled={otpCode.length !== 6 || isVerifyingOtp}
+                                  className="h-12 px-4 font-bold whitespace-nowrap"
+                                >
+                                  {isVerifyingOtp ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    '인증확인'
+                                  )}
+                                </Button>
+                              </div>
+                              <p className="text-xs text-gray-500 flex items-center gap-1.5">
+                                <MessageSquare className="w-3.5 h-3.5 text-yellow-500" />
+                                카카오톡으로 발송된 인증코드를 입력해주세요
+                              </p>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  ) : (
+                    /* ══════ 전화번호 미등록 기존 유저: 현재 비밀번호 ══════ */
+                    <div className="space-y-2">
+                      <Label htmlFor="currentPassword" className="text-sm font-semibold text-neutral-700">
+                        현재 비밀번호
+                      </Label>
+                      <div className="relative">
+                        <Input
+                          id="currentPassword"
+                          type={showCurrentPassword ? "text" : "password"}
+                          value={currentPassword}
+                          onChange={(e) => setCurrentPassword(e.target.value)}
+                          placeholder="현재 비밀번호를 입력하세요"
+                          className="h-12 text-base pr-12"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 min-w-[44px] min-h-[44px] flex items-center justify-center"
+                        >
+                          {showCurrentPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 새 비밀번호 (OTP 인증 완료 후 또는 현재 비밀번호 입력 시 표시) */}
+                  {(hasPhone ? otpVerified : true) && (
                     <>
                       <div className="space-y-2">
                         <Label htmlFor="newPassword" className="text-sm font-semibold text-neutral-700">
