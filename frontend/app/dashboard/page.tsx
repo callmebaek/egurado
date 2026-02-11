@@ -37,7 +37,7 @@ import {
   Users
 } from "lucide-react"
 import Link from "next/link"
-import OnboardingSection from "@/components/onboarding/OnboardingSection"
+// OnboardingSection moved to /dashboard/getting-started page
 import {
   Dialog,
   DialogContent,
@@ -1324,8 +1324,24 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-3 md:space-y-4 lg:space-y-5 pb-6 md:pb-8 overflow-x-hidden">
-      {/* 온보딩 섹션 - 맨 위로 이동 */}
-      <OnboardingSection onStoreRegistered={reloadStores} />
+      {/* 시작하기 바로가기 버튼 */}
+      <Link
+        href="/dashboard/getting-started"
+        className="flex items-center gap-3 bg-gradient-to-r from-emerald-50 to-teal-50 border-2 border-emerald-200 rounded-xl px-4 py-3 md:px-5 md:py-3.5 hover:from-emerald-100 hover:to-teal-100 hover:border-emerald-300 hover:shadow-md active:scale-[0.99] transition-all duration-200 group min-h-[52px]"
+      >
+        <div className="w-9 h-9 md:w-10 md:h-10 bg-emerald-600 rounded-lg flex items-center justify-center shadow-md flex-shrink-0">
+          <Sparkles className="w-4 h-4 md:w-5 md:h-5 text-white" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm md:text-base font-bold text-emerald-800 leading-tight">
+            쉽고 빠르게 시작하기
+          </p>
+          <p className="text-[10px] md:text-xs text-emerald-600">
+            단계별 가이드를 따라 서비스를 시작해보세요
+          </p>
+        </div>
+        <ArrowUpRight className="w-4 h-4 md:w-5 md:h-5 text-emerald-500 group-hover:text-emerald-700 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all flex-shrink-0" />
+      </Link>
 
       {/* 계정 정보, 플레이스 활성화, 플레이스 진단 카드 - 한 줄 배치 */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5 md:gap-3 lg:gap-4 w-full overflow-x-hidden">

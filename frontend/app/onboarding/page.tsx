@@ -103,7 +103,7 @@ export default function OnboardingPage() {
         description: "WhiPlace에 오신 것을 환영합니다!",
       })
 
-      router.push("/dashboard")
+      router.push("/dashboard/getting-started")
     } catch (error: any) {
       console.error("온보딩 오류:", error)
       toast({

@@ -25,6 +25,7 @@ import {
   X,
   Target,
   Key,
+  Rocket,
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 
@@ -41,6 +42,12 @@ const navigation: NavItem[] = [
     title: '대시보드',
     href: '/dashboard',
     icon: <LayoutDashboard className="w-5 h-5" />,
+  },
+  {
+    title: '시작하기',
+    href: '/dashboard/getting-started',
+    icon: <Rocket className="w-5 h-5" />,
+    badge: '가이드',
   },
   {
     title: '내 매장 등록',
@@ -264,9 +271,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             {item.badge && (
               <span className={cn(
                 "text-[10px] font-semibold transition-colors ml-2",
-                isVoting 
-                  ? "text-emerald-600" 
-                  : "text-gray-500"
+                item.badge === '가이드'
+                  ? "text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full"
+                  : isVoting 
+                    ? "text-emerald-600" 
+                    : "text-gray-500"
               )}>
                 {item.badge}
               </span>
