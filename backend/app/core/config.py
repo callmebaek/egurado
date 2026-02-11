@@ -72,6 +72,36 @@ class Settings:
     
     # 결제 연동 활성화 여부
     PAYMENT_ENABLED: bool = os.getenv("PAYMENT_ENABLED", "false").lower() == "true"
+    
+    # ============================================
+    # NHN Cloud Configuration
+    # ============================================
+    
+    # KakaoTalk Bizmessage (알림톡)
+    NHN_KAKAO_URL: str = os.getenv("NHN_KAKAO_URL", "https://api-alimtalk.cloud.toast.com")
+    NHN_KAKAO_APPKEY: str = os.getenv("NHN_KAKAO_APPKEY", "")
+    NHN_KAKAO_SECRET_KEY: str = os.getenv("NHN_KAKAO_SECRET_KEY", "")
+    NHN_KAKAO_SENDER_KEY: str = os.getenv("NHN_KAKAO_SENDER_KEY", "")
+    
+    # SMS 서비스
+    NHN_SMS_URL: str = os.getenv("NHN_SMS_URL", "https://api-sms.cloud.toast.com")
+    NHN_SMS_APPKEY: str = os.getenv("NHN_SMS_APPKEY", "")
+    NHN_SMS_SECRET_KEY: str = os.getenv("NHN_SMS_SECRET_KEY", "")
+    NHN_SMS_SENDER_NUMBER: str = os.getenv("NHN_SMS_SENDER_NUMBER", "")
+    
+    # Email 서비스
+    NHN_EMAIL_URL: str = os.getenv("NHN_EMAIL_URL", "https://email.api.nhncloudservice.com")
+    NHN_EMAIL_APPKEY: str = os.getenv("NHN_EMAIL_APPKEY", "")
+    NHN_EMAIL_SECRET_KEY: str = os.getenv("NHN_EMAIL_SECRET_KEY", "")
+    NHN_EMAIL_SENDER: str = os.getenv("NHN_EMAIL_SENDER", "support@whiplace.com")
+    
+    # 알림톡 템플릿 코드
+    KAKAO_TEMPLATE_AUTH_CODE: str = "auth_code"
+    KAKAO_TEMPLATE_RANK_ALERT: str = "rank_alert"
+    
+    # OTP 설정
+    OTP_EXPIRE_MINUTES: int = 3  # OTP 유효 시간 (분)
+    OTP_LENGTH: int = 6  # OTP 자릿수
 
 
 # 싱글톤 인스턴스

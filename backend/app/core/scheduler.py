@@ -181,6 +181,7 @@ async def collect_all_metrics():
     """
     주요지표 추적 - 스케줄된 시간에 자동 수집
     매 시간마다 실행하여 수집이 필요한 추적 설정들을 처리
+    수집 완료 후 알림 설정된 사용자에게 카카오 알림톡/SMS/이메일 발송
     """
     try:
         print(f"[{datetime.now()}] 📊 주요지표 자동 수집 시작")
@@ -199,6 +200,7 @@ async def collect_all_metrics():
         
         success_count = 0
         error_count = 0
+        collected_results = []  # 수집 결과 (알림 발송용)
         
         for tracker in trackers:
             try:
@@ -212,10 +214,25 @@ async def collect_all_metrics():
                 logger.info(f"📊 '{keyword_text}' (매장: {store_name}) 지표 수집 중...")
                 
                 # 지표 수집
-                await metric_tracker_service.collect_metrics(tracker_id)
+                metric_result = await metric_tracker_service.collect_metrics(tracker_id)
                 
                 logger.info(f"[OK] '{keyword_text}' (매장: {store_name}) 지표 수집 완료")
                 success_count += 1
+                
+                # 알림 발송을 위한 데이터 저장
+                if tracker.get("notification_enabled"):
+                    collected_results.append({
+                        "tracker_id": tracker_id,
+                        "user_id": tracker.get("user_id"),
+                        "store_id": tracker.get("store_id"),
+                        "keyword": keyword_text,
+                        "rank": metric_result.get("rank") if metric_result else None,
+                        "rank_change": metric_result.get("rank_change") if metric_result else None,
+                        "notification_enabled": tracker.get("notification_enabled", False),
+                        "notification_type": tracker.get("notification_type", "kakao"),
+                        "notification_phone": tracker.get("notification_phone"),
+                        "notification_email": tracker.get("notification_email"),
+                    })
                     
             except Exception as e:
                 error_count += 1
@@ -233,6 +250,25 @@ async def collect_all_metrics():
             f"[{datetime.now()}] [COLLECT] 주요지표 수집 완료 - "
             f"성공: {success_count}, 실패: {error_count}"
         )
+        
+        # 📢 수집 완료 후 알림 발송
+        if collected_results:
+            try:
+                from app.services.notification_service import notification_service
+                notification_stats = await notification_service.send_rank_notifications_after_collection(
+                    collected_trackers=collected_results
+                )
+                logger.info(
+                    f"[{datetime.now()}] 📢 알림 발송 완료: "
+                    f"성공={notification_stats['sent']}, "
+                    f"실패={notification_stats['failed']}, "
+                    f"건너뜀={notification_stats['skipped']}"
+                )
+            except Exception as notif_error:
+                logger.error(
+                    f"[ERROR] 알림 발송 중 오류 (수집은 정상 완료됨): {str(notif_error)}",
+                    exc_info=True
+                )
         
     except Exception as e:
         print(f"[ERROR] Metric collection scheduler error: {str(e)}")

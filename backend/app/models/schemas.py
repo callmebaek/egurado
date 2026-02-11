@@ -19,7 +19,7 @@ class ProfileBase(BaseModel):
 
 class ProfileCreate(ProfileBase):
     id: UUID
-    auth_provider: Literal['email', 'kakao', 'naver'] = 'email'
+    auth_provider: Literal['email', 'kakao', 'naver', 'phone'] = 'email'
 
 
 class ProfileUpdate(BaseModel):
@@ -121,6 +121,38 @@ class DeleteAccountRequest(BaseModel):
     """Delete account request"""
     password: str
     confirmation: str = Field(min_length=1)
+
+
+# ============================================
+# OTP (Phone Auth) Schemas
+# ============================================
+
+class OTPSendRequest(BaseModel):
+    """OTP 인증코드 발송 요청"""
+    phone_number: str = Field(..., description="전화번호 (010-1234-5678 또는 01012345678)")
+
+
+class OTPVerifyRequest(BaseModel):
+    """OTP 인증코드 검증 요청"""
+    phone_number: str = Field(..., description="전화번호")
+    code: str = Field(..., min_length=6, max_length=6, description="6자리 인증코드")
+
+
+class OTPSendResponse(BaseModel):
+    """OTP 발송 응답"""
+    success: bool
+    message: str
+    expires_in: Optional[int] = None  # 초 단위 만료 시간
+
+
+class OTPVerifyResponse(BaseModel):
+    """OTP 검증 응답"""
+    success: bool
+    message: str
+    access_token: Optional[str] = None
+    user: Optional[Profile] = None
+    is_new_user: Optional[bool] = None
+    onboarding_required: Optional[bool] = None
 
 
 # ============================================

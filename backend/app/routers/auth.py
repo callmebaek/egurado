@@ -21,6 +21,10 @@ from ..models.schemas import (
     ResetPasswordRequest,
     ChangePasswordRequest,
     DeleteAccountRequest,
+    OTPSendRequest,
+    OTPVerifyRequest,
+    OTPSendResponse,
+    OTPVerifyResponse,
 )
 from ..services.auth_service import (
     hash_password,
@@ -829,3 +833,132 @@ async def logout():
     로그아웃 (클라이언트에서 토큰 삭제 처리)
     """
     return {"message": "로그아웃되었습니다"}
+
+
+# ============================================
+# OTP (카카오 알림톡) 로그인
+# ============================================
+
+@router.post("/send-otp", response_model=None)
+async def send_otp(request: OTPSendRequest):
+    """
+    카카오 알림톡으로 OTP 인증코드 발송
+    - 전화번호 입력 → 6자리 인증코드를 카카오톡 알림톡으로 발송
+    - 3분간 유효
+    - 1분 내 재발송 불가
+    """
+    from ..services.otp_service import otp_service
+    
+    result = await otp_service.send_otp(request.phone_number)
+    
+    if not result["success"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=result["message"],
+        )
+    
+    return OTPSendResponse(
+        success=True,
+        message=result["message"],
+        expires_in=result.get("expires_in"),
+    )
+
+
+@router.post("/verify-otp", response_model=None)
+async def verify_otp(request: OTPVerifyRequest):
+    """
+    OTP 인증코드 검증 및 로그인/회원가입
+    
+    1. 인증코드 검증
+    2. 기존 회원이면 → JWT 토큰 발급 (로그인)
+    3. 신규 회원이면 → 프로필 자동 생성 → JWT 토큰 발급
+    """
+    from ..services.otp_service import otp_service
+    
+    result = await otp_service.verify_otp(request.phone_number, request.code)
+    
+    if not result["success"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=result["message"],
+        )
+    
+    supabase = get_supabase_client()
+    
+    if result.get("is_new_user"):
+        # 신규 사용자: 프로필 자동 생성
+        phone = request.phone_number.replace("-", "").replace(" ", "")
+        new_user_id = str(uuid.uuid4())
+        
+        profile_data = {
+            "id": new_user_id,
+            "email": f"phone_{phone}@whiplace.com",  # 임시 이메일 (나중에 변경 가능)
+            "display_name": f"사용자_{phone[-4:]}",
+            "auth_provider": "phone",
+            "phone_number": phone,
+            "subscription_tier": "free",
+            "onboarding_completed": False,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }
+        
+        try:
+            profile_result = supabase.table("profiles").insert(profile_data).execute()
+            
+            if not profile_result.data or len(profile_result.data) == 0:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="계정 생성에 실패했습니다",
+                )
+            
+            user_data = profile_result.data[0]
+            
+        except Exception as e:
+            print(f"[OTP] 프로필 생성 오류: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="계정 생성에 실패했습니다",
+            )
+        
+        # JWT 토큰 생성
+        access_token = create_access_token({
+            "user_id": new_user_id,
+            "email": user_data["email"],
+        })
+        
+        return OTPVerifyResponse(
+            success=True,
+            message="회원가입이 완료되었습니다",
+            access_token=access_token,
+            user=Profile(**user_data),
+            is_new_user=True,
+            onboarding_required=True,
+        )
+    
+    else:
+        # 기존 사용자: 로그인
+        user_data = result["user_data"]
+        user_id = result["user_id"]
+        
+        # 전체 프로필 조회 (모든 필드 포함)
+        full_profile = supabase.rpc('get_profile_by_id_bypass_rls', {'p_id': str(user_id)}).execute()
+        
+        if full_profile.data and len(full_profile.data) > 0:
+            user_data = full_profile.data[0]
+        
+        onboarding_required = not user_data.get("onboarding_completed", False)
+        
+        # JWT 토큰 생성
+        access_token = create_access_token({
+            "user_id": str(user_id),
+            "email": user_data.get("email", ""),
+        })
+        
+        return OTPVerifyResponse(
+            success=True,
+            message="로그인이 완료되었습니다",
+            access_token=access_token,
+            user=Profile(**user_data),
+            is_new_user=False,
+            onboarding_required=onboarding_required,
+        )

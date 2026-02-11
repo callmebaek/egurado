@@ -1,298 +1,210 @@
 """
-알림 서비스
-카카오톡, SMS, 이메일 알림 전송
+알림 서비스 (NHN Cloud 기반)
+카카오 알림톡, SMS, 이메일 알림 전송
+- 자동수집 후 키워드 순위 알림
 """
 import logging
-from typing import Dict, Optional
-import os
-import requests
+from typing import Dict, List, Optional
 from datetime import datetime
+from zoneinfo import ZoneInfo
+from collections import defaultdict
+
+from app.core.database import get_supabase_client
+from app.services.nhn_kakao_service import nhn_kakao_service, NHNKakaoService
 
 logger = logging.getLogger(__name__)
 
+KST = ZoneInfo("Asia/Seoul")
+
 
 class NotificationService:
-    """알림 서비스 (카카오톡, SMS, 이메일)"""
+    """알림 서비스 (카카오톡 알림톡 / SMS / 이메일)"""
     
     def __init__(self):
-        # 카카오톡 비즈메시지 API 설정
-        self.kakao_api_key = os.getenv("KAKAO_MESSAGE_API_KEY")
-        self.kakao_sender_key = os.getenv("KAKAO_SENDER_KEY")
-        
-        # SMS API 설정 (예: Twilio, NCP SENS 등)
-        self.sms_api_key = os.getenv("SMS_API_KEY")
-        self.sms_api_secret = os.getenv("SMS_API_SECRET")
-        self.sms_sender_number = os.getenv("SMS_SENDER_NUMBER")
-        
-        # 이메일 설정 (SMTP)
-        self.smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
-        self.smtp_port = int(os.getenv("SMTP_PORT", "587"))
-        self.smtp_username = os.getenv("SMTP_USERNAME")
-        self.smtp_password = os.getenv("SMTP_PASSWORD")
-        self.email_from = os.getenv("EMAIL_FROM", "noreply@whiplace.com")
+        self.supabase = get_supabase_client()
     
-    async def send_metric_notification(
+    async def send_rank_notifications_after_collection(
         self,
-        notification_type: str,
-        recipient: str,
-        data: Dict
-    ) -> bool:
+        collected_trackers: List[dict],
+    ) -> dict:
         """
-        주요지표 변동 알림 전송
+        자동수집 완료 후, 알림 설정된 tracker들에 대해 순위 알림 발송
+        
+        매장 단위로 합산하여 1건의 알림톡을 발송
         
         Args:
-            notification_type: 'kakao', 'sms', 'email'
-            recipient: 수신자 (전화번호 또는 이메일)
-            data: 알림 데이터
-                {
-                    'store_name': str,
-                    'keyword': str,
-                    'rank': int,
-                    'rank_change': int,
-                    'visitor_review_count': int,
-                    'blog_review_count': int,
-                    'collection_date': str
+            collected_trackers: 수집 완료된 tracker 목록
+                각 항목: {
+                    tracker_id, user_id, store_id, keyword,
+                    rank, rank_change, notification_enabled,
+                    notification_type, notification_phone, notification_email
                 }
         
         Returns:
-            전송 성공 여부
+            dict: {sent: int, failed: int, skipped: int}
         """
+        stats = {"sent": 0, "failed": 0, "skipped": 0}
+        
+        # 알림 설정된 tracker만 필터링
+        notifiable = [t for t in collected_trackers if t.get("notification_enabled")]
+        
+        if not notifiable:
+            logger.info("[Notification] 알림 설정된 tracker 없음")
+            return stats
+        
+        # 매장(store_id) + 사용자(user_id) 기준으로 그룹화
+        grouped = defaultdict(list)
+        for t in notifiable:
+            key = (t["user_id"], t["store_id"])
+            grouped[key].append(t)
+        
+        logger.info(
+            f"[Notification] 알림 발송 대상: "
+            f"{len(notifiable)}개 tracker → {len(grouped)}건 알림"
+        )
+        
+        for (user_id, store_id), trackers in grouped.items():
+            try:
+                # 첫 tracker에서 알림 타입 및 수신자 정보 가져오기
+                first_tracker = trackers[0]
+                notification_type = first_tracker.get("notification_type", "kakao")
+                
+                # 사용자 정보 조회
+                user_info = self._get_user_info(user_id)
+                if not user_info:
+                    logger.warning(f"[Notification] 사용자 정보 없음: {user_id}")
+                    stats["skipped"] += 1
+                    continue
+                
+                # 매장 정보 조회
+                store_info = self._get_store_info(store_id)
+                store_name = store_info.get("store_name", "매장") if store_info else "매장"
+                
+                # 순위 결과 텍스트 생성
+                metrics_list = []
+                for t in trackers:
+                    metrics_list.append({
+                        "keyword": t.get("keyword", ""),
+                        "rank": t.get("rank"),
+                        "rank_change": t.get("rank_change"),
+                    })
+                
+                rank_results_text = NHNKakaoService.format_rank_results(metrics_list)
+                collected_at = datetime.now(KST).strftime("%Y-%m-%d %H:%M")
+                user_name = user_info.get("display_name", "고객")
+                
+                # 알림 타입에 따라 발송
+                if notification_type == "kakao":
+                    phone = (
+                        first_tracker.get("notification_phone")
+                        or user_info.get("phone_number")
+                    )
+                    if not phone:
+                        logger.warning(
+                            f"[Notification] 전화번호 없음 (카카오): "
+                            f"user={user_id}, store={store_name}"
+                        )
+                        stats["skipped"] += 1
+                        continue
+                    
+                    result = await nhn_kakao_service.send_rank_alert(
+                        phone_number=phone,
+                        user_name=user_name,
+                        store_name=store_name,
+                        rank_results=rank_results_text,
+                        collected_at=collected_at,
+                    )
+                    
+                    if result["success"]:
+                        stats["sent"] += 1
+                        logger.info(
+                            f"[Notification] 카카오 알림 발송 성공: "
+                            f"{store_name} ({len(trackers)}개 키워드)"
+                        )
+                    else:
+                        stats["failed"] += 1
+                        logger.error(
+                            f"[Notification] 카카오 알림 발송 실패: "
+                            f"{store_name} - {result.get('message')}"
+                        )
+                
+                elif notification_type == "sms":
+                    # SMS 알림 (TODO: NHN Cloud SMS 서비스 연동 시 구현)
+                    phone = (
+                        first_tracker.get("notification_phone")
+                        or user_info.get("phone_number")
+                    )
+                    if not phone:
+                        stats["skipped"] += 1
+                        continue
+                    
+                    logger.info(
+                        f"[Notification] SMS 알림 발송 예정: "
+                        f"{store_name} → {phone[-4:].rjust(11, '*')}"
+                    )
+                    stats["skipped"] += 1  # SMS 미구현 시 skipped
+                
+                elif notification_type == "email":
+                    # 이메일 알림 (TODO: NHN Cloud Email 서비스 연동 시 구현)
+                    email = (
+                        first_tracker.get("notification_email")
+                        or user_info.get("email")
+                    )
+                    if not email:
+                        stats["skipped"] += 1
+                        continue
+                    
+                    logger.info(
+                        f"[Notification] 이메일 알림 발송 예정: "
+                        f"{store_name} → {email}"
+                    )
+                    stats["skipped"] += 1  # Email 미구현 시 skipped
+                
+                else:
+                    stats["skipped"] += 1
+                    
+            except Exception as e:
+                stats["failed"] += 1
+                logger.error(
+                    f"[Notification] 알림 발송 오류: user={user_id}, "
+                    f"store={store_id}, error={str(e)}"
+                )
+        
+        logger.info(
+            f"[Notification] 알림 발송 완료: "
+            f"성공={stats['sent']}, 실패={stats['failed']}, 건너뜀={stats['skipped']}"
+        )
+        return stats
+    
+    def _get_user_info(self, user_id: str) -> Optional[dict]:
+        """사용자 정보 조회"""
         try:
-            if notification_type == 'kakao':
-                return await self._send_kakao_message(recipient, data)
-            elif notification_type == 'sms':
-                return await self._send_sms(recipient, data)
-            elif notification_type == 'email':
-                return await self._send_email(recipient, data)
-            else:
-                logger.error(f"Unknown notification type: {notification_type}")
-                return False
+            result = self.supabase.table("profiles")\
+                .select("id, email, display_name, phone_number")\
+                .eq("id", str(user_id))\
+                .execute()
+            
+            if result.data and len(result.data) > 0:
+                return result.data[0]
+            return None
         except Exception as e:
-            logger.error(f"Error sending notification: {str(e)}")
-            return False
+            logger.error(f"[Notification] 사용자 조회 오류: {e}")
+            return None
     
-    async def _send_kakao_message(self, phone: str, data: Dict) -> bool:
-        """
-        카카오톡 비즈메시지 전송
-        
-        참고: 카카오톡 비즈메시지 API는 사전에 템플릿 승인이 필요합니다.
-        https://business.kakao.com/dashboard/
-        """
+    def _get_store_info(self, store_id: str) -> Optional[dict]:
+        """매장 정보 조회"""
         try:
-            if not self.kakao_api_key or not self.kakao_sender_key:
-                logger.warning("Kakao API credentials not configured")
-                return False
+            result = self.supabase.table("stores")\
+                .select("id, store_name, place_id")\
+                .eq("id", str(store_id))\
+                .execute()
             
-            # 메시지 내용 구성
-            message = self._format_message(data)
-            
-            # 카카오톡 비즈메시지 API 호출 (예시)
-            # 실제 구현 시 카카오톡 비즈메시지 API 문서 참고
-            url = "https://api.kakao.com/v2/api/talk/memo/default/send"  # 예시 URL
-            headers = {
-                "Authorization": f"Bearer {self.kakao_api_key}",
-                "Content-Type": "application/json"
-            }
-            payload = {
-                "receiver": phone,
-                "message": message,
-                "sender_key": self.kakao_sender_key
-            }
-            
-            # TODO: 실제 API 호출 구현
-            logger.info(f"[KAKAO] Would send message to {phone}: {message}")
-            
-            # 개발 중에는 로그만 출력
-            return True
-            
+            if result.data and len(result.data) > 0:
+                return result.data[0]
+            return None
         except Exception as e:
-            logger.error(f"Error sending Kakao message: {str(e)}")
-            return False
-    
-    async def _send_sms(self, phone: str, data: Dict) -> bool:
-        """
-        SMS 전송
-        
-        참고: 실제 구현 시 NCP SENS, Twilio 등의 SMS API 사용
-        https://docs.ncloud.com/ko/sens/sens-1-3.html (NCP SENS)
-        https://www.twilio.com/docs/sms (Twilio)
-        """
-        try:
-            if not self.sms_api_key or not self.sms_sender_number:
-                logger.warning("SMS API credentials not configured")
-                return False
-            
-            # 메시지 내용 구성 (SMS는 90바이트 제한)
-            message = self._format_sms_message(data)
-            
-            # SMS API 호출 (예시)
-            # TODO: 실제 API 호출 구현
-            logger.info(f"[SMS] Would send message to {phone}: {message}")
-            
-            # 개발 중에는 로그만 출력
-            return True
-            
-        except Exception as e:
-            logger.error(f"Error sending SMS: {str(e)}")
-            return False
-    
-    async def _send_email(self, email: str, data: Dict) -> bool:
-        """
-        이메일 전송
-        """
-        try:
-            if not self.smtp_username or not self.smtp_password:
-                logger.warning("SMTP credentials not configured")
-                return False
-            
-            import smtplib
-            from email.mime.text import MIMEText
-            from email.mime.multipart import MIMEMultipart
-            
-            # 이메일 내용 구성
-            subject = f"[위플레이스] {data['store_name']} - {data['keyword']} 순위 업데이트"
-            html_body = self._format_email_html(data)
-            
-            # 이메일 메시지 생성
-            msg = MIMEMultipart('alternative')
-            msg['Subject'] = subject
-            msg['From'] = self.email_from
-            msg['To'] = email
-            
-            # HTML 본문 추가
-            html_part = MIMEText(html_body, 'html', 'utf-8')
-            msg.attach(html_part)
-            
-            # SMTP 서버 연결 및 전송
-            with smtplib.SMTP(self.smtp_host, self.smtp_port) as server:
-                server.starttls()
-                server.login(self.smtp_username, self.smtp_password)
-                server.send_message(msg)
-            
-            logger.info(f"[EMAIL] Message sent to {email}")
-            return True
-            
-        except Exception as e:
-            logger.error(f"Error sending email: {str(e)}")
-            return False
-    
-    def _format_message(self, data: Dict) -> str:
-        """알림 메시지 포맷팅 (카카오톡용)"""
-        rank_change_text = ""
-        if data.get('rank_change'):
-            change = data['rank_change']
-            if change > 0:
-                rank_change_text = f" (↑{change})"
-            elif change < 0:
-                rank_change_text = f" (↓{abs(change)})"
-        
-        message = f"""
-📊 주요지표 업데이트
-
-매장: {data['store_name']}
-키워드: {data['keyword']}
-
-📍 순위: {data['rank']}위{rank_change_text}
-👥 방문자리뷰: {data['visitor_review_count']:,}개
-📝 블로그리뷰: {data['blog_review_count']:,}개
-
-업데이트 시간: {data['collection_date']}
-
-위플레이스에서 자세히 보기 →
-        """.strip()
-        
-        return message
-    
-    def _format_sms_message(self, data: Dict) -> str:
-        """SMS 메시지 포맷팅 (90바이트 제한)"""
-        rank_change_text = ""
-        if data.get('rank_change'):
-            change = data['rank_change']
-            if change > 0:
-                rank_change_text = f"↑{change}"
-            elif change < 0:
-                rank_change_text = f"↓{abs(change)}"
-        
-        message = f"[위플레이스] {data['store_name']} - {data['keyword']}: {data['rank']}위{rank_change_text} / 방문자리뷰 {data['visitor_review_count']}개"
-        return message[:90]  # 90바이트 제한
-    
-    def _format_email_html(self, data: Dict) -> str:
-        """이메일 HTML 본문 포맷팅"""
-        rank_change_html = ""
-        if data.get('rank_change'):
-            change = data['rank_change']
-            if change > 0:
-                rank_change_html = f'<span style="color: #22c55e; font-weight: bold;">↑ {change}</span>'
-            elif change < 0:
-                rank_change_html = f'<span style="color: #ef4444; font-weight: bold;">↓ {abs(change)}</span>'
-        
-        html = f"""
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
-        <h1 style="margin: 0; font-size: 24px;">📊 주요지표 업데이트</h1>
-    </div>
-    
-    <div style="background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px;">
-        <div style="background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-            <h2 style="margin-top: 0; color: #667eea; font-size: 20px;">{data['store_name']}</h2>
-            <p style="color: #666; margin: 5px 0 20px 0;">키워드: <strong>{data['keyword']}</strong></p>
-            
-            <div style="border-top: 1px solid #e5e7eb; padding-top: 20px;">
-                <table style="width: 100%; border-collapse: collapse;">
-                    <tr>
-                        <td style="padding: 12px 0; border-bottom: 1px solid #f3f4f6;">
-                            <span style="color: #6b7280;">📍 순위</span>
-                        </td>
-                        <td style="padding: 12px 0; border-bottom: 1px solid #f3f4f6; text-align: right;">
-                            <strong style="font-size: 20px; color: #667eea;">{data['rank']}위</strong>
-                            {rank_change_html}
-                        </td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 12px 0; border-bottom: 1px solid #f3f4f6;">
-                            <span style="color: #6b7280;">👥 방문자리뷰</span>
-                        </td>
-                        <td style="padding: 12px 0; border-bottom: 1px solid #f3f4f6; text-align: right;">
-                            <strong>{data['visitor_review_count']:,}개</strong>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 12px 0;">
-                            <span style="color: #6b7280;">📝 블로그리뷰</span>
-                        </td>
-                        <td style="padding: 12px 0; text-align: right;">
-                            <strong>{data['blog_review_count']:,}개</strong>
-                        </td>
-                    </tr>
-                </table>
-            </div>
-            
-            <p style="color: #9ca3af; font-size: 14px; margin-top: 20px;">
-                업데이트 시간: {data['collection_date']}
-            </p>
-            
-            <div style="text-align: center; margin-top: 30px;">
-                <a href="https://whiplace.com/dashboard/metrics" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 500;">
-                    위플레이스에서 자세히 보기 →
-                </a>
-            </div>
-        </div>
-        
-        <p style="text-align: center; color: #9ca3af; font-size: 12px; margin-top: 20px;">
-            © 2026 Whiplace. All rights reserved.
-        </p>
-    </div>
-</body>
-</html>
-        """
-        
-        return html
+            logger.error(f"[Notification] 매장 조회 오류: {e}")
+            return None
 
 
 # 싱글톤 인스턴스
