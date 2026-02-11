@@ -9,6 +9,7 @@
 import { useEffect, useState } from "react"
 import { useAuth } from "@/lib/auth-context"
 import { api } from "@/lib/config"
+import { useCollectionQueue } from "@/lib/hooks/useCollectionQueue"
 import { 
   Loader2, 
   User, 
@@ -175,7 +176,8 @@ function SortableStoreTrackerCard({
   onRefreshAllTrackers,
   onViewMetrics,
   onViewCompetitors,
-  isRefreshing
+  isRefreshing,
+  getQueueStatus,
 }: { 
   storeGroup: StoreTrackerGroup
   storeColor: typeof STORE_COLORS[0]
@@ -185,6 +187,7 @@ function SortableStoreTrackerCard({
   onViewMetrics: (tracker: MetricTracker) => void
   onViewCompetitors: (tracker: MetricTracker) => void
   isRefreshing: Set<string>
+  getQueueStatus: (id: string) => 'collecting' | 'queued' | undefined
 }) {
   const {
     attributes,
@@ -253,19 +256,41 @@ function SortableStoreTrackerCard({
             </div>
             
             {/* 전체 새로고침 버튼 - 모바일 최적화 */}
-            <button
-              onClick={() => onRefreshAllTrackers(storeGroup.store_id)}
-              disabled={isRefreshing.has(`store_${storeGroup.store_id}`)}
-              className={`flex items-center justify-center gap-1 px-2 md:px-3 py-2 rounded-button font-bold text-xs transition-all duration-200 flex-shrink-0 min-w-[44px] min-h-[44px] ${
-                isRefreshing.has(`store_${storeGroup.store_id}`)
-                  ? 'bg-neutral-200 text-neutral-400 cursor-not-allowed'
-                  : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-button hover:shadow-button-hover active:scale-95'
-              }`}
-              title="이 매장의 모든 추적키워드 순위를 지금 수집합니다!"
-            >
-              <RefreshCw className={`w-4 h-4 ${isRefreshing.has(`store_${storeGroup.store_id}`) ? 'animate-spin' : ''}`} />
-              <span className="hidden md:inline">전체</span>
-            </button>
+            {(() => {
+              const storeQueueStatus = getQueueStatus(`store_${storeGroup.store_id}`)
+              const isBusy = !!storeQueueStatus
+              return (
+                <button
+                  onClick={() => onRefreshAllTrackers(storeGroup.store_id)}
+                  disabled={isBusy}
+                  className={`flex items-center justify-center gap-1 px-2 md:px-3 py-2 rounded-button font-bold text-xs transition-all duration-200 flex-shrink-0 min-w-[44px] min-h-[44px] ${
+                    storeQueueStatus === 'queued'
+                      ? 'bg-amber-100 text-amber-600 cursor-wait'
+                      : isBusy
+                        ? 'bg-neutral-200 text-neutral-400 cursor-not-allowed'
+                        : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-button hover:shadow-button-hover active:scale-95'
+                  }`}
+                  title={storeQueueStatus === 'queued' ? '대기 중 - 이전 수집이 완료되면 자동으로 시작됩니다' : '이 매장의 모든 추적키워드 순위를 지금 수집합니다!'}
+                >
+                  {storeQueueStatus === 'queued' ? (
+                    <>
+                      <Clock className="w-4 h-4" />
+                      <span className="hidden md:inline">대기</span>
+                    </>
+                  ) : storeQueueStatus === 'collecting' ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span className="hidden md:inline">수집중</span>
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="w-4 h-4" />
+                      <span className="hidden md:inline">전체</span>
+                    </>
+                  )}
+                </button>
+              )
+            })()}
           </div>
 
           {/* 매장 리뷰 지표 - 컴팩트 */}
@@ -341,10 +366,15 @@ function SortableStoreTrackerCard({
                         {/* 수집 시간 */}
                         <div className="flex items-center gap-1 text-xs text-neutral-500">
                           <Clock className="w-3 h-3 flex-shrink-0" />
-                          {isRefreshing.has(tracker.id) ? (
+                          {getQueueStatus(tracker.id) === 'collecting' ? (
                             <span className="flex items-center gap-1 text-emerald-600 font-medium">
                               <Loader2 className="w-3 h-3 animate-spin" />
                               수집 중...
+                            </span>
+                          ) : getQueueStatus(tracker.id) === 'queued' ? (
+                            <span className="flex items-center gap-1 text-amber-600 font-medium">
+                              <Clock className="w-3 h-3" />
+                              대기 중...
                             </span>
                           ) : tracker.last_collected_at ? (
                             <div className="flex flex-col leading-tight md:flex-row md:gap-1">
@@ -369,9 +399,13 @@ function SortableStoreTrackerCard({
                       
                       {/* 순위 + 수집버튼 */}
                       <div className="flex items-center gap-1.5 md:gap-2 flex-shrink-0">
-                        {isRefreshing.has(tracker.id) ? (
+                        {getQueueStatus(tracker.id) === 'collecting' ? (
                           <div className="w-14 h-12 flex items-center justify-center">
                             <Loader2 className="w-5 h-5 animate-spin text-emerald-600" />
+                          </div>
+                        ) : getQueueStatus(tracker.id) === 'queued' ? (
+                          <div className="w-14 h-12 flex items-center justify-center">
+                            <Clock className="w-5 h-5 text-amber-500" />
                           </div>
                         ) : tracker.latest_rank ? (
                           <div className="flex items-center gap-1">
@@ -402,22 +436,31 @@ function SortableStoreTrackerCard({
                         )}
 
                         {/* 수집 버튼 */}
-                        <button
-                          onClick={() => onRefreshTracker(tracker.id)}
-                          disabled={isRefreshing.has(tracker.id)}
-                          className={`p-2 rounded-button transition-all duration-200 flex-shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center ${
-                            isRefreshing.has(tracker.id)
-                              ? 'bg-neutral-100 text-neutral-400 cursor-not-allowed'
-                              : 'bg-emerald-100 text-emerald-600 hover:bg-emerald-200 hover:shadow-sm active:scale-95'
-                          }`}
-                          title="이 키워드 순위를 지금 수집합니다"
-                        >
-                          {isRefreshing.has(tracker.id) ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <RefreshCw className="w-4 h-4" />
-                          )}
-                        </button>
+                        {(() => {
+                          const kwStatus = getQueueStatus(tracker.id)
+                          return (
+                            <button
+                              onClick={() => onRefreshTracker(tracker.id)}
+                              disabled={!!kwStatus}
+                              className={`p-2 rounded-button transition-all duration-200 flex-shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center ${
+                                kwStatus === 'queued'
+                                  ? 'bg-amber-50 text-amber-500 cursor-wait'
+                                  : kwStatus === 'collecting'
+                                    ? 'bg-neutral-100 text-neutral-400 cursor-not-allowed'
+                                    : 'bg-emerald-100 text-emerald-600 hover:bg-emerald-200 hover:shadow-sm active:scale-95'
+                              }`}
+                              title={kwStatus === 'queued' ? '대기 중 - 순서대로 자동 실행됩니다' : '이 키워드 순위를 지금 수집합니다'}
+                            >
+                              {kwStatus === 'collecting' ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : kwStatus === 'queued' ? (
+                                <Clock className="w-4 h-4" />
+                              ) : (
+                                <RefreshCw className="w-4 h-4" />
+                              )}
+                            </button>
+                          )
+                        })()}
                       </div>
                     </div>
 
@@ -542,6 +585,7 @@ export default function DashboardPage() {
   const [isLoadingData, setIsLoadingData] = useState(true)
   const [isReordering, setIsReordering] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState<Set<string>>(new Set())
+  const collectionQueue = useCollectionQueue()
   const [latestDiagnosis, setLatestDiagnosis] = useState<LatestDiagnosis | null>(null)
   const [latestActivation, setLatestActivation] = useState<LatestActivation | null>(null)
   
@@ -769,92 +813,60 @@ export default function DashboardPage() {
     await fetchCompetitorData(tracker.keyword, tracker.store_id)
   }
 
-  // 개별 키워드 새로고침
+  // 개별 키워드 새로고침 (큐 시스템 적용 - 동시 6개 제한)
   const handleRefreshTracker = async (trackerId: string) => {
     const token = getToken()
     if (!token) return
 
-    setIsRefreshing(prev => new Set(prev).add(trackerId))
+    collectionQueue.enqueueKeyword(trackerId, async () => {
+      try {
+        const response = await fetch(api.metrics.collectNow(trackerId), {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
 
-    try {
-      // 수집 요청 및 응답 대기
-      const response = await fetch(api.metrics.collectNow(trackerId), {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
+        if (response.ok) {
+          await response.json()
+          await new Promise(resolve => setTimeout(resolve, 500))
+          await reloadCredits()
         }
-      })
 
-      if (response.ok) {
-        await response.json()
-        
-        // 데이터베이스 반영 시간을 위해 잠시 대기
-        await new Promise(resolve => setTimeout(resolve, 500))
-        
-        // 🆕 크레딧 리로드 (순위조회 완료 후)
-        await reloadCredits()
+        await loadTrackers()
+      } catch (error) {
+        console.error('Failed to refresh tracker:', error)
       }
-
-      // 데이터 다시 로드
-      await loadTrackers()
-    } catch (error) {
-      console.error('Failed to refresh tracker:', error)
-    } finally {
-      setIsRefreshing(prev => {
-        const newSet = new Set(prev)
-        newSet.delete(trackerId)
-        return newSet
-      })
-    }
+    })
   }
 
-  // 매장 전체 키워드 새로고침
+  // 매장 전체 키워드 새로고침 (큐 시스템 적용 - 동시 2개 매장 제한)
   const handleRefreshAllTrackers = async (storeId: string) => {
     const token = getToken()
     if (!token) return
 
-    const storeTrackers = trackers.filter(t => t.store_id === storeId)
-    const refreshKey = `store_${storeId}`
-    
-    // 전체 키 + 개별 tracker ID 모두 로딩 상태 추가
-    setIsRefreshing(prev => {
-      const newSet = new Set(prev)
-      newSet.add(refreshKey)
-      storeTrackers.forEach(t => newSet.add(t.id))
-      return newSet
-    })
+    collectionQueue.enqueueStore(storeId, async () => {
+      const storeTrackers = trackers.filter(t => t.store_id === storeId)
 
-    try {
-      // 모든 수집 요청을 병렬로 실행하고 응답을 기다림
-      const responses = await Promise.all(
-        storeTrackers.map(tracker => 
-          fetch(api.metrics.collectNow(tracker.id), {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          }).then(res => res.ok ? res.json() : null)
+      try {
+        const responses = await Promise.all(
+          storeTrackers.map(tracker => 
+            fetch(api.metrics.collectNow(tracker.id), {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${token}`
+              }
+            }).then(res => res.ok ? res.json() : null)
+          )
         )
-      )
 
-      // 모든 수집이 완료된 후 잠시 대기 (데이터베이스 반영 시간)
-      await new Promise(resolve => setTimeout(resolve, 1000))
-
-      // 🆕 크레딧 리로드 (전체 순위조회 완료 후)
-      await reloadCredits()
-
-      // 데이터 다시 로드
-      await loadTrackers()
-    } catch (error) {
-      console.error('Failed to refresh all trackers:', error)
-    } finally {
-      setIsRefreshing(prev => {
-        const newSet = new Set(prev)
-        newSet.delete(refreshKey)
-        storeTrackers.forEach(t => newSet.delete(t.id))
-        return newSet
-      })
-    }
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        await reloadCredits()
+        await loadTrackers()
+      } catch (error) {
+        console.error('Failed to refresh all trackers:', error)
+      }
+    })
   }
 
   // 드래그 종료 핸들러
@@ -1784,6 +1796,7 @@ export default function DashboardPage() {
                       onViewMetrics={handleViewMetrics}
                       onViewCompetitors={handleViewCompetitors}
                       isRefreshing={isRefreshing}
+                      getQueueStatus={collectionQueue.getStatus}
                     />
                   ))}
                 </div>

@@ -53,6 +53,7 @@ import { useState, useEffect, useMemo } from "react"
 import { api } from "@/lib/config"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { notifyCreditUsed } from "@/lib/credit-utils"
+import { useCollectionQueue } from "@/lib/hooks/useCollectionQueue"
 
 // 대시보드와 동일한 매장별 색상 팔레트
 const STORE_COLORS = [
@@ -124,6 +125,7 @@ export default function MetricsTrackerPage() {
   const [trackers, setTrackers] = useState<MetricTracker[]>([])
   const [loading, setLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState<Set<string>>(new Set())
+  const collectionQueue = useCollectionQueue()
   
   // 추적 설정 추가 모달
   const [showAddDialog, setShowAddDialog] = useState(false)
@@ -401,152 +403,120 @@ export default function MetricsTrackerPage() {
     }
   }
 
-  // 지금 수집
+  // 지금 수집 (큐 시스템 적용 - 동시 6개 제한)
   const handleCollectNow = async (trackerId: string) => {
-    try {
-      setIsRefreshing(prev => new Set(prev).add(trackerId))
-      const token = getToken()
-      if (!token) return
+    const token = getToken()
+    if (!token) return
 
-      const response = await fetch(api.metrics.collectNow(trackerId), {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
-
-      if (response.ok) {
-        // API 응답으로 받은 최신 지표 사용
-        const collectedMetric = await response.json()
-        
-        toast({
-          title: "✅ 수집 완료",
-          description: "지표가 수집되었습니다"
+    collectionQueue.enqueueKeyword(trackerId, async () => {
+      try {
+        const response = await fetch(api.metrics.collectNow(trackerId), {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` }
         })
 
-        // ✨ 크레딧 실시간 차감 알림
-        notifyCreditUsed(2, token)
-        
-        // ✅ tracker의 last_collected_at 및 최신 지표 업데이트 (전체 새로고침 불필요)
-        setTrackers(prev => prev.map(t => 
-          t.id === trackerId 
-            ? { 
-                ...t, 
-                last_collected_at: new Date().toISOString(),
-                // 수집된 지표로 업데이트
-                latest_rank: collectedMetric.rank,
-                rank_change: collectedMetric.rank_change,
-                visitor_review_count: collectedMetric.visitor_review_count,
-                blog_review_count: collectedMetric.blog_review_count
-              }
-            : t
-        ))
-      } else {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.detail || "지표 수집 실패")
+        if (response.ok) {
+          const collectedMetric = await response.json()
+          
+          toast({
+            title: "✅ 수집 완료",
+            description: "지표가 수집되었습니다"
+          })
+
+          notifyCreditUsed(2, token)
+          
+          setTrackers(prev => prev.map(t => 
+            t.id === trackerId 
+              ? { 
+                  ...t, 
+                  last_collected_at: new Date().toISOString(),
+                  latest_rank: collectedMetric.rank,
+                  rank_change: collectedMetric.rank_change,
+                  visitor_review_count: collectedMetric.visitor_review_count,
+                  blog_review_count: collectedMetric.blog_review_count
+                }
+              : t
+          ))
+        } else {
+          const errorData = await response.json().catch(() => ({}))
+          throw new Error(errorData.detail || "지표 수집 실패")
+        }
+      } catch (error: any) {
+        console.error("수집 실패:", error)
+        toast({
+          title: "수집 실패",
+          description: error.message,
+          variant: "destructive"
+        })
       }
-    } catch (error: any) {
-      console.error("수집 실패:", error)
-      toast({
-        title: "수집 실패",
-        description: error.message,
-        variant: "destructive"
-      })
-    } finally {
-      setIsRefreshing(prev => {
-        const next = new Set(prev)
-        next.delete(trackerId)
-        return next
-      })
-    }
+    })
   }
 
-  // 매장 전체 수집 (🚀 병렬 처리로 최적화)
+  // 매장 전체 수집 (큐 시스템 적용 - 동시 2개 매장 제한, 병렬 처리)
   const handleCollectAllStore = async (storeId: string, trackerIds: string[]) => {
-    const storeKey = `store_${storeId}`
     const token = getToken()
     if (!token) return
     
-    try {
-      setIsRefreshing(prev => new Set(prev).add(storeKey))
-      
-      // 🚀 각 tracker에 개별 로딩 상태 표시
-      trackerIds.forEach(trackerId => {
-        setIsRefreshing(prev => new Set(prev).add(trackerId))
-      })
-      
-      // 🚀 모든 키워드 수집을 병렬로 처리 (순차 → 병렬)
-      const collectPromises = trackerIds.map(async (trackerId) => {
-        try {
-          const response = await fetch(api.metrics.collectNow(trackerId), {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${token}` }
-          })
+    collectionQueue.enqueueStore(storeId, async () => {
+      try {
+        const collectPromises = trackerIds.map(async (trackerId) => {
+          try {
+            const response = await fetch(api.metrics.collectNow(trackerId), {
+              method: 'POST',
+              headers: { 'Authorization': `Bearer ${token}` }
+            })
 
-          if (response.ok) {
-            const collectedMetric = await response.json()
+            if (response.ok) {
+              const collectedMetric = await response.json()
+              return {
+                trackerId,
+                success: true,
+                metric: collectedMetric
+              }
+            }
+            return { trackerId, success: false }
+          } catch (error) {
+            console.error(`Tracker ${trackerId} 수집 실패:`, error)
+            return { trackerId, success: false }
+          }
+        })
+        
+        const results = await Promise.all(collectPromises)
+        
+        setTrackers(prev => prev.map(t => {
+          const result = results.find(r => r.trackerId === t.id)
+          if (result && result.success && result.metric) {
             return {
-              trackerId,
-              success: true,
-              metric: collectedMetric
+              ...t,
+              last_collected_at: new Date().toISOString(),
+              latest_rank: result.metric.rank,
+              rank_change: result.metric.rank_change,
+              visitor_review_count: result.metric.visitor_review_count,
+              blog_review_count: result.metric.blog_review_count
             }
           }
-          return { trackerId, success: false }
-        } catch (error) {
-          console.error(`Tracker ${trackerId} 수집 실패:`, error)
-          return { trackerId, success: false }
+          return t
+        }))
+        
+        const successCount = results.filter(r => r.success).length
+        
+        if (successCount > 0) {
+          notifyCreditUsed(successCount * 2, token)
         }
-      })
-      
-      // 모든 수집 완료 대기
-      const results = await Promise.all(collectPromises)
-      
-      // ✅ 한 번에 모든 tracker 업데이트
-      setTrackers(prev => prev.map(t => {
-        const result = results.find(r => r.trackerId === t.id)
-        if (result && result.success && result.metric) {
-          return {
-            ...t,
-            last_collected_at: new Date().toISOString(),
-            latest_rank: result.metric.rank,
-            rank_change: result.metric.rank_change,
-            visitor_review_count: result.metric.visitor_review_count,
-            blog_review_count: result.metric.blog_review_count
-          }
-        }
-        return t
-      }))
-      
-      // 개별 tracker 로딩 상태 일괄 제거
-      setIsRefreshing(prev => {
-        const next = new Set(prev)
-        trackerIds.forEach(id => next.delete(id))
-        return next
-      })
-      
-      const successCount = results.filter(r => r.success).length
-      
-      // ✨ 크레딧 실시간 차감 알림 (성공한 수집 개수만큼)
-      if (successCount > 0) {
-        notifyCreditUsed(successCount * 2, token)
+        
+        toast({
+          title: "🎉 전체 수집 완료",
+          description: `${successCount}/${trackerIds.length}개 키워드의 지표가 수집되었습니다`
+        })
+      } catch (error) {
+        console.error("전체 수집 실패:", error)
+        toast({
+          title: "수집 실패",
+          description: "일부 키워드 수집에 실패했습니다",
+          variant: "destructive"
+        })
       }
-      
-      toast({
-        title: "🎉 전체 수집 완료",
-        description: `${successCount}/${trackerIds.length}개 키워드의 지표가 수집되었습니다`
-      })
-    } catch (error) {
-      console.error("전체 수집 실패:", error)
-      toast({
-        title: "수집 실패",
-        description: "일부 키워드 수집에 실패했습니다",
-        variant: "destructive"
-      })
-    } finally {
-      setIsRefreshing(prev => {
-        const next = new Set(prev)
-        next.delete(storeKey)
-        return next
-      })
-    }
+    })
   }
 
   // 지표 보기
@@ -902,19 +872,44 @@ export default function MetricsTrackerPage() {
                     <span className="hidden md:inline">자동수집설정</span>
                     <span className="md:hidden">설정</span>
                   </button>
-                  <button
-                    onClick={() => handleCollectAllStore(group.store.id, group.trackers.map(t => t.id))}
-                    disabled={isRefreshing.has(`store_${group.store.id}`)}
-                    className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-button font-bold text-xs transition-all duration-200 min-h-[44px] ${
-                      isRefreshing.has(`store_${group.store.id}`)
-                        ? 'bg-neutral-200 text-neutral-400 cursor-not-allowed'
-                        : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-button hover:shadow-button-hover active:scale-95'
-                    }`}
-                  >
-                    <RefreshCw className={`w-4 h-4 ${isRefreshing.has(`store_${group.store.id}`) ? 'animate-spin' : ''}`} />
-                    <span className="hidden sm:inline">전체 수집</span>
-                    <span className="sm:hidden">수집</span>
-                  </button>
+                  {(() => {
+                    const storeQueueStatus = collectionQueue.getStatus(`store_${group.store.id}`)
+                    const isBusy = !!storeQueueStatus
+                    return (
+                      <button
+                        onClick={() => handleCollectAllStore(group.store.id, group.trackers.map(t => t.id))}
+                        disabled={isBusy}
+                        className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-button font-bold text-xs transition-all duration-200 min-h-[44px] ${
+                          storeQueueStatus === 'queued'
+                            ? 'bg-amber-100 text-amber-600 cursor-wait'
+                            : isBusy
+                              ? 'bg-neutral-200 text-neutral-400 cursor-not-allowed'
+                              : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-button hover:shadow-button-hover active:scale-95'
+                        }`}
+                        title={storeQueueStatus === 'queued' ? '대기 중 - 이전 수집 완료 후 자동 시작' : '이 매장의 모든 키워드 수집'}
+                      >
+                        {storeQueueStatus === 'queued' ? (
+                          <>
+                            <Clock className="w-4 h-4" />
+                            <span className="hidden sm:inline">대기 중</span>
+                            <span className="sm:hidden">대기</span>
+                          </>
+                        ) : storeQueueStatus === 'collecting' ? (
+                          <>
+                            <RefreshCw className="w-4 h-4 animate-spin" />
+                            <span className="hidden sm:inline">수집 중</span>
+                            <span className="sm:hidden">수집중</span>
+                          </>
+                        ) : (
+                          <>
+                            <RefreshCw className="w-4 h-4" />
+                            <span className="hidden sm:inline">전체 수집</span>
+                            <span className="sm:hidden">수집</span>
+                          </>
+                        )}
+                      </button>
+                    )
+                  })()}
                 </div>
 
                 {/* 추적 키워드 목록 */}
@@ -949,10 +944,15 @@ export default function MetricsTrackerPage() {
                           {/* 수집 시간 */}
                           <div className="flex items-center gap-1 text-xs text-neutral-500">
                             <Clock className="w-3 h-3 flex-shrink-0" />
-                            {isRefreshing.has(tracker.id) ? (
+                            {collectionQueue.isCollecting(tracker.id) ? (
                               <span className="flex items-center gap-1 text-emerald-600">
                                 <Loader2 className="w-3 h-3 animate-spin" />
                                 수집 중...
+                              </span>
+                            ) : collectionQueue.isQueued(tracker.id) ? (
+                              <span className="flex items-center gap-1 text-amber-600 font-medium">
+                                <Clock className="w-3 h-3" />
+                                대기 중...
                               </span>
                             ) : tracker.last_collected_at ? (
                               <div className="flex flex-col leading-tight md:flex-row md:gap-1">
@@ -977,9 +977,13 @@ export default function MetricsTrackerPage() {
                         
                         {/* 순위 표시 - 대시보드 스타일 */}
                         <div className="flex items-center gap-1.5 md:gap-2 flex-shrink-0">
-                          {isRefreshing.has(tracker.id) ? (
+                          {collectionQueue.isCollecting(tracker.id) ? (
                             <div className="w-14 h-12 flex items-center justify-center">
                               <Loader2 className="w-5 h-5 animate-spin text-emerald-600" />
+                            </div>
+                          ) : collectionQueue.isQueued(tracker.id) ? (
+                            <div className="w-14 h-12 flex items-center justify-center">
+                              <Clock className="w-5 h-5 text-amber-500" />
                             </div>
                           ) : tracker.latest_rank ? (
                             <div className="flex items-center gap-1">
@@ -1010,18 +1014,31 @@ export default function MetricsTrackerPage() {
                           )}
 
                           {/* 개별 수집 버튼 */}
-                          <button
-                            onClick={() => handleCollectNow(tracker.id)}
-                            disabled={isRefreshing.has(tracker.id)}
-                            className={`p-2 rounded-button transition-all duration-200 flex-shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center ${
-                              isRefreshing.has(tracker.id)
-                                ? 'bg-neutral-100 text-neutral-400 cursor-not-allowed'
-                                : 'bg-emerald-100 text-emerald-600 hover:bg-emerald-200 hover:shadow-sm active:scale-95'
-                            }`}
-                            title="이 키워드 순위를 지금 수집합니다"
-                          >
-                            <RefreshCw className={`w-4 h-4 ${isRefreshing.has(tracker.id) ? 'animate-spin' : ''}`} />
-                          </button>
+                          {(() => {
+                            const kwStatus = collectionQueue.getStatus(tracker.id)
+                            return (
+                              <button
+                                onClick={() => handleCollectNow(tracker.id)}
+                                disabled={!!kwStatus}
+                                className={`p-2 rounded-button transition-all duration-200 flex-shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center ${
+                                  kwStatus === 'queued'
+                                    ? 'bg-amber-50 text-amber-500 cursor-wait'
+                                    : kwStatus === 'collecting'
+                                      ? 'bg-neutral-100 text-neutral-400 cursor-not-allowed'
+                                      : 'bg-emerald-100 text-emerald-600 hover:bg-emerald-200 hover:shadow-sm active:scale-95'
+                                }`}
+                                title={kwStatus === 'queued' ? '대기 중 - 순서대로 자동 실행됩니다' : '이 키워드 순위를 지금 수집합니다'}
+                              >
+                                {kwStatus === 'collecting' ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : kwStatus === 'queued' ? (
+                                  <Clock className="w-4 h-4" />
+                                ) : (
+                                  <RefreshCw className="w-4 h-4" />
+                                )}
+                              </button>
+                            )
+                          })()}
                         </div>
                       </div>
 
