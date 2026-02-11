@@ -147,12 +147,12 @@ class NHNEmailService:
             else:
                 rank_text = f'<span style="color: #0D9488; font-weight: 700; font-size: 22px;">{rank}</span><span style="color: #0D9488; font-weight: 500; font-size: 14px;">위</span>'
             
-            # 변동 배지
+            # 변동 배지 (한국 주식 컨벤션: 상승=빨강, 하락=파랑)
             if rank_change is not None and rank_change != 0:
                 if rank_change > 0:
-                    change_html = f'<span style="display: inline-block; background: #ECFDF5; color: #059669; font-weight: 600; font-size: 12px; padding: 2px 8px; border-radius: 12px;">▲ {rank_change}</span>'
+                    change_html = f'<span style="display: inline-block; background: #FEF2F2; color: #DC2626; font-weight: 600; font-size: 12px; padding: 2px 8px; border-radius: 12px;">▲ {rank_change}</span>'
                 else:
-                    change_html = f'<span style="display: inline-block; background: #FEF2F2; color: #DC2626; font-weight: 600; font-size: 12px; padding: 2px 8px; border-radius: 12px;">▼ {abs(rank_change)}</span>'
+                    change_html = f'<span style="display: inline-block; background: #EFF6FF; color: #2563EB; font-weight: 600; font-size: 12px; padding: 2px 8px; border-radius: 12px;">▼ {abs(rank_change)}</span>'
             else:
                 change_html = '<span style="display: inline-block; background: #F3F4F6; color: #9CA3AF; font-weight: 500; font-size: 12px; padding: 2px 8px; border-radius: 12px;">—</span>'
             
@@ -207,7 +207,7 @@ class NHNEmailService:
                     <tr>
                         <td style="padding: 28px 24px 0; text-align: center;">
                             <a href="https://www.whiplace.com" style="text-decoration: none;">
-                                <img src="https://www.whiplace.com/whiplace-logo.png" alt="윕플" width="120" height="auto" style="display: inline-block; max-width: 120px; height: auto; border: 0;" />
+                                <img src="https://www.whiplace.com/whiplace%20logo%20v10.png" alt="윕플" width="140" height="auto" style="display: inline-block; max-width: 140px; height: auto; border: 0;" />
                             </a>
                         </td>
                     </tr>
@@ -312,7 +312,7 @@ class NHNEmailService:
                     <tr>
                         <td style="padding: 16px 24px; background-color: #F9FAFB; border-top: 1px solid #F0F0F0; text-align: center;">
                             <a href="https://www.whiplace.com" style="text-decoration: none;">
-                                <img src="https://www.whiplace.com/whiplace-logo.png" alt="윕플" width="64" height="auto" style="display: inline-block; max-width: 64px; height: auto; border: 0; opacity: 0.4;" />
+                                <img src="https://www.whiplace.com/whiplace%20logo%20v10.png" alt="윕플" width="72" height="auto" style="display: inline-block; max-width: 72px; height: auto; border: 0; opacity: 0.4;" />
                             </a>
                             <p style="margin: 8px 0 0; font-size: 11px; color: #BDBDBD; line-height: 1.5;">
                                 &copy; 2026 윕플(Whiplace). All rights reserved.<br>
