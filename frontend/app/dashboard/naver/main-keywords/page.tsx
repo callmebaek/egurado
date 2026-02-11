@@ -14,6 +14,7 @@ import { useAuth } from '@/lib/auth-context'
 import { Search, TrendingUp, Star, ChevronRight } from 'lucide-react'
 import { api } from '@/lib/config'
 import { notifyCreditUsed } from '@/lib/credit-utils'
+import { useCreditConfirm } from '@/lib/hooks/useCreditConfirm'
 
 interface StoreKeywordInfo {
   rank: number
@@ -42,6 +43,9 @@ export default function MainKeywordsAnalysisPage() {
   const [searchQuery, setSearchQuery] = useState<string>("")
   const [loading, setLoading] = useState<boolean>(false)
   const [result, setResult] = useState<AnalysisResult | null>(null)
+  
+  // 크레딧 확인 모달
+  const { showCreditConfirm, CreditModal } = useCreditConfirm()
   
   // URL 파라미터에서 query가 있으면 자동으로 분석 시작
   useEffect(() => {
@@ -149,7 +153,7 @@ export default function MainKeywordsAnalysisPage() {
     }
   }, [searchParams, toast])
   
-  const handleAnalyzeWithQuery = async (query: string) => {
+  const handleAnalyzeWithQuery = (query: string) => {
     if (!query.trim()) {
       toast({
         title: "검색 키워드 입력",
@@ -158,7 +162,15 @@ export default function MainKeywordsAnalysisPage() {
       })
       return
     }
-    
+
+    showCreditConfirm({
+      featureName: "대표 키워드 분석",
+      creditAmount: 10,
+      onConfirm: () => executeAnalyzeWithQuery(query),
+    })
+  }
+
+  const executeAnalyzeWithQuery = async (query: string) => {
     setLoading(true)
     
     try {
@@ -564,6 +576,8 @@ export default function MainKeywordsAnalysisPage() {
           </Card>
         </section>
       )}
+      {/* 크레딧 차감 확인 모달 */}
+      {CreditModal}
       </div>
     </div>
   )

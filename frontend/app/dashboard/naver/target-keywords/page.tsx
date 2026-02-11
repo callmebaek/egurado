@@ -16,6 +16,7 @@ import { useToast } from "@/components/ui/use-toast"
 import { Loader2, Search, Target, TrendingUp, Plus, X, AlertCircle, CheckCircle2, Info, History, Calendar, Eye, ChevronDown, ChevronUp, Store as StoreIcon } from "lucide-react"
 import { api } from "@/lib/config"
 import { notifyCreditUsed } from "@/lib/credit-utils"
+import { useCreditConfirm } from "@/lib/hooks/useCreditConfirm"
 import {
   Select,
   SelectContent,
@@ -132,6 +133,9 @@ export default function TargetKeywordsPage() {
 
   // 확장된 키워드 카드 상태
   const [expandedKeywordIds, setExpandedKeywordIds] = useState<Set<string>>(new Set())
+  
+  // 크레딧 확인 모달
+  const { showCreditConfirm, CreditModal } = useCreditConfirm()
   
   const toggleKeywordExpansion = (keyword: string) => {
     const newExpanded = new Set(expandedKeywordIds)
@@ -325,7 +329,7 @@ export default function TargetKeywordsPage() {
   }
 
   // 분석 시작
-  const handleAnalyze = async () => {
+  const handleAnalyze = () => {
     if (!selectedStore) {
       toast({
         title: "매장을 선택해주세요",
@@ -344,6 +348,14 @@ export default function TargetKeywordsPage() {
       return
     }
 
+    showCreditConfirm({
+      featureName: "타겟 키워드 추출",
+      creditAmount: 20,
+      onConfirm: () => executeAnalyze(),
+    })
+  }
+
+  const executeAnalyze = async () => {
     setIsAnalyzing(true)
     try {
       const token = await getToken()
@@ -1587,6 +1599,8 @@ export default function TargetKeywordsPage() {
           </section>
         </div>
       )}
+      {/* 크레딧 차감 확인 모달 */}
+      {CreditModal}
       </div>
     </div>
   )

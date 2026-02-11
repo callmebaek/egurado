@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/components/ui/use-toast"
 import { api } from "@/lib/config"
 import { notifyCreditUsed } from "@/lib/credit-utils"
+import { useCreditConfirm } from "@/lib/hooks/useCreditConfirm"
 
 interface SearchVolumeData {
   id: string
@@ -34,6 +35,9 @@ export default function NaverKeywordsPage() {
   const { toast } = useToast()
   
   const [keywordInput, setKeywordInput] = useState("")
+  
+  // 크레딧 확인 모달
+  const { showCreditConfirm, CreditModal } = useCreditConfirm()
   const [isSearching, setIsSearching] = useState(false)
   const [isCombinatorOpen, setIsCombinatorOpen] = useState(false)
   const [searchHistory, setSearchHistory] = useState<SearchVolumeData[]>([])
@@ -69,7 +73,7 @@ export default function NaverKeywordsPage() {
   }, [hasStores, userId, loadSearchHistory])
 
   // 키워드 검색
-  const handleSearch = async (keywords?: string[]) => {
+  const handleSearch = (keywords?: string[]) => {
     if (!userId) {
       toast({
         title: "오류",
@@ -110,6 +114,16 @@ export default function NaverKeywordsPage() {
       return
     }
 
+    const estimatedCredits = keywordsToSearch.length * 2
+    showCreditConfirm({
+      featureName: "키워드 검색량 조회",
+      creditAmount: estimatedCredits,
+      creditDetail: `${keywordsToSearch.length}개 키워드 × 2 크레딧`,
+      onConfirm: () => executeSearch(keywordsToSearch),
+    })
+  }
+
+  const executeSearch = async (keywordsToSearch: string[]) => {
     setIsSearching(true)
     try {
       const token = await getToken()
@@ -123,8 +137,8 @@ export default function NaverKeywordsPage() {
         return
       }
       
-      // 🆕 크레딧 사전 체크 (검색 전)
-      const requiredCredits = keywordsToSearch.length * 10
+      // 🆕 크레딧 사전 체크 (검색 전) - 백엔드와 동일: 키워드 수 × 2
+      const requiredCredits = keywordsToSearch.length * 2
       try {
         const creditsResponse = await fetch(`${api.baseUrl}/api/v1/credits/me`, {
           headers: {
@@ -262,8 +276,8 @@ export default function NaverKeywordsPage() {
             : `${displayResults.length}개 키워드의 검색량을 조회했습니다.`,
         })
 
-        // ✨ 크레딧 실시간 차감 알림 (키워드 수에 따라 동적 차감, 최대 50 크레딧)
-        const creditsUsed = Math.min(displayResults.length * 10, 50)
+        // ✨ 크레딧 실시간 차감 알림 (키워드 수 × 2 크레딧 - 백엔드와 동일)
+        const creditsUsed = keywordsToSearch.length * 2
         notifyCreditUsed(creditsUsed, token)
       } else {
         throw new Error("모든 검색이 실패했습니다")
@@ -767,6 +781,8 @@ export default function NaverKeywordsPage() {
           onClose={() => setIsCombinatorOpen(false)}
           onApplyCombinations={handleApplyCombinations}
         />
+      {/* 크레딧 차감 확인 모달 */}
+      {CreditModal}
       </div>
     </div>
   )

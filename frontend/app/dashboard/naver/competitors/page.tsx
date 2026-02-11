@@ -22,6 +22,7 @@ import { useToast } from "@/components/ui/use-toast"
 import { useAuth } from "@/lib/auth-context"
 import { api } from "@/lib/config"
 import { notifyCreditUsed } from "@/lib/credit-utils"
+import { useCreditConfirm } from "@/lib/hooks/useCreditConfirm"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -153,6 +154,9 @@ export default function CompetitorsPage() {
 
   // 분석 결과 섹션 ref
   const summaryRef = useRef<HTMLDivElement>(null)
+  
+  // 크레딧 확인 모달
+  const { showCreditConfirm, CreditModal } = useCreditConfirm()
   
   // 초기 로드: 등록된 매장 가져오기
   useEffect(() => {
@@ -356,7 +360,7 @@ export default function CompetitorsPage() {
     }
   }
   
-  const handleStartAnalysis = async (storesToAnalyze?: CompetitorStore[]) => {
+  const handleStartAnalysis = (storesToAnalyze?: CompetitorStore[]) => {
     if (!selectedStore) return
     
     const stores = storesToAnalyze || topStores
@@ -370,6 +374,14 @@ export default function CompetitorsPage() {
       return
     }
     
+    showCreditConfirm({
+      featureName: "경쟁매장 분석",
+      creditAmount: 30,
+      onConfirm: () => executeStartAnalysis(stores),
+    })
+  }
+
+  const executeStartAnalysis = async (stores: CompetitorStore[]) => {
     setLoadingAnalysis(true)
     setAnalysisProgress({ current: 0, total: stores.length })
     
@@ -1219,6 +1231,8 @@ export default function CompetitorsPage() {
           </p>
         </CardContent>
       </Card>
+      {/* 크레딧 차감 확인 모달 */}
+      {CreditModal}
     </div>
   )
 }

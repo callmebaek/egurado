@@ -564,6 +564,37 @@ export default function CreditsPage() {
             </div>
           </Card>
         </section>
+        {/* 크레딧 알림 설정 */}
+        <section>
+          <Card className="rounded-xl border border-neutral-200 shadow-sm">
+            <div className="p-5 md:p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-semibold text-neutral-900">크레딧 차감 알림</h3>
+                  <p className="text-xs text-neutral-500 mt-1">
+                    기능 사용 시 크레딧 차감 확인 모달을 표시합니다.
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    try {
+                      localStorage.removeItem("egurado_credit_confirm_dismissed")
+                      toast({
+                        title: "✅ 알림 설정 초기화",
+                        description: "크레딧 차감 확인 알림이 다시 표시됩니다.",
+                      })
+                    } catch {}
+                  }}
+                  className="text-xs h-9"
+                >
+                  알림 다시 받기
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </section>
       </div>
     </div>
   )

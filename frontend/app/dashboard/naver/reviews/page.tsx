@@ -10,6 +10,7 @@ import { useAuth } from "@/lib/auth-context"
 import { supabase } from "@/lib/supabase"
 import { api } from "@/lib/config"
 import { notifyCreditUsed } from "@/lib/credit-utils"
+import { useCreditConfirm } from "@/lib/hooks/useCreditConfirm"
 import { 
   MessageSquare, 
   ThumbsUp, 
@@ -270,6 +271,9 @@ export default function ReviewManagementPage() {
   // autoStart 처리를 위한 ref (한 번만 실행)
   const autoStartProcessedRef = useRef(false)
   const autoStartPendingRef = useRef(false)
+  
+  // 크레딧 확인 모달
+  const { showCreditConfirm, CreditModal } = useCreditConfirm()
   
   // 매장 목록 로드
   useEffect(() => {
@@ -653,7 +657,21 @@ export default function ReviewManagementPage() {
   // ============================================
   // 2단계: 리뷰 AI 분석 (크레딧: 리뷰수 × 2)
   // ============================================
-  const handleStartAnalysis = async () => {
+  const handleStartAnalysis = () => {
+    if (!selectedStoreId || !fetchedDateRange || reviews.length === 0) return
+    
+    const reviewCount = reviews.length
+    const estimatedCredits = reviewCount * 2
+
+    showCreditConfirm({
+      featureName: "리뷰 AI 분석",
+      creditAmount: estimatedCredits,
+      creditDetail: `${reviewCount}개 리뷰 × 2 크레딧`,
+      onConfirm: () => executeStartAnalysis(),
+    })
+  }
+
+  const executeStartAnalysis = async () => {
     if (!selectedStoreId || !fetchedDateRange || reviews.length === 0) return
     
     const token = getToken()
@@ -1774,6 +1792,9 @@ export default function ReviewManagementPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* 크레딧 차감 확인 모달 */}
+      {CreditModal}
     </div>
   )
 }

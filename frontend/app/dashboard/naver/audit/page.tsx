@@ -6,6 +6,7 @@ import { useToast } from "@/components/ui/use-toast"
 import { useAuth } from "@/lib/auth-context"
 import { api } from "@/lib/config"
 import { notifyCreditUsed } from "@/lib/credit-utils"
+import { useCreditConfirm } from "@/lib/hooks/useCreditConfirm"
 import { useSearchParams } from "next/navigation"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -151,6 +152,9 @@ export default function NaverAuditPage() {
 
   // 종합 요약 섹션 ref
   const summaryRef = useRef<HTMLDivElement>(null)
+  
+  // 크레딧 확인 모달
+  const { showCreditConfirm, CreditModal } = useCreditConfirm()
 
   // URL 파라미터에서 historyId를 가져와서 자동으로 로드
   useEffect(() => {
@@ -200,9 +204,7 @@ export default function NaverAuditPage() {
   }
 
   // 매장 선택 시 바로 진단 시작 (모달 없이)
-  const handleStoreSelect = async (store: RegisteredStore) => {
-    setSelectedStore(store)
-    
+  const executeStoreDiagnosis = async (store: RegisteredStore) => {
     try {
       setIsAnalyzing(true)
       console.log("🔍 플레이스 진단 시작:", store.place_id, store.name)
@@ -276,6 +278,16 @@ export default function NaverAuditPage() {
     } finally {
       setIsAnalyzing(false)
     }
+  }
+
+  const handleStoreSelect = (store: RegisteredStore) => {
+    setSelectedStore(store)
+    showCreditConfirm({
+      featureName: "플레이스 진단",
+      creditAmount: 8,
+      onConfirm: () => executeStoreDiagnosis(store),
+      onCancel: () => setSelectedStore(null),
+    })
   }
 
   // 진단 히스토리 조회
@@ -1567,6 +1579,9 @@ export default function NaverAuditPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* 크레딧 차감 확인 모달 */}
+      {CreditModal}
     </div>
   )
 }

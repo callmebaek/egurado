@@ -20,6 +20,7 @@ import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/components/ui/use-toast"
 import { API_BASE_URL } from "@/lib/config"
 import { notifyCreditUsed } from "@/lib/credit-utils"
+import { useCreditConfirm } from "@/lib/hooks/useCreditConfirm"
 
 interface Review {
   naver_review_id: string
@@ -70,6 +71,9 @@ export default function NaverAIReplyPage() {
       remainingTime: number; // 남은 시간 (초)
     }
   }>({}) // 답글 게시 진행 상황
+
+  // 크레딧 확인 모달
+  const { showCreditConfirm, CreditModal } = useCreditConfirm()
 
   // 리뷰 날짜 기반 예상 처리 시간 계산
   const calculateEstimatedTime = (dateString: string): number => {
@@ -280,7 +284,15 @@ export default function NaverAIReplyPage() {
   }
 
   // AI 답글 생성
-  const generateReply = async (review: Review) => {
+  const generateReply = (review: Review) => {
+    showCreditConfirm({
+      featureName: "AI 답글 생성",
+      creditAmount: 5,
+      onConfirm: () => executeGenerateReply(review),
+    })
+  }
+
+  const executeGenerateReply = async (review: Review) => {
     setGeneratingReplyIds(prev => new Set(prev).add(review.naver_review_id))
     setError(null)
 
@@ -470,7 +482,22 @@ export default function NaverAIReplyPage() {
   }
 
   // 답글 게시
-  const postReply = async (review: Review) => {
+  const postReply = (review: Review) => {
+    const replyText = generatedReplies[review.naver_review_id]
+    
+    if (!replyText || replyText.trim().length === 0) {
+      setError("답글 내용이 비어있습니다")
+      return
+    }
+
+    showCreditConfirm({
+      featureName: "AI 답글 게시",
+      creditAmount: 8,
+      onConfirm: () => executePostReply(review),
+    })
+  }
+
+  const executePostReply = async (review: Review) => {
     const replyText = generatedReplies[review.naver_review_id]
     
     if (!replyText || replyText.trim().length === 0) {
@@ -984,6 +1011,9 @@ export default function NaverAIReplyPage() {
           </p>
         </Card>
       )}
+
+      {/* 크레딧 차감 확인 모달 */}
+      {CreditModal}
     </div>
   )
 }

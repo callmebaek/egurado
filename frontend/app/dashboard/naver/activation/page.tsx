@@ -41,6 +41,7 @@ import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/components/ui/use-toast'
 import { api } from '@/lib/config'
 import { notifyCreditUsed } from '@/lib/credit-utils'
+import { useCreditConfirm } from '@/lib/hooks/useCreditConfirm'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -181,6 +182,9 @@ export default function ActivationPage() {
   const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null)
   const [isLoadingHistories, setIsLoadingHistories] = useState(false)
 
+  // 크레딧 확인 모달
+  const { showCreditConfirm, CreditModal } = useCreditConfirm()
+
   // ===== 데이터 로딩 =====
   useEffect(() => {
     if (user) {
@@ -309,7 +313,7 @@ export default function ActivationPage() {
   }
 
   // AI 업체소개글 생성
-  const handleGenerateDescription = async () => {
+  const handleGenerateDescription = () => {
     if (!selectedStore) {
       toast({
         title: '매장 선택 필요',
@@ -328,6 +332,14 @@ export default function ActivationPage() {
       return
     }
 
+    showCreditConfirm({
+      featureName: "AI 업체소개글 생성",
+      creditAmount: 10,
+      onConfirm: () => executeGenerateDescription(),
+    })
+  }
+
+  const executeGenerateDescription = async () => {
     setIsGenerating(true)
     try {
       const token = await getToken()
@@ -378,7 +390,7 @@ export default function ActivationPage() {
   }
 
   // AI 찾아오는길 생성
-  const handleGenerateDirections = async () => {
+  const handleGenerateDirections = () => {
     if (!selectedStore) {
       toast({
         title: '매장 선택 필요',
@@ -397,6 +409,14 @@ export default function ActivationPage() {
       return
     }
 
+    showCreditConfirm({
+      featureName: "AI 찾아오는길 생성",
+      creditAmount: 10,
+      onConfirm: () => executeGenerateDirections(),
+    })
+  }
+
+  const executeGenerateDirections = async () => {
     setIsGenerating(true)
     try {
       const token = await getToken()
@@ -1167,7 +1187,12 @@ export default function ActivationPage() {
                   className="border-neutral-200 hover:border-primary-300 hover:shadow-lg transition-all cursor-pointer group"
                   onClick={() => {
                     setSelectedStore(store)
-                    loadActivationData(store.id)
+                    showCreditConfirm({
+                      featureName: "플레이스 활성화 분석",
+                      creditAmount: 15,
+                      onConfirm: () => loadActivationData(store.id),
+                      onCancel: () => setSelectedStore(null),
+                    })
                   }}
                 >
                   <CardContent className="p-4 space-y-3">
@@ -1204,7 +1229,12 @@ export default function ActivationPage() {
                       onClick={(e) => {
                         e.stopPropagation()
                         setSelectedStore(store)
-                        loadActivationData(store.id)
+                        showCreditConfirm({
+                          featureName: "플레이스 활성화 분석",
+                          creditAmount: 15,
+                          onConfirm: () => loadActivationData(store.id),
+                          onCancel: () => setSelectedStore(null),
+                        })
                       }}
                     >
                       활성화 분석
@@ -1640,6 +1670,9 @@ export default function ActivationPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* 크레딧 차감 확인 모달 */}
+      {CreditModal}
     </div>
   )
 }

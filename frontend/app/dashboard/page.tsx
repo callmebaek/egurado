@@ -65,6 +65,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { notifyCreditUsed } from '@/lib/credit-utils'
 
 interface UserProfile {
   id: string
@@ -828,7 +829,7 @@ export default function DashboardPage() {
         if (response.ok) {
           await response.json()
           await new Promise(resolve => setTimeout(resolve, 500))
-          await reloadCredits()
+          notifyCreditUsed(5, token)
         }
 
         await loadTrackers()
@@ -858,8 +859,9 @@ export default function DashboardPage() {
           )
         )
 
+        const successCount = responses.filter(r => r !== null).length
         await new Promise(resolve => setTimeout(resolve, 1000))
-        await reloadCredits()
+        if (successCount > 0) notifyCreditUsed(successCount * 5, token)
         await loadTrackers()
       } catch (error) {
         console.error('Failed to refresh all trackers:', error)

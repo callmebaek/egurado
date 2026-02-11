@@ -23,6 +23,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { notifyCreditUsed } from "@/lib/credit-utils"
+import { useCreditConfirm } from "@/lib/hooks/useCreditConfirm"
 
 interface Store {
   id: string
@@ -99,6 +100,9 @@ export default function NaverRankPage() {
   
   // 추적 추가 모달 상태
   const [showAddTrackingDialog, setShowAddTrackingDialog] = useState(false)
+  
+  // 크레딧 확인 모달
+  const { showCreditConfirm, CreditModal } = useCreditConfirm()
   const [selectedKeywordForTracking, setSelectedKeywordForTracking] = useState<KeywordData | null>(null)
   const [updateFrequency, setUpdateFrequency] = useState<'daily_once' | 'daily_twice'>('daily_once')
   const [updateTimes, setUpdateTimes] = useState<number[]>([9])
@@ -295,7 +299,7 @@ export default function NaverRankPage() {
   }, [tierLoaded, stores.length])
 
   // 순위 조회
-  const handleCheckRank = async () => {
+  const handleCheckRank = () => {
     if (!selectedStoreId) {
       toast({
         title: "매장을 선택해주세요",
@@ -312,6 +316,14 @@ export default function NaverRankPage() {
       return
     }
 
+    showCreditConfirm({
+      featureName: "순위 조회",
+      creditAmount: 5,
+      onConfirm: () => executeCheckRank(),
+    })
+  }
+
+  const executeCheckRank = async () => {
     setIsChecking(true)
     setRankResult(null)
 
@@ -1593,6 +1605,8 @@ export default function NaverRankPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+      {/* 크레딧 차감 확인 모달 */}
+      {CreditModal}
       </div>
     </div>
   )
