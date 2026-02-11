@@ -285,6 +285,7 @@ export default function LoginPage() {
               카카오로 시작하기
             </Button>
 
+            {/* 네이버 로그인 - 추후 오픈 예정
             <Button
               type="button"
               variant="outline"
@@ -297,6 +298,7 @@ export default function LoginPage() {
               </svg>
               네이버로 시작하기
             </Button>
+            */}
           </div>
 
           {/* 회원가입 링크 */}

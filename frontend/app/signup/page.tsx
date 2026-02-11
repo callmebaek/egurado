@@ -147,6 +147,7 @@ export default function SignupPage() {
               카카오로 3초만에 시작하기
             </Button>
 
+            {/* 네이버 로그인 - 추후 오픈 예정
             <Button
               type="button"
               variant="outline"
@@ -159,6 +160,7 @@ export default function SignupPage() {
               </svg>
               네이버로 3초만에 시작하기
             </Button>
+            */}
           </div>
 
           {/* 구분선 */}
