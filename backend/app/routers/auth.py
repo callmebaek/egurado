@@ -962,3 +962,30 @@ async def verify_otp(request: OTPVerifyRequest):
             is_new_user=False,
             onboarding_required=onboarding_required,
         )
+
+
+# ===== 이메일 발송 테스트 (개발용) =====
+@router.post("/test-email")
+async def test_email_notification(email: str = "callmebaek@gmail.com"):
+    """
+    NHN Cloud Email 발송 테스트 엔드포인트 (개발용)
+    테스트 완료 후 삭제 예정
+    """
+    from app.services.nhn_email_service import nhn_email_service
+    
+    test_rank_results = [
+        {"keyword": "강남 맛집", "rank": 3, "rank_change": 2},
+        {"keyword": "역삼 카페", "rank": 7, "rank_change": -1},
+        {"keyword": "선릉 브런치", "rank": 12, "rank_change": 0},
+        {"keyword": "강남역 점심", "rank": None, "rank_change": None},
+    ]
+    
+    result = await nhn_email_service.send_rank_alert_email(
+        to_email=email,
+        user_name="테스트 사용자",
+        store_name="맛있는 카페 강남점",
+        rank_results=test_rank_results,
+        collected_at="2026-02-11 16:00",
+    )
+    
+    return result
