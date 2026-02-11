@@ -11,6 +11,7 @@ from collections import defaultdict
 
 from app.core.database import get_supabase_client
 from app.services.nhn_kakao_service import nhn_kakao_service, NHNKakaoService
+from app.services.nhn_email_service import nhn_email_service
 
 logger = logging.getLogger(__name__)
 
@@ -145,20 +146,38 @@ class NotificationService:
                     stats["skipped"] += 1  # SMS 미구현 시 skipped
                 
                 elif notification_type == "email":
-                    # 이메일 알림 (TODO: NHN Cloud Email 서비스 연동 시 구현)
                     email = (
                         first_tracker.get("notification_email")
                         or user_info.get("email")
                     )
                     if not email:
+                        logger.warning(
+                            f"[Notification] 이메일 없음: "
+                            f"user={user_id}, store={store_name}"
+                        )
                         stats["skipped"] += 1
                         continue
                     
-                    logger.info(
-                        f"[Notification] 이메일 알림 발송 예정: "
-                        f"{store_name} → {email}"
+                    result = await nhn_email_service.send_rank_alert_email(
+                        to_email=email,
+                        user_name=user_name,
+                        store_name=store_name,
+                        rank_results=metrics_list,
+                        collected_at=collected_at,
                     )
-                    stats["skipped"] += 1  # Email 미구현 시 skipped
+                    
+                    if result["success"]:
+                        stats["sent"] += 1
+                        logger.info(
+                            f"[Notification] 이메일 알림 발송 성공: "
+                            f"{store_name} ({len(trackers)}개 키워드) → {email}"
+                        )
+                    else:
+                        stats["failed"] += 1
+                        logger.error(
+                            f"[Notification] 이메일 알림 발송 실패: "
+                            f"{store_name} - {result.get('message')}"
+                        )
                 
                 else:
                     stats["skipped"] += 1
