@@ -19,6 +19,7 @@ from app.models.credits import (
     CheckoutRequest,
     CheckoutResponse,
     PaymentConfirmRequest,
+    BillingConfirmRequest,
 )
 from app.services.payment_service import payment_service
 from app.services.credit_service import credit_service
@@ -74,7 +75,7 @@ async def confirm_payment(
     current_user: dict = Depends(get_current_user)
 ):
     """
-    결제 승인 확인
+    결제 승인 확인 (레거시 - requestPayment 방식)
     - 프론트엔드에서 토스 결제 완료 후 호출
     - 결제 승인 → 구독 생성 → 크레딧 부여
     """
@@ -85,6 +86,28 @@ async def confirm_payment(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=result.get("message", "결제 승인에 실패했습니다.")
+        )
+    
+    return result
+
+
+@router.post("/confirm-billing")
+async def confirm_billing_payment(
+    request: BillingConfirmRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    빌링키 발급 + 첫 결제 통합 처리 (정기결제용)
+    - requestBillingAuth() 완료 후 호출
+    - 빌링키 발급 → 첫 결제 → 구독 생성 → 크레딧 부여 → 쿠폰 처리
+    """
+    user_id = UUID(current_user["id"])
+    result = await payment_service.confirm_billing_payment(user_id, request)
+    
+    if not result.get("success"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=result.get("message", "결제 처리에 실패했습니다.")
         )
     
     return result

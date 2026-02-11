@@ -344,7 +344,15 @@ export default function MembershipPage() {
       const checkout: CheckoutData = await checkoutResponse.json()
       setCheckoutData(checkout)
       
-      // 2. 토스 결제위젯 호출
+      // 체크아웃 정보를 localStorage에 저장 (성공 페이지에서 사용)
+      localStorage.setItem('pending_checkout', JSON.stringify({
+        order_id: checkout.order_id,
+        amount: checkout.amount,
+        tier: checkout.tier,
+        order_name: checkout.order_name,
+      }))
+      
+      // 2. 토스 빌링 인증 요청 (정기결제용 카드 등록)
       const clientKey = process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY
       if (!clientKey) {
         throw new Error('결제 설정이 올바르지 않습니다.')
@@ -358,25 +366,13 @@ export default function MembershipPage() {
         customerKey: checkout.customer_key,
       })
       
-      // 결제 요청
-      await payment.requestPayment({
+      // 빌링 인증 요청 (카드 등록)
+      await payment.requestBillingAuth({
         method: "CARD",
-        amount: {
-          currency: "KRW",
-          value: checkout.amount,
-        },
-        orderId: checkout.order_id,
-        orderName: checkout.order_name,
-        customerEmail: user?.email,
-        customerName: user?.display_name || user?.email?.split('@')[0] || '고객',
         successUrl: `${window.location.origin}/dashboard/membership/success?orderId=${checkout.order_id}`,
         failUrl: `${window.location.origin}/dashboard/membership/fail?orderId=${checkout.order_id}`,
-        card: {
-          useEscrow: false,
-          flowMode: "DEFAULT",
-          useCardPoint: false,
-          useAppCardOnly: false,
-        },
+        customerEmail: user?.email,
+        customerName: user?.display_name || user?.email?.split('@')[0] || '고객',
       })
       
     } catch (error: any) {

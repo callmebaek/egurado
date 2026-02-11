@@ -27,6 +27,7 @@ from app.models.credits import (
     CheckoutRequest,
     CheckoutResponse,
     PaymentConfirmRequest,
+    BillingConfirmRequest,
 )
 
 logger = logging.getLogger(__name__)
@@ -555,7 +556,355 @@ class PaymentService:
             return {"success": False, "message": f"결제 처리 중 오류가 발생했습니다: {str(e)}"}
     
     # ============================================
-    # 빌링키 기반 자동결제 (정기결제)
+    # 빌링키 발급 + 첫 결제 통합 (정기결제 시작)
+    # ============================================
+    
+    async def confirm_billing_payment(
+        self,
+        user_id: UUID,
+        request: BillingConfirmRequest
+    ) -> dict:
+        """
+        빌링 인증 완료 후 통합 처리:
+        1. 빌링키 발급 (authKey → billingKey)
+        2. 빌링키로 첫 결제 실행
+        3. 구독 생성/업데이트
+        4. 크레딧 부여
+        5. 쿠폰 사용 처리
+        
+        기존 confirm_payment와 동일한 구독/쿠폰/업그레이드 로직 유지
+        """
+        try:
+            # 1. 결제 레코드 조회 (checkout에서 생성된 것)
+            payment_result = self.supabase.table("payments")\
+                .select("*")\
+                .eq("order_id", request.order_id)\
+                .single()\
+                .execute()
+            
+            if not payment_result.data:
+                return {"success": False, "message": "결제 정보를 찾을 수 없습니다."}
+            
+            payment = payment_result.data
+            amount = payment["amount"]
+            metadata = payment.get("metadata", {})
+            tier = metadata.get("tier", "basic")
+            
+            # 2. 빌링키 발급 (POST /v1/billing/authorizations/issue)
+            billing_key_data = await self._issue_billing_key_internal(
+                user_id, request.auth_key, request.customer_key
+            )
+            
+            if not billing_key_data:
+                self.supabase.table("payments")\
+                    .update({
+                        "status": "failed",
+                        "updated_at": datetime.utcnow().isoformat(),
+                        "toss_response": {"error": "billing_key_issue_failed"}
+                    })\
+                    .eq("order_id", request.order_id)\
+                    .execute()
+                return {"success": False, "message": "카드 등록에 실패했습니다. 다시 시도해주세요."}
+            
+            billing_key = billing_key_data["billing_key"]
+            customer_key = billing_key_data["customer_key"]
+            
+            logger.info(f"빌링키 발급 완료: user={user_id}, billing_key 저장됨")
+            
+            # 3. 빌링키로 첫 결제 실행 (POST /v1/billing/{billingKey})
+            tier_names = {
+                "basic": "Basic", "basic_plus": "Basic+",
+                "pro": "Pro", "custom": "Custom"
+            }
+            order_name = payment.get("order_name", f"Whiplace {tier_names.get(tier, tier)} 월 구독")
+            
+            if settings.PAYMENT_ENABLED:
+                headers = self._get_toss_auth_header()
+                
+                async with httpx.AsyncClient() as client:
+                    response = await client.post(
+                        f"{self.toss_api_url}/v1/billing/{billing_key}",
+                        json={
+                            "customerKey": customer_key,
+                            "amount": amount,
+                            "orderId": request.order_id,
+                            "orderName": order_name,
+                        },
+                        headers=headers,
+                        timeout=30.0
+                    )
+                    
+                    if response.status_code != 200:
+                        error_data = response.json()
+                        logger.error(f"빌링 첫 결제 실패: {error_data}")
+                        
+                        self.supabase.table("payments")\
+                            .update({
+                                "status": "failed",
+                                "toss_response": error_data,
+                                "updated_at": datetime.utcnow().isoformat()
+                            })\
+                            .eq("order_id", request.order_id)\
+                            .execute()
+                        
+                        return {
+                            "success": False,
+                            "message": error_data.get("message", "결제 승인에 실패했습니다.")
+                        }
+                    
+                    toss_response = response.json()
+            else:
+                # 테스트 모드: Mock 응답
+                toss_response = {
+                    "paymentKey": f"MOCK_BILLING_{request.order_id}",
+                    "orderId": request.order_id,
+                    "status": "DONE",
+                    "type": "BILLING",
+                    "method": "카드",
+                    "card": {"company": "테스트", "number": "4242****4242"},
+                    "approvedAt": datetime.utcnow().isoformat(),
+                    "totalAmount": amount,
+                    "mock": True
+                }
+            
+            # 4. 결제 상태 업데이트
+            card_info = toss_response.get("card", {})
+            self.supabase.table("payments")\
+                .update({
+                    "payment_key": toss_response.get("paymentKey"),
+                    "status": "done",
+                    "method": toss_response.get("method"),
+                    "easy_pay_provider": toss_response.get("easyPay", {}).get("provider") if toss_response.get("easyPay") else None,
+                    "card_company": card_info.get("company") or card_info.get("issuerCode"),
+                    "card_number": card_info.get("number"),
+                    "approved_at": datetime.utcnow().isoformat(),
+                    "toss_response": toss_response,
+                    "updated_at": datetime.utcnow().isoformat()
+                })\
+                .eq("order_id", request.order_id)\
+                .execute()
+            
+            # 5. 구독 생성/업데이트 (기존 confirm_payment과 동일한 로직)
+            is_upgrade = metadata.get("is_upgrade", False)
+            
+            now = datetime.utcnow()
+            expires_at = now + relativedelta(months=1)
+            next_billing = (now + relativedelta(months=1)).date()
+            
+            # 기존 구독 확인 (모든 상태 포함 - cancelled, expired 포함)
+            existing_sub = self.supabase.table("subscriptions")\
+                .select("*")\
+                .eq("user_id", str(user_id))\
+                .execute()
+            
+            sub_update_data = {
+                "tier": tier,
+                "status": "active",
+                "started_at": now.isoformat(),
+                "updated_at": now.isoformat(),
+                "expires_at": expires_at.isoformat(),
+                "next_billing_date": next_billing.isoformat(),
+                "payment_method": toss_response.get("method", "card"),
+                "auto_renewal": True,
+                "cancelled_at": None,
+                "metadata": {
+                    "payment_id": str(payment["id"]),
+                    "payment_key": toss_response.get("paymentKey"),
+                    "billing_key_id": billing_key_data.get("billing_key_id"),
+                    "payment_type": "billing",
+                }
+            }
+            
+            if is_upgrade:
+                sub_update_data["metadata"]["last_upgrade_at"] = now.isoformat()
+                sub_update_data["metadata"]["upgrade_payment_id"] = str(payment["id"])
+            
+            if existing_sub.data:
+                self.supabase.table("subscriptions")\
+                    .update(sub_update_data)\
+                    .eq("user_id", str(user_id))\
+                    .execute()
+            else:
+                sub_update_data["user_id"] = str(user_id)
+                self.supabase.table("subscriptions")\
+                    .insert(sub_update_data)\
+                    .execute()
+            
+            # 6. 프로필 Tier + 쿼터 업데이트
+            tier_quotas = {
+                "free": {"max_stores": 1, "max_keywords": 1, "max_trackers": 1},
+                "basic": {"max_stores": 1, "max_keywords": 3, "max_trackers": 3},
+                "basic_plus": {"max_stores": 2, "max_keywords": 8, "max_trackers": 8},
+                "pro": {"max_stores": 5, "max_keywords": 20, "max_trackers": 20},
+                "custom": {"max_stores": 0, "max_keywords": 0, "max_trackers": 0},
+                "god": {"max_stores": -1, "max_keywords": -1, "max_trackers": -1},
+            }
+            quotas = tier_quotas.get(tier, tier_quotas["free"])
+            
+            self.supabase.table("profiles")\
+                .update({
+                    "subscription_tier": tier,
+                    "max_stores": quotas["max_stores"],
+                    "max_keywords": quotas["max_keywords"],
+                    "max_trackers": quotas["max_trackers"],
+                })\
+                .eq("id", str(user_id))\
+                .execute()
+            
+            # 7. 크레딧 리셋 및 부여
+            from app.core.config import get_tier_credits
+            monthly_credits = get_tier_credits(tier)
+            
+            credit_result = self.supabase.table("user_credits")\
+                .select("id")\
+                .eq("user_id", str(user_id))\
+                .execute()
+            
+            if credit_result.data:
+                self.supabase.table("user_credits")\
+                    .update({
+                        "tier": tier,
+                        "monthly_credits": monthly_credits,
+                        "monthly_used": 0,
+                        "last_reset_at": now.isoformat(),
+                        "next_reset_at": (now + relativedelta(months=1)).isoformat(),
+                        "updated_at": now.isoformat()
+                    })\
+                    .eq("user_id", str(user_id))\
+                    .execute()
+            else:
+                self.supabase.table("user_credits")\
+                    .insert({
+                        "user_id": str(user_id),
+                        "tier": tier,
+                        "monthly_credits": monthly_credits,
+                        "monthly_used": 0,
+                        "manual_credits": 0,
+                        "reset_date": now.day,
+                        "last_reset_at": now.isoformat(),
+                        "next_reset_at": (now + relativedelta(months=1)).isoformat()
+                    })\
+                    .execute()
+            
+            # 8. 쿠폰 사용 처리
+            coupon_code = metadata.get("coupon_code")
+            if coupon_code:
+                from app.services.coupon_service import coupon_service
+                await coupon_service.apply_coupon(user_id, coupon_code, tier)
+            
+            logger.info(
+                f"빌링 결제 완료: user={user_id}, tier={tier}, "
+                f"amount={amount}, order={request.order_id}, billing=True"
+            )
+            
+            return {
+                "success": True,
+                "message": f"{'업그레이드' if is_upgrade else '구독'}이 완료되었습니다. 등록하신 카드로 매월 자동결제됩니다.",
+                "tier": tier,
+                "payment_id": str(payment["id"]),
+                "order_id": request.order_id,
+            }
+            
+        except Exception as e:
+            logger.error(f"빌링 결제 처리 실패: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+            return {"success": False, "message": f"결제 처리 중 오류가 발생했습니다: {str(e)}"}
+    
+    async def _issue_billing_key_internal(
+        self,
+        user_id: UUID,
+        auth_key: str,
+        customer_key: str
+    ) -> Optional[dict]:
+        """
+        내부용 빌링키 발급 (confirm_billing_payment에서 사용)
+        빌링키 발급 + DB 저장을 한번에 처리
+        """
+        try:
+            if settings.PAYMENT_ENABLED:
+                headers = self._get_toss_auth_header()
+                
+                async with httpx.AsyncClient() as client:
+                    response = await client.post(
+                        f"{self.toss_api_url}/v1/billing/authorizations/issue",
+                        json={
+                            "authKey": auth_key,
+                            "customerKey": customer_key
+                        },
+                        headers=headers,
+                        timeout=30.0
+                    )
+                    
+                    if response.status_code != 200:
+                        error_data = response.json()
+                        logger.error(f"빌링키 발급 실패: {error_data}")
+                        return None
+                    
+                    toss_data = response.json()
+            else:
+                # 테스트 모드: Mock
+                toss_data = {
+                    "billingKey": f"MOCK_BK_{str(user_id)[:8]}_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}",
+                    "customerKey": customer_key,
+                    "method": "카드",
+                    "authenticatedAt": datetime.utcnow().isoformat(),
+                    "card": {
+                        "issuerCode": "11",
+                        "number": "4242****4242",
+                        "cardType": "신용",
+                        "ownerType": "개인"
+                    }
+                }
+            
+            # 기존 활성 빌링키 비활성화
+            self.supabase.table("billing_keys")\
+                .update({"is_active": False, "updated_at": datetime.utcnow().isoformat()})\
+                .eq("user_id", str(user_id))\
+                .eq("is_active", True)\
+                .execute()
+            
+            # 새 빌링키 저장
+            card_info = toss_data.get("card", {})
+            billing_data = {
+                "user_id": str(user_id),
+                "billing_key": toss_data["billingKey"],
+                "customer_key": customer_key,
+                "method": toss_data.get("method", "카드"),
+                "card_company": card_info.get("issuerCode", ""),
+                "card_number": card_info.get("number", ""),
+                "card_type": card_info.get("cardType", ""),
+                "is_active": True,
+                "authenticated_at": toss_data.get("authenticatedAt"),
+                "metadata": toss_data
+            }
+            
+            result = self.supabase.table("billing_keys")\
+                .insert(billing_data)\
+                .execute()
+            
+            if not result.data:
+                logger.error("빌링키 DB 저장 실패")
+                return None
+            
+            saved = result.data[0]
+            logger.info(f"빌링키 발급+저장 완료: user={user_id}")
+            
+            return {
+                "billing_key": toss_data["billingKey"],
+                "customer_key": customer_key,
+                "billing_key_id": str(saved["id"]),
+                "card_info": card_info,
+            }
+            
+        except Exception as e:
+            logger.error(f"빌링키 발급 내부 오류: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+            return None
+    
+    # ============================================
+    # 빌링키 기반 자동결제 (정기결제 - 다음달부터)
     # ============================================
     
     async def charge_billing(

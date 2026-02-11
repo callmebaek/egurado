@@ -438,10 +438,17 @@ class CheckoutResponse(BaseModel):
 
 
 class PaymentConfirmRequest(BaseModel):
-    """결제 승인 확인 요청 (프론트엔드에서 결제 완료 후)"""
+    """결제 승인 확인 요청 (프론트엔드에서 결제 완료 후) - 레거시"""
     payment_key: str = Field(description="토스 결제키")
     order_id: str = Field(description="주문 ID")
     amount: int = Field(description="결제 금액")
+
+
+class BillingConfirmRequest(BaseModel):
+    """빌링키 발급 + 첫 결제 통합 요청 (정기결제용)"""
+    auth_key: str = Field(description="requestBillingAuth에서 받은 인증키")
+    customer_key: str = Field(description="고객 고유 식별자")
+    order_id: str = Field(description="체크아웃에서 생성된 주문 ID")
 
 
 class SubscriptionCancelRequest(BaseModel):
