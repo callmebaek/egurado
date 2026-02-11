@@ -48,7 +48,7 @@ interface UserProfile {
   id: string
   email: string
   display_name: string | null
-  phone?: string | null
+  phone_number?: string | null
   created_at?: string
 }
 
@@ -172,10 +172,10 @@ export default function SettingsPage() {
           const data = await response.json()
           setProfile(data)
           setDisplayName(data.display_name || '')
-          setPhone(data.phone || '')
+          setPhone(data.phone_number || '')
           // OTP 전화번호 자동 입력 (프로필에 등록된 전화번호)
-          if (data.phone) {
-            setOtpPhone(formatPhoneNumber(data.phone))
+          if (data.phone_number) {
+            setOtpPhone(formatPhoneNumber(data.phone_number))
           }
         }
       } catch (error) {
