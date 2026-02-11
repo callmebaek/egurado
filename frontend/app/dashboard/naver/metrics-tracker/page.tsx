@@ -28,7 +28,8 @@ import {
   Sparkles,
   Search,
   Users,
-  MapPin
+  MapPin,
+  CheckCircle2
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -87,6 +88,8 @@ interface MetricTracker {
   created_at: string
   notification_enabled: boolean
   notification_type?: 'kakao' | 'sms' | 'email' | null
+  notification_email?: string | null
+  notification_consent?: boolean
 }
 
 interface DailyMetric {
@@ -130,6 +133,8 @@ export default function MetricsTrackerPage() {
   const [updateTimes, setUpdateTimes] = useState<number[]>([16]) // 기본: 16시 (오후 4시)
   const [notificationEnabled, setNotificationEnabled] = useState(false)
   const [notificationType, setNotificationType] = useState<'email' | 'sms' | 'kakao' | null>(null)
+  const [notificationEmail, setNotificationEmail] = useState("")
+  const [notificationConsent, setNotificationConsent] = useState(false)
   const [isAdding, setIsAdding] = useState(false)
   const [searchedKeywords, setSearchedKeywords] = useState<SearchedKeyword[]>([])
   const [loadingKeywords, setLoadingKeywords] = useState(false)
@@ -150,6 +155,8 @@ export default function MetricsTrackerPage() {
       times: number[]
       notificationEnabled: boolean
       notificationType: 'email' | 'sms' | 'kakao' | ''
+      notificationEmail: string
+      notificationConsent: boolean
     }
   }>({})
   const [isSavingSettings, setIsSavingSettings] = useState(false)
@@ -320,6 +327,26 @@ export default function MetricsTrackerPage() {
       return
     }
 
+    // 이메일 알림 선택 시 유효성 검사
+    if (notificationEnabled && notificationType === 'email') {
+      if (!notificationEmail || !notificationEmail.includes('@')) {
+        toast({
+          title: "이메일 입력 필요",
+          description: "알림 받을 이메일 주소를 정확히 입력해주세요",
+          variant: "destructive"
+        })
+        return
+      }
+      if (!notificationConsent) {
+        toast({
+          title: "수신 동의 필요",
+          description: "이메일 알림 수신에 동의해주세요",
+          variant: "destructive"
+        })
+        return
+      }
+    }
+
     try {
       setIsAdding(true)
       const token = getToken()
@@ -337,7 +364,9 @@ export default function MetricsTrackerPage() {
           update_frequency: updateFrequency,
           update_times: updateTimes,
           notification_enabled: notificationEnabled,
-          notification_type: notificationEnabled ? notificationType : null
+          notification_type: notificationEnabled ? notificationType : null,
+          notification_email: notificationEnabled && notificationType === 'email' ? notificationEmail : null,
+          notification_consent: notificationEnabled ? notificationConsent : false
         })
       })
 
@@ -353,6 +382,8 @@ export default function MetricsTrackerPage() {
         setUpdateTimes([9])
         setNotificationEnabled(false)
         setNotificationType(null)
+        setNotificationEmail("")
+        setNotificationConsent(false)
         setSearchedKeywords([])
         
         // 목록 새로고침
@@ -559,7 +590,9 @@ export default function MetricsTrackerPage() {
           ? tracker.update_times 
           : getDefaultUpdateTimes(tracker.update_frequency),
         notificationEnabled: tracker.notification_enabled,
-        notificationType: tracker.notification_type || ''
+        notificationType: tracker.notification_type || '',
+        notificationEmail: tracker.notification_email || user?.email || '',
+        notificationConsent: tracker.notification_consent || false
       }
     })
     setEditTrackerSettings(settings)
@@ -568,6 +601,29 @@ export default function MetricsTrackerPage() {
 
   const handleUpdateSettings = async () => {
     if (!editingStore || editingTrackers.length === 0) return
+
+    // 이메일 알림 유효성 검사
+    for (const tracker of editingTrackers) {
+      const settings = editTrackerSettings[tracker.id]
+      if (settings?.notificationEnabled && settings.notificationType === 'email') {
+        if (!settings.notificationEmail || !settings.notificationEmail.includes('@')) {
+          toast({
+            title: "이메일 입력 필요",
+            description: `"${tracker.keyword}" 키워드의 알림 이메일을 정확히 입력해주세요`,
+            variant: "destructive"
+          })
+          return
+        }
+        if (!settings.notificationConsent) {
+          toast({
+            title: "수신 동의 필요",
+            description: `"${tracker.keyword}" 키워드의 이메일 알림 수신에 동의해주세요`,
+            variant: "destructive"
+          })
+          return
+        }
+      }
+    }
 
     try {
       setIsSavingSettings(true)
@@ -589,7 +645,9 @@ export default function MetricsTrackerPage() {
             update_frequency: settings.frequency,
             update_times: settings.times,
             notification_enabled: settings.notificationEnabled,
-            notification_type: settings.notificationEnabled ? settings.notificationType : null
+            notification_type: settings.notificationEnabled ? settings.notificationType : null,
+            notification_email: settings.notificationEnabled && settings.notificationType === 'email' ? settings.notificationEmail : null,
+            notification_consent: settings.notificationEnabled ? settings.notificationConsent : false
           })
         })
 
@@ -1202,7 +1260,7 @@ export default function MetricsTrackerPage() {
                     </div>
                     <div>
                       <label className="text-xs md:text-sm font-bold text-neutral-900 block">순위 알림받기</label>
-                      <p className="text-[10px] md:text-xs text-neutral-500">순위 변동 시 알림</p>
+                      <p className="text-[10px] md:text-xs text-neutral-500">자동수집 완료 시 알림</p>
                     </div>
                   </div>
                   <Switch
@@ -1211,6 +1269,8 @@ export default function MetricsTrackerPage() {
                       setNotificationEnabled(checked)
                       if (!checked) {
                         setNotificationType(null)
+                        setNotificationEmail("")
+                        setNotificationConsent(false)
                       }
                     }}
                     className="data-[state=checked]:bg-[#405D99]"
@@ -1218,28 +1278,77 @@ export default function MetricsTrackerPage() {
                 </div>
 
                 {notificationEnabled && (
-                  <div className="grid grid-cols-3 gap-2">
-                    {[
-                      { type: 'email', icon: Mail, label: '이메일' },
-                      { type: 'sms', icon: Phone, label: '문자' },
-                      { type: 'kakao', icon: MessageCircle, label: '카카오' },
-                    ].map(({ type, icon: Icon, label }) => (
-                      <button
-                        key={type}
-                        onClick={() => setNotificationType(type as 'email' | 'sms' | 'kakao')}
-                        className={`flex items-center justify-center gap-1.5 px-2 py-2.5 rounded-button border-2 transition-all min-h-[44px] active:scale-95 ${
-                          notificationType === type
-                            ? 'border-[#405D99] bg-blue-50'
-                            : 'border-neutral-200 bg-white hover:border-neutral-300'
-                        }`}
-                      >
-                        <Icon className={`w-3.5 h-3.5 ${notificationType === type ? 'text-[#405D99]' : 'text-neutral-400'}`} />
-                        <span className={`text-xs font-bold ${notificationType === type ? 'text-[#405D99]' : 'text-neutral-600'}`}>
-                          {label}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
+                  <>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        { type: 'email', icon: Mail, label: '이메일' },
+                        { type: 'sms', icon: Phone, label: '문자', disabled: true },
+                        { type: 'kakao', icon: MessageCircle, label: '카카오', disabled: true },
+                      ].map(({ type, icon: Icon, label, disabled }) => (
+                        <button
+                          key={type}
+                          onClick={() => {
+                            if (disabled) return
+                            setNotificationType(type as 'email' | 'sms' | 'kakao')
+                            if (type === 'email' && !notificationEmail) {
+                              setNotificationEmail(user?.email || "")
+                            }
+                          }}
+                          disabled={disabled}
+                          className={`flex items-center justify-center gap-1.5 px-2 py-2.5 rounded-button border-2 transition-all min-h-[44px] active:scale-95 ${
+                            disabled
+                              ? 'border-neutral-100 bg-neutral-50 cursor-not-allowed opacity-50'
+                              : notificationType === type
+                                ? 'border-[#405D99] bg-blue-50'
+                                : 'border-neutral-200 bg-white hover:border-neutral-300'
+                          }`}
+                        >
+                          <Icon className={`w-3.5 h-3.5 ${disabled ? 'text-neutral-300' : notificationType === type ? 'text-[#405D99]' : 'text-neutral-400'}`} />
+                          <span className={`text-xs font-bold ${disabled ? 'text-neutral-300' : notificationType === type ? 'text-[#405D99]' : 'text-neutral-600'}`}>
+                            {label}
+                            {disabled && <span className="text-[9px] block font-medium">준비중</span>}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* 이메일 선택 시 이메일 입력 + 동의 */}
+                    {notificationType === 'email' && (
+                      <div className="space-y-2.5 p-3 bg-blue-50 rounded-button border border-blue-200">
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-bold text-neutral-700 flex items-center gap-1">
+                            <Mail className="w-3 h-3 text-[#405D99]" />
+                            알림 받을 이메일
+                          </label>
+                          <Input
+                            type="email"
+                            value={notificationEmail}
+                            onChange={(e) => setNotificationEmail(e.target.value)}
+                            placeholder="example@email.com"
+                            className="h-11 border-2 border-neutral-300 rounded-button focus:ring-2 focus:ring-[#405D99] focus:border-[#405D99] text-sm bg-white"
+                          />
+                        </div>
+                        <label className="flex items-start gap-2 cursor-pointer group">
+                          <div className="relative flex-shrink-0 mt-0.5">
+                            <input
+                              type="checkbox"
+                              checked={notificationConsent}
+                              onChange={(e) => setNotificationConsent(e.target.checked)}
+                              className="sr-only peer"
+                            />
+                            <div className="w-5 h-5 rounded border-2 border-neutral-300 bg-white peer-checked:bg-[#405D99] peer-checked:border-[#405D99] transition-all flex items-center justify-center">
+                              {notificationConsent && (
+                                <CheckCircle2 className="w-3.5 h-3.5 text-white" />
+                              )}
+                            </div>
+                          </div>
+                          <span className="text-xs text-neutral-600 leading-relaxed">
+                            키워드 순위 알림 이메일 수신에 동의합니다. 알림은 자동수집 시간에 발송되며, 언제든 설정에서 해제할 수 있습니다.
+                          </span>
+                        </label>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </div>
@@ -1613,7 +1722,10 @@ export default function MetricsTrackerPage() {
                               ...prev,
                               [tracker.id]: {
                                 ...prev[tracker.id],
-                                notificationEnabled: !prev[tracker.id].notificationEnabled
+                                notificationEnabled: !prev[tracker.id].notificationEnabled,
+                                ...(!prev[tracker.id].notificationEnabled ? {} : {
+                                  notificationConsent: false
+                                })
                               }
                             }))
                           }}
@@ -1630,36 +1742,99 @@ export default function MetricsTrackerPage() {
                       </div>
                       
                       {settings.notificationEnabled && (
-                        <div className="grid grid-cols-3 gap-2">
-                          {[
-                            { type: 'email', icon: Mail, label: '이메일' },
-                            { type: 'sms', icon: Phone, label: '문자' },
-                            { type: 'kakao', icon: MessageCircle, label: '카카오' },
-                          ].map(({ type, icon: Icon, label }) => (
-                            <button
-                              key={type}
-                              onClick={() => {
-                                setEditTrackerSettings(prev => ({
-                                  ...prev,
-                                  [tracker.id]: {
-                                    ...prev[tracker.id],
-                                    notificationType: type as 'email' | 'sms' | 'kakao'
-                                  }
-                                }))
-                              }}
-                              className={`flex items-center justify-center gap-1.5 px-2 py-2.5 rounded-button border-2 transition-all min-h-[44px] ${
-                                settings.notificationType === type
-                                  ? 'border-emerald-500 bg-emerald-50'
-                                  : 'border-neutral-200 bg-white hover:border-neutral-300'
-                              }`}
-                            >
-                              <Icon className={`w-3.5 h-3.5 ${settings.notificationType === type ? 'text-emerald-600' : 'text-neutral-400'}`} />
-                              <span className={`text-xs font-bold ${settings.notificationType === type ? 'text-emerald-600' : 'text-neutral-600'}`}>
-                                {label}
-                              </span>
-                            </button>
-                          ))}
-                        </div>
+                        <>
+                          <div className="grid grid-cols-3 gap-2">
+                            {[
+                              { type: 'email', icon: Mail, label: '이메일' },
+                              { type: 'sms', icon: Phone, label: '문자', disabled: true },
+                              { type: 'kakao', icon: MessageCircle, label: '카카오', disabled: true },
+                            ].map(({ type, icon: Icon, label, disabled }) => (
+                              <button
+                                key={type}
+                                onClick={() => {
+                                  if (disabled) return
+                                  setEditTrackerSettings(prev => ({
+                                    ...prev,
+                                    [tracker.id]: {
+                                      ...prev[tracker.id],
+                                      notificationType: type as 'email' | 'sms' | 'kakao',
+                                      ...(type === 'email' && !prev[tracker.id].notificationEmail ? {
+                                        notificationEmail: user?.email || ''
+                                      } : {})
+                                    }
+                                  }))
+                                }}
+                                disabled={disabled}
+                                className={`flex items-center justify-center gap-1.5 px-2 py-2.5 rounded-button border-2 transition-all min-h-[44px] ${
+                                  disabled
+                                    ? 'border-neutral-100 bg-neutral-50 cursor-not-allowed opacity-50'
+                                    : settings.notificationType === type
+                                      ? 'border-emerald-500 bg-emerald-50'
+                                      : 'border-neutral-200 bg-white hover:border-neutral-300'
+                                }`}
+                              >
+                                <Icon className={`w-3.5 h-3.5 ${disabled ? 'text-neutral-300' : settings.notificationType === type ? 'text-emerald-600' : 'text-neutral-400'}`} />
+                                <span className={`text-xs font-bold ${disabled ? 'text-neutral-300' : settings.notificationType === type ? 'text-emerald-600' : 'text-neutral-600'}`}>
+                                  {label}
+                                  {disabled && <span className="text-[9px] block font-medium">준비중</span>}
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+
+                          {/* 이메일 선택 시 이메일 입력 + 동의 */}
+                          {settings.notificationType === 'email' && (
+                            <div className="space-y-2.5 p-3 bg-emerald-50 rounded-button border border-emerald-200">
+                              <div className="space-y-1.5">
+                                <label className="text-xs font-bold text-neutral-700 flex items-center gap-1">
+                                  <Mail className="w-3 h-3 text-emerald-600" />
+                                  알림 받을 이메일
+                                </label>
+                                <input
+                                  type="email"
+                                  value={settings.notificationEmail}
+                                  onChange={(e) => {
+                                    setEditTrackerSettings(prev => ({
+                                      ...prev,
+                                      [tracker.id]: {
+                                        ...prev[tracker.id],
+                                        notificationEmail: e.target.value
+                                      }
+                                    }))
+                                  }}
+                                  placeholder="example@email.com"
+                                  className="w-full h-11 px-3 border-2 border-neutral-300 rounded-button focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all bg-white text-sm font-medium"
+                                />
+                              </div>
+                              <label className="flex items-start gap-2 cursor-pointer group">
+                                <div className="relative flex-shrink-0 mt-0.5">
+                                  <input
+                                    type="checkbox"
+                                    checked={settings.notificationConsent}
+                                    onChange={(e) => {
+                                      setEditTrackerSettings(prev => ({
+                                        ...prev,
+                                        [tracker.id]: {
+                                          ...prev[tracker.id],
+                                          notificationConsent: e.target.checked
+                                        }
+                                      }))
+                                    }}
+                                    className="sr-only peer"
+                                  />
+                                  <div className="w-5 h-5 rounded border-2 border-neutral-300 bg-white peer-checked:bg-emerald-600 peer-checked:border-emerald-600 transition-all flex items-center justify-center">
+                                    {settings.notificationConsent && (
+                                      <CheckCircle2 className="w-3.5 h-3.5 text-white" />
+                                    )}
+                                  </div>
+                                </div>
+                                <span className="text-xs text-neutral-600 leading-relaxed">
+                                  키워드 순위 알림 이메일 수신에 동의합니다. 알림은 자동수집 시간에 발송되며, 언제든 설정에서 해제할 수 있습니다.
+                                </span>
+                              </label>
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>
