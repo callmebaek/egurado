@@ -914,7 +914,11 @@ export default function MetricsTrackerPage() {
 
                 {/* 추적 키워드 목록 */}
                 <div className="space-y-2 w-full overflow-hidden">
-                  {group.trackers.map((tracker) => (
+                  {group.trackers.map((tracker) => {
+                    // 개별 트래커 상태 또는 부모 매장 상태를 폴백으로 사용
+                    const trackerStatus = collectionQueue.getStatus(tracker.id) || collectionQueue.getStatus(`store_${group.store.id}`)
+                    
+                    return (
                     <div
                       key={tracker.id}
                       className="bg-white rounded-button border border-neutral-200 p-2.5 md:p-3 shadow-sm hover:shadow-md transition-shadow duration-200 w-full overflow-hidden"
@@ -944,12 +948,12 @@ export default function MetricsTrackerPage() {
                           {/* 수집 시간 */}
                           <div className="flex items-center gap-1 text-xs text-neutral-500">
                             <Clock className="w-3 h-3 flex-shrink-0" />
-                            {collectionQueue.isCollecting(tracker.id) ? (
+                            {trackerStatus === 'collecting' ? (
                               <span className="flex items-center gap-1 text-emerald-600">
                                 <Loader2 className="w-3 h-3 animate-spin" />
                                 수집 중...
                               </span>
-                            ) : collectionQueue.isQueued(tracker.id) ? (
+                            ) : trackerStatus === 'queued' ? (
                               <span className="flex items-center gap-1 text-amber-600 font-medium">
                                 <Clock className="w-3 h-3" />
                                 대기 중...
@@ -977,11 +981,11 @@ export default function MetricsTrackerPage() {
                         
                         {/* 순위 표시 - 대시보드 스타일 */}
                         <div className="flex items-center gap-1.5 md:gap-2 flex-shrink-0">
-                          {collectionQueue.isCollecting(tracker.id) ? (
+                          {trackerStatus === 'collecting' ? (
                             <div className="w-14 h-12 flex items-center justify-center">
                               <Loader2 className="w-5 h-5 animate-spin text-emerald-600" />
                             </div>
-                          ) : collectionQueue.isQueued(tracker.id) ? (
+                          ) : trackerStatus === 'queued' ? (
                             <div className="w-14 h-12 flex items-center justify-center">
                               <Clock className="w-5 h-5 text-amber-500" />
                             </div>
@@ -1014,31 +1018,26 @@ export default function MetricsTrackerPage() {
                           )}
 
                           {/* 개별 수집 버튼 */}
-                          {(() => {
-                            const kwStatus = collectionQueue.getStatus(tracker.id)
-                            return (
-                              <button
-                                onClick={() => handleCollectNow(tracker.id)}
-                                disabled={!!kwStatus}
-                                className={`p-2 rounded-button transition-all duration-200 flex-shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center ${
-                                  kwStatus === 'queued'
-                                    ? 'bg-amber-50 text-amber-500 cursor-wait'
-                                    : kwStatus === 'collecting'
-                                      ? 'bg-neutral-100 text-neutral-400 cursor-not-allowed'
-                                      : 'bg-emerald-100 text-emerald-600 hover:bg-emerald-200 hover:shadow-sm active:scale-95'
-                                }`}
-                                title={kwStatus === 'queued' ? '대기 중 - 순서대로 자동 실행됩니다' : '이 키워드 순위를 지금 수집합니다'}
-                              >
-                                {kwStatus === 'collecting' ? (
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : kwStatus === 'queued' ? (
-                                  <Clock className="w-4 h-4" />
-                                ) : (
-                                  <RefreshCw className="w-4 h-4" />
-                                )}
-                              </button>
-                            )
-                          })()}
+                          <button
+                            onClick={() => handleCollectNow(tracker.id)}
+                            disabled={!!trackerStatus}
+                            className={`p-2 rounded-button transition-all duration-200 flex-shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center ${
+                              trackerStatus === 'queued'
+                                ? 'bg-amber-50 text-amber-500 cursor-wait'
+                                : trackerStatus === 'collecting'
+                                  ? 'bg-neutral-100 text-neutral-400 cursor-not-allowed'
+                                  : 'bg-emerald-100 text-emerald-600 hover:bg-emerald-200 hover:shadow-sm active:scale-95'
+                            }`}
+                            title={trackerStatus === 'queued' ? '대기 중 - 순서대로 자동 실행됩니다' : '이 키워드 순위를 지금 수집합니다'}
+                          >
+                            {trackerStatus === 'collecting' ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : trackerStatus === 'queued' ? (
+                              <Clock className="w-4 h-4" />
+                            ) : (
+                              <RefreshCw className="w-4 h-4" />
+                            )}
+                          </button>
                         </div>
                       </div>
 
@@ -1096,7 +1095,7 @@ export default function MetricsTrackerPage() {
                         </div>
                       </div>
                     </div>
-                  ))}
+                  )})}
                 </div>
               </div>
             )

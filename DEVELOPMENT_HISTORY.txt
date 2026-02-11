@@ -16968,3 +16968,461 @@ TIER_ORDER = {
 
 **토스페이먼츠 연동부터 구독 관리, 쿠폰 시스템, 관리자 도구까지 SaaS 운영에 필요한 결제 인프라가 완성되었습니다!** 💳🚀
 =====================================
+
+
+=====================================
+## 세션 37: NHN Cloud 통합 (카카오 비즈앱 전환, KakaoTalk Bizmessage, OTP 인증, 이메일 순위 알림)
+=====================================
+
+**작업 기간:** 2026-02-11  
+**주요 목표:** NHN Cloud를 활용한 SMS OTP 인증, KakaoTalk Bizmessage 알림톡, 이메일 순위 알림 시스템 구축 및 카카오 비즈앱 전환
+
+---
+
+### 🔄 1. 카카오 비즈앱 전환 및 로그인 문제 해결
+
+#### 1.1 테스트앱 → 정식 비즈앱 전환
+**문제:**
+- 카카오 로그인이 테스트앱(whiplace-Test)으로 동작 중
+- 사용자에게 "Whiplace-Test"로 앱 이름이 노출
+
+**해결:**
+- 정식 비즈앱 `whiplace (ID: 1371840)`으로 전환
+- 비즈앱의 REST API Key, JavaScript Key, Client Secret 새로 적용
+- Vercel 환경변수 + EC2 환경변수 모두 업데이트
+
+#### 1.2 KOE320 에러 디버깅 (카카오 인증 실패)
+**증상:** 카카오 로그인 시 `KOE320 - authorization code not found` 에러 반복 발생
+
+**디버깅 과정 및 원인:**
+1. **redirect_uri 불일치**: `whiplace.com` → `www.whiplace.com` 자동 리다이렉트 발생
+   - 카카오 Developers Console에 `https://www.whiplace.com/auth/callback/kakao` 등록
+   - `KAKAO_REDIRECT_URI` 환경변수에 `www` 포함하여 수정
+2. **API 키 오류**: EC2의 `KAKAO_REST_API_KEY`에 JavaScript Key가 잘못 설정됨
+   - REST API Key: `23a16753e4f7f0b2351c47875259b1e4`로 올바르게 수정
+3. **Docker 환경변수 미로딩**: `.env` 파일 수정 후 Docker 컨테이너가 새 값을 로드하지 않음
+   - `docker rm` + `docker run --env-file ./backend/.env`로 컨테이너 재생성
+
+**최종 해결:**
+```bash
+# EC2에서 Docker 컨테이너 재생성 (올바른 환경변수 적용)
+docker stop egurado-api && docker rm egurado-api
+docker build -t egurado-backend ./backend
+docker run -d --name egurado-api --env-file ./backend/.env -p 8000:8000 --restart unless-stopped egurado-backend
+```
+
+---
+
+### 🔑 2. 데이터베이스 외래키 제약조건 수정
+
+#### 2.1 문제
+- 소셜 로그인(카카오/네이버) 사용자는 `auth.users` 테이블에 레코드 없이 `profiles` 테이블에만 존재
+- `user_credits`, `subscriptions` 등의 테이블이 `auth.users(id)`를 외래키로 참조
+- 소셜 로그인 후 트리거가 `user_credits` INSERT 시 외래키 위반 오류 발생 (`500 Internal Server Error`)
+
+#### 2.2 해결
+```sql
+-- Step 1: feature_votes 고아 데이터 정리 (347건)
+DELETE FROM feature_votes
+WHERE NOT EXISTS (SELECT 1 FROM profiles p WHERE p.id = feature_votes.user_id);
+
+-- Step 2: 모든 관련 테이블의 외래키를 auth.users(id) → profiles(id)로 변경
+ALTER TABLE user_credits DROP CONSTRAINT IF EXISTS user_credits_user_id_fkey;
+ALTER TABLE user_credits ADD CONSTRAINT user_credits_user_id_fkey
+    FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE;
+
+ALTER TABLE subscriptions DROP CONSTRAINT IF EXISTS subscriptions_user_id_fkey;
+ALTER TABLE subscriptions ADD CONSTRAINT subscriptions_user_id_fkey
+    FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE;
+
+-- (credit_transactions, payments, support_tickets, user_notification_settings,
+--  login_history, feature_votes, diagnosis_history, activation_history,
+--  target_keywords_history 등 총 11개 테이블 수정)
+```
+
+**수정된 테이블 목록:**
+- `user_credits`, `subscriptions`, `credit_transactions`, `payments`
+- `support_tickets`, `user_notification_settings`, `login_history`
+- `feature_votes`, `diagnosis_history`, `activation_history`, `target_keywords_history`
+
+---
+
+### 📱 3. NHN Cloud KakaoTalk Bizmessage 연동
+
+#### 3.1 환경변수 설정
+```bash
+# backend/.env에 추가
+NHN_KAKAO_URL=https://api-alimtalk.cloud.toast.com
+NHN_KAKAO_APPKEY=YDXmjk8AlVKWtrOS
+NHN_KAKAO_SECRET_KEY=pbJUWQ7SDPoKh7LMi5aWE5bS78mqJHyk
+NHN_KAKAO_SENDER_KEY=ee3555de2342cbbc4affa0d8b50188b5cd1d6dac
+```
+
+#### 3.2 백엔드 서비스 구현
+**파일:** `backend/app/services/nhn_kakao_service.py` (신규)
+```python
+class NhnKakaoService:
+    async def send_alimtalk(
+        self,
+        phone_number: str,
+        template_code: str,
+        template_params: Dict[str, str],
+        fallback_sms_message: Optional[str] = None
+    ) -> bool:
+        """NHN Cloud를 통해 카카오 알림톡 전송 (SMS fallback 지원)"""
+        # HMAC-SHA256 시그니처 생성
+        # NHN Cloud 알림톡 v2.1 API 호출
+        # 실패 시 SMS 대체 발송 옵션
+```
+
+**주요 기능:**
+- 알림톡 발송 (v2.1 API)
+- HMAC-SHA256 시그니처 인증
+- 알림톡 실패 시 SMS fallback 지원
+- 순위 알림 전용 메서드 (`send_rank_alert`)
+- 순위 결과 텍스트 포맷팅 (`format_rank_results`)
+
+#### 3.3 알림톡 템플릿 등록
+1. **인증코드 (auth_code):** OTP 인증번호 발송용
+2. **키워드 순위 알림 (rank_alert):** 매장별 키워드 순위 통합 알림
+   - 아이템 리스트형 템플릿
+   - 매장명, 키워드별 순위/변동 표시
+   - "대시보드에서 자세히 보기" 버튼 포함
+
+---
+
+### 🔐 4. OTP 인증 시스템 구현
+
+#### 4.1 데이터베이스 마이그레이션
+**파일:** `supabase/migrations/053_phone_verifications.sql`
+```sql
+CREATE TABLE IF NOT EXISTS phone_verifications (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    phone_number TEXT NOT NULL,
+    otp_code TEXT NOT NULL,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    is_verified BOOLEAN DEFAULT FALSE,
+    verified_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_phone_verifications_phone_number ON phone_verifications(phone_number);
+CREATE INDEX IF NOT EXISTS idx_phone_verifications_expires_at ON phone_verifications(expires_at);
+```
+
+#### 4.2 OTP 서비스
+**파일:** `backend/app/services/otp_service.py` (신규)
+```python
+class OtpService:
+    async def generate_and_store_otp(self, phone_number: str) -> str:
+        """6자리 OTP 코드 생성 → DB 저장 (5분 만료)"""
+        # 기존 유효 OTP 있으면 재사용
+
+    async def verify_otp(self, phone_number: str, otp_code: str) -> bool:
+        """OTP 코드 검증 (만료/중복 사용 체크)"""
+```
+
+#### 4.3 API 엔드포인트
+**파일:** `backend/app/routers/auth.py` (수정)
+- **POST /api/v1/auth/send-otp**: 카카오 알림톡으로 OTP 코드 발송
+- **POST /api/v1/auth/verify-otp**: OTP 검증 → 로그인/회원가입 처리 → JWT 발급
+
+#### 4.4 스키마 업데이트
+**파일:** `backend/app/models/schemas.py` (수정)
+```python
+class SendOtpRequest(BaseModel):
+    phone_number: str = Field(..., pattern=r"^\+?[0-9]{10,15}$")
+
+class VerifyOtpRequest(BaseModel):
+    phone_number: str = Field(..., pattern=r"^\+?[0-9]{10,15}$")
+    otp_code: str = Field(..., min_length=6, max_length=6)
+
+class OtpResponse(BaseModel):
+    message: str
+    access_token: Optional[str] = None
+    token_type: Optional[str] = "bearer"
+    user: Optional[Profile] = None
+    onboarding_required: Optional[bool] = False
+```
+
+#### 4.5 설정 추가
+**파일:** `backend/app/core/config.py` (수정)
+```python
+OTP_EXPIRE_MINUTES: int = int(os.getenv("OTP_EXPIRE_MINUTES", "5"))
+OTP_LENGTH: int = int(os.getenv("OTP_LENGTH", "6"))
+```
+
+---
+
+### 📧 5. NHN Cloud Email 연동
+
+#### 5.1 환경변수 설정
+```bash
+# backend/.env에 추가
+NHN_EMAIL_URL=https://email.api.nhncloudservice.com
+NHN_EMAIL_APPKEY=sXbY8c7bsy32HRml
+NHN_EMAIL_SECRET_KEY=pNfdoBzX61QXpafxqJZn3g9PaRe0S0lp
+NHN_EMAIL_SENDER=support@whiplace.com
+```
+
+#### 5.2 도메인 인증 (whiplace.com)
+- **SPF 레코드**: Gabia DNS에 등록 완료 → NHN Cloud에서 검증 성공
+- **DKIM 활성화**: 초기 비활성화 상태에서 API 테스트 실패 → DKIM 활성화 후 성공
+- **발신자 주소**: `support@whiplace.com` 등록
+
+#### 5.3 이메일 서비스 구현
+**파일:** `backend/app/services/nhn_email_service.py` (신규)
+```python
+class NHNEmailService:
+    """NHN Cloud Email 발송 서비스"""
+    sender_name = "윕플(Whiplace)"
+
+    async def send_rank_alert_email(
+        self,
+        to_email: str,
+        user_name: str,
+        store_name: str,
+        rank_results: List[dict],
+        collected_at: str,
+    ) -> dict:
+        """키워드 순위 알림 이메일 발송"""
+
+    def _build_rank_alert_html(self, ...) -> str:
+        """순위 알림 HTML 이메일 본문 생성 (윕플 브랜드 디자인)"""
+```
+
+#### 5.4 이메일 디자인 최적화
+**브랜드 스타일 적용:**
+- 윕플 로고: `whiplace logo v10.png` (상단 + 하단)
+- 색상: Emerald-Teal Gradient (`#10B981` → `#0D9488` → `#06B6D4`)
+- 폰트: Apple SD Gothic Neo, Noto Sans KR (한국어 최적화)
+- 순위 변동 색상: **상승=빨강(#DC2626)**, **하락=파랑(#2563EB)**, 변동없음=회색
+- CTA 버튼: "대시보드에서 자세히 보기 →" (그래디언트 버튼)
+
+**반응형 디자인:**
+- 최대 너비: 520px (모바일 최적화)
+- 패딩: 24px (내부), 16px (외부)
+- Outlook 호환 (`<!--[if mso]>` 대응)
+- 인라인 CSS (이메일 클라이언트 호환성)
+
+**이메일 제목 형식:**
+```
+[윕플] {매장명} 키워드 순위 알림 - {수집시간}
+예: [윕플] 맛있는 카페 강남점 키워드 순위 알림 - 2026-02-11 16:00
+```
+
+**이메일 구조:**
+1. 로고 헤더 (whiplace logo v10.png)
+2. Gradient 구분선 (emerald-teal)
+3. 제목: "📊 키워드 순위 알림"
+4. 수집 시간 표시
+5. 인사말 (사용자명 + 매장명)
+6. 매장 배지 (매장명, 추적 키워드 수)
+7. 키워드별 순위 테이블 (키워드 | 순위 / 변동)
+8. CTA 버튼 (대시보드 링크)
+9. 안내 문구 (알림 설정 변경 링크)
+10. 푸터 (로고 + 저작권)
+
+---
+
+### 🔔 6. 알림 서비스 통합 (notification_service.py)
+
+#### 6.1 통합 알림 서비스
+**파일:** `backend/app/services/notification_service.py` (수정)
+```python
+class NotificationService:
+    async def send_rank_notifications_after_collection(
+        self, collected_trackers: List[dict]
+    ) -> dict:
+        """자동수집 완료 후 알림 발송 (매장 단위 합산)"""
+        # 1. 알림 설정된 tracker만 필터링
+        # 2. 매장(store_id) + 사용자(user_id) 기준 그룹화
+        # 3. notification_type별 분기:
+        #    - kakao: nhn_kakao_service.send_rank_alert()
+        #    - email: nhn_email_service.send_rank_alert_email()
+        #    - sms: (미구현, 승인 대기)
+```
+
+**알림 흐름:**
+1. 스케줄러가 설정된 시간에 자동수집 실행
+2. 수집 완료 후 `notification_service.send_rank_notifications_after_collection()` 호출
+3. 매장별로 키워드 순위를 합산하여 1건의 알림 발송
+4. 알림 타입에 따라 카카오/이메일/SMS 분기
+
+#### 6.2 스케줄러 연동
+**파일:** `backend/app/core/scheduler.py` (수정)
+- `collect_all_metrics` 함수에 알림 발송 로직 추가
+- 수집 완료된 tracker의 알림 설정 확인
+- 매장별 그룹화 → 사용자 프로필 조회 → 알림 발송
+
+---
+
+### 🖥️ 7. 프론트엔드 이메일 알림 UI 구현
+
+#### 7.1 인터페이스 업데이트
+**파일:** `frontend/app/dashboard/naver/metrics-tracker/page.tsx` (수정)
+```typescript
+interface MetricTracker {
+  // ... 기존 필드
+  notification_email?: string    // 추가
+  notification_consent: boolean  // 추가
+}
+```
+
+#### 7.2 "추적 추가" 모달 (Add Tracker Modal)
+- 알림 타입 선택: 이메일 / 문자 / 카카오 (3열 버튼 그리드)
+- 이메일 선택 시 UI 표시:
+  - 이메일 입력 필드 (기본값: 사용자 이메일 자동 입력)
+  - 수신 동의 Switch ("이메일 알림 수신에 동의합니다.")
+- 문자/카카오 선택 시: "준비 중" 안내 메시지 표시
+- 유효성 검사: 이메일 미입력 또는 동의 미체크 시 저장 차단 + toast 알림
+
+#### 7.3 "자동수집 설정" 모달 (Edit Settings Modal)
+- 기존 알림 설정 불러오기 (이메일, 동의 상태 포함)
+- 키워드별 개별 알림 설정 지원
+- 이메일 입력 + 수신 동의 UI (추적 추가 모달과 동일)
+- 유효성 검사: 키워드별 이메일/동의 확인 + toast 알림
+
+#### 7.4 상태 관리
+```typescript
+// 추적 추가 모달용
+const [newNotificationEmail, setNewNotificationEmail] = useState('')
+const [newNotificationConsent, setNewNotificationConsent] = useState(false)
+
+// 자동수집 설정 모달용 (키워드별)
+editTrackerSettings: {
+  [trackerId: string]: {
+    // ... 기존 필드
+    notificationEmail: string      // 추가
+    notificationConsent: boolean   // 추가
+  }
+}
+```
+
+---
+
+### 🔧 8. 설정 파일 변경 사항
+
+#### 8.1 backend/app/core/config.py
+```python
+# NHN Cloud SMS 설정
+NHN_SMS_URL: str = os.getenv("NHN_SMS_URL", "")
+NHN_SMS_APPKEY: str = os.getenv("NHN_SMS_APPKEY", "")
+NHN_SMS_SECRET_KEY: str = os.getenv("NHN_SMS_SECRET_KEY", "")
+NHN_SMS_SENDER_NUMBER: str = os.getenv("NHN_SMS_SENDER_NUMBER", "")
+
+# NHN Cloud Email 설정
+NHN_EMAIL_URL: str = os.getenv("NHN_EMAIL_URL", "https://email.api.nhncloudservice.com")
+NHN_EMAIL_APPKEY: str = os.getenv("NHN_EMAIL_APPKEY", "")
+NHN_EMAIL_SECRET_KEY: str = os.getenv("NHN_EMAIL_SECRET_KEY", "")
+NHN_EMAIL_SENDER: str = os.getenv("NHN_EMAIL_SENDER", "support@whiplace.com")
+
+# NHN Cloud KakaoTalk Bizmessage 설정
+NHN_KAKAO_URL: str = os.getenv("NHN_KAKAO_URL", "")
+NHN_KAKAO_APPKEY: str = os.getenv("NHN_KAKAO_APPKEY", "")
+NHN_KAKAO_SECRET_KEY: str = os.getenv("NHN_KAKAO_SECRET_KEY", "")
+NHN_KAKAO_SENDER_KEY: str = os.getenv("NHN_KAKAO_SENDER_KEY", "")
+
+# OTP 설정
+OTP_EXPIRE_MINUTES: int = int(os.getenv("OTP_EXPIRE_MINUTES", "5"))
+OTP_LENGTH: int = int(os.getenv("OTP_LENGTH", "6"))
+```
+
+#### 8.2 backend/.env (EC2 배포 완료)
+- NHN Cloud SMS/Email/KakaoTalk 환경변수 추가
+- 카카오 비즈앱 키 업데이트 (REST API Key, Client Secret, Redirect URI)
+- `.env` 파일 인코딩 이슈 해결 (한국어 주석으로 인한 환경변수 파싱 오류)
+
+---
+
+### 🚀 9. 배포
+
+#### 9.1 프론트엔드 (Vercel)
+- `NEXT_PUBLIC_KAKAO_JS_KEY`, `NEXT_PUBLIC_KAKAO_REDIRECT_URI` 업데이트 (비즈앱 키)
+- 이메일 알림 UI 변경 사항 자동 배포 (git push → Vercel)
+
+#### 9.2 백엔드 (EC2 + Docker)
+```bash
+# 전체 배포 명령어
+ssh -i "egurado keyfair.pem" ubuntu@3.34.136.255 \
+  "cd /home/ubuntu/egurado && git pull origin main && \
+   docker stop egurado-api && docker rm egurado-api && \
+   docker build -t egurado-backend ./backend && \
+   docker run -d --name egurado-api --env-file ./backend/.env \
+   -p 8000:8000 --restart unless-stopped egurado-backend"
+```
+
+#### 9.3 데이터베이스 (Supabase)
+- `053_phone_verifications.sql` 마이그레이션 실행
+- 외래키 제약조건 수정 (11개 테이블, SQL Editor에서 직접 실행)
+
+---
+
+### 📦 10. 변경된 파일 목록
+
+#### 백엔드 (신규)
+- `backend/app/services/nhn_kakao_service.py` - NHN Cloud KakaoTalk 알림톡 서비스
+- `backend/app/services/nhn_email_service.py` - NHN Cloud Email 서비스 (순위 알림 HTML 템플릿 포함)
+- `backend/app/services/otp_service.py` - OTP 생성/검증 서비스
+
+#### 백엔드 (수정)
+- `backend/app/core/config.py` - NHN Cloud (SMS/Email/KakaoTalk) + OTP 설정 추가
+- `backend/app/routers/auth.py` - /send-otp, /verify-otp 엔드포인트 추가, 테스트 이메일 엔드포인트 추가
+- `backend/app/services/notification_service.py` - NHN Cloud Email/KakaoTalk 연동, 매장별 통합 알림 발송
+- `backend/app/core/scheduler.py` - 자동수집 후 알림 발송 로직 연동
+- `backend/app/models/schemas.py` - OTP 스키마 추가, auth_provider에 'phone' 추가, MetricTracker에 notification_email/consent 추가
+- `backend/.env` - NHN Cloud API 키, 카카오 비즈앱 키 업데이트
+- `backend/env.example` - NHN Cloud 환경변수 구조 업데이트
+
+#### 프론트엔드 (수정)
+- `frontend/app/dashboard/naver/metrics-tracker/page.tsx` - 이메일 알림 입력 + 동의 UI (추적 추가/설정 모달)
+- `frontend/lib/social-login.ts` - 카카오 SDK 디버그 로그 추가
+- `frontend/lib/auth-context.tsx` - 카카오 로그인 API 호출 디버그 로그 추가
+
+#### 데이터베이스 (마이그레이션)
+- `supabase/migrations/053_phone_verifications.sql` - OTP 인증 테이블 생성
+
+#### 데이터베이스 (SQL Editor 직접 실행)
+- 외래키 제약조건 수정: auth.users(id) → profiles(id) (11개 테이블)
+- feature_votes 고아 데이터 정리 (347건 삭제)
+
+---
+
+### 🐛 11. 해결된 주요 이슈
+
+| # | 이슈 | 원인 | 해결 방법 |
+|---|------|------|-----------|
+| 1 | 카카오 로그인 KOE320 에러 | redirect_uri 불일치 (www 누락) + REST API Key 오류 + Docker 환경변수 미로딩 | www 포함 URI 설정, 올바른 키 적용, Docker 컨테이너 재생성 |
+| 2 | 소셜 로그인 후 500 에러 | user_credits 등이 auth.users를 참조하나 소셜 로그인은 profiles만 생성 | 외래키를 profiles(id)로 변경 |
+| 3 | feature_votes FK 위반 | 고아 데이터 347건 존재 | 고아 데이터 삭제 후 FK 수정 |
+| 4 | NHN_KAKAO_URL 미로딩 | .env 파일 한국어 주석으로 인한 인코딩/파싱 오류 | .env 파일 수동 수정, Docker 재시작 |
+| 5 | NHN Email API 인증 실패 | DKIM 미활성화 | DKIM 활성화 후 성공 |
+| 6 | NHN Email SPF 검증 실패 | SPF 레코드 미등록/미검증 | Gabia DNS에 SPF 등록 → NHN Cloud에서 재검증 |
+
+---
+
+### 🎉 주요 성과
+
+#### 완성된 기능
+1. ✅ **카카오 비즈앱 전환** - 테스트앱에서 정식 비즈앱으로 전환 완료
+2. ✅ **NHN Cloud KakaoTalk Bizmessage 백엔드** - 알림톡 발송 서비스 구현 (템플릿 심사 대기 중)
+3. ✅ **OTP 인증 시스템** - 전화번호 기반 OTP 생성/검증/로그인 백엔드 구현
+4. ✅ **NHN Cloud Email 연동** - 도메인 인증(SPF/DKIM), 이메일 발송 서비스 완성
+5. ✅ **키워드 순위 이메일 알림** - 윕플 브랜드 디자인 HTML 이메일 템플릿
+6. ✅ **이메일 알림 프론트엔드 UI** - 이메일 입력/동의 UI + 유효성 검사
+7. ✅ **통합 알림 시스템** - 자동수집 후 카카오/이메일/SMS 분기 발송 로직
+8. ✅ **DB 외래키 정리** - auth.users → profiles 참조로 전면 수정
+
+#### 기술 스택
+- **알림톡**: NHN Cloud KakaoTalk Bizmessage v2.1 API
+- **이메일**: NHN Cloud Email v2.0 API (SPF + DKIM 인증)
+- **OTP**: 자체 구현 (6자리 숫자, 5분 만료, Supabase 저장)
+- **인증**: JWT + 카카오/네이버 OAuth + OTP (전화번호)
+- **배포**: Vercel (프론트) + EC2 Docker (백엔드) + Supabase (DB)
+
+---
+
+**이 세션의 결과로 NHN Cloud 기반의 통합 알림 인프라(카카오 알림톡, 이메일, SMS)가 구축되었습니다!** 🎊
+
+**카카오 비즈앱 전환, OTP 인증 시스템, 키워드 순위 이메일 알림 등 사용자 커뮤니케이션 채널이 대폭 확장되었습니다!** 📧📱🔔
+=====================================

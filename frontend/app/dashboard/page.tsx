@@ -345,6 +345,9 @@ function SortableStoreTrackerCard({
               const tracker = visibleTrackers[index]
               
               if (tracker) {
+                // 개별 트래커 상태 또는 부모 매장 상태를 폴백으로 사용
+                const trackerStatus = getQueueStatus(tracker.id) || getQueueStatus(`store_${storeGroup.store_id}`)
+                
                 // 실제 키워드가 있는 경우 - 키워드순위추적 페이지 스타일 2단 구조
                 return (
                   <div
@@ -366,12 +369,12 @@ function SortableStoreTrackerCard({
                         {/* 수집 시간 */}
                         <div className="flex items-center gap-1 text-xs text-neutral-500">
                           <Clock className="w-3 h-3 flex-shrink-0" />
-                          {getQueueStatus(tracker.id) === 'collecting' ? (
+                          {trackerStatus === 'collecting' ? (
                             <span className="flex items-center gap-1 text-emerald-600 font-medium">
                               <Loader2 className="w-3 h-3 animate-spin" />
                               수집 중...
                             </span>
-                          ) : getQueueStatus(tracker.id) === 'queued' ? (
+                          ) : trackerStatus === 'queued' ? (
                             <span className="flex items-center gap-1 text-amber-600 font-medium">
                               <Clock className="w-3 h-3" />
                               대기 중...
@@ -399,11 +402,11 @@ function SortableStoreTrackerCard({
                       
                       {/* 순위 + 수집버튼 */}
                       <div className="flex items-center gap-1.5 md:gap-2 flex-shrink-0">
-                        {getQueueStatus(tracker.id) === 'collecting' ? (
+                        {trackerStatus === 'collecting' ? (
                           <div className="w-14 h-12 flex items-center justify-center">
                             <Loader2 className="w-5 h-5 animate-spin text-emerald-600" />
                           </div>
-                        ) : getQueueStatus(tracker.id) === 'queued' ? (
+                        ) : trackerStatus === 'queued' ? (
                           <div className="w-14 h-12 flex items-center justify-center">
                             <Clock className="w-5 h-5 text-amber-500" />
                           </div>
@@ -436,31 +439,26 @@ function SortableStoreTrackerCard({
                         )}
 
                         {/* 수집 버튼 */}
-                        {(() => {
-                          const kwStatus = getQueueStatus(tracker.id)
-                          return (
-                            <button
-                              onClick={() => onRefreshTracker(tracker.id)}
-                              disabled={!!kwStatus}
-                              className={`p-2 rounded-button transition-all duration-200 flex-shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center ${
-                                kwStatus === 'queued'
-                                  ? 'bg-amber-50 text-amber-500 cursor-wait'
-                                  : kwStatus === 'collecting'
-                                    ? 'bg-neutral-100 text-neutral-400 cursor-not-allowed'
-                                    : 'bg-emerald-100 text-emerald-600 hover:bg-emerald-200 hover:shadow-sm active:scale-95'
-                              }`}
-                              title={kwStatus === 'queued' ? '대기 중 - 순서대로 자동 실행됩니다' : '이 키워드 순위를 지금 수집합니다'}
-                            >
-                              {kwStatus === 'collecting' ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                              ) : kwStatus === 'queued' ? (
-                                <Clock className="w-4 h-4" />
-                              ) : (
-                                <RefreshCw className="w-4 h-4" />
-                              )}
-                            </button>
-                          )
-                        })()}
+                        <button
+                          onClick={() => onRefreshTracker(tracker.id)}
+                          disabled={!!trackerStatus}
+                          className={`p-2 rounded-button transition-all duration-200 flex-shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center ${
+                            trackerStatus === 'queued'
+                              ? 'bg-amber-50 text-amber-500 cursor-wait'
+                              : trackerStatus === 'collecting'
+                                ? 'bg-neutral-100 text-neutral-400 cursor-not-allowed'
+                                : 'bg-emerald-100 text-emerald-600 hover:bg-emerald-200 hover:shadow-sm active:scale-95'
+                          }`}
+                          title={trackerStatus === 'queued' ? '대기 중 - 순서대로 자동 실행됩니다' : '이 키워드 순위를 지금 수집합니다'}
+                        >
+                          {trackerStatus === 'collecting' ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : trackerStatus === 'queued' ? (
+                            <Clock className="w-4 h-4" />
+                          ) : (
+                            <RefreshCw className="w-4 h-4" />
+                          )}
+                        </button>
                       </div>
                     </div>
 
