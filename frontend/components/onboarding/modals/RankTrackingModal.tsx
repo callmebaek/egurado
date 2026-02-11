@@ -71,7 +71,7 @@ export function RankTrackingModal({ isOpen, onClose, onComplete }: RankTrackingM
   const [loadingKeywords, setLoadingKeywords] = useState(false);
   
   // Step 3: 수집 주기
-  const [updateFrequency, setUpdateFrequency] = useState<'daily_once' | 'daily_twice' | 'daily_thrice'>('daily_once');
+  const [updateFrequency, setUpdateFrequency] = useState<'daily_once' | 'daily_twice'>('daily_once');
   
   // Step 4: 수집 시간
   const [updateTimes, setUpdateTimes] = useState<number[]>([9]);
@@ -498,7 +498,6 @@ export function RankTrackingModal({ isOpen, onClose, onComplete }: RankTrackingM
         {[
           { value: 'daily_once', label: '하루 1회', desc: '오전 9시에 수집합니다', times: [9] },
           { value: 'daily_twice', label: '하루 2회', desc: '오전 9시, 오후 6시에 수집합니다', times: [9, 18] },
-          { value: 'daily_thrice', label: '하루 3회', desc: '오전 9시, 오후 2시, 오후 8시에 수집합니다', times: [9, 14, 20] },
         ].map((option) => (
           <Card
             key={option.value}
@@ -541,7 +540,6 @@ export function RankTrackingModal({ isOpen, onClose, onComplete }: RankTrackingM
     const frequencyLabels = {
       'daily_once': '하루 1회',
       'daily_twice': '하루 2회',
-      'daily_thrice': '하루 3회',
     };
 
     return (

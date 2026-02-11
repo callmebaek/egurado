@@ -65,7 +65,7 @@ async def create_tracker(
     
     - **store_id**: 추적할 매장 ID
     - **keyword_id**: 추적할 키워드 ID
-    - **update_frequency**: 업데이트 주기 (daily_once, daily_twice, daily_thrice)
+    - **update_frequency**: 업데이트 주기 (daily_once, daily_twice)
     - **notification_enabled**: 알림 활성화 여부
     - **notification_type**: 알림 타입 (kakao, sms, email)
     

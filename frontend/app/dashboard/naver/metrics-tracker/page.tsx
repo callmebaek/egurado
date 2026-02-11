@@ -81,7 +81,7 @@ interface MetricTracker {
   store_name: string
   keyword: string
   platform: string
-  update_frequency: 'daily_once' | 'daily_twice' | 'daily_thrice'
+  update_frequency: 'daily_once' | 'daily_twice'
   update_times: number[] // 수집 시간 배열 (0-23시)
   is_active: boolean
   last_collected_at?: string
@@ -129,7 +129,7 @@ export default function MetricsTrackerPage() {
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [selectedStoreId, setSelectedStoreId] = useState("")
   const [newKeyword, setNewKeyword] = useState("")
-  const [updateFrequency, setUpdateFrequency] = useState<'daily_once' | 'daily_twice' | 'daily_thrice'>('daily_once')
+  const [updateFrequency, setUpdateFrequency] = useState<'daily_once' | 'daily_twice'>('daily_once')
   const [updateTimes, setUpdateTimes] = useState<number[]>([16]) // 기본: 16시 (오후 4시)
   const [notificationEnabled, setNotificationEnabled] = useState(false)
   const [notificationType, setNotificationType] = useState<'email' | 'sms' | 'kakao' | null>(null)
@@ -151,7 +151,7 @@ export default function MetricsTrackerPage() {
   const [editingTrackers, setEditingTrackers] = useState<MetricTracker[]>([])
   const [editTrackerSettings, setEditTrackerSettings] = useState<{
     [trackerId: string]: {
-      frequency: 'daily_once' | 'daily_twice' | 'daily_thrice'
+      frequency: 'daily_once' | 'daily_twice'
       times: number[]
       notificationEnabled: boolean
       notificationType: 'email' | 'sms' | 'kakao' | ''
@@ -182,14 +182,12 @@ export default function MetricsTrackerPage() {
   const [loadingCompetitors, setLoadingCompetitors] = useState(false)
 
   // 주기별 기본 수집 시간 설정
-  const getDefaultUpdateTimes = (frequency: 'daily_once' | 'daily_twice' | 'daily_thrice'): number[] => {
+  const getDefaultUpdateTimes = (frequency: 'daily_once' | 'daily_twice'): number[] => {
     switch(frequency) {
       case 'daily_once':
         return [16] // 16시 (오후 4시)
       case 'daily_twice':
         return [6, 16] // 6시, 16시 (오전 6시, 오후 4시)
-      case 'daily_thrice':
-        return [6, 12, 18] // 6시, 12시, 18시 (오전 6시, 낮 12시, 오후 6시)
       default:
         return [16]
     }
@@ -1206,7 +1204,7 @@ export default function MetricsTrackerPage() {
                   <select
                     value={updateFrequency}
                     onChange={(e) => {
-                      const newFrequency = e.target.value as 'daily_once' | 'daily_twice' | 'daily_thrice'
+                      const newFrequency = e.target.value as 'daily_once' | 'daily_twice'
                       setUpdateFrequency(newFrequency)
                       setUpdateTimes(getDefaultUpdateTimes(newFrequency))
                     }}
@@ -1214,7 +1212,6 @@ export default function MetricsTrackerPage() {
                   >
                     <option value="daily_once">하루 1회</option>
                     <option value="daily_twice">하루 2회</option>
-                    <option value="daily_thrice">하루 3회</option>
                   </select>
                 </div>
 
@@ -1659,7 +1656,7 @@ export default function MetricsTrackerPage() {
                       <select
                         value={settings.frequency}
                         onChange={(e) => {
-                          const newFrequency = e.target.value as 'daily_once' | 'daily_twice' | 'daily_thrice'
+                          const newFrequency = e.target.value as 'daily_once' | 'daily_twice'
                           setEditTrackerSettings(prev => ({
                             ...prev,
                             [tracker.id]: {
@@ -1673,7 +1670,6 @@ export default function MetricsTrackerPage() {
                       >
                         <option value="daily_once">하루 1회</option>
                         <option value="daily_twice">하루 2회</option>
-                        <option value="daily_thrice">하루 3회</option>
                       </select>
                     </div>
 

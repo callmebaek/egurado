@@ -41,7 +41,7 @@ interface MetricTracker {
   store_name: string;
   keyword: string;
   platform: string;
-  update_frequency: 'daily_once' | 'daily_twice' | 'daily_thrice';
+  update_frequency: 'daily_once' | 'daily_twice';
   update_times: number[];
   is_active: boolean;
   last_collected_at?: string;
@@ -55,7 +55,6 @@ type NotificationType = 'email' | 'sms' | 'kakao';
 const FREQUENCY_LABELS = {
   daily_once: '하루 1회',
   daily_twice: '하루 2회',
-  daily_thrice: '하루 3회',
 };
 
 export default function RankAlertsModal({ isOpen, onClose, onComplete }: RankAlertsModalProps) {

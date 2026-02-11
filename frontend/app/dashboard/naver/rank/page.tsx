@@ -100,7 +100,7 @@ export default function NaverRankPage() {
   // 추적 추가 모달 상태
   const [showAddTrackingDialog, setShowAddTrackingDialog] = useState(false)
   const [selectedKeywordForTracking, setSelectedKeywordForTracking] = useState<KeywordData | null>(null)
-  const [updateFrequency, setUpdateFrequency] = useState<'daily_once' | 'daily_twice' | 'daily_thrice'>('daily_once')
+  const [updateFrequency, setUpdateFrequency] = useState<'daily_once' | 'daily_twice'>('daily_once')
   const [updateTimes, setUpdateTimes] = useState<number[]>([9])
   const [notificationEnabled, setNotificationEnabled] = useState(false)
   const [notificationType, setNotificationType] = useState<'email' | 'sms' | 'kakao' | ''>('')
@@ -1458,14 +1458,12 @@ export default function NaverRankPage() {
                 <Select 
                   value={updateFrequency} 
                   onValueChange={(value) => {
-                    const freq = value as 'daily_once' | 'daily_twice' | 'daily_thrice'
+                    const freq = value as 'daily_once' | 'daily_twice'
                     setUpdateFrequency(freq)
                     if (freq === 'daily_once') {
                       setUpdateTimes([9])
-                    } else if (freq === 'daily_twice') {
-                      setUpdateTimes([9, 18])
                     } else {
-                      setUpdateTimes([9, 14, 20])
+                      setUpdateTimes([9, 18])
                     }
                   }}
                 >
@@ -1475,7 +1473,6 @@ export default function NaverRankPage() {
                   <SelectContent>
                     <SelectItem value="daily_once">하루 1회</SelectItem>
                     <SelectItem value="daily_twice">하루 2회</SelectItem>
-                    <SelectItem value="daily_thrice">하루 3회</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

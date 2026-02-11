@@ -43,8 +43,6 @@ class MetricTrackerService:
                     data['update_times'] = [16]
                 elif update_frequency == 'daily_twice':
                     data['update_times'] = [6, 16]
-                elif update_frequency == 'daily_thrice':
-                    data['update_times'] = [6, 12, 18]
                 else:
                     data['update_times'] = [16]
             
@@ -267,8 +265,6 @@ class MetricTrackerService:
                         update_times = [16]
                     elif update_frequency == 'daily_twice':
                         update_times = [6, 16]
-                    elif update_frequency == 'daily_thrice':
-                        update_times = [6, 12, 18]
                     else:
                         update_times = [16]
                 
@@ -303,8 +299,6 @@ class MetricTrackerService:
                     data['update_times'] = [16]
                 elif update_frequency == 'daily_twice':
                     data['update_times'] = [6, 16]
-                elif update_frequency == 'daily_thrice':
-                    data['update_times'] = [6, 12, 18]
             
             # 업데이트 실행
             result = self.supabase.table('metric_trackers')\

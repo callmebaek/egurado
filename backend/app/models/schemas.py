@@ -330,7 +330,7 @@ class MetricTrackerBase(BaseModel):
     store_id: UUID
     keyword_id: Optional[UUID] = None
     keyword: Optional[str] = None
-    update_frequency: Literal['daily_once', 'daily_twice', 'daily_thrice'] = 'daily_once'
+    update_frequency: Literal['daily_once', 'daily_twice'] = 'daily_once'
     update_times: List[int] = Field(default=[16])  # Default: 4 PM
     notification_enabled: bool = False
     notification_type: Optional[Literal['kakao', 'sms', 'email']] = None
@@ -351,7 +351,7 @@ class MetricTrackerCreate(MetricTrackerBase):
 
 class MetricTrackerUpdate(BaseModel):
     """Metric tracker update request"""
-    update_frequency: Optional[Literal['daily_once', 'daily_twice', 'daily_thrice']] = None
+    update_frequency: Optional[Literal['daily_once', 'daily_twice']] = None
     update_times: Optional[List[int]] = None
     notification_enabled: Optional[bool] = None
     notification_type: Optional[Literal['kakao', 'sms', 'email']] = None
