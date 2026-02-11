@@ -109,8 +109,8 @@ export default function MainKeywordsAnalysisPage() {
           const data: AnalysisResult = await response.json()
           setResult(data)
 
-          // ✨ 크레딧 실시간 차감 알림 (메인 키워드 분석 5 크레딧)
-          notifyCreditUsed(5, token)
+          // ✨ 크레딧 실시간 차감 알림 (대표 키워드 분석 10 크레딧)
+          notifyCreditUsed(10, token)
           
           // 🆕 캐시에 저장
           try {
@@ -182,8 +182,8 @@ export default function MainKeywordsAnalysisPage() {
       const data: AnalysisResult = await response.json()
       setResult(data)
 
-      // ✨ 크레딧 실시간 차감 알림 (메인 키워드 분석 5 크레딧)
-      notifyCreditUsed(5, token)
+      // ✨ 크레딧 실시간 차감 알림 (대표 키워드 분석 10 크레딧)
+      notifyCreditUsed(10, token)
       
       toast({
         title: "분석 완료",
@@ -261,7 +261,7 @@ export default function MainKeywordsAnalysisPage() {
           <span className="hidden md:inline"> </span>대표 키워드를 한눈에 분석합니다
         </p>
         <div className="mt-4 flex items-center justify-center gap-2 text-sm text-green-700 bg-green-50 px-4 py-2 rounded-full inline-flex mx-auto border border-green-200">
-          <span className="font-semibold">💡 5 크레딧</span>
+          <span className="font-semibold">💡 10 크레딧</span>
           <span className="text-neutral-500">·</span>
           <span>2분간 캐시 저장</span>
         </div>

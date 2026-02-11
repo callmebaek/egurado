@@ -245,9 +245,9 @@ export default function NaverAuditPage() {
       setPlaceDetails(data.details)
       setDiagnosisResult(data.diagnosis)
 
-      // ✨ 크레딧 실시간 차감 알림 (진단 10 크레딧, 인증된 경우만)
+      // ✨ 크레딧 실시간 차감 알림 (진단 8 크레딧, 인증된 경우만)
       if (token) {
-        notifyCreditUsed(10, token)
+        notifyCreditUsed(8, token)
       }
 
       toast({
@@ -1386,7 +1386,7 @@ export default function NaverAuditPage() {
           variant="secondary"
           className="bg-blue-100 text-blue-700 border-blue-200 px-3 py-1.5 md:px-4 md:py-2 text-xs md:text-sm font-semibold inline-flex items-center gap-1 md:gap-1.5"
         >
-          💡 30 크레딧
+          💡 8 크레딧
         </Badge>
       </header>
 

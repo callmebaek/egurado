@@ -122,7 +122,7 @@ async def generate_reply(
             check_result = await credit_service.check_sufficient_credits(
                 user_id=user_id,
                 feature="ai_reply_generate",
-                required_credits=1
+                required_credits=5
             )
             
             if not check_result.sufficient:
@@ -161,7 +161,7 @@ async def generate_reply(
                 transaction_id = await credit_service.deduct_credits(
                     user_id=user_id,
                     feature="ai_reply_generate",
-                    credits_amount=1,
+                    credits_amount=5,
                     metadata={
                         "store_name": request.store_name,
                         "author_name": request.author_name,
@@ -413,7 +413,7 @@ async def post_reply(
             check_result = await credit_service.check_sufficient_credits(
                 user_id=user_id,
                 feature="ai_reply_post",
-                required_credits=2
+                required_credits=8
             )
             
             if not check_result.sufficient:
@@ -445,7 +445,7 @@ async def post_reply(
                 transaction_id = await credit_service.deduct_credits(
                     user_id=user_id,
                     feature="ai_reply_post",
-                    credits_amount=2,
+                    credits_amount=8,
                     metadata={
                         "store_id": store_id,
                         "naver_review_id": request.naver_review_id,

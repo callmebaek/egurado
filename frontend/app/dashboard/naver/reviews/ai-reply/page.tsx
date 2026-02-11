@@ -317,8 +317,8 @@ export default function NaverAIReplyPage() {
         [review.naver_review_id]: data.reply_text
       }))
 
-      // ✨ 크레딧 실시간 차감 알림 (AI 답글 생성: 1 크레딧)
-      notifyCreditUsed(1, token)
+      // ✨ 크레딧 실시간 차감 알림 (AI 답글 생성: 5 크레딧)
+      notifyCreditUsed(5, token)
       
     } catch (err: any) {
       setError(err.message || "AI 답글 생성 중 오류가 발생했습니다")
@@ -530,8 +530,8 @@ export default function NaverAIReplyPage() {
           }
         }))
 
-        // ✨ 크레딧 실시간 차감 알림 (AI 답글 게시: 2 크레딧)
-        notifyCreditUsed(2, token)
+        // ✨ 크레딧 실시간 차감 알림 (AI 답글 게시: 8 크레딧)
+        notifyCreditUsed(8, token)
         
         // 상태 폴링 시작
         pollQueueStatus(review.naver_review_id, data.job_id)

@@ -423,7 +423,7 @@ export default function MetricsTrackerPage() {
             description: "지표가 수집되었습니다"
           })
 
-          notifyCreditUsed(2, token)
+          notifyCreditUsed(5, token)
           
           setTrackers(prev => prev.map(t => 
             t.id === trackerId 
@@ -501,7 +501,7 @@ export default function MetricsTrackerPage() {
         const successCount = results.filter(r => r.success).length
         
         if (successCount > 0) {
-          notifyCreditUsed(successCount * 2, token)
+          notifyCreditUsed(successCount * 5, token)
         }
         
         toast({

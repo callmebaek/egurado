@@ -1274,7 +1274,7 @@ async def get_place_details(
             credit_check = await credit_service.check_sufficient_credits(
                 user_id=user_id,
                 feature="place_diagnosis",
-                required_credits=5
+                required_credits=8
             )
             if not credit_check.sufficient:
                 logger.warning(f"[플레이스 진단] 크레딧 부족: user_id={user_id}, required=5, available={credit_check.current_credits}")
@@ -1318,7 +1318,7 @@ async def get_place_details(
                 transaction_id = await credit_service.deduct_credits(
                     user_id=user_id,
                     feature="place_diagnosis",
-                    credits_amount=5,
+                    credits_amount=8,
                     metadata={
                         "place_id": place_id,
                         "store_name": details.get("name", "Unknown"),
@@ -1919,7 +1919,7 @@ async def get_activation_info(
             check_result = await credit_service.check_sufficient_credits(
                 user_id=user_id,
                 feature="place_activation",
-                required_credits=10
+                required_credits=15
             )
             
             if not check_result.sufficient:
@@ -1948,7 +1948,7 @@ async def get_activation_info(
                 transaction_id = await credit_service.deduct_credits(
                     user_id=user_id,
                     feature="place_activation",
-                    credits_amount=10,
+                    credits_amount=15,
                     metadata={
                         "store_id": store_id,
                         "place_id": place_id,
@@ -2033,7 +2033,7 @@ async def generate_description(
             check_result = await credit_service.check_sufficient_credits(
                 user_id=user_id,
                 feature="business_description",
-                required_credits=5
+                required_credits=10
             )
             
             if not check_result.sufficient:
@@ -2187,7 +2187,7 @@ async def generate_description(
                 transaction_id = await credit_service.deduct_credits(
                     user_id=user_id,
                     feature="business_description",
-                    credits_amount=5,
+                    credits_amount=10,
                     metadata={
                         "store_id": request.store_id,
                         "store_name": store.get("store_name"),
@@ -2254,7 +2254,7 @@ async def generate_directions(
             check_result = await credit_service.check_sufficient_credits(
                 user_id=user_id,
                 feature="directions",
-                required_credits=3
+                required_credits=10
             )
             
             if not check_result.sufficient:
@@ -2400,7 +2400,7 @@ SEO 관점에서 최적화하는 로컬 마케팅 전문가입니다.
                 transaction_id = await credit_service.deduct_credits(
                     user_id=user_id,
                     feature="directions",
-                    credits_amount=3,
+                    credits_amount=10,
                     metadata={
                         "store_id": request.store_id,
                         "store_name": store.get("store_name"),

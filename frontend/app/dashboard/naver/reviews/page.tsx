@@ -754,8 +754,8 @@ export default function ReviewManagementPage() {
               clearTimeout(sseTimeout) // 타임아웃 클리어
               eventSource.close()
 
-              // ✨ 크레딧 실시간 차감 알림 (리뷰 분석 10 크레딧)
-              notifyCreditUsed(10, token)
+              // ✨ 크레딧 실시간 차감 알림 (리뷰 분석 30 크레딧)
+              notifyCreditUsed(30, token)
               
               // savedDate를 먼저 추출 (closure 문제 방지)
               const savedDate = data.saved_date || dateRange.end_date

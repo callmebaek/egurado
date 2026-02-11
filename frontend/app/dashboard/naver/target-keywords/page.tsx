@@ -375,8 +375,8 @@ export default function TargetKeywordsPage() {
       if (result.status === "success") {
         setAnalysisResult(result.data)
 
-        // ✨ 크레딧 실시간 차감 알림 (타겟 키워드 추출 30 크레딧)
-        notifyCreditUsed(30, token)
+        // ✨ 크레딧 실시간 차감 알림 (타겟 키워드 추출 20 크레딧)
+        notifyCreditUsed(20, token)
         
         // 히스토리 ID가 있으면 URL 업데이트
         if (result.history_id) {
@@ -462,7 +462,7 @@ export default function TargetKeywordsPage() {
             variant="secondary"
             className="bg-amber-100 text-amber-700 border-amber-200 px-4 py-2 text-sm font-semibold inline-flex items-center gap-1.5"
           >
-            💡 30 크레딧
+            💡 20 크레딧
           </Badge>
         </div>
       </header>

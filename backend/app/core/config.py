@@ -161,40 +161,23 @@ def get_tier_order(tier: str) -> int:
 # 기능별 크레딧 소비 (확정된 값)
 FEATURE_CREDITS = {
     # 고정 크레딧
-    "place_diagnosis": 5,
-    "business_description": 5,
-    "directions": 3,
+    "place_diagnosis": 8,
+    "business_description": 10,
+    "directions": 10,
     "representative_keyword": 15,
+    "rank_check": 5,
+    "main_keyword_analysis": 10,
+    "place_activation": 15,
+    "target_keyword_extraction": 20,
+    "review_analysis": 30,
+    "competitor_analysis": 30,
     
-    # 동적 크레딧 (기본값)
-    "rank_check": {
-        "min": 3,
-        "max": 10,
-        "formula": "rank에 따라 3-10"
-    },
-    "target_keyword": {
-        "min": 12,
-        "max": 50,
-        "formula": "조합 수에 비례"
-    },
-    "review_analysis": {
-        "min": 10,
-        "max": 100,
-        "formula": "ceil(리뷰 수 / 5) + 5"
-    },
-    "ai_reply_generate": {
-        "per_item": 1,
-        "formula": "답글 수 × 1"
-    },
-    "ai_reply_post": {
-        "per_item": 2,
-        "formula": "게시 수 × 2"
-    },
-    "competitor_analysis": {
-        "min": 13,
-        "max": 30,
-        "formula": "경쟁사 수에 비례"
-    },
+    # 동적 크레딧 (건당)
+    "ai_reply_generate": 5,
+    "ai_reply_post": 8,
+    
+    # 동적 크레딧 (키워드 수 × 2)
+    "keyword_search_volume": 2,  # per keyword
 }
 
 

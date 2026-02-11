@@ -257,8 +257,8 @@ export default function ActivationPage() {
       console.log('활성화 분석 성공:', result)
       setActivationData(result.data)
       
-      // ✨ 크레딧 실시간 차감 알림 (활성화 분석: 5 크레딧)
-      notifyCreditUsed(5, token)
+      // ✨ 크레딧 실시간 차감 알림 (활성화 분석: 15 크레딧)
+      notifyCreditUsed(15, token)
       
       // 과거 이력도 로드
       loadActivationHistories(storeId)
@@ -358,8 +358,8 @@ export default function ActivationPage() {
       setGeneratedText(result.generated_text || '')
       setGeneratedTextCharCount(result.generated_text?.length || 0)
 
-      // ✨ 크레딧 실시간 차감 알림 (업체소개글 생성: 5 크레딧)
-      notifyCreditUsed(5, token)
+      // ✨ 크레딧 실시간 차감 알림 (업체소개글 생성: 10 크레딧)
+      notifyCreditUsed(10, token)
       
       toast({
         title: '생성 완료',
@@ -424,8 +424,8 @@ export default function ActivationPage() {
       setGeneratedDirectionsText(result.generated_text || '')
       setGeneratedDirectionsCharCount(result.generated_text?.length || 0)
 
-      // ✨ 크레딧 실시간 차감 알림 (찾아오는길 생성: 3 크레딧)
-      notifyCreditUsed(3, token)
+      // ✨ 크레딧 실시간 차감 알림 (찾아오는길 생성: 10 크레딧)
+      notifyCreditUsed(10, token)
       
       toast({
         title: '생성 완료',
@@ -1147,7 +1147,7 @@ export default function ActivationPage() {
               variant="secondary"
               className="bg-green-100 text-green-700 border-green-200 px-4 py-2 text-sm font-semibold inline-flex items-center gap-1.5"
             >
-              💡 10 크레딧
+              💡 15 크레딧
             </Badge>
           </header>
 
@@ -1483,7 +1483,7 @@ export default function ActivationPage() {
               ) : (
                 <>
                   <Sparkles className="w-5 h-5 mr-2" />
-                  업체소개글 생성하기 (15 크레딧)
+                  업체소개글 생성하기 (10 크레딧)
                 </>
               )}
             </Button>
