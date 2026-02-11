@@ -132,7 +132,7 @@ export default function MetricsTrackerPage() {
   const [selectedStoreId, setSelectedStoreId] = useState("")
   const [newKeyword, setNewKeyword] = useState("")
   const [updateFrequency, setUpdateFrequency] = useState<'daily_once' | 'daily_twice'>('daily_once')
-  const [updateTimes, setUpdateTimes] = useState<number[]>([16]) // 기본: 16시 (오후 4시)
+  const [updateTimes, setUpdateTimes] = useState<number[]>([15]) // 기본: 15시 (오후 3시)
   const [notificationEnabled, setNotificationEnabled] = useState(false)
   const [notificationType, setNotificationType] = useState<'email' | 'sms' | 'kakao' | null>(null)
   const [notificationEmail, setNotificationEmail] = useState("")
@@ -187,11 +187,11 @@ export default function MetricsTrackerPage() {
   const getDefaultUpdateTimes = (frequency: 'daily_once' | 'daily_twice'): number[] => {
     switch(frequency) {
       case 'daily_once':
-        return [16] // 16시 (오후 4시)
+        return [15] // 15시 (오후 3시)
       case 'daily_twice':
-        return [6, 16] // 6시, 16시 (오전 6시, 오후 4시)
+        return [9, 15] // 9시, 15시 (오전 9시, 오후 3시)
       default:
-        return [16]
+        return [15]
     }
   }
 
@@ -379,7 +379,7 @@ export default function MetricsTrackerPage() {
         setSelectedStoreId("")
         setNewKeyword("")
         setUpdateFrequency('daily_once')
-        setUpdateTimes([9])
+        setUpdateTimes([15])
         setNotificationEnabled(false)
         setNotificationType(null)
         setNotificationEmail("")
@@ -1261,6 +1261,12 @@ export default function MetricsTrackerPage() {
                       </div>
                     ))}
                   </div>
+                  <div className="mt-2.5 flex items-start gap-2 bg-blue-50 border border-blue-200 rounded-lg p-2.5">
+                    <span className="text-xs flex-shrink-0 mt-0.5">💡</span>
+                    <p className="text-[10px] md:text-xs text-blue-700 leading-relaxed">
+                      네이버 플레이스 순위는 오전부터 지속적으로 변동되며, 일반적으로 <span className="font-bold">15시경에 확정</span>됩니다. 15시 이후 수집을 권장하며, 업종·지역 등 환경에 따라 확정 시점이 다를 수 있습니다.
+                    </p>
+                  </div>
                 </div>
               </div>
 
@@ -1721,6 +1727,12 @@ export default function MetricsTrackerPage() {
                             </select>
                           </div>
                         ))}
+                      </div>
+                      <div className="mt-2.5 flex items-start gap-2 bg-blue-50 border border-blue-200 rounded-lg p-2.5">
+                        <span className="text-xs flex-shrink-0 mt-0.5">💡</span>
+                        <p className="text-[10px] md:text-xs text-blue-700 leading-relaxed">
+                          네이버 플레이스 순위는 오전부터 지속적으로 변동되며, 일반적으로 <span className="font-bold">15시경에 확정</span>됩니다. 15시 이후 수집을 권장하며, 업종·지역 등 환경에 따라 확정 시점이 다를 수 있습니다.
+                        </p>
                       </div>
                     </div>
 

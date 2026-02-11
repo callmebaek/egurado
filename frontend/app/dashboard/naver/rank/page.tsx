@@ -95,7 +95,7 @@ export default function NaverRankPage() {
   const { showCreditConfirm, CreditModal } = useCreditConfirm()
   const [selectedKeywordForTracking, setSelectedKeywordForTracking] = useState<KeywordData | null>(null)
   const [updateFrequency, setUpdateFrequency] = useState<'daily_once' | 'daily_twice'>('daily_once')
-  const [updateTimes, setUpdateTimes] = useState<number[]>([9])
+  const [updateTimes, setUpdateTimes] = useState<number[]>([15])
   const [notificationEnabled, setNotificationEnabled] = useState(false)
   const [notificationType, setNotificationType] = useState<'email' | 'sms' | 'kakao' | ''>('')
   const [isAddingTracker, setIsAddingTracker] = useState(false)
@@ -421,7 +421,7 @@ export default function NaverRankPage() {
   const handleAddTracking = (keyword: KeywordData) => {
     setSelectedKeywordForTracking(keyword)
     setUpdateFrequency('daily_once')
-    setUpdateTimes([9])
+    setUpdateTimes([15])
     setNotificationEnabled(false)
     setNotificationType('')
     setShowAddTrackingDialog(true)
@@ -1178,9 +1178,9 @@ export default function NaverRankPage() {
                       const freq = value as 'daily_once' | 'daily_twice'
                       setUpdateFrequency(freq)
                       if (freq === 'daily_once') {
-                        setUpdateTimes([9])
+                        setUpdateTimes([15])
                       } else {
-                        setUpdateTimes([9, 18])
+                        setUpdateTimes([9, 15])
                       }
                     }}
                   >
@@ -1210,7 +1210,7 @@ export default function NaverRankPage() {
                           value={time.toString()}
                           onValueChange={(value) => {
                             const newTimes = [...updateTimes]
-                            newTimes[index] = parseInt(value || '9')
+                            newTimes[index] = parseInt(value || '15')
                             setUpdateTimes(newTimes)
                           }}
                         >
@@ -1227,6 +1227,12 @@ export default function NaverRankPage() {
                         </Select>
                       </div>
                     ))}
+                  </div>
+                  <div className="mt-3 flex items-start gap-2 bg-blue-50 border border-blue-200 rounded-lg p-2.5">
+                    <span className="text-xs flex-shrink-0 mt-0.5">💡</span>
+                    <p className="text-[10px] md:text-xs text-blue-700 leading-relaxed">
+                      네이버 플레이스 순위는 오전부터 지속적으로 변동되며, 일반적으로 <span className="font-bold">15시경에 확정</span>됩니다. 15시 이후 수집을 권장하며, 업종·지역 등 환경에 따라 확정 시점이 다를 수 있습니다.
+                    </p>
                   </div>
                 </div>
 

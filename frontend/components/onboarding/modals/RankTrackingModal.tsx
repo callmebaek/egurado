@@ -74,7 +74,7 @@ export function RankTrackingModal({ isOpen, onClose, onComplete }: RankTrackingM
   const [updateFrequency, setUpdateFrequency] = useState<'daily_once' | 'daily_twice'>('daily_once');
   
   // Step 4: 수집 시간
-  const [updateTimes, setUpdateTimes] = useState<number[]>([9]);
+  const [updateTimes, setUpdateTimes] = useState<number[]>([15]);
   
   // 에러 메시지
   const [error, setError] = useState<string>('');
@@ -189,11 +189,11 @@ export function RankTrackingModal({ isOpen, onClose, onComplete }: RankTrackingM
     // Step 3: 수집 주기 설정
     if (currentStep === 3) {
       if (updateFrequency === 'daily_once') {
-        setUpdateTimes([9]);
+        setUpdateTimes([15]);
       } else if (updateFrequency === 'daily_twice') {
-        setUpdateTimes([9, 18]);
+        setUpdateTimes([9, 15]);
       } else {
-        setUpdateTimes([9, 14, 20]);
+        setUpdateTimes([9, 15, 20]);
       }
       setCurrentStep(4);
       return;
@@ -319,7 +319,7 @@ export function RankTrackingModal({ isOpen, onClose, onComplete }: RankTrackingM
     setCustomKeyword('');
     setShowCustomInput(false);
     setUpdateFrequency('daily_once');
-    setUpdateTimes([9]);
+    setUpdateTimes([15]);
     setError('');
     onClose();
   };
@@ -496,8 +496,8 @@ export function RankTrackingModal({ isOpen, onClose, onComplete }: RankTrackingM
 
       <div className="space-y-2">
         {[
-          { value: 'daily_once', label: '하루 1회', desc: '오전 9시에 수집합니다', times: [9] },
-          { value: 'daily_twice', label: '하루 2회', desc: '오전 9시, 오후 6시에 수집합니다', times: [9, 18] },
+          { value: 'daily_once', label: '하루 1회', desc: '오후 3시(15:00)에 수집합니다', times: [15] },
+          { value: 'daily_twice', label: '하루 2회', desc: '오전 9시, 오후 3시(15:00)에 수집합니다', times: [9, 15] },
         ].map((option) => (
           <Card
             key={option.value}
@@ -526,9 +526,9 @@ export function RankTrackingModal({ isOpen, onClose, onComplete }: RankTrackingM
       </div>
 
       <Alert variant="info">
-        <AlertTitle>💡 수집 주기 안내</AlertTitle>
-        <AlertDescription className="text-xs md:text-sm">
-          자주 수집할수록 순위 변화를 빠르게 확인할 수 있습니다
+        <AlertTitle>💡 수집 시간 안내</AlertTitle>
+        <AlertDescription className="text-xs md:text-sm leading-relaxed">
+          네이버 플레이스 순위는 오전부터 지속적으로 변동되며, 일반적으로 <span className="font-bold">15시경에 확정</span>됩니다. 15시 이후 수집을 권장하며, 업종·지역 등 환경에 따라 확정 시점이 다를 수 있습니다.
         </AlertDescription>
       </Alert>
     </div>
