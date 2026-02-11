@@ -70,7 +70,7 @@ class NHNEmailService:
             collected_at=collected_at,
         )
         
-        title = f"[윕플] {store_name} 키워드 순위 알림 📊"
+        title = f"[윕플] {store_name} 키워드 순위 알림 - {collected_at}"
         
         payload = {
             "senderAddress": self.sender_address,
