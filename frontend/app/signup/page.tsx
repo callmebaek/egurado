@@ -225,8 +225,8 @@ export default function SignupPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 p-6">
-          {/* 소셜 회원가입 */}
-          <div className="space-y-2">
+          {/* 소셜 회원가입 - 임시 숨김 처리 */}
+          {/* <div className="space-y-2">
             <Button
               type="button"
               variant="outline"
@@ -240,8 +240,6 @@ export default function SignupPage() {
               카카오로 3초만에 시작하기
             </Button>
           </div>
-
-          {/* 구분선 */}
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
               <span className="w-full border-t" />
@@ -251,7 +249,7 @@ export default function SignupPage() {
                 또는 이메일로 가입
               </span>
             </div>
-          </div>
+          </div> */}
 
           {/* 이메일 회원가입 폼 */}
           <form onSubmit={handleSubmit} className="space-y-4">

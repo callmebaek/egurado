@@ -252,7 +252,8 @@ export default function LoginPage() {
                 </form>
 
                 {/* 구분선 */}
-                <div className="relative">
+                {/* 소셜 로그인 - 임시 숨김 처리 */}
+                {/* <div className="relative">
                   <div className="absolute inset-0 flex items-center">
                     <span className="w-full border-t-2 border-gray-200" />
                   </div>
@@ -262,8 +263,6 @@ export default function LoginPage() {
                     </span>
                   </div>
                 </div>
-
-                {/* 소셜 로그인 버튼 */}
                 <div className="space-y-3">
                   <Button
                     type="button"
@@ -277,7 +276,7 @@ export default function LoginPage() {
                     </svg>
                     카카오로 시작하기
                   </Button>
-                </div>
+                </div> */}
 
                 {/* 회원가입 링크 */}
                 <div className="text-center pt-2">
