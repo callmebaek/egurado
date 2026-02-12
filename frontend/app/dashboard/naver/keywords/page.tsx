@@ -290,9 +290,7 @@ export default function NaverKeywordsPage() {
       loadSearchHistory()
       
       // 입력창 초기화
-      if (!keywords) {
-        setKeywordInput("")
-      }
+      setKeywordInput("")
     } catch (error) {
       console.error("검색 실패:", error)
       toast({
