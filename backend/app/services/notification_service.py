@@ -72,9 +72,17 @@ class NotificationService:
         )
         
         # ============================================
-        # 1. 카카오 알림톡: 매장 단위로 합산하여 1건 발송
+        # 1. 카카오 알림톡: 임시 비활성화 (rank_alert_v2 템플릿 승인 대기 중)
         # ============================================
         if kakao_trackers:
+            logger.info(
+                f"[Notification] 카카오 알림톡 임시 비활성화 중 "
+                f"(rank_alert_v2 템플릿 승인 대기). "
+                f"{len(kakao_trackers)}건 건너뜀"
+            )
+            stats["skipped"] += len(kakao_trackers)
+        
+        if False and kakao_trackers:
             # 매장(store_id) + 사용자(user_id) 기준으로 그룹화 (이메일과 동일)
             kakao_grouped = defaultdict(list)
             for t in kakao_trackers:
