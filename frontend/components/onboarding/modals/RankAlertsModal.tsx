@@ -401,7 +401,7 @@ export default function RankAlertsModal({ isOpen, onClose, onComplete }: RankAle
               <div className="space-y-2">
                 {[
                   { value: 'email' as const, label: '📧 이메일', desc: '이메일로 알림 받기', disabled: false },
-                  { value: 'kakao' as const, label: '💬 카카오톡', desc: '카카오톡으로 알림 받기', disabled: false },
+                  { value: 'kakao' as const, label: '💬 카카오톡', desc: '템플릿 승인 대기중', disabled: true },
                   { value: 'sms' as const, label: '📱 SMS', desc: '문자 메시지로 알림 받기 (준비중)', disabled: true },
                 ].map((option) => (
                   <Card

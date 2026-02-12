@@ -1795,7 +1795,7 @@ export default function MetricsTrackerPage() {
                           <div className="grid grid-cols-3 gap-2">
                             {[
                               { type: 'email', icon: Mail, label: '이메일' },
-                              { type: 'kakao', icon: MessageCircle, label: '카카오톡' },
+                              { type: 'kakao', icon: MessageCircle, label: '카카오톡', disabled: true },
                               { type: 'sms', icon: Phone, label: '문자', disabled: true },
                             ].map(({ type, icon: Icon, label, disabled }) => (
                               <button
