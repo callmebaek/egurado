@@ -4,7 +4,8 @@
 - 자동수집 후 키워드 순위 알림
 
 ⚠️ 카카오 알림톡: 템플릿 변수 값 최대 14자 제한
-   → 키워드별 개별 메시지 발송 (매장 단위 합산 불가)
+   → 매장 단위 합산 발송 (1건: 상세, 2건+: 요약)
+이메일: 매장 단위로 합산하여 1건 발송
 """
 import logging
 from typing import Dict, List, Optional
@@ -34,7 +35,7 @@ class NotificationService:
         """
         자동수집 완료 후, 알림 설정된 tracker들에 대해 순위 알림 발송
         
-        카카오 알림톡: 키워드별 개별 메시지 발송 (14자 제한 대응)
+        카카오 알림톡: 매장 단위 합산 발송 (1건: 상세, 2건+: 요약)
         이메일: 매장 단위로 합산하여 1건 발송
         
         Args:
@@ -71,69 +72,82 @@ class NotificationService:
         )
         
         # ============================================
-        # 1. 카카오 알림톡: 키워드별 개별 발송 (14자 제한)
+        # 1. 카카오 알림톡: 매장 단위로 합산하여 1건 발송
         # ============================================
-        for t in kakao_trackers:
-            try:
-                user_id = t["user_id"]
-                user_info = self._get_user_info(user_id)
-                if not user_info:
-                    logger.warning(f"[Notification] 사용자 정보 없음: {user_id}")
-                    stats["skipped"] += 1
-                    continue
-                
-                phone = (
-                    t.get("notification_phone")
-                    or user_info.get("phone_number")
-                )
-                if not phone:
-                    logger.warning(
-                        f"[Notification] 전화번호 없음 (카카오): "
-                        f"user={user_id}, keyword={t.get('keyword')}"
+        if kakao_trackers:
+            # 매장(store_id) + 사용자(user_id) 기준으로 그룹화 (이메일과 동일)
+            kakao_grouped = defaultdict(list)
+            for t in kakao_trackers:
+                key = (t["user_id"], t["store_id"])
+                kakao_grouped[key].append(t)
+            
+            for (user_id, store_id), trackers in kakao_grouped.items():
+                try:
+                    first_tracker = trackers[0]
+                    user_info = self._get_user_info(user_id)
+                    if not user_info:
+                        logger.warning(f"[Notification] 사용자 정보 없음: {user_id}")
+                        stats["skipped"] += len(trackers)
+                        continue
+                    
+                    phone = (
+                        first_tracker.get("notification_phone")
+                        or user_info.get("phone_number")
                     )
-                    stats["skipped"] += 1
-                    continue
-                
-                # 매장 정보
-                store_info = self._get_store_info(t.get("store_id"))
-                store_name = store_info.get("store_name", "매장") if store_info else "매장"
-                
-                # ⚠️ 14자 이내 포맷
-                rank_result_text = NHNKakaoService.format_rank_result_short(
-                    keyword=t.get("keyword", ""),
-                    rank=t.get("rank"),
-                    rank_change=t.get("rank_change"),
-                )
-                
-                collected_at = datetime.now(KST).strftime("%Y-%m-%d %H:%M")
-                collected_at_short = NHNKakaoService.format_collected_at_short(collected_at)
-                
-                result = await nhn_kakao_service.send_rank_alert(
-                    phone_number=phone,
-                    store_name=store_name,
-                    rank_results=rank_result_text,
-                    collected_at=collected_at_short,
-                )
-                
-                if result["success"]:
-                    stats["sent"] += 1
-                    logger.info(
-                        f"[Notification] 카카오 알림 발송 성공: "
-                        f"{store_name} / {t.get('keyword')} → {phone[-4:].rjust(11, '*')}"
-                    )
-                else:
-                    stats["failed"] += 1
-                    logger.error(
-                        f"[Notification] 카카오 알림 발송 실패: "
-                        f"{store_name} / {t.get('keyword')} - {result.get('message')}"
+                    if not phone:
+                        logger.warning(
+                            f"[Notification] 전화번호 없음 (카카오): "
+                            f"user={user_id}, store={store_id}"
+                        )
+                        stats["skipped"] += len(trackers)
+                        continue
+                    
+                    # 매장 정보
+                    store_info = self._get_store_info(store_id)
+                    store_name = store_info.get("store_name", "매장") if store_info else "매장"
+                    
+                    # ⚠️ 14자 이내 요약 포맷 (1개: 상세, 2개+: 요약)
+                    metrics_list = []
+                    for t in trackers:
+                        metrics_list.append({
+                            "keyword": t.get("keyword", ""),
+                            "rank": t.get("rank"),
+                            "rank_change": t.get("rank_change"),
+                        })
+                    
+                    rank_result_text = NHNKakaoService.format_rank_summary_short(metrics_list)
+                    
+                    collected_at = datetime.now(KST).strftime("%Y-%m-%d %H:%M")
+                    collected_at_short = NHNKakaoService.format_collected_at_short(collected_at)
+                    
+                    result = await nhn_kakao_service.send_rank_alert(
+                        phone_number=phone,
+                        store_name=store_name,
+                        rank_results=rank_result_text,
+                        collected_at=collected_at_short,
                     )
                     
-            except Exception as e:
-                stats["failed"] += 1
-                logger.error(
-                    f"[Notification] 카카오 알림 발송 오류: "
-                    f"keyword={t.get('keyword')}, error={str(e)}"
-                )
+                    keywords_str = ", ".join(t.get("keyword", "") for t in trackers)
+                    if result["success"]:
+                        stats["sent"] += 1
+                        logger.info(
+                            f"[Notification] 카카오 알림 발송 성공: "
+                            f"{store_name} ({len(trackers)}개 키워드: {keywords_str}) "
+                            f"→ {phone[-4:].rjust(11, '*')}"
+                        )
+                    else:
+                        stats["failed"] += 1
+                        logger.error(
+                            f"[Notification] 카카오 알림 발송 실패: "
+                            f"{store_name} ({len(trackers)}개 키워드) - {result.get('message')}"
+                        )
+                        
+                except Exception as e:
+                    stats["failed"] += 1
+                    logger.error(
+                        f"[Notification] 카카오 알림 발송 오류: "
+                        f"user={user_id}, store={store_id}, error={str(e)}"
+                    )
         
         # ============================================
         # 2. 이메일: 매장 단위로 합산하여 발송

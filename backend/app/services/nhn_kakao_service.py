@@ -289,6 +289,36 @@ class NHNKakaoService:
         return result[:MAX_LEN]
     
     @staticmethod
+    def format_rank_summary_short(metrics_list: List[dict]) -> str:
+        """
+        여러 키워드의 순위 결과를 14자 이내로 요약
+        
+        - 1개: 기존 상세 포맷 (예: "성수맛집 5위(▲2)")
+        - 2개+: 요약 포맷 (예: "3건 순위수집")
+        
+        Args:
+            metrics_list: [{keyword, rank, rank_change}, ...]
+        
+        Returns:
+            14자 이내 포맷된 텍스트
+        """
+        count = len(metrics_list)
+        
+        if count == 0:
+            return "수집결과없음"
+        
+        if count == 1:
+            m = metrics_list[0]
+            return NHNKakaoService.format_rank_result_short(
+                keyword=m.get("keyword", ""),
+                rank=m.get("rank"),
+                rank_change=m.get("rank_change"),
+            )
+        
+        # 2개 이상: 요약 형태
+        return f"{count}건 순위수집"
+    
+    @staticmethod
     def format_collected_at_short(collected_at_str: str) -> str:
         """
         수집 시간을 14자 이내 형식으로 변환
