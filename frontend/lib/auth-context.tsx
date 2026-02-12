@@ -11,6 +11,7 @@ interface User {
   id: string
   email: string
   display_name: string | null
+  phone_number: string | null
   subscription_tier: string
   auth_provider: string
   user_position: string | null

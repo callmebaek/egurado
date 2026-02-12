@@ -8,7 +8,9 @@ import {
   Bell, 
   Sparkles, 
   Clock,
-  Loader2
+  Loader2,
+  MessageCircle,
+  Mail
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
@@ -59,7 +61,7 @@ const FREQUENCY_LABELS = {
 
 export default function RankAlertsModal({ isOpen, onClose, onComplete }: RankAlertsModalProps) {
   const router = useRouter();
-  const { getToken } = useAuth();
+  const { user, getToken } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [stores, setStores] = useState<RegisteredStore[]>([]);
   const [selectedStore, setSelectedStore] = useState<RegisteredStore | null>(null);
@@ -195,7 +197,9 @@ export default function RankAlertsModal({ isOpen, onClose, onComplete }: RankAle
         },
         body: JSON.stringify({
           notification_enabled: notificationEnabled,
-          notification_type: notificationEnabled ? notificationType : null
+          notification_type: notificationEnabled ? notificationType : null,
+          notification_phone: notificationEnabled && notificationType === 'kakao' ? (user?.phone_number || null) : null,
+          notification_email: notificationEnabled && notificationType === 'email' ? (user?.email || null) : null,
         })
       });
 
@@ -396,18 +400,20 @@ export default function RankAlertsModal({ isOpen, onClose, onComplete }: RankAle
               <p className="text-sm font-bold text-neutral-900 mb-3">알림 방법</p>
               <div className="space-y-2">
                 {[
-                  { value: 'email' as const, label: '📧 이메일', desc: '이메일로 알림 받기' },
-                  { value: 'sms' as const, label: '📱 SMS', desc: '문자 메시지로 알림 받기' },
-                  { value: 'kakao' as const, label: '💬 카카오톡', desc: '카카오톡으로 알림 받기' },
+                  { value: 'email' as const, label: '📧 이메일', desc: '이메일로 알림 받기', disabled: false },
+                  { value: 'kakao' as const, label: '💬 카카오톡', desc: '카카오톡으로 알림 받기', disabled: false },
+                  { value: 'sms' as const, label: '📱 SMS', desc: '문자 메시지로 알림 받기 (준비중)', disabled: true },
                 ].map((option) => (
                   <Card
                     key={option.value}
-                    className={`cursor-pointer transition-all duration-200 hover:shadow-card-hover ${
-                      notificationType === option.value
-                        ? 'border-emerald-600 bg-emerald-50 ring-2 ring-emerald-600/20'
-                        : 'border-neutral-200 hover:border-primary-300'
+                    className={`transition-all duration-200 ${
+                      option.disabled
+                        ? 'opacity-50 cursor-not-allowed border-neutral-100 bg-neutral-50'
+                        : notificationType === option.value
+                          ? 'cursor-pointer border-emerald-600 bg-emerald-50 ring-2 ring-emerald-600/20'
+                          : 'cursor-pointer border-neutral-200 hover:border-primary-300 hover:shadow-card-hover'
                     }`}
-                    onClick={() => setNotificationType(option.value)}
+                    onClick={() => !option.disabled && setNotificationType(option.value)}
                   >
                     <CardContent className="p-3">
                       <div className="flex items-center justify-between gap-3">
@@ -415,7 +421,7 @@ export default function RankAlertsModal({ isOpen, onClose, onComplete }: RankAle
                           <p className="text-sm font-bold text-neutral-900 mb-0.5">{option.label}</p>
                           <p className="text-xs text-neutral-600">{option.desc}</p>
                         </div>
-                        {notificationType === option.value && (
+                        {!option.disabled && notificationType === option.value && (
                           <div className="flex-shrink-0 w-6 h-6 rounded-full bg-emerald-600 flex items-center justify-center">
                             <CheckCircle2 className="w-4 h-4 text-white" />
                           </div>
@@ -425,6 +431,42 @@ export default function RankAlertsModal({ isOpen, onClose, onComplete }: RankAle
                   </Card>
                 ))}
               </div>
+
+              {/* 카카오톡 선택 시 전화번호 표시 */}
+              {notificationType === 'kakao' && (
+                <div className="mt-3 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                  <label className="text-xs font-bold text-neutral-700 flex items-center gap-1 mb-1.5">
+                    <MessageCircle className="w-3 h-3 text-yellow-600" />
+                    알림 받을 전화번호
+                  </label>
+                  {user?.phone_number ? (
+                    <div className="w-full h-10 px-3 border border-neutral-200 rounded-lg bg-neutral-50 text-sm font-medium text-neutral-700 flex items-center">
+                      {user.phone_number.replace(/(\d{3})(\d{4})(\d{4})/, '$1-$2-$3')}
+                      <span className="ml-2 text-xs text-emerald-600 font-medium">✓ 인증됨</span>
+                    </div>
+                  ) : (
+                    <div className="p-2.5 border border-amber-300 rounded-lg bg-amber-50 text-sm text-amber-700">
+                      <p className="font-medium text-xs mb-1">📱 등록된 전화번호가 없습니다</p>
+                      <p className="text-[10px] text-amber-600">
+                        카카오톡 알림을 받으려면 계정 설정에서 전화번호를 등록해주세요.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* 이메일 선택 시 이메일 표시 */}
+              {notificationType === 'email' && user?.email && (
+                <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <label className="text-xs font-bold text-neutral-700 flex items-center gap-1 mb-1.5">
+                    <Mail className="w-3 h-3 text-blue-600" />
+                    알림 받을 이메일
+                  </label>
+                  <div className="w-full h-10 px-3 border border-neutral-200 rounded-lg bg-neutral-50 text-sm font-medium text-neutral-700 flex items-center">
+                    {user.email}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </CardContent>

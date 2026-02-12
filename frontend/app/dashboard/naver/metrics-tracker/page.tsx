@@ -89,6 +89,7 @@ interface MetricTracker {
   created_at: string
   notification_enabled: boolean
   notification_type?: 'kakao' | 'sms' | 'email' | null
+  notification_phone?: string | null
   notification_email?: string | null
   notification_consent?: boolean
 }
@@ -157,6 +158,7 @@ export default function MetricsTrackerPage() {
       times: number[]
       notificationEnabled: boolean
       notificationType: 'email' | 'sms' | 'kakao' | ''
+      notificationPhone: string
       notificationEmail: string
       notificationConsent: boolean
     }
@@ -559,6 +561,7 @@ export default function MetricsTrackerPage() {
           : getDefaultUpdateTimes(tracker.update_frequency),
         notificationEnabled: tracker.notification_enabled,
         notificationType: tracker.notification_type || '',
+        notificationPhone: tracker.notification_phone || user?.phone_number || '',
         notificationEmail: tracker.notification_email || user?.email || '',
         notificationConsent: tracker.notification_consent || false
       }
@@ -570,25 +573,46 @@ export default function MetricsTrackerPage() {
   const handleUpdateSettings = async () => {
     if (!editingStore || editingTrackers.length === 0) return
 
-    // 이메일 알림 유효성 검사
+    // 알림 유효성 검사
     for (const tracker of editingTrackers) {
       const settings = editTrackerSettings[tracker.id]
-      if (settings?.notificationEnabled && settings.notificationType === 'email') {
-        if (!settings.notificationEmail || !settings.notificationEmail.includes('@')) {
-          toast({
-            title: "이메일 입력 필요",
-            description: `"${tracker.keyword}" 키워드의 알림 이메일을 정확히 입력해주세요`,
-            variant: "destructive"
-          })
-          return
+      if (settings?.notificationEnabled) {
+        if (settings.notificationType === 'email') {
+          if (!settings.notificationEmail || !settings.notificationEmail.includes('@')) {
+            toast({
+              title: "이메일 입력 필요",
+              description: `"${tracker.keyword}" 키워드의 알림 이메일을 정확히 입력해주세요`,
+              variant: "destructive"
+            })
+            return
+          }
+          if (!settings.notificationConsent) {
+            toast({
+              title: "수신 동의 필요",
+              description: `"${tracker.keyword}" 키워드의 이메일 알림 수신에 동의해주세요`,
+              variant: "destructive"
+            })
+            return
+          }
         }
-        if (!settings.notificationConsent) {
-          toast({
-            title: "수신 동의 필요",
-            description: `"${tracker.keyword}" 키워드의 이메일 알림 수신에 동의해주세요`,
-            variant: "destructive"
-          })
-          return
+        if (settings.notificationType === 'kakao') {
+          const phone = settings.notificationPhone || user?.phone_number
+          if (!phone) {
+            toast({
+              title: "전화번호 필요",
+              description: `카카오톡 알림을 받으려면 전화번호가 등록되어 있어야 합니다. 계정 설정에서 전화번호를 등록해주세요.`,
+              variant: "destructive"
+            })
+            return
+          }
+          if (!settings.notificationConsent) {
+            toast({
+              title: "수신 동의 필요",
+              description: `"${tracker.keyword}" 키워드의 카카오톡 알림 수신에 동의해주세요`,
+              variant: "destructive"
+            })
+            return
+          }
         }
       }
     }
@@ -614,6 +638,7 @@ export default function MetricsTrackerPage() {
             update_times: settings.times,
             notification_enabled: settings.notificationEnabled,
             notification_type: settings.notificationEnabled ? settings.notificationType : null,
+            notification_phone: settings.notificationEnabled && settings.notificationType === 'kakao' ? (settings.notificationPhone || user?.phone_number || null) : null,
             notification_email: settings.notificationEnabled && settings.notificationType === 'email' ? settings.notificationEmail : null,
             notification_consent: settings.notificationEnabled ? settings.notificationConsent : false
           })
@@ -1770,8 +1795,8 @@ export default function MetricsTrackerPage() {
                           <div className="grid grid-cols-3 gap-2">
                             {[
                               { type: 'email', icon: Mail, label: '이메일' },
+                              { type: 'kakao', icon: MessageCircle, label: '카카오톡' },
                               { type: 'sms', icon: Phone, label: '문자', disabled: true },
-                              { type: 'kakao', icon: MessageCircle, label: '카카오', disabled: true },
                             ].map(({ type, icon: Icon, label, disabled }) => (
                               <button
                                 key={type}
@@ -1784,7 +1809,11 @@ export default function MetricsTrackerPage() {
                                       notificationType: type as 'email' | 'sms' | 'kakao',
                                       ...(type === 'email' && !prev[tracker.id].notificationEmail ? {
                                         notificationEmail: user?.email || ''
-                                      } : {})
+                                      } : {}),
+                                      ...(type === 'kakao' && !prev[tracker.id].notificationPhone ? {
+                                        notificationPhone: user?.phone_number || ''
+                                      } : {}),
+                                      notificationConsent: false
                                     }
                                   }))
                                 }}
@@ -1856,6 +1885,59 @@ export default function MetricsTrackerPage() {
                                   키워드 순위 알림 이메일 수신에 동의합니다. 알림은 자동수집 시간에 발송되며, 언제든 설정에서 해제할 수 있습니다.
                                 </span>
                               </label>
+                            </div>
+                          )}
+
+                          {/* 카카오톡 선택 시 전화번호 표시 + 동의 */}
+                          {settings.notificationType === 'kakao' && (
+                            <div className="space-y-2.5 p-3 bg-yellow-50 rounded-button border border-yellow-200">
+                              <div className="space-y-1.5">
+                                <label className="text-xs font-bold text-neutral-700 flex items-center gap-1">
+                                  <MessageCircle className="w-3 h-3 text-yellow-600" />
+                                  알림 받을 전화번호
+                                </label>
+                                {(settings.notificationPhone || user?.phone_number) ? (
+                                  <div className="w-full h-11 px-3 border-2 border-neutral-200 rounded-button bg-neutral-50 text-sm font-medium text-neutral-700 flex items-center">
+                                    {(settings.notificationPhone || user?.phone_number || '').replace(/(\d{3})(\d{4})(\d{4})/, '$1-$2-$3')}
+                                    <span className="ml-2 text-xs text-emerald-600 font-medium">✓ 인증됨</span>
+                                  </div>
+                                ) : (
+                                  <div className="w-full p-3 border-2 border-amber-300 rounded-button bg-amber-50 text-sm text-amber-700">
+                                    <p className="font-medium mb-1">📱 등록된 전화번호가 없습니다</p>
+                                    <p className="text-xs text-amber-600">
+                                      카카오톡 알림을 받으려면 <a href="/dashboard/settings" className="underline font-bold hover:text-amber-800">계정 설정</a>에서 전화번호를 등록해주세요.
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                              {(settings.notificationPhone || user?.phone_number) && (
+                                <label className="flex items-start gap-2 cursor-pointer group">
+                                  <div className="relative flex-shrink-0 mt-0.5">
+                                    <input
+                                      type="checkbox"
+                                      checked={settings.notificationConsent}
+                                      onChange={(e) => {
+                                        setEditTrackerSettings(prev => ({
+                                          ...prev,
+                                          [tracker.id]: {
+                                            ...prev[tracker.id],
+                                            notificationConsent: e.target.checked
+                                          }
+                                        }))
+                                      }}
+                                      className="sr-only peer"
+                                    />
+                                    <div className="w-5 h-5 rounded border-2 border-neutral-300 bg-white peer-checked:bg-yellow-500 peer-checked:border-yellow-500 transition-all flex items-center justify-center">
+                                      {settings.notificationConsent && (
+                                        <CheckCircle2 className="w-3.5 h-3.5 text-white" />
+                                      )}
+                                    </div>
+                                  </div>
+                                  <span className="text-xs text-neutral-600 leading-relaxed">
+                                    키워드 순위 알림 카카오톡 수신에 동의합니다. 알림은 자동수집 시간에 발송되며, 언제든 설정에서 해제할 수 있습니다.
+                                  </span>
+                                </label>
+                              )}
                             </div>
                           )}
                         </>

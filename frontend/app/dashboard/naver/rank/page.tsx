@@ -8,7 +8,7 @@
 import { useStores } from "@/lib/hooks/useStores"
 import { useAuth } from "@/lib/auth-context"
 import { EmptyStoreMessage } from "@/components/EmptyStoreMessage"
-import { Loader2, TrendingUp, TrendingDown, Search, MapPin, Star, X, Plus, Store as StoreIcon, Clock, Bell, Settings2 } from "lucide-react"
+import { Loader2, TrendingUp, TrendingDown, Search, MapPin, Star, X, Plus, Store as StoreIcon, Clock, Bell, Settings2, MessageCircle, Mail, CheckCircle2 } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { useState, useEffect } from "react"
 import { supabase } from "@/lib/supabase"
@@ -71,7 +71,7 @@ interface SearchResult {
 
 export default function NaverRankPage() {
   const { hasStores, isLoading: storesLoading } = useStores()
-  const { getToken } = useAuth()
+  const { user, getToken } = useAuth()
   const { toast } = useToast()
 
   const [stores, setStores] = useState<Store[]>([])
@@ -457,7 +457,9 @@ export default function NaverRankPage() {
         update_frequency: updateFrequency,
         update_times: updateTimes,
         notification_enabled: notificationEnabled,
-        notification_type: notificationEnabled ? notificationType : null
+        notification_type: notificationEnabled ? notificationType : null,
+        notification_phone: notificationEnabled && notificationType === 'kakao' ? (user?.phone_number || null) : null,
+        notification_email: notificationEnabled && notificationType === 'email' ? (user?.email || null) : null,
       }
 
       const response = await fetch(api.metrics.create(), {
@@ -1256,18 +1258,70 @@ export default function NaverRankPage() {
                   <p className="text-[10px] md:text-xs text-neutral-500 mb-2 ml-[22px]">순위 변동 시 알림을 받습니다</p>
 
                   {notificationEnabled && (
-                    <div className="pt-3 border-t border-neutral-200 mt-3">
+                    <div className="pt-3 border-t border-neutral-200 mt-3 space-y-3">
                       <label className="text-xs font-bold text-neutral-700 mb-2 block">알림 방법</label>
-                      <Select value={notificationType} onValueChange={(value) => setNotificationType(value as any)}>
-                        <SelectTrigger className="h-10 border border-neutral-300 rounded-button focus:border-[#405D99] focus:ring-2 focus:ring-[#405D99]/20 transition-all duration-200 bg-white">
-                          <SelectValue placeholder="알림 방법 선택" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="email">📧 이메일</SelectItem>
-                          <SelectItem value="sms">📱 SMS</SelectItem>
-                          <SelectItem value="kakao">💬 카카오톡</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <div className="grid grid-cols-3 gap-2">
+                        {[
+                          { type: 'email' as const, icon: Mail, label: '이메일' },
+                          { type: 'kakao' as const, icon: MessageCircle, label: '카카오톡' },
+                          { type: 'sms' as const, icon: Bell, label: '문자', disabled: true },
+                        ].map(({ type, icon: Icon, label, disabled }) => (
+                          <button
+                            key={type}
+                            onClick={() => !disabled && setNotificationType(type)}
+                            disabled={disabled}
+                            className={`flex items-center justify-center gap-1.5 px-2 py-2.5 rounded-button border-2 transition-all min-h-[44px] ${
+                              disabled
+                                ? 'border-neutral-100 bg-neutral-50 cursor-not-allowed opacity-50'
+                                : notificationType === type
+                                  ? 'border-[#405D99] bg-blue-50'
+                                  : 'border-neutral-200 bg-white hover:border-neutral-300'
+                            }`}
+                          >
+                            <Icon className={`w-3.5 h-3.5 ${disabled ? 'text-neutral-300' : notificationType === type ? 'text-[#405D99]' : 'text-neutral-400'}`} />
+                            <span className={`text-xs font-bold ${disabled ? 'text-neutral-300' : notificationType === type ? 'text-[#405D99]' : 'text-neutral-600'}`}>
+                              {label}
+                              {disabled && <span className="text-[9px] block font-medium">준비중</span>}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* 카카오톡 선택 시 전화번호 표시 */}
+                      {notificationType === 'kakao' && (
+                        <div className="p-3 bg-yellow-50 rounded-button border border-yellow-200">
+                          <label className="text-xs font-bold text-neutral-700 flex items-center gap-1 mb-1.5">
+                            <MessageCircle className="w-3 h-3 text-yellow-600" />
+                            알림 받을 전화번호
+                          </label>
+                          {user?.phone_number ? (
+                            <div className="w-full h-10 px-3 border border-neutral-200 rounded-button bg-neutral-50 text-sm font-medium text-neutral-700 flex items-center">
+                              {user.phone_number.replace(/(\d{3})(\d{4})(\d{4})/, '$1-$2-$3')}
+                              <span className="ml-2 text-xs text-emerald-600 font-medium">✓ 인증됨</span>
+                            </div>
+                          ) : (
+                            <div className="p-2.5 border border-amber-300 rounded-button bg-amber-50 text-sm text-amber-700">
+                              <p className="font-medium text-xs mb-1">📱 등록된 전화번호가 없습니다</p>
+                              <p className="text-[10px] text-amber-600">
+                                카카오톡 알림을 받으려면 <a href="/dashboard/settings" className="underline font-bold hover:text-amber-800">계정 설정</a>에서 전화번호를 등록해주세요.
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* 이메일 선택 시 이메일 표시 */}
+                      {notificationType === 'email' && user?.email && (
+                        <div className="p-3 bg-blue-50 rounded-button border border-blue-200">
+                          <label className="text-xs font-bold text-neutral-700 flex items-center gap-1 mb-1.5">
+                            <Mail className="w-3 h-3 text-[#405D99]" />
+                            알림 받을 이메일
+                          </label>
+                          <div className="w-full h-10 px-3 border border-neutral-200 rounded-button bg-neutral-50 text-sm font-medium text-neutral-700 flex items-center">
+                            {user.email}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
