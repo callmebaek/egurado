@@ -3,8 +3,10 @@
 카카오 알림톡, SMS, 이메일 알림 전송
 - 자동수집 후 키워드 순위 알림
 
-⚠️ 카카오 알림톡: 템플릿 변수 값 최대 14자 제한
-   → 매장 단위 합산 발송 (1건: 상세, 2건+: 요약)
+카카오 알림톡 (rank_alert_v2):
+  - 매장 단위 합산 발송
+  - 최대 5개 키워드 개별 순위 표시 (result1~result5)
+  - 각 변수 값 최대 14자 제한
 이메일: 매장 단위로 합산하여 1건 발송
 """
 import logging
@@ -72,18 +74,10 @@ class NotificationService:
         )
         
         # ============================================
-        # 1. 카카오 알림톡: 임시 비활성화 (rank_alert_v2 템플릿 승인 대기 중)
+        # 1. 카카오 알림톡 (rank_alert_v2): 매장 단위 합산, 최대 5개 키워드 상세
         # ============================================
         if kakao_trackers:
-            logger.info(
-                f"[Notification] 카카오 알림톡 임시 비활성화 중 "
-                f"(rank_alert_v2 템플릿 승인 대기). "
-                f"{len(kakao_trackers)}건 건너뜀"
-            )
-            stats["skipped"] += len(kakao_trackers)
-        
-        if False and kakao_trackers:
-            # 매장(store_id) + 사용자(user_id) 기준으로 그룹화 (이메일과 동일)
+            # 매장(store_id) + 사용자(user_id) 기준으로 그룹화
             kakao_grouped = defaultdict(list)
             for t in kakao_trackers:
                 key = (t["user_id"], t["store_id"])
@@ -114,7 +108,7 @@ class NotificationService:
                     store_info = self._get_store_info(store_id)
                     store_name = store_info.get("store_name", "매장") if store_info else "매장"
                     
-                    # ⚠️ 14자 이내 요약 포맷 (1개: 상세, 2개+: 요약)
+                    # 키워드별 순위 정보 목록
                     metrics_list = []
                     for t in trackers:
                         metrics_list.append({
@@ -123,15 +117,13 @@ class NotificationService:
                             "rank_change": t.get("rank_change"),
                         })
                     
-                    rank_result_text = NHNKakaoService.format_rank_summary_short(metrics_list)
-                    
                     collected_at = datetime.now(KST).strftime("%Y-%m-%d %H:%M")
                     collected_at_short = NHNKakaoService.format_collected_at_short(collected_at)
                     
                     result = await nhn_kakao_service.send_rank_alert(
                         phone_number=phone,
                         store_name=store_name,
-                        rank_results=rank_result_text,
+                        metrics_list=metrics_list,
                         collected_at=collected_at_short,
                     )
                     
@@ -139,14 +131,14 @@ class NotificationService:
                     if result["success"]:
                         stats["sent"] += 1
                         logger.info(
-                            f"[Notification] 카카오 알림 발송 성공: "
+                            f"[Notification] 카카오 알림 v2 발송 성공: "
                             f"{store_name} ({len(trackers)}개 키워드: {keywords_str}) "
                             f"→ {phone[-4:].rjust(11, '*')}"
                         )
                     else:
                         stats["failed"] += 1
                         logger.error(
-                            f"[Notification] 카카오 알림 발송 실패: "
+                            f"[Notification] 카카오 알림 v2 발송 실패: "
                             f"{store_name} ({len(trackers)}개 키워드) - {result.get('message')}"
                         )
                         

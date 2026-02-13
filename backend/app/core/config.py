@@ -98,6 +98,7 @@ class Settings:
     # 알림톡 템플릿 코드
     KAKAO_TEMPLATE_AUTH_CODE: str = "auth_code"
     KAKAO_TEMPLATE_RANK_ALERT: str = "rank_alert"
+    KAKAO_TEMPLATE_RANK_ALERT_V2: str = "rank_alert_v2"
     
     # OTP 설정
     OTP_EXPIRE_MINUTES: int = 3  # OTP 유효 시간 (분)

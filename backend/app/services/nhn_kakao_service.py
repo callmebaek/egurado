@@ -136,21 +136,29 @@ class NHNKakaoService:
         self,
         phone_number: str,
         store_name: str,
-        rank_results: str,
+        metrics_list: List[dict],
         collected_at: str,
-        user_name: str = "",
     ) -> dict:
         """
-        키워드 순위 알림 발송
+        키워드 순위 알림 발송 (rank_alert_v2 템플릿)
         
-        ⚠️ 모든 파라미터 값은 14자 이내여야 합니다!
+        매장당 최대 5개 키워드 결과를 개별 변수(result1~result5)로 전송
+        ⚠️ 모든 변수 값은 14자 이내
+        
+        템플릿 형식:
+            [#{storeName}] 순위 알림 드립니다!
+            #{result1}
+            #{result2}
+            #{result3}
+            #{result4}
+            #{result5}
+            수집: #{collectedAt}
         
         Args:
             phone_number: 수신자 전화번호
-            store_name: 매장 이름 (14자 이내)
-            rank_results: 순위 결과 텍스트 (14자 이내, 키워드 1개 분량)
-            collected_at: 수집 시간 (14자 이내, "MM/DD HH:MM" 형식 권장)
-            user_name: 사용자 이름 (미사용, 호환성 유지)
+            store_name: 매장 이름
+            metrics_list: 키워드별 순위 정보 [{keyword, rank, rank_change}, ...]
+            collected_at: 수집 시간
         
         Returns:
             발송 결과 dict
@@ -163,25 +171,31 @@ class NHNKakaoService:
         
         # ⚠️ 모든 변수값을 14자 이내로 자르기
         safe_store_name = self._truncate(store_name)
-        safe_rank_results = self._truncate(rank_results)
         safe_collected_at = self._truncate(collected_at)
         
+        # result1 ~ result5 생성
+        results = self.format_results_for_v2(metrics_list)
+        
         logger.info(
-            f"[NHN Kakao] 순위 알림 파라미터: "
-            f"storeName='{safe_store_name}'({len(safe_store_name)}자), "
-            f"rankResults='{safe_rank_results}'({len(safe_rank_results)}자), "
-            f"collectedAt='{safe_collected_at}'({len(safe_collected_at)}자)"
+            f"[NHN Kakao] 순위 알림 v2 파라미터: "
+            f"storeName='{safe_store_name}', "
+            f"results={results}, "
+            f"collectedAt='{safe_collected_at}'"
         )
         
         payload = {
             "senderKey": self.sender_key,
-            "templateCode": settings.KAKAO_TEMPLATE_RANK_ALERT,
+            "templateCode": settings.KAKAO_TEMPLATE_RANK_ALERT_V2,
             "recipientList": [
                 {
                     "recipientNo": recipient_no,
                     "templateParameter": {
                         "storeName": safe_store_name,
-                        "rankResults": safe_rank_results,
+                        "result1": results[0],
+                        "result2": results[1],
+                        "result3": results[2],
+                        "result4": results[3],
+                        "result5": results[4],
                         "collectedAt": safe_collected_at,
                     },
                 }
@@ -199,8 +213,8 @@ class NHNKakaoService:
                 result = response.json()
                 
                 logger.info(
-                    f"[NHN Kakao] 순위 알림 발송 - "
-                    f"매장: {store_name}, "
+                    f"[NHN Kakao] 순위 알림 v2 발송 - "
+                    f"매장: {store_name} ({len(metrics_list)}개 키워드), "
                     f"수신자: {recipient_no[-4:].rjust(len(recipient_no), '*')}, "
                     f"status: {response.status_code}, "
                     f"response: {result}"
@@ -217,7 +231,7 @@ class NHNKakaoService:
                     error_msg = header.get("resultMessage", "알 수 없는 오류")
                     error_code = header.get("resultCode")
                     logger.error(
-                        f"[NHN Kakao] 순위 알림 발송 실패: {error_msg} "
+                        f"[NHN Kakao] 순위 알림 v2 발송 실패: {error_msg} "
                         f"(code={error_code}, full_response={result})"
                     )
                     return {
@@ -232,6 +246,47 @@ class NHNKakaoService:
         except Exception as e:
             logger.error(f"[NHN Kakao] 순위 알림 발송 오류: {str(e)}")
             return {"success": False, "message": f"발송 오류: {str(e)}"}
+    
+    @staticmethod
+    def format_results_for_v2(metrics_list: List[dict]) -> List[str]:
+        """
+        rank_alert_v2 템플릿용 result1~result5 생성
+        
+        - 키워드 5개 이하: 각각 상세 표시, 빈 슬롯은 "-"
+        - 키워드 6개 이상: 처음 4개 상세 + result5에 "외 N건 수집"
+        
+        Args:
+            metrics_list: [{keyword, rank, rank_change}, ...]
+        
+        Returns:
+            5개 문자열 리스트 [result1, result2, result3, result4, result5]
+        """
+        results = []
+        count = len(metrics_list)
+        
+        if count <= 5:
+            # 5개 이하: 각각 상세 표시
+            for m in metrics_list:
+                results.append(NHNKakaoService.format_rank_result_short(
+                    keyword=m.get("keyword", ""),
+                    rank=m.get("rank"),
+                    rank_change=m.get("rank_change"),
+                ))
+            # 빈 슬롯 채우기
+            while len(results) < 5:
+                results.append("-")
+        else:
+            # 6개 이상: 처음 4개 + "외 N건 수집"
+            for m in metrics_list[:4]:
+                results.append(NHNKakaoService.format_rank_result_short(
+                    keyword=m.get("keyword", ""),
+                    rank=m.get("rank"),
+                    rank_change=m.get("rank_change"),
+                ))
+            remaining = count - 4
+            results.append(NHNKakaoService._truncate(f"외 {remaining}건 수집"))
+        
+        return results
     
     @staticmethod
     def format_rank_result_short(keyword: str, rank: Optional[int], rank_change: Optional[int]) -> str:
