@@ -23,6 +23,7 @@ import { useAuth } from "@/lib/auth-context"
 import { api } from "@/lib/config"
 import { notifyCreditUsed } from "@/lib/credit-utils"
 import { useCreditConfirm } from "@/lib/hooks/useCreditConfirm"
+import { useUpgradeModal } from "@/lib/hooks/useUpgradeModal"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -157,6 +158,8 @@ export default function CompetitorsPage() {
   
   // 크레딧 확인 모달
   const { showCreditConfirm, CreditModal } = useCreditConfirm()
+  // 업그레이드 모달
+  const { handleLimitError, UpgradeModalComponent } = useUpgradeModal()
   
   // 초기 로드: 등록된 매장 가져오기
   useEffect(() => {
@@ -459,6 +462,10 @@ export default function CompetitorsPage() {
       const comparisonResult = await comparisonResponse.json()
       
       if (!comparisonResponse.ok) {
+        // 403 또는 제한 관련 에러 → 업그레이드 모달 표시
+        if (handleLimitError(comparisonResponse.status, comparisonResult.detail)) {
+          return
+        }
         // 402 에러 (크레딧 부족)를 명시적으로 처리
         if (comparisonResponse.status === 402) {
           throw new Error(comparisonResult.detail || "크레딧이 부족합니다. 크레딧을 충전하거나 플랜을 업그레이드해주세요.")
@@ -1233,6 +1240,8 @@ export default function CompetitorsPage() {
       </Card>
       {/* 크레딧 차감 확인 모달 */}
       {CreditModal}
+      {/* 업그레이드 모달 */}
+      {UpgradeModalComponent}
     </div>
   )
 }

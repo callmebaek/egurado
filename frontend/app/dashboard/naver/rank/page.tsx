@@ -23,6 +23,7 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { notifyCreditUsed } from "@/lib/credit-utils"
 import { useCreditConfirm } from "@/lib/hooks/useCreditConfirm"
+import { useUpgradeModal } from "@/lib/hooks/useUpgradeModal"
 
 interface Store {
   id: string
@@ -93,6 +94,8 @@ export default function NaverRankPage() {
   
   // 크레딧 확인 모달
   const { showCreditConfirm, CreditModal } = useCreditConfirm()
+  // 업그레이드 모달
+  const { handleLimitError, UpgradeModalComponent } = useUpgradeModal()
   const [selectedKeywordForTracking, setSelectedKeywordForTracking] = useState<KeywordData | null>(null)
   const [updateFrequency, setUpdateFrequency] = useState<'daily_once' | 'daily_twice'>('daily_once')
   const [updateTimes, setUpdateTimes] = useState<number[]>([15])
@@ -347,12 +350,8 @@ export default function NaverRankPage() {
       if (!response.ok) {
         const error = await response.json()
         
-        if (response.status === 403 && error.detail?.includes("키워드 등록 제한")) {
-          toast({
-            title: "키워드 등록 제한 도달",
-            description: error.detail,
-            variant: "destructive",
-          })
+        // 키워드 등록 제한 초과 시 업그레이드 모달 표시
+        if (handleLimitError(response.status, error.detail)) {
           return
         }
         
@@ -477,6 +476,10 @@ export default function NaverRankPage() {
         try {
           const errorData = JSON.parse(errorText)
           errorMessage = errorData.detail || errorMessage
+          // 제한 초과 시 업그레이드 모달 표시
+          if (handleLimitError(response.status, errorData.detail)) {
+            return
+          }
         } catch {
           errorMessage = errorText || errorMessage
         }
@@ -1361,6 +1364,8 @@ export default function NaverRankPage() {
         </Dialog>
       {/* 크레딧 차감 확인 모달 */}
       {CreditModal}
+      {/* 업그레이드 모달 */}
+      {UpgradeModalComponent}
       </div>
     </div>
   )

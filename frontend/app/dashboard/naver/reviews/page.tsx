@@ -11,6 +11,7 @@ import { supabase } from "@/lib/supabase"
 import { api } from "@/lib/config"
 import { notifyCreditUsed } from "@/lib/credit-utils"
 import { useCreditConfirm } from "@/lib/hooks/useCreditConfirm"
+import { useUpgradeModal } from "@/lib/hooks/useUpgradeModal"
 import { 
   MessageSquare, 
   ThumbsUp, 
@@ -274,6 +275,8 @@ export default function ReviewManagementPage() {
   
   // 크레딧 확인 모달
   const { showCreditConfirm, CreditModal } = useCreditConfirm()
+  // 업그레이드 모달
+  const { handleLimitError, UpgradeModalComponent } = useUpgradeModal()
   
   // 매장 목록 로드
   useEffect(() => {
@@ -601,6 +604,11 @@ export default function ReviewManagementPage() {
       
       if (!extractResponse.ok) {
         const errorData = await extractResponse.json().catch(() => ({}))
+        // 403/402 에러 → 업그레이드 모달 표시
+        if (handleLimitError(extractResponse.status, errorData.detail)) {
+          setExtracting(false)
+          return
+        }
         throw new Error(errorData.detail || errorData.message || "리뷰 조회 실패")
       }
       
@@ -1795,6 +1803,8 @@ export default function ReviewManagementPage() {
 
       {/* 크레딧 차감 확인 모달 */}
       {CreditModal}
+      {/* 업그레이드 모달 */}
+      {UpgradeModalComponent}
     </div>
   )
 }

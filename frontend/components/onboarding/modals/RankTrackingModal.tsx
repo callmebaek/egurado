@@ -20,6 +20,7 @@ import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import { useUpgradeModal } from '@/lib/hooks/useUpgradeModal';
 
 interface RankTrackingModalProps {
   isOpen: boolean;
@@ -78,6 +79,9 @@ export function RankTrackingModal({ isOpen, onClose, onComplete }: RankTrackingM
   
   // 에러 메시지
   const [error, setError] = useState<string>('');
+  
+  // 업그레이드 모달
+  const { handleLimitError, UpgradeModalComponent } = useUpgradeModal();
 
   const totalSteps = 5;
 
@@ -238,7 +242,11 @@ export function RankTrackingModal({ isOpen, onClose, onComplete }: RankTrackingM
       });
 
       if (!rankResponse.ok) {
-        throw new Error('키워드 순위를 확인할 수 없습니다');
+        const rankError = await rankResponse.json().catch(() => ({}));
+        if (handleLimitError(rankResponse.status, rankError.detail)) {
+          return;
+        }
+        throw new Error(rankError.detail || '키워드 순위를 확인할 수 없습니다');
       }
 
       const rankData = await rankResponse.json();
@@ -281,6 +289,9 @@ export function RankTrackingModal({ isOpen, onClose, onComplete }: RankTrackingM
 
       if (!trackingResponse.ok) {
         const errorData = await trackingResponse.json();
+        if (handleLimitError(trackingResponse.status, errorData.detail)) {
+          return;
+        }
         throw new Error(errorData.detail || '추적 생성 실패');
       }
 
@@ -642,33 +653,37 @@ export function RankTrackingModal({ isOpen, onClose, onComplete }: RankTrackingM
   };
 
   return (
-    <OnboardingModal
-      isOpen={isOpen}
-      onClose={handleClose}
-      title="플레이스 순위 추적하기"
-      icon={BarChart3}
-      currentStep={currentStep}
-      totalSteps={totalSteps}
-      onBack={handleBack}
-      onNext={handleNext}
-      nextButtonText={
-        isLoading ? '처리 중...' :
-        currentStep === 4 ? '추적 시작' :
-        currentStep === 5 ? '순위 추적 보기' :
-        '다음'
-      }
-      nextButtonDisabled={
-        isLoading || 
-        loadingStores || 
-        loadingKeywords ||
-        (currentStep === 1 && !selectedStore) ||
-        (currentStep === 2 && !showCustomInput && !selectedKeyword) ||
-        (currentStep === 2 && showCustomInput && !customKeyword.trim())
-      }
-      showBackButton={currentStep > 1 && currentStep < 5 && !isLoading}
-    >
-      {renderCurrentStep()}
-    </OnboardingModal>
+    <>
+      <OnboardingModal
+        isOpen={isOpen}
+        onClose={handleClose}
+        title="플레이스 순위 추적하기"
+        icon={BarChart3}
+        currentStep={currentStep}
+        totalSteps={totalSteps}
+        onBack={handleBack}
+        onNext={handleNext}
+        nextButtonText={
+          isLoading ? '처리 중...' :
+          currentStep === 4 ? '추적 시작' :
+          currentStep === 5 ? '순위 추적 보기' :
+          '다음'
+        }
+        nextButtonDisabled={
+          isLoading || 
+          loadingStores || 
+          loadingKeywords ||
+          (currentStep === 1 && !selectedStore) ||
+          (currentStep === 2 && !showCustomInput && !selectedKeyword) ||
+          (currentStep === 2 && showCustomInput && !customKeyword.trim())
+        }
+        showBackButton={currentStep > 1 && currentStep < 5 && !isLoading}
+      >
+        {renderCurrentStep()}
+      </OnboardingModal>
+      {/* 업그레이드 모달 */}
+      {UpgradeModalComponent}
+    </>
   );
 }
 

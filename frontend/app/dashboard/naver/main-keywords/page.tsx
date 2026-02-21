@@ -15,6 +15,7 @@ import { Search, TrendingUp, Star, ChevronRight } from 'lucide-react'
 import { api } from '@/lib/config'
 import { notifyCreditUsed } from '@/lib/credit-utils'
 import { useCreditConfirm } from '@/lib/hooks/useCreditConfirm'
+import { useUpgradeModal } from '@/lib/hooks/useUpgradeModal'
 
 interface StoreKeywordInfo {
   rank: number
@@ -46,6 +47,8 @@ export default function MainKeywordsAnalysisPage() {
   
   // 크레딧 확인 모달
   const { showCreditConfirm, CreditModal } = useCreditConfirm()
+  // 업그레이드 모달
+  const { handleLimitError, UpgradeModalComponent } = useUpgradeModal()
   
   // URL 파라미터에서 query가 있으면 자동으로 분석 시작
   useEffect(() => {
@@ -106,7 +109,9 @@ export default function MainKeywordsAnalysisPage() {
           })
           
           if (!response.ok) {
-            const error = await response.json()
+            const error = await response.json().catch(() => ({}))
+            // 403/402 에러 → 업그레이드 모달 표시
+            if (handleLimitError(response.status, error.detail)) return
             throw new Error(error.detail || "분석에 실패했습니다")
           }
           
@@ -187,7 +192,9 @@ export default function MainKeywordsAnalysisPage() {
       })
       
       if (!response.ok) {
-        const error = await response.json()
+        const error = await response.json().catch(() => ({}))
+        // 403/402 에러 → 업그레이드 모달 표시
+        if (handleLimitError(response.status, error.detail)) return
         throw new Error(error.detail || "분석에 실패했습니다")
       }
       
@@ -578,6 +585,8 @@ export default function MainKeywordsAnalysisPage() {
       )}
       {/* 크레딧 차감 확인 모달 */}
       {CreditModal}
+      {/* 업그레이드 모달 */}
+      {UpgradeModalComponent}
       </div>
     </div>
   )

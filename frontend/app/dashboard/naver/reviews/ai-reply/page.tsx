@@ -21,6 +21,7 @@ import { useToast } from "@/components/ui/use-toast"
 import { API_BASE_URL } from "@/lib/config"
 import { notifyCreditUsed } from "@/lib/credit-utils"
 import { useCreditConfirm } from "@/lib/hooks/useCreditConfirm"
+import { useUpgradeModal } from "@/lib/hooks/useUpgradeModal"
 
 interface Review {
   naver_review_id: string
@@ -74,6 +75,8 @@ export default function NaverAIReplyPage() {
 
   // 크레딧 확인 모달
   const { showCreditConfirm, CreditModal } = useCreditConfirm()
+  // 업그레이드 모달
+  const { handleLimitError, UpgradeModalComponent } = useUpgradeModal()
 
   // 리뷰 날짜 기반 예상 처리 시간 계산
   const calculateEstimatedTime = (dateString: string): number => {
@@ -530,10 +533,9 @@ export default function NaverAIReplyPage() {
       const data = await response.json()
       
       if (!response.ok) {
-        // 403 에러 (Tier 제한) 명시적 처리
-        if (response.status === 403) {
-          const errorMessage = data.detail || "답글 게시는 Pro 플랜 이상부터 사용 가능합니다."
-          throw new Error(errorMessage)
+        // 403 에러 (Tier 제한) → 업그레이드 모달 표시
+        if (handleLimitError(response.status, data.detail)) {
+          return
         }
         throw new Error(data.detail || "답글 게시 요청 실패")
       }
@@ -1014,6 +1016,8 @@ export default function NaverAIReplyPage() {
 
       {/* 크레딧 차감 확인 모달 */}
       {CreditModal}
+      {/* 업그레이드 모달 */}
+      {UpgradeModalComponent}
     </div>
   )
 }

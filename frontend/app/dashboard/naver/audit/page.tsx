@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth-context"
 import { api } from "@/lib/config"
 import { notifyCreditUsed } from "@/lib/credit-utils"
 import { useCreditConfirm } from "@/lib/hooks/useCreditConfirm"
+import { useUpgradeModal } from "@/lib/hooks/useUpgradeModal"
 import { useSearchParams } from "next/navigation"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -155,6 +156,8 @@ export default function NaverAuditPage() {
   
   // 크레딧 확인 모달
   const { showCreditConfirm, CreditModal } = useCreditConfirm()
+  // 업그레이드 모달
+  const { handleLimitError, UpgradeModalComponent } = useUpgradeModal()
 
   // URL 파라미터에서 historyId를 가져와서 자동으로 로드
   useEffect(() => {
@@ -225,6 +228,14 @@ export default function NaverAuditPage() {
       if (!response.ok) {
         const errorText = await response.text()
         console.error("❌ Response error:", errorText)
+        
+        // 403 에러 (Tier 제한) → 업그레이드 모달 표시
+        try {
+          const errorData = JSON.parse(errorText)
+          if (handleLimitError(response.status, errorData.detail)) {
+            return
+          }
+        } catch {}
         
         // 402 에러 (크레딧 부족)를 명시적으로 처리
         if (response.status === 402) {
@@ -1582,6 +1593,8 @@ export default function NaverAuditPage() {
 
       {/* 크레딧 차감 확인 모달 */}
       {CreditModal}
+      {/* 업그레이드 모달 */}
+      {UpgradeModalComponent}
     </div>
   )
 }

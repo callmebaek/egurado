@@ -54,6 +54,7 @@ import { api } from "@/lib/config"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { notifyCreditUsed } from "@/lib/credit-utils"
 import { useCollectionQueue } from "@/lib/hooks/useCollectionQueue"
+import { useUpgradeModal } from "@/lib/hooks/useUpgradeModal"
 
 // 대시보드와 동일한 매장별 색상 팔레트
 const STORE_COLORS = [
@@ -127,6 +128,9 @@ export default function MetricsTrackerPage() {
   const [loading, setLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState<Set<string>>(new Set())
   const collectionQueue = useCollectionQueue()
+  
+  // 업그레이드 모달
+  const { handleLimitError, UpgradeModalComponent } = useUpgradeModal()
   
   // 추적 설정 추가 모달
   const [showAddDialog, setShowAddDialog] = useState(false)
@@ -392,6 +396,10 @@ export default function MetricsTrackerPage() {
         await loadTrackers()
       } else {
         const error = await response.json()
+        // 제한 초과 시 업그레이드 모달 표시
+        if (handleLimitError(response.status, error.detail)) {
+          return
+        }
         throw new Error(error.detail || "추적 설정 추가 실패")
       }
     } catch (error: any) {
@@ -2103,6 +2111,8 @@ export default function MetricsTrackerPage() {
           </div>
         </DialogContent>
       </Dialog>
+      {/* 업그레이드 모달 */}
+      {UpgradeModalComponent}
     </div>
   )
 }

@@ -15,6 +15,7 @@ import { useToast } from "@/components/ui/use-toast"
 import { api } from "@/lib/config"
 import { notifyCreditUsed } from "@/lib/credit-utils"
 import { useCreditConfirm } from "@/lib/hooks/useCreditConfirm"
+import { useUpgradeModal } from "@/lib/hooks/useUpgradeModal"
 
 interface SearchVolumeData {
   id: string
@@ -38,6 +39,8 @@ export default function NaverKeywordsPage() {
   
   // 크레딧 확인 모달
   const { showCreditConfirm, CreditModal } = useCreditConfirm()
+  // 업그레이드 모달
+  const { handleLimitError, UpgradeModalComponent } = useUpgradeModal()
   const [isSearching, setIsSearching] = useState(false)
   const [isCombinatorOpen, setIsCombinatorOpen] = useState(false)
   const [searchHistory, setSearchHistory] = useState<SearchVolumeData[]>([])
@@ -199,6 +202,14 @@ export default function NaverKeywordsPage() {
           )
 
           if (!response.ok) {
+            // 403 에러 (Tier 제한) → 업그레이드 모달 표시
+            if (response.status === 403) {
+              const errorData = await response.json().catch(() => ({}))
+              if (handleLimitError(response.status, errorData.detail)) {
+                setIsSearching(false)
+                return
+              }
+            }
             // 402 에러 (크레딧 부족)를 명시적으로 처리
             if (response.status === 402) {
               const errorData = await response.json().catch(() => ({}))
@@ -781,6 +792,8 @@ export default function NaverKeywordsPage() {
         />
       {/* 크레딧 차감 확인 모달 */}
       {CreditModal}
+      {/* 업그레이드 모달 */}
+      {UpgradeModalComponent}
       </div>
     </div>
   )

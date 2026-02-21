@@ -17,6 +17,7 @@ import { Loader2, Search, Target, TrendingUp, Plus, X, AlertCircle, CheckCircle2
 import { api } from "@/lib/config"
 import { notifyCreditUsed } from "@/lib/credit-utils"
 import { useCreditConfirm } from "@/lib/hooks/useCreditConfirm"
+import { useUpgradeModal } from "@/lib/hooks/useUpgradeModal"
 import {
   Select,
   SelectContent,
@@ -136,6 +137,8 @@ export default function TargetKeywordsPage() {
   
   // 크레딧 확인 모달
   const { showCreditConfirm, CreditModal } = useCreditConfirm()
+  // 업그레이드 모달
+  const { handleLimitError, UpgradeModalComponent } = useUpgradeModal()
   
   const toggleKeywordExpansion = (keyword: string) => {
     const newExpanded = new Set(expandedKeywordIds)
@@ -379,6 +382,8 @@ export default function TargetKeywordsPage() {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
         console.error("분석 실패 응답:", errorData)
+        // 403/402 에러 → 업그레이드 모달 표시
+        if (handleLimitError(response.status, errorData.detail)) return
         throw new Error(errorData.detail || errorData.message || `분석 실패 (${response.status})`)
       }
 
@@ -1601,6 +1606,8 @@ export default function TargetKeywordsPage() {
       )}
       {/* 크레딧 차감 확인 모달 */}
       {CreditModal}
+      {/* 업그레이드 모달 */}
+      {UpgradeModalComponent}
       </div>
     </div>
   )

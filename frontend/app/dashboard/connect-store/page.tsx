@@ -9,6 +9,7 @@ import { useToast } from "@/components/ui/use-toast"
 import { useAuth } from "@/lib/auth-context"
 import { supabase } from "@/lib/supabase"
 import { api } from "@/lib/config"
+import { useUpgradeModal } from "@/lib/hooks/useUpgradeModal"
 
 interface StoreSearchResult {
   place_id: string
@@ -58,6 +59,9 @@ export default function ConnectStorePage() {
   const [registeredStores, setRegisteredStores] = useState<RegisteredStore[]>([])
   const [isLoadingStores, setIsLoadingStores] = useState(false)
   const [deletingStoreId, setDeletingStoreId] = useState<string | null>(null)
+
+  // 업그레이드 모달
+  const { handleLimitError, UpgradeModalComponent } = useUpgradeModal()
 
   // 등록된 매장 목록 가져오기
   useEffect(() => {
@@ -221,6 +225,10 @@ export default function ConnectStorePage() {
 
       if (!response.ok) {
         const errorData = await response.json()
+        // 매장 등록 제한 초과 시 업그레이드 모달 표시
+        if (handleLimitError(response.status, errorData.detail)) {
+          return
+        }
         throw new Error(errorData.detail || "매장 등록에 실패했습니다.")
       }
 
@@ -675,6 +683,9 @@ export default function ConnectStorePage() {
           </Card>
         </section>
       )}
+
+      {/* 업그레이드 모달 */}
+      {UpgradeModalComponent}
     </div>
   )
 }

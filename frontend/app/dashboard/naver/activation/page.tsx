@@ -42,6 +42,7 @@ import { useToast } from '@/components/ui/use-toast'
 import { api } from '@/lib/config'
 import { notifyCreditUsed } from '@/lib/credit-utils'
 import { useCreditConfirm } from '@/lib/hooks/useCreditConfirm'
+import { useUpgradeModal } from '@/lib/hooks/useUpgradeModal'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -184,6 +185,8 @@ export default function ActivationPage() {
 
   // 크레딧 확인 모달
   const { showCreditConfirm, CreditModal } = useCreditConfirm()
+  // 업그레이드 모달
+  const { handleLimitError, UpgradeModalComponent } = useUpgradeModal()
 
   // ===== 데이터 로딩 =====
   useEffect(() => {
@@ -254,6 +257,8 @@ export default function ActivationPage() {
         console.error('❌ 활성화 분석 실패')
         console.error('Status:', response.status)
         console.error('Error Data:', errorData)
+        // 403/402 에러 → 업그레이드 모달 표시
+        if (handleLimitError(response.status, errorData.detail)) return
         throw new Error(errorData.detail || errorData.message || `활성화 분석 실패 (${response.status})`)
       }
       
@@ -364,7 +369,11 @@ export default function ActivationPage() {
         })
       })
       
-      if (!response.ok) throw new Error('생성 실패')
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        if (handleLimitError(response.status, errorData.detail)) return
+        throw new Error(errorData.detail || '생성 실패')
+      }
       
       const result = await response.json()
       setGeneratedText(result.generated_text || '')
@@ -438,7 +447,11 @@ export default function ActivationPage() {
         })
       })
       
-      if (!response.ok) throw new Error('생성 실패')
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        if (handleLimitError(response.status, errorData.detail)) return
+        throw new Error(errorData.detail || '생성 실패')
+      }
       
       const result = await response.json()
       setGeneratedDirectionsText(result.generated_text || '')
@@ -1673,6 +1686,8 @@ export default function ActivationPage() {
 
       {/* 크레딧 차감 확인 모달 */}
       {CreditModal}
+      {/* 업그레이드 모달 */}
+      {UpgradeModalComponent}
     </div>
   )
 }
