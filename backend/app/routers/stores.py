@@ -76,12 +76,14 @@ class StoreCreateRequest(BaseModel):
     platform: str = "naver"  # "naver" 또는 "google"
 
 
-# Tier별 매장 등록 개수 제한 설정
+# Tier별 매장 등록 개수 제한 설정 (payment_service.py tier_quotas 기준)
 STORE_LIMITS = {
     "free": 1,
-    "basic": 3,
-    "pro": 10,
-    "god": 9999  # God tier: 무제한 (커스터마이징 가능)
+    "basic": 1,
+    "basic_plus": 2,
+    "pro": 5,
+    "custom": 0,     # 커스텀: 별도 협의
+    "god": 9999,     # God tier: 무제한
 }
 
 
@@ -131,18 +133,23 @@ async def create_store(
         supabase = get_supabase_client()
         user_id = current_user["id"]  # 인증된 사용자의 ID 사용
         
-        # 1. 사용자 프로필 조회 (subscription_tier 확인) - 프로필이 없으면 기본값 사용
+        # 1. 사용자 프로필 조회 (subscription_tier, max_stores 확인) - 프로필이 없으면 기본값 사용
         user_tier = "free"  # 기본값
         max_stores = STORE_LIMITS.get(user_tier, 1)
         
         try:
-            profile_result = supabase.table("profiles").select("subscription_tier").eq(
+            profile_result = supabase.table("profiles").select("subscription_tier, max_stores").eq(
                 "id", str(user_id)
             ).execute()
             
             if profile_result.data and len(profile_result.data) > 0:
                 user_tier = profile_result.data[0].get("subscription_tier", "free")
-                max_stores = STORE_LIMITS.get(user_tier, 1)
+                # 프로필에 max_stores가 설정되어 있으면 우선 사용, 없으면 STORE_LIMITS 참조
+                profile_max_stores = profile_result.data[0].get("max_stores")
+                if profile_max_stores is not None and profile_max_stores > 0:
+                    max_stores = profile_max_stores
+                else:
+                    max_stores = STORE_LIMITS.get(user_tier, 1)
         except Exception as e:
             logger.warning(f"Could not fetch user profile, using default tier: {str(e)}")
         
@@ -155,7 +162,7 @@ async def create_store(
         
         # 3. 매장 등록 개수 제한 확인
         if current_store_count >= max_stores:
-            tier_names = {"free": "무료", "basic": "베이직", "pro": "프로"}
+            tier_names = {"free": "무료", "basic": "베이직", "basic_plus": "베이직 플러스", "pro": "프로", "custom": "커스텀", "god": "갓"}
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"{tier_names.get(user_tier, user_tier)} 플랜은 최대 {max_stores}개의 매장만 등록할 수 있습니다. (현재: {current_store_count}개)"
