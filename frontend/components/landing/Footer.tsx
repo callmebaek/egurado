@@ -110,6 +110,14 @@ export const Footer = () => {
                   무료 시작하기
                 </Link>
               </li>
+              <li>
+                <Link
+                  href="/photo-studio"
+                  className="hover:text-white transition-colors"
+                >
+                  사진관 전용 마케팅
+                </Link>
+              </li>
             </ul>
           </div>
 
