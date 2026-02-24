@@ -28,7 +28,7 @@ export const TopMenu = memo(function TopMenu({ onMenuClick }: TopMenuProps) {
   const { toast } = useToast()
   const [credits, setCredits] = useState<Credits | null>(null)
   const [unreadCount, setUnreadCount] = useState(0)
-  const { user, getToken } = useAuth()
+  const { user, getToken, logout } = useAuth()
 
   const loadCredits = useCallback(async () => {
     const token = getToken()
@@ -108,13 +108,21 @@ export const TopMenu = memo(function TopMenu({ onMenuClick }: TopMenuProps) {
 
   const handleLogout = useCallback(async () => {
     try {
-      await supabase.auth.signOut()
+      // Supabase 세션 정리 시도 (실패해도 무시 - 커스텀 JWT 인증이므로)
+      try {
+        await supabase.auth.signOut()
+      } catch (e) {
+        // Supabase Auth 세션이 없을 수 있으므로 무시
+      }
+      
+      // 실제 JWT 토큰 삭제 + React 상태 초기화 + 로그인 페이지로 이동
+      logout()
+      
       toast({
         variant: "success",
         title: "✅ 로그아웃 완료",
         description: "안전하게 로그아웃되었습니다.",
       })
-      router.push('/login')
     } catch (error) {
       console.error('Logout error:', error)
       toast({
@@ -123,7 +131,7 @@ export const TopMenu = memo(function TopMenu({ onMenuClick }: TopMenuProps) {
         description: "로그아웃에 실패했습니다.",
       })
     }
-  }, [router, toast])
+  }, [logout, toast])
 
   const tierConfig = {
     free: { label: '무료', color: 'bg-gray-600' },
