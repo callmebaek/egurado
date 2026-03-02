@@ -204,6 +204,7 @@ class NaverPlaceSearchService:
                         "address": address,
                         "road_address": "",
                         "thumbnail": thumbnail,
+                        "image_count": 0,  # 크롤링에서는 이미지 수 없음, 이후 보정
                     }
                     
                     stores.append(store_info)

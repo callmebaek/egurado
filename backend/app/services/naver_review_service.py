@@ -814,6 +814,7 @@ class NaverReviewService:
                     address
                     roadAddress
                     imageUrl
+                    imageCount
                 }
             }
         }
@@ -946,6 +947,7 @@ class NaverReviewService:
                     "description": "",
                     "image_url": place.get("imageUrl", ""),
                     "thumbnail": place.get("imageUrl", ""),  # 호환성
+                    "image_count": parse_int(place.get("imageCount")),  # 이미지 수
                 }
                 
                 logger.info(f"매장 정보 조회 성공: {result}")

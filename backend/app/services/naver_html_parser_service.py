@@ -338,6 +338,22 @@ class NaverHtmlParserService:
             result["visitor_reviews_total"] = place_data.get("visitorReviewsTotal")
             result["visitor_reviews_score"] = place_data.get("visitorReviewsScore")
             
+            # 블로그 리뷰 수 (APOLLO_STATE에서 추출)
+            blog_cafe_total = place_data.get("blogCafeReviewsTotal")
+            if blog_cafe_total is not None:
+                try:
+                    result["blog_review_count"] = int(str(blog_cafe_total).replace(",", ""))
+                except (ValueError, TypeError):
+                    pass
+            
+            # 이미지 수 (APOLLO_STATE에서 추출)
+            image_count_val = place_data.get("imageCount")
+            if image_count_val is not None:
+                try:
+                    result["image_count"] = int(str(image_count_val).replace(",", ""))
+                except (ValueError, TypeError):
+                    pass
+            
             # 편의시설
             conveniences = place_data.get("conveniences", [])
             if conveniences:

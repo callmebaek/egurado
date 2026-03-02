@@ -134,6 +134,7 @@ class NaverCompleteDiagnosisService:
                     "visitor_review_count": place_info.get("visitor_review_count", 0),
                     "blog_review_count": place_info.get("blog_review_count", 0),
                     "thumbnail": place_info.get("imageUrl", ""),
+                    "image_count": place_info.get("image_count", 0),
                 }
         except Exception as e:
             logger.error(f"[완전진단-GraphQL] get_place_info 오류: {e}")
@@ -152,6 +153,7 @@ class NaverCompleteDiagnosisService:
             "rating": None,
             "visitor_review_count": 0,
             "blog_review_count": 0,
+            "image_count": 0,
             "thumbnail": "",
         }
     
@@ -341,6 +343,24 @@ class NaverCompleteDiagnosisService:
             
             if html_info.get("visitor_reviews_total") is not None:
                 result["visitor_review_count"] = html_info.get("visitor_reviews_total")
+            
+            # 블로그 리뷰 수 (HTML에서 추출, GraphQL 값이 0이면 HTML 값으로 보정)
+            html_blog_count = html_info.get("blog_review_count")
+            if html_blog_count is not None and html_blog_count > 0:
+                if result["blog_review_count"] == 0:
+                    result["blog_review_count"] = html_blog_count
+                    logger.info(f"[완전진단-HTML] 블로그 리뷰 수 보정: {html_blog_count} (GraphQL 값이 0이었음)")
+                else:
+                    logger.info(f"[완전진단-HTML] 블로그 리뷰 수: GraphQL={result['blog_review_count']}, HTML={html_blog_count}")
+            
+            # 이미지 수 (HTML에서 추출, GraphQL 값이 0이면 HTML 값으로 보정)
+            html_image_count = html_info.get("image_count")
+            if html_image_count is not None and html_image_count > 0:
+                if result["image_count"] == 0:
+                    result["image_count"] = html_image_count
+                    logger.info(f"[완전진단-HTML] 이미지 수 보정: {html_image_count} (GraphQL 값이 0이었음)")
+                else:
+                    logger.info(f"[완전진단-HTML] 이미지 수: GraphQL={result['image_count']}, HTML={html_image_count}")
             
             # 네이버 서비스 (HTML에서 파싱)
             if html_info.get("has_naver_talk") is not None:

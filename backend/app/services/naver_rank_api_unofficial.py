@@ -499,6 +499,7 @@ class NaverRankNewAPIService:
                         visitorReviewCount
                         blogCafeReviewCount
                         bookingReviewCount
+                        imageCount
                     }
                 }
             }
@@ -545,7 +546,8 @@ class NaverRankNewAPIService:
                     return {
                         "visitor_review_count": 0,
                         "blog_review_count": 0,
-                        "save_count": 0
+                        "save_count": 0,
+                        "image_count": 0,
                     }
                 
                 place = places[0]
@@ -554,7 +556,8 @@ class NaverRankNewAPIService:
                     "visitor_review_count": parse_int(place.get("visitorReviewCount")),
                     "blog_review_count": parse_int(place.get("blogCafeReviewCount")),
                     "save_count": 0,  # Places Search에서는 saveCount 없음
-                    "booking_review_count": parse_int(place.get("bookingReviewCount"))
+                    "booking_review_count": parse_int(place.get("bookingReviewCount")),
+                    "image_count": parse_int(place.get("imageCount")),
                 }
                 
                 logger.info(f"[신API Rank] ✅ 파싱 결과: {result}")
@@ -565,7 +568,8 @@ class NaverRankNewAPIService:
             return {
                 "visitor_review_count": 0,
                 "blog_review_count": 0,
-                "save_count": 0
+                "save_count": 0,
+                "image_count": 0,
             }
     
     async def _fallback_to_crawling(
