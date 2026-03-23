@@ -83,7 +83,8 @@ export default function PlaceAuditModal({
       const response = await fetch(api.stores.list(), {
         headers: {
           'Authorization': `Bearer ${token}`
-        }
+        },
+        cache: "no-store"
       });
 
       if (!response.ok) {

@@ -78,6 +78,7 @@ export default function OnboardingSection({ onStoreRegistered }: OnboardingSecti
           headers: {
             'Authorization': `Bearer ${token}`,
           },
+          cache: "no-store",
         });
         
         if (response.ok) {

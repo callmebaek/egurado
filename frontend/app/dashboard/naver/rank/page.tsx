@@ -192,7 +192,8 @@ export default function NaverRankPage() {
         const response = await fetch(api.stores.list(), {
           headers: {
             'Authorization': `Bearer ${token}`
-          }
+          },
+          cache: "no-store"
         })
         
         if (!response.ok) return
@@ -228,7 +229,8 @@ export default function NaverRankPage() {
       const allStoresResponse = await fetch(api.stores.list(), {
         headers: {
           'Authorization': `Bearer ${token}`
-        }
+        },
+        cache: "no-store"
       })
       
       if (allStoresResponse.ok) {

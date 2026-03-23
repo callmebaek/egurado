@@ -95,7 +95,8 @@ export default function RankAlertsModal({ isOpen, onClose, onComplete }: RankAle
       const response = await fetch(api.stores.list(), {
         headers: {
           'Authorization': `Bearer ${token}`
-        }
+        },
+        cache: "no-store"
       });
 
       if (!response.ok) {

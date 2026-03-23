@@ -237,7 +237,8 @@ export default function MetricsTrackerPage() {
       if (!token) return
 
       const response = await fetch(api.stores.list(), {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { 'Authorization': `Bearer ${token}` },
+        cache: "no-store"
       })
 
       if (response.ok) {
@@ -256,7 +257,8 @@ export default function MetricsTrackerPage() {
       if (!token) return
 
       const response = await fetch(api.metrics.list(), {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { 'Authorization': `Bearer ${token}` },
+        cache: "no-store"
       })
 
       if (response.ok) {
@@ -540,7 +542,8 @@ export default function MetricsTrackerPage() {
       if (!token) return
 
       const response = await fetch(api.metrics.getMetrics(tracker.id), {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { 'Authorization': `Bearer ${token}` },
+        cache: "no-store"
       })
 
       if (response.ok) {

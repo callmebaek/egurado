@@ -87,7 +87,8 @@ export default function ReviewAnalysisModal({
       const response = await fetch(api.stores.list(), {
         headers: {
           'Authorization': `Bearer ${token}`
-        }
+        },
+        cache: "no-store"
       });
 
       if (!response.ok) {

@@ -218,6 +218,7 @@ export default function GettingStartedPage() {
 
         const response = await fetch(api.onboarding.progress(), {
           headers: { Authorization: `Bearer ${token}` },
+          cache: "no-store",
         })
 
         if (response.ok) {

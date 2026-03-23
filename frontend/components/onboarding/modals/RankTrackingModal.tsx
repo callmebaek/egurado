@@ -106,7 +106,8 @@ export function RankTrackingModal({ isOpen, onClose, onComplete }: RankTrackingM
       if (!token) throw new Error('인증이 필요합니다');
 
       const response = await fetch(api.stores.list(), {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { 'Authorization': `Bearer ${token}` },
+        cache: "no-store"
       });
 
       if (!response.ok) throw new Error('매장 목록을 불러올 수 없습니다');
@@ -131,7 +132,8 @@ export function RankTrackingModal({ isOpen, onClose, onComplete }: RankTrackingM
       if (!token) throw new Error('인증이 필요합니다');
 
       const response = await fetch(api.targetKeywords.history(selectedStore.id), {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { 'Authorization': `Bearer ${token}` },
+        cache: "no-store"
       });
 
       if (!response.ok) {

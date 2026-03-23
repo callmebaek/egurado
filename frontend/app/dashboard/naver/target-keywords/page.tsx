@@ -192,7 +192,8 @@ export default function TargetKeywordsPage() {
       const response = await fetch(api.stores.list(), {
         headers: {
           'Authorization': `Bearer ${token}`
-        }
+        },
+        cache: "no-store"
       })
       if (!response.ok) throw new Error("매장 조회 실패")
       

@@ -215,7 +215,8 @@ export default function ActivationPage() {
       if (!token) throw new Error('인증 토큰 없음')
       
       const response = await fetch(api.stores.list(), {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { 'Authorization': `Bearer ${token}` },
+        cache: "no-store"
       })
       
       if (!response.ok) throw new Error('매장 조회 실패')

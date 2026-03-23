@@ -88,7 +88,8 @@ export default function StoreDirectionsModal({ isOpen, onClose, onComplete }: St
       if (!token) return
 
       const response = await fetch(api.stores.list(), {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { 'Authorization': `Bearer ${token}` },
+        cache: "no-store"
       })
 
       if (!response.ok) throw new Error('매장 목록 조회 실패')

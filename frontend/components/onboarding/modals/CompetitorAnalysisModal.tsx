@@ -93,7 +93,8 @@ export default function CompetitorAnalysisModal({
       const response = await fetch(api.stores.list(), {
         headers: {
           'Authorization': `Bearer ${token}`
-        }
+        },
+        cache: "no-store"
       });
 
       if (!response.ok) {
@@ -125,6 +126,7 @@ export default function CompetitorAnalysisModal({
         headers: {
           'Authorization': `Bearer ${token}`,
         },
+        cache: "no-store",
       });
 
       if (response.ok) {

@@ -734,7 +734,8 @@ export default function DashboardPage() {
       // tracker의 실제 tracker ID로 metrics 조회
       // tracker 목록에서 해당 tracker의 id를 찾아야 함
       const response = await fetch(api.metrics.getMetrics(tracker.id), {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { 'Authorization': `Bearer ${token}` },
+        cache: "no-store"
       })
 
       if (response.ok) {
@@ -960,7 +961,8 @@ export default function DashboardPage() {
     const trackersRes = await fetch(api.metrics.trackers(), {
       headers: {
         'Authorization': `Bearer ${token}`
-      }
+      },
+      cache: "no-store"
     })
 
     if (trackersRes.ok) {
@@ -1084,7 +1086,8 @@ export default function DashboardPage() {
       const storesRes = await fetch(api.stores.list(), {
         headers: {
           'Authorization': `Bearer ${token}`
-        }
+        },
+        cache: "no-store"
       })
       
       if (storesRes.ok) {
@@ -1172,7 +1175,8 @@ export default function DashboardPage() {
         const storesRes = await fetch(api.stores.list(), {
           headers: {
             'Authorization': `Bearer ${token}`
-          }
+          },
+          cache: "no-store"
         })
         
         let loadedStores: Store[] = []
