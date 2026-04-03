@@ -76,14 +76,14 @@ class StoreCreateRequest(BaseModel):
     platform: str = "naver"  # "naver" 또는 "google"
 
 
-# Tier별 매장 등록 개수 제한 설정 (payment_service.py tier_quotas 기준)
+# Tier별 매장 등록 개수 제한 설정 (052_update_tier_quotas_v2.sql 기준)
 STORE_LIMITS = {
     "free": 1,
     "basic": 1,
     "basic_plus": 2,
     "pro": 5,
     "custom": 0,     # 커스텀: 별도 협의
-    "god": 9999,     # God tier: 무제한
+    "god": -1,       # God tier: 무제한
 }
 
 
@@ -133,8 +133,8 @@ async def create_store(
         supabase = get_supabase_client()
         user_id = current_user["id"]  # 인증된 사용자의 ID 사용
         
-        # 1. 사용자 프로필 조회 (subscription_tier, max_stores 확인) - 프로필이 없으면 기본값 사용
-        user_tier = "free"  # 기본값
+        # 1. 사용자 프로필 조회 (subscription_tier, max_stores 확인)
+        user_tier = "free"
         max_stores = STORE_LIMITS.get(user_tier, 1)
         
         try:
@@ -144,29 +144,30 @@ async def create_store(
             
             if profile_result.data and len(profile_result.data) > 0:
                 user_tier = profile_result.data[0].get("subscription_tier", "free")
-                # 프로필에 max_stores가 설정되어 있으면 우선 사용, 없으면 STORE_LIMITS 참조
                 profile_max_stores = profile_result.data[0].get("max_stores")
-                if profile_max_stores is not None and profile_max_stores > 0:
+                if profile_max_stores is not None and profile_max_stores != 0:
                     max_stores = profile_max_stores
                 else:
                     max_stores = STORE_LIMITS.get(user_tier, 1)
         except Exception as e:
             logger.warning(f"Could not fetch user profile, using default tier: {str(e)}")
         
-        # 2. 현재 등록된 매장 개수 확인
-        stores_count_result = supabase.table("stores").select("id", count="exact").eq(
-            "user_id", str(user_id)
-        ).execute()
-        
-        current_store_count = stores_count_result.count or 0
-        
-        # 3. 매장 등록 개수 제한 확인
-        if current_store_count >= max_stores:
-            tier_names = {"free": "무료", "basic": "베이직", "basic_plus": "베이직 플러스", "pro": "프로", "custom": "커스텀", "god": "갓"}
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"{tier_names.get(user_tier, user_tier)} 플랜은 최대 {max_stores}개의 매장만 등록할 수 있습니다. (현재: {current_store_count}개)"
-            )
+        # -1은 무제한이므로 제한 체크 건너뜀
+        if max_stores >= 0:
+            # 2. 현재 등록된 매장 개수 확인
+            stores_count_result = supabase.table("stores").select("id", count="exact").eq(
+                "user_id", str(user_id)
+            ).execute()
+            
+            current_store_count = stores_count_result.count or 0
+            
+            # 3. 매장 등록 개수 제한 확인
+            if current_store_count >= max_stores:
+                tier_names = {"free": "무료", "basic": "베이직", "basic_plus": "베이직 플러스", "pro": "프로", "custom": "커스텀", "god": "갓"}
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"{tier_names.get(user_tier, user_tier)} 플랜은 최대 {max_stores}개의 매장만 등록할 수 있습니다. (현재: {current_store_count}개)"
+                )
         
         # 4. 중복 확인 (같은 user_id와 place_id)
         existing = supabase.table("stores").select("id").eq(

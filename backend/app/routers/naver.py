@@ -30,12 +30,14 @@ security = HTTPBearer(auto_error=False)
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-# 구독 tier별 키워드 등록 제한
+# 구독 tier별 키워드 등록 제한 (052_update_tier_quotas_v2.sql 기준)
 KEYWORD_LIMITS = {
     "free": 1,
-    "basic": 10,
-    "pro": 50,
-    "god": 9999  # God tier: 무제한 (커스터마이징 가능)
+    "basic": 3,
+    "basic_plus": 8,
+    "pro": 20,
+    "custom": 0,    # 커스텀: 별도 협의
+    "god": -1,      # God tier: 무제한
 }
 
 def check_keyword_limit(supabase, user_id: str) -> tuple[bool, int, int]:
@@ -46,17 +48,24 @@ def check_keyword_limit(supabase, user_id: str) -> tuple[bool, int, int]:
         tuple: (제한 초과 여부, 현재 키워드 수, 최대 허용 수)
     """
     try:
-        # 사용자의 구독 tier 확인
-        user_result = supabase.table("profiles").select("subscription_tier").eq("id", user_id).single().execute()
+        user_result = supabase.table("profiles").select("subscription_tier, max_keywords").eq("id", user_id).single().execute()
         
         if not user_result.data:
             logger.warning(f"User not found: {user_id}")
             return False, 0, KEYWORD_LIMITS["free"]
         
         subscription_tier = user_result.data.get("subscription_tier", "free").lower()
-        max_keywords = KEYWORD_LIMITS.get(subscription_tier, KEYWORD_LIMITS["free"])
+
+        profile_max_keywords = user_result.data.get("max_keywords")
+        if profile_max_keywords is not None and profile_max_keywords != 0:
+            max_keywords = profile_max_keywords
+        else:
+            max_keywords = KEYWORD_LIMITS.get(subscription_tier, KEYWORD_LIMITS["free"])
+
+        # -1은 무제한
+        if max_keywords < 0:
+            return False, 0, max_keywords
         
-        # 해당 사용자의 모든 매장에 등록된 키워드 수 확인
         stores_result = supabase.table("stores").select("id").eq("user_id", user_id).execute()
         
         if not stores_result.data:
@@ -64,7 +73,6 @@ def check_keyword_limit(supabase, user_id: str) -> tuple[bool, int, int]:
         
         store_ids = [store["id"] for store in stores_result.data]
         
-        # 모든 매장의 키워드 수 합산
         keywords_result = supabase.table("keywords").select("id", count="exact").in_("store_id", store_ids).execute()
         current_keywords = keywords_result.count if keywords_result.count else 0
         
