@@ -53,6 +53,41 @@ class NaverRankNewAPIService:
         
         self.timeout = 15.0
         
+    @staticmethod
+    def _get_query_type(category: str = None) -> str:
+        """매장 카테고리에 따라 사용할 GraphQL 쿼리 타입 결정
+        
+        Returns:
+            "restaurant" - 음식점/카페 → restaurantList 쿼리
+            "hospital"   - 병원/의원 → hospitals 쿼리
+            "place"      - 그 외 → places 쿼리 (기존 방식)
+        """
+        if not category:
+            return "restaurant"
+        
+        cat = category.lower().replace(" ", "")
+        
+        hospital_keywords = [
+            "피부과", "치과", "한의원", "병원", "의원", "클리닉",
+            "정형외과", "내과", "외과", "안과", "이비인후과", "산부인과",
+            "소아과", "비뇨기과", "신경과", "정신과", "재활의학과",
+        ]
+        for kw in hospital_keywords:
+            if kw in cat:
+                return "hospital"
+        
+        non_food_keywords = [
+            "미용", "뷰티", "헤어", "네일", "사진", "스튜디오",
+            "꽃", "플라워", "펫", "동물", "세탁", "부동산",
+            "학원", "교육", "운동", "헬스", "필라테스", "요가",
+            "자동차", "세차", "주유", "편의점", "마트",
+        ]
+        for kw in non_food_keywords:
+            if kw in cat:
+                return "place"
+        
+        return "restaurant"
+    
     async def check_rank(
         self, 
         keyword: str, 
@@ -60,7 +95,8 @@ class NaverRankNewAPIService:
         max_results: int = 300,
         store_name: str = None,
         coord_x: str = None,
-        coord_y: str = None
+        coord_y: str = None,
+        category: str = None
     ) -> Dict:
         """
         특정 키워드에서 매장의 순위 확인 (신API - 빠름!)
@@ -74,8 +110,9 @@ class NaverRankNewAPIService:
             target_place_id: 찾을 매장의 Place ID
             max_results: 최대 확인 개수 (기본 300개)
             store_name: 매장명 (300위 밖일 때 리뷰 수 조회에 사용)
-            coord_x: 경도 (300위 밖일 때 리뷰 수 조회에 사용)
-            coord_y: 위도 (300위 밖일 때 리뷰 수 조회에 사용)
+            coord_x: 경도 (매장 위치 기준 검색)
+            coord_y: 위도 (매장 위치 기준 검색)
+            category: 매장 카테고리 (쿼리 타입 결정에 사용)
             
         Returns:
             {
@@ -94,18 +131,19 @@ class NaverRankNewAPIService:
         from app.core.rate_limiter import naver_api_limiter
         
         await naver_api_limiter.acquire()
-        logger.info(f"[신API Rank] 순위 체크 시작: keyword={keyword}, place_id={target_place_id}, store_name={store_name}, x={coord_x}, y={coord_y}")
+        query_type = self._get_query_type(category)
+        logger.info(f"[신API Rank] 순위 체크 시작: keyword={keyword}, place_id={target_place_id}, store_name={store_name}, x={coord_x}, y={coord_y}, query_type={query_type}")
         
         try:
             # 1. GraphQL로 검색 결과 가져오기 (프록시 -> 직접 연결 폴백 포함)
-            search_results, total_count = await self._search_places_with_fallback(keyword, max_results, coord_x, coord_y)
+            search_results, total_count = await self._search_places_with_fallback(keyword, max_results, coord_x, coord_y, query_type=query_type)
             
             if not search_results:
                 # 2순위: 직접 연결로 재시도
                 logger.warning(f"[신API Rank] 1차 프록시 결과 0개 -> 직접 연결로 재시도 (2순위)")
                 await asyncio.sleep(1)
                 search_results, total_count = await self._search_places_with_fallback(
-                    keyword, max_results, coord_x, coord_y, force_direct=True
+                    keyword, max_results, coord_x, coord_y, force_direct=True, query_type=query_type
                 )
             
             if not search_results:
@@ -113,7 +151,7 @@ class NaverRankNewAPIService:
                 logger.warning(f"[신API Rank] 직접 연결도 결과 0개 -> 프록시 재시도 (3순위)")
                 await asyncio.sleep(2)
                 search_results, total_count = await self._search_places_with_fallback(
-                    keyword, max_results, coord_x, coord_y
+                    keyword, max_results, coord_x, coord_y, query_type=query_type
                 )
             
             if not search_results:
@@ -229,7 +267,7 @@ class NaverRankNewAPIService:
     
     async def _search_places_with_fallback(
         self, keyword: str, max_results: int, coord_x: str = None, coord_y: str = None,
-        force_direct: bool = False
+        force_direct: bool = False, query_type: str = "restaurant"
     ) -> tuple[List[Dict], int]:
         """
         페이지별 프록시 -> 직접 연결 자동 폴백이 포함된 검색
@@ -260,7 +298,13 @@ class NaverRankNewAPIService:
         else:
             logger.info(f"[신API Rank] 직접 연결 모드 (프록시 미설정 또는 비활성)")
         
-        logger.info(f"[신API Rank] 검색 위치: x={search_x}, y={search_y}")
+        logger.info(f"[신API Rank] 검색 위치: x={search_x}, y={search_y}, query_type={query_type}")
+        
+        response_key = {
+            "restaurant": "restaurantList",
+            "hospital": "hospitals",
+            "place": "places",
+        }.get(query_type, "places")
         
         all_stores = []
         total_count = 0
@@ -283,7 +327,7 @@ class NaverRankNewAPIService:
                 try:
                     logger.info(f"[신API Rank] 페이지{page_num} 요청: start={start_idx}, display={current_display}, 연결=프록시")
                     page_data = await self._fetch_single_page(
-                        keyword, start_idx, current_display, search_x, search_y, proxy_url
+                        keyword, start_idx, current_display, search_x, search_y, proxy_url, query_type=query_type
                     )
                     proxy_page_successes += 1
                     record_request("proxy", True, page=page_num)
@@ -298,7 +342,7 @@ class NaverRankNewAPIService:
                 try:
                     logger.info(f"[신API Rank] 페이지{page_num} 요청: start={start_idx}, display={current_display}, 연결=직접")
                     page_data = await self._fetch_single_page(
-                        keyword, start_idx, current_display, search_x, search_y, None
+                        keyword, start_idx, current_display, search_x, search_y, None, query_type=query_type
                     )
                     direct_page_successes += 1
                     record_request("direct", True, page=page_num)
@@ -310,10 +354,10 @@ class NaverRankNewAPIService:
             
             # --- 데이터 추출 ---
             if start_idx == 1:
-                total_count = page_data.get("data", {}).get("places", {}).get("total", 0)
-                logger.info(f"[신API Rank] 전체 업체수: {total_count}개")
+                total_count = page_data.get("data", {}).get(response_key, {}).get("total", 0)
+                logger.info(f"[신API Rank] 전체 업체수: {total_count}개 ({response_key})")
             
-            items = page_data.get("data", {}).get("places", {}).get("items", [])
+            items = page_data.get("data", {}).get(response_key, {}).get("items", [])
             if not items:
                 logger.info(f"[신API Rank] 더 이상 결과 없음 (start={start_idx})")
                 break
@@ -338,7 +382,8 @@ class NaverRankNewAPIService:
     
     async def _fetch_single_page(
         self, keyword: str, start: int, display: int,
-        x: str, y: str, proxy_url: str = None
+        x: str, y: str, proxy_url: str = None,
+        query_type: str = "restaurant"
     ) -> dict:
         """GraphQL 단일 페이지 요청
         
@@ -349,6 +394,7 @@ class NaverRankNewAPIService:
             x: 경도
             y: 위도
             proxy_url: 프록시 URL (None이면 직접 연결)
+            query_type: "restaurant" | "hospital" | "place"
             
         Returns:
             GraphQL API 응답 JSON
@@ -356,11 +402,7 @@ class NaverRankNewAPIService:
         Raises:
             Exception: 요청 실패 시 (호출자가 폴백 처리)
         """
-        graphql_query = """
-        query getPlacesList($input: PlacesInput) {
-            places(input: $input) {
-                total
-                items {
+        item_fields = """
                     id
                     name
                     category
@@ -371,11 +413,43 @@ class NaverRankNewAPIService:
                     imageUrl
                     blogCafeReviewCount
                     visitorReviewCount
-                    visitorReviewScore
-                }
-            }
-        }
-        """
+                    visitorReviewScore"""
+        
+        if query_type == "restaurant":
+            graphql_query = f"""
+            query getRestaurantList($input: RestaurantListInput) {{
+                restaurantList(input: $input) {{
+                    total
+                    items {{{item_fields}
+                    }}
+                }}
+            }}
+            """
+            operation_name = "getRestaurantList"
+        elif query_type == "hospital":
+            graphql_query = f"""
+            query getHospitals($input: PlacesInput) {{
+                hospitals(input: $input) {{
+                    total
+                    items {{{item_fields}
+                    }}
+                }}
+            }}
+            """
+            operation_name = "getHospitals"
+        else:
+            graphql_query = f"""
+            query getPlacesList($input: PlacesInput) {{
+                places(input: $input) {{
+                    total
+                    items {{{item_fields}
+                    }}
+                }}
+            }}
+            """
+            operation_name = "getPlacesList"
+        
+        input_type = "RestaurantListInput" if query_type == "restaurant" else "PlacesInput"
         
         variables = {
             "input": {
@@ -389,7 +463,7 @@ class NaverRankNewAPIService:
         }
         
         payload = {
-            "operationName": "getPlacesList",
+            "operationName": operation_name,
             "variables": variables,
             "query": graphql_query
         }

@@ -95,7 +95,8 @@ class NaverTargetKeywordService:
                 rank_data = await self._get_place_ranks(
                     place_id, top_keywords,
                     coord_x=store_info.get("place_x"),
-                    coord_y=store_info.get("place_y")
+                    coord_y=store_info.get("place_y"),
+                    category=store_info.get("category")
                 )
                 logger.info(f"[타겟 키워드] 순위 조회 완료: {len(rank_data)}개")
             except Exception as e:
@@ -388,7 +389,8 @@ class NaverTargetKeywordService:
     
     async def _get_place_ranks(
         self, place_id: str, top_keywords: List[Dict[str, Any]],
-        coord_x: str = None, coord_y: str = None
+        coord_x: str = None, coord_y: str = None,
+        category: str = None
     ) -> Dict[str, Dict[str, int]]:
         """각 타겟 키워드별 플레이스 순위 및 전체 업체수 조회 (안전한 병렬 처리)"""
         rank_data = {}
@@ -406,7 +408,7 @@ class NaverTargetKeywordService:
                     try:
                         # 개별 키워드 타임아웃 30초
                         result = await asyncio.wait_for(
-                            rank_service.check_rank(keyword, place_id, coord_x=coord_x, coord_y=coord_y),
+                            rank_service.check_rank(keyword, place_id, coord_x=coord_x, coord_y=coord_y, category=category),
                             timeout=30
                         )
                         

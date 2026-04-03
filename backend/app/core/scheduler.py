@@ -73,7 +73,7 @@ async def check_all_keywords_rank():
         
         # 모든 키워드 조회 (store 정보 포함)
         result = supabase.table("keywords").select(
-            "id, keyword, store_id, current_rank, stores(place_id, store_name, place_x, place_y)"
+            "id, keyword, store_id, current_rank, stores(place_id, store_name, place_x, place_y, category)"
         ).execute()
         
         if not result.data:
@@ -102,6 +102,7 @@ async def check_all_keywords_rank():
                 store_name = kw["stores"]["store_name"]
                 coord_x = kw["stores"].get("place_x")
                 coord_y = kw["stores"].get("place_y")
+                store_category = kw["stores"].get("category")
                 
                 logger.info(f"🔍 '{keyword_text}' (매장: {store_name}, coord: {coord_x},{coord_y}) 순위 확인 중...")
                 
@@ -112,7 +113,8 @@ async def check_all_keywords_rank():
                     max_results=300,
                     store_name=store_name,
                     coord_x=coord_x,
-                    coord_y=coord_y
+                    coord_y=coord_y,
+                    category=store_category
                 )
                 
                 new_rank = rank_result["rank"]

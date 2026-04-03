@@ -366,7 +366,8 @@ class MetricTrackerService:
                 target_place_id=store['place_id'],
                 store_name=store['store_name'],
                 coord_x=store.get('place_x'),
-                coord_y=store.get('place_y')
+                coord_y=store.get('place_y'),
+                category=store.get('category')
             )
             
             # 🆕 순위를 못 찾은 경우 재시도 로직 (스마트 재시도)
@@ -397,7 +398,8 @@ class MetricTrackerService:
                         target_place_id=store['place_id'],
                         store_name=store['store_name'],
                         coord_x=store.get('place_x'),
-                        coord_y=store.get('place_y')
+                        coord_y=store.get('place_y'),
+                        category=store.get('category')
                     )
                     
                     if rank_result.get('rank') is None:

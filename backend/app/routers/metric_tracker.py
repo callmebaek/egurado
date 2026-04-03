@@ -420,7 +420,7 @@ async def get_competitors(
         
         # 매장 정보 조회
         store_result = supabase.table("stores").select(
-            "id, place_id, store_name, place_x, place_y"
+            "id, place_id, store_name, place_x, place_y, category"
         ).eq("id", request.store_id).single().execute()
         
         if not store_result.data:
@@ -492,7 +492,8 @@ async def get_competitors(
             max_results=300,
             store_name=store_data.get("store_name"),
             coord_x=store_data.get("place_x"),
-            coord_y=store_data.get("place_y")
+            coord_y=store_data.get("place_y"),
+            category=store_data.get("category")
         )
         
         # 검색 결과를 경쟁매장 리스트로 변환

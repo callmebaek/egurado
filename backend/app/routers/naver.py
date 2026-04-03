@@ -952,7 +952,7 @@ async def check_place_rank_unofficial(
         
         # 매장 정보 조회
         store_result = supabase.table("stores").select(
-            "id, place_id, store_name, platform, user_id, place_x, place_y"
+            "id, place_id, store_name, platform, user_id, place_x, place_y, category"
         ).eq("id", str(request.store_id)).single().execute()
         
         if not store_result.data:
@@ -981,13 +981,15 @@ async def check_place_rank_unofficial(
         
         # 순위 체크 (비공식 API) - 최대 300개까지 확인
         # coord_x, coord_y가 None이면 기본 좌표(강남) 사용
+        store_category = store_data.get("category")
         rank_result = await rank_service_api_unofficial.check_rank(
             keyword=request.keyword,
             target_place_id=place_id,
             max_results=300,
             store_name=store_name,
             coord_x=coord_x,
-            coord_y=coord_y
+            coord_y=coord_y,
+            category=store_category
         )
         
         # 타겟 매장의 리뷰수 정보 추출
