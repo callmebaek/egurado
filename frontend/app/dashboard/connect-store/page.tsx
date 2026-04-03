@@ -18,6 +18,8 @@ interface StoreSearchResult {
   address: string
   road_address?: string
   thumbnail?: string
+  place_x?: string
+  place_y?: string
 }
 
 interface RegisteredStore {
@@ -221,6 +223,8 @@ export default function ConnectStorePage() {
           road_address: store.road_address || "",
           thumbnail: store.thumbnail || "",
           platform: "naver",
+          place_x: store.place_x || null,
+          place_y: store.place_y || null,
         }),
       })
 

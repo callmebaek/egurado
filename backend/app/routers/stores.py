@@ -74,6 +74,8 @@ class StoreCreateRequest(BaseModel):
     road_address: Optional[str] = ""
     thumbnail: Optional[str] = ""
     platform: str = "naver"  # "naver" 또는 "google"
+    place_x: Optional[str] = None
+    place_y: Optional[str] = None
 
 
 # Tier별 매장 등록 개수 제한 설정 (052_update_tier_quotas_v2.sql 기준)
@@ -193,6 +195,8 @@ async def create_store(
             "platform": request.platform,
             "status": "active",
             "created_at": datetime.utcnow().isoformat(),
+            "place_x": request.place_x,
+            "place_y": request.place_y,
         }
         
         result = supabase.table("stores").insert(new_store).execute()
@@ -444,6 +448,77 @@ async def update_store_order(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"매장 순서 업데이트 중 오류가 발생했습니다: {str(e)}"
+        )
+
+@router.post("/backfill-coordinates")
+async def backfill_store_coordinates(
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    기존 매장들의 place_x, place_y 좌표를 채우는 일회성 API.
+    좌표가 없는 네이버 매장에 대해 GraphQL API로 좌표를 조회하여 저장합니다.
+    """
+    try:
+        supabase = get_supabase_client()
+        
+        result = supabase.table("stores").select(
+            "id, place_id, store_name, platform, place_x, place_y"
+        ).eq("platform", "naver").is_("place_x", "null").execute()
+        
+        if not result.data:
+            return {"status": "success", "message": "좌표가 없는 매장이 없습니다.", "updated": 0}
+        
+        from app.services.naver_rank_api_unofficial import NaverRankNewAPIService
+        import asyncio
+        
+        service = NaverRankNewAPIService()
+        updated = 0
+        errors = []
+        
+        for store in result.data:
+            try:
+                place_detail = await service._fetch_single_page(
+                    keyword=store["store_name"],
+                    start=1, display=10,
+                    x="127.0276", y="37.4979",
+                    proxy_url=None
+                )
+                
+                items = place_detail.get("data", {}).get("places", {}).get("items", [])
+                
+                for item in items:
+                    if str(item.get("id")) == str(store["place_id"]):
+                        x_val = str(item.get("x", ""))
+                        y_val = str(item.get("y", ""))
+                        
+                        if x_val and y_val:
+                            supabase.table("stores").update({
+                                "place_x": x_val,
+                                "place_y": y_val,
+                            }).eq("id", store["id"]).execute()
+                            
+                            updated += 1
+                            logger.info(f"[Backfill] {store['store_name']}: ({x_val}, {y_val})")
+                        break
+                
+                await asyncio.sleep(0.5)
+                
+            except Exception as e:
+                errors.append(f"{store['store_name']}: {str(e)}")
+                logger.error(f"[Backfill] {store['store_name']} 실패: {str(e)}")
+        
+        return {
+            "status": "success",
+            "total": len(result.data),
+            "updated": updated,
+            "errors": errors
+        }
+        
+    except Exception as e:
+        logger.error(f"[Backfill] 전체 오류: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"좌표 채우기 실패: {str(e)}"
         )
 
 # #region agent log

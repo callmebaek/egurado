@@ -96,6 +96,8 @@ class StoreSearchResult(BaseModel):
     address: str
     road_address: Optional[str] = ""
     thumbnail: Optional[str] = ""
+    place_x: Optional[str] = None
+    place_y: Optional[str] = None
 
 
 class StoreSearchResponse(BaseModel):
@@ -191,7 +193,9 @@ async def search_naver_stores(
                 category=store["category"],
                 address=store["address"],
                 road_address=store.get("road_address", ""),
-                thumbnail=store.get("thumbnail", "")
+                thumbnail=store.get("thumbnail", ""),
+                place_x=store.get("x", None),
+                place_y=store.get("y", None),
             )
             for store in results
         ]
@@ -852,7 +856,9 @@ async def search_naver_stores_unofficial(
                 category=store["category"],
                 address=store["address"],
                 road_address=store.get("road_address", ""),
-                thumbnail=store.get("thumbnail", "")
+                thumbnail=store.get("thumbnail", ""),
+                place_x=store.get("x", None),
+                place_y=store.get("y", None),
             )
             for store in results
         ]
@@ -946,7 +952,7 @@ async def check_place_rank_unofficial(
         
         # 매장 정보 조회
         store_result = supabase.table("stores").select(
-            "id, place_id, store_name, platform, user_id"
+            "id, place_id, store_name, platform, user_id, place_x, place_y"
         ).eq("id", str(request.store_id)).single().execute()
         
         if not store_result.data:
@@ -965,14 +971,12 @@ async def check_place_rank_unofficial(
         place_id = store_data["place_id"]
         store_name = store_data["store_name"]
         
-        # TODO: stores 테이블에 x, y 컬럼 추가 후 실제 좌표 사용
-        # 현재는 기본 좌표(강남) 사용
-        coord_x = None
-        coord_y = None
+        coord_x = store_data.get("place_x")
+        coord_y = store_data.get("place_y")
         
         logger.info(
             f"[Unofficial API Rank] Store: {store_name} (ID: {place_id}), "
-            f"Keyword: {request.keyword}"
+            f"Keyword: {request.keyword}, Coord: ({coord_x}, {coord_y})"
         )
         
         # 순위 체크 (비공식 API) - 최대 300개까지 확인

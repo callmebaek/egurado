@@ -20,6 +20,8 @@ interface StoreSearchResult {
   address: string;
   road_address?: string;
   thumbnail?: string;
+  place_x?: string;
+  place_y?: string;
 }
 
 export default function StoreRegisterModal({
@@ -100,6 +102,8 @@ export default function StoreRegisterModal({
           road_address: selectedStore.road_address || '',
           thumbnail: selectedStore.thumbnail || '',
           platform: 'naver',
+          place_x: selectedStore.place_x || null,
+          place_y: selectedStore.place_y || null,
         }),
       });
 

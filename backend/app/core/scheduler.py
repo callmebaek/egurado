@@ -10,6 +10,7 @@ import logging
 from app.core.database import get_supabase_client
 from app.services.naver_crawler import crawl_naver_reviews
 from app.services.naver_rank_service import rank_service
+from app.services.naver_rank_api_unofficial import rank_service_api_unofficial
 from app.services.metric_tracker_service import metric_tracker_service
 from app.services.billing_service import billing_service
 
@@ -72,7 +73,7 @@ async def check_all_keywords_rank():
         
         # 모든 키워드 조회 (store 정보 포함)
         result = supabase.table("keywords").select(
-            "id, keyword, store_id, current_rank, stores(place_id, store_name)"
+            "id, keyword, store_id, current_rank, stores(place_id, store_name, place_x, place_y)"
         ).execute()
         
         if not result.data:
@@ -99,14 +100,19 @@ async def check_all_keywords_rank():
                 
                 place_id = kw["stores"]["place_id"]
                 store_name = kw["stores"]["store_name"]
+                coord_x = kw["stores"].get("place_x")
+                coord_y = kw["stores"].get("place_y")
                 
-                logger.info(f"🔍 '{keyword_text}' (매장: {store_name}) 순위 확인 중...")
+                logger.info(f"🔍 '{keyword_text}' (매장: {store_name}, coord: {coord_x},{coord_y}) 순위 확인 중...")
                 
-                # 순위 체크 (최대 300개)
-                rank_result = await rank_service.check_rank(
+                # 순위 체크 (GraphQL API, 매장 좌표 기준)
+                rank_result = await rank_service_api_unofficial.check_rank(
                     keyword=keyword_text,
                     target_place_id=place_id,
-                    max_results=300
+                    max_results=300,
+                    store_name=store_name,
+                    coord_x=coord_x,
+                    coord_y=coord_y
                 )
                 
                 new_rank = rank_result["rank"]
