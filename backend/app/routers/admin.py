@@ -11,7 +11,9 @@ from app.models.admin import (
     GrantCreditsResponse,
     UserInfoResponse,
     UserListResponse,
-    AdminStatsResponse
+    AdminStatsResponse,
+    UpdateQuotaRequest,
+    UpdateQuotaResponse,
 )
 from app.models.support_ticket import (
     TicketListResponse, 
@@ -307,6 +309,76 @@ async def grant_credits(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"크레딧 지급 실패: {str(e)}"
+        )
+
+
+@router.put("/users/{user_id}/quotas", response_model=UpdateQuotaResponse)
+async def update_user_quotas(
+    user_id: str,
+    request: UpdateQuotaRequest,
+    user=Depends(get_current_user)
+):
+    """
+    사용자 쿼터(매장 수/추적키워드 수) 수동 조정 (관리자 전용)
+    """
+    try:
+        supabase = get_supabase_client()
+        admin_user_id = user["id"]
+
+        if request.max_stores is None and request.max_trackers is None and request.max_keywords is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="변경할 쿼터 항목을 하나 이상 입력해주세요."
+            )
+
+        # 대상 사용자 존재 확인
+        profile_result = supabase.table("profiles") \
+            .select("id, max_stores, max_trackers, max_keywords") \
+            .eq("id", user_id) \
+            .execute()
+
+        if not profile_result.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="대상 사용자를 찾을 수 없습니다."
+            )
+
+        update_data: dict = {}
+        if request.max_stores is not None:
+            update_data["max_stores"] = request.max_stores
+        if request.max_trackers is not None:
+            update_data["max_trackers"] = request.max_trackers
+        if request.max_keywords is not None:
+            update_data["max_keywords"] = request.max_keywords
+
+        supabase.table("profiles") \
+            .update(update_data) \
+            .eq("id", user_id) \
+            .execute()
+
+        logger.info(
+            f"Admin {admin_user_id} updated quotas for user {user_id}: {update_data}"
+            + (f" (note: {request.admin_note})" if request.admin_note else "")
+        )
+
+        now = datetime.utcnow()
+        return UpdateQuotaResponse(
+            success=True,
+            user_id=user_id,
+            max_stores=request.max_stores,
+            max_trackers=request.max_trackers,
+            max_keywords=request.max_keywords,
+            updated_by=admin_user_id,
+            timestamp=now,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to update quotas: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"쿼터 수정 실패: {str(e)}"
         )
 
 

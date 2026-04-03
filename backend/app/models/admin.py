@@ -68,3 +68,22 @@ class AdminStatsResponse(BaseModel):
     pending_tickets: int
     total_credits_used_today: int
     new_users_this_week: int
+
+
+class UpdateQuotaRequest(BaseModel):
+    """사용자 쿼터(한도) 수정 요청"""
+    max_stores: Optional[int] = Field(None, ge=0, le=9999)
+    max_trackers: Optional[int] = Field(None, ge=0, le=9999)
+    max_keywords: Optional[int] = Field(None, ge=0, le=9999)
+    admin_note: Optional[str] = Field(None, max_length=500)
+
+
+class UpdateQuotaResponse(BaseModel):
+    """사용자 쿼터 수정 응답"""
+    success: bool
+    user_id: str
+    max_stores: Optional[int] = None
+    max_trackers: Optional[int] = None
+    max_keywords: Optional[int] = None
+    updated_by: str
+    timestamp: datetime

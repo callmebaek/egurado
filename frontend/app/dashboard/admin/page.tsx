@@ -158,6 +158,12 @@ export default function AdminPage() {
   const [creditAmount, setCreditAmount] = useState(0)
   const [isGivingCredit, setIsGivingCredit] = useState(false)
 
+  // 쿼터 증량
+  const [selectedQuotaUser, setSelectedQuotaUser] = useState<UserInfo | null>(null)
+  const [quotaMaxStores, setQuotaMaxStores] = useState<number>(0)
+  const [quotaMaxTrackers, setQuotaMaxTrackers] = useState<number>(0)
+  const [isUpdatingQuota, setIsUpdatingQuota] = useState(false)
+
   // 쿠폰 관리
   const [coupons, setCoupons] = useState<CouponInfo[]>([])
   const [showCouponDialog, setShowCouponDialog] = useState(false)
@@ -515,6 +521,52 @@ export default function AdminPage() {
       })
     } finally {
       setIsGivingCredit(false)
+    }
+  }
+
+  // 쿼터(매장수/추적키워드수) 수정
+  const handleUpdateQuota = async () => {
+    if (!selectedQuotaUser) return
+
+    setIsUpdatingQuota(true)
+    try {
+      const token = getToken()
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/users/${selectedQuotaUser.id}/quotas`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            max_stores: quotaMaxStores,
+            max_trackers: quotaMaxTrackers,
+            admin_note: `관리자 쿼터 조정 - 매장: ${quotaMaxStores}개, 추적키워드: ${quotaMaxTrackers}개`,
+          }),
+        }
+      )
+
+      if (response.ok) {
+        toast({
+          title: '✅ 쿼터 수정 완료',
+          description: `${selectedQuotaUser.email} — 매장 ${quotaMaxStores}개 / 추적키워드 ${quotaMaxTrackers}개로 설정했습니다.`,
+        })
+        setSelectedQuotaUser(null)
+        await loadUsers()
+      } else {
+        const err = await response.json().catch(() => ({}))
+        throw new Error(err.detail || 'Failed to update quota')
+      }
+    } catch (error) {
+      console.error('Update quota error:', error)
+      toast({
+        variant: 'destructive',
+        title: '❌ 수정 실패',
+        description: '쿼터 수정에 실패했습니다.',
+      })
+    } finally {
+      setIsUpdatingQuota(false)
     }
   }
 
@@ -1110,15 +1162,29 @@ export default function AdminPage() {
                         </span>
                       </td>
                       <td className="py-2.5 px-2 text-center whitespace-nowrap">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="text-xs h-8 px-2"
-                          onClick={() => setSelectedUser(u)}
-                        >
-                          <Gift className="w-3.5 h-3.5 mr-1" />
-                          지급
-                        </Button>
+                        <div className="flex gap-1 justify-center">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-xs h-8 px-2"
+                            onClick={() => setSelectedUser(u)}
+                          >
+                            <Gift className="w-3.5 h-3.5 mr-1" />
+                            지급
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-xs h-8 px-2 text-teal-700 border-teal-300 hover:bg-teal-50"
+                            onClick={() => {
+                              setSelectedQuotaUser(u)
+                              setQuotaMaxStores(u.store_count ?? 0)
+                              setQuotaMaxTrackers(u.tracker_count ?? 0)
+                            }}
+                          >
+                            쿼터
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -1513,6 +1579,73 @@ export default function AdminPage() {
                       <Gift className="w-4 h-4 mr-2" />
                       지급
                     </>
+                  )}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ============================================ */}
+      {/* 쿼터 증량 다이얼로그 */}
+      {/* ============================================ */}
+      <Dialog open={!!selectedQuotaUser} onOpenChange={() => setSelectedQuotaUser(null)}>
+        <DialogContent>
+          {selectedQuotaUser && (
+            <>
+              <DialogHeader>
+                <DialogTitle>쿼터 조정</DialogTitle>
+                <DialogDescription>
+                  {selectedQuotaUser.email}의 매장 등록 수 및 추적키워드 수를 변경합니다
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="py-4 space-y-4">
+                <div>
+                  <Label>매장 등록 최대 수</Label>
+                  <Input
+                    type="number"
+                    value={quotaMaxStores}
+                    onChange={(e) => setQuotaMaxStores(parseInt(e.target.value) || 0)}
+                    placeholder="10"
+                    className="mt-1"
+                    min="0"
+                  />
+                </div>
+                <div>
+                  <Label>추적키워드 최대 수</Label>
+                  <Input
+                    type="number"
+                    value={quotaMaxTrackers}
+                    onChange={(e) => setQuotaMaxTrackers(parseInt(e.target.value) || 0)}
+                    placeholder="30"
+                    className="mt-1"
+                    min="0"
+                  />
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setSelectedQuotaUser(null)}
+                  disabled={isUpdatingQuota}
+                >
+                  취소
+                </Button>
+                <Button
+                  onClick={handleUpdateQuota}
+                  disabled={isUpdatingQuota}
+                  className="bg-teal-600 hover:bg-teal-700"
+                >
+                  {isUpdatingQuota ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      수정 중...
+                    </>
+                  ) : (
+                    '적용'
                   )}
                 </Button>
               </DialogFooter>
